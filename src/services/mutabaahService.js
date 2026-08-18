@@ -1,0 +1,48 @@
+import { api } from './api'
+
+export const mutabaahService = {
+  options: (params = {}) => api.get('/mutabaah/options', { params }).then((r) => r.data.data),
+  agendas: (params = {}) => api.get('/mutabaah/agendas', { params }).then((r) => r.data.data),
+  createAgenda: (payload) => api.post('/mutabaah/agendas', payload).then((r) => r.data),
+  updateAgenda: (id, payload) => api.put(`/mutabaah/agendas/${id}`, payload).then((r) => r.data),
+  deleteAgenda: (id) => api.delete(`/mutabaah/agendas/${id}`).then((r) => r.data),
+  daily: (studentId, date) => api.get('/mutabaah/daily', { params: { student_id: studentId, date } }).then((r) => r.data.data),
+  saveDaily: (payload) => api.post('/mutabaah/daily', payload).then((r) => r.data),
+  history: (studentId, params = {}) => api.get('/mutabaah/history', { params: { student_id: studentId, ...params } }).then((r) => r.data.data),
+  dailyContext: (params) => api.get('/mutabaah/daily/context', { params }).then((r) => r.data.data),
+  dailyStudents: (params) => api.get('/mutabaah/daily/students', { params }).then((r) => r.data.data),
+  dailyStudent: (studentId, params) => api.get(`/mutabaah/daily/${studentId}`, { params }).then((r) => r.data.data),
+  saveCell: (payload) => api.post('/mutabaah/daily/save-cell', payload).then((r) => r.data),
+  bulkSave: (payload) => api.post('/mutabaah/daily/bulk-save', payload).then((r) => r.data),
+  copyPreviousDay: (payload) => api.post('/mutabaah/daily/copy-previous-day', payload).then((r) => r.data),
+  finalizeStudent: (payload) => api.post('/mutabaah/daily/finalize-student', payload).then((r) => r.data),
+  finalizeBulk: (payload) => api.post('/mutabaah/daily/finalize-bulk', payload).then((r) => r.data),
+  reopenDaily: (payload) => api.post('/mutabaah/daily/reopen', payload).then((r) => r.data),
+  dashboardAnalytics: (params = {}) => api.get('/mutabaah/analytics/dashboard', { params }).then((r) => r.data.data),
+  recapAnalytics: (params = {}) => api.get('/mutabaah/analytics/recap', { params }).then((r) => r.data.data),
+  recapExport: (format, params = {}) => api.get('/mutabaah/analytics/recap/export', { params: { ...params, format }, responseType: 'blob' }),
+  parentChildren: () => api.get('/parent/mutabaah/children').then((r) => r.data.data),
+  parentMutabaah: (studentId, params = {}) => api.get(`/parent/mutabaah/${studentId}`, { params }).then((r) => r.data.data),
+  parentHistory: (studentId, params = {}) => api.get(`/parent/mutabaah/${studentId}/history`, { params }).then((r) => r.data.data),
+  parentSignature: (dailyHeaderId, payload) => api.post(`/parent/mutabaah/${dailyHeaderId}/signature`, payload).then((r) => r.data),
+  studentMutabaah: (params = {}) => api.get('/student/mutabaah', { params }).then((r) => r.data.data),
+  studentMutabaahHistory: (params = {}) => api.get('/student/mutabaah/history', { params }).then((r) => r.data.data),
+  enterpriseOptions: () => api.get('/mutabaah/enterprise/options').then((r) => r.data.data),
+  enterpriseList: (resource, params = {}) => api.get(`/mutabaah/enterprise/${resource}`, { params }).then((r) => r.data),
+  enterpriseCreate: (resource, payload) => api.post(`/mutabaah/enterprise/${resource}`, payload).then((r) => r.data),
+  enterpriseUpdate: (resource, id, payload) => api.put(`/mutabaah/enterprise/${resource}/${id}`, payload).then((r) => r.data),
+  enterpriseDelete: (resource, id) => api.delete(`/mutabaah/enterprise/${resource}/${id}`).then((r) => r.data),
+  enterpriseRestore: (resource, id) => api.post(`/mutabaah/enterprise/${resource}/${id}/restore`).then((r) => r.data),
+  enterpriseBulkDelete: (resource, ids) => api.delete(`/mutabaah/enterprise/${resource}/bulk`, { data: { ids } }).then((r) => r.data),
+  enterpriseBulkRestore: (resource, ids) => api.post(`/mutabaah/${resource}/bulk-restore`, { ids }).then((r) => r.data),
+  templateItemCreate: (templateId, payload) => api.post(`/mutabaah/templates/${templateId}/items`, payload).then((r) => r.data),
+  templateItemUpdate: (id, payload) => api.put(`/mutabaah/template-items/${id}`, payload).then((r) => r.data),
+  templateItemDelete: (id) => api.delete(`/mutabaah/template-items/${id}`).then((r) => r.data),
+  templateReorder: (templateId, items) => api.post(`/mutabaah/templates/${templateId}/reorder`, { items }).then((r) => r.data),
+  enterpriseExport: (resource, format, params = {}) => api.get(`/mutabaah/enterprise/${resource}/export`, { params: { ...params, format }, responseType: 'blob' }),
+  enterpriseImport: (resource, file) => {
+    const body = new FormData()
+    body.append('file', file)
+    return api.post(`/mutabaah/enterprise/${resource}/import`, body).then((r) => r.data)
+  },
+}

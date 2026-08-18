@@ -1,0 +1,80 @@
+import React from 'react'
+import { NavLink } from 'react-router-dom'
+import { Bell } from 'lucide-react'
+import { cn } from '../../lib/utils'
+
+/**
+ * AppBottomNavigation - canonical mobile bottom navigation.
+ *
+ * items:        [{ to, label, icon, end?, show? }] — menu berbasis route (NavLink).
+ * actionCenter: { icon, onClick, ariaLabel, show? } — tombol aksi tengah (FAB-style).
+ * onOpenNotifications: fn — tombol notifikasi (bell) dengan unread badge.
+ * unreadCount:  jumlah notifikasi belum dibaca.
+ * className:    override wrapper.
+ *
+ * Visibility menu harus berasal dari permission/auth state pemanggil,
+ * bukan dihardcode di sini.
+ */
+export default function AppBottomNavigation({
+  items = [],
+  actionCenter,
+  onOpenNotifications,
+  unreadCount = 0,
+  className = '',
+}) {
+  return (
+    <nav
+      className={cn(
+        'fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-slate-200/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur-md md:hidden dark:border-slate-800 dark:bg-slate-900/95',
+        className
+      )}
+    >
+      {items.map((item) => {
+        if (item.show === false) return null
+        return (
+          <NavLink
+            key={item.to + (item.label || '')}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              cn(
+                'flex flex-col items-center gap-1 text-[10px] font-semibold transition',
+                isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+              )
+            }
+          >
+            {item.icon && <item.icon className="h-5 w-5" aria-hidden="true" />}
+            <span>{item.label}</span>
+          </NavLink>
+        )
+      })}
+
+      {actionCenter && actionCenter.show !== false && (
+        <button
+          type="button"
+          onClick={actionCenter.onClick}
+          aria-label={actionCenter.ariaLabel}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md"
+        >
+          {actionCenter.icon && <actionCenter.icon className="h-5 w-5" aria-hidden="true" />}
+        </button>
+      )}
+
+      {onOpenNotifications && (
+        <button
+          type="button"
+          onClick={onOpenNotifications}
+          className="relative flex flex-col items-center gap-1 text-[10px] font-semibold text-slate-400"
+        >
+          <Bell className="h-5 w-5" aria-hidden="true" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 right-1/2 flex h-4 min-w-4 translate-x-3 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+          <span>Notifikasi</span>
+        </button>
+      )}
+    </nav>
+  )
+}

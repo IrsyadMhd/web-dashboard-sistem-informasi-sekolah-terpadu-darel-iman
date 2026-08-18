@@ -1,0 +1,54 @@
+import React from 'react'
+import { cn } from '../../lib/utils'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
+
+/**
+ * AppCard - canonical card (surface konten standar).
+ * Satu-satunya card wrapper yang dipakai seluruh halaman.
+ *
+ * variant:
+ *  - 'default' : kartu putih standar
+ *  - 'section' : kartu bagian halaman (dengan header + actions)
+ */
+export default function AppCard({
+  variant = 'default',
+  icon: Icon,
+  title,
+  description,
+  actions,
+  noPadding = false,
+  className = '',
+  contentClassName = '',
+  children,
+}) {
+  return (
+    <Card className={cn('shadow-xs dark:bg-[#1B2433] dark:border-slate-800', className)}>
+      {(title || actions || Icon) && (
+        <CardHeader className="flex flex-row items-center justify-between gap-3 p-4 md:p-5">
+          <div className="flex min-w-0 items-center gap-3">
+            {Icon && (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0E5C44]/10 text-[#0E5C44] dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]">
+                <Icon className="h-5 w-5" />
+              </div>
+            )}
+            <div className="min-w-0">
+              {title && <CardTitle className={cn(variant === 'section' ? 'text-sm' : 'text-base')}>{title}</CardTitle>}
+              {description && <CardDescription className="mt-0.5">{description}</CardDescription>}
+            </div>
+          </div>
+          {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        </CardHeader>
+      )}
+      <CardContent className="p-0">
+        <div className={cn(!noPadding && 'p-4 md:p-5', noPadding && 'p-0', contentClassName)}>{children}</div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * SectionCard - alias semantic untuk AppCard bagian halaman.
+ */
+export function SectionCard(props) {
+  return <AppCard {...props} variant="section" />
+}

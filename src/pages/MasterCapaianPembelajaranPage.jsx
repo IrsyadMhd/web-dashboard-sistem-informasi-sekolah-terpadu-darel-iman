@@ -1,0 +1,908 @@
+import { useState, useEffect, useMemo } from 'react'
+import {
+  BookOpen,
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  X,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Upload,
+  Plus,
+} from 'lucide-react'
+import CsvImportModal from '../components/master-data/CsvImportModal'
+import ActionDropdown from '../components/app/ActionDropdown'
+import { capaianPembelajaranService } from '../services/capaianPembelajaranService'
+import { educationUnitService } from '../services/educationUnitService'
+import { tahunAjaranService } from '../services/tahunAjaranService'
+import { masterKurikulumService } from '../services/masterKurikulumService'
+import { subjectService } from '../services/subjectService'
+import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useAuthStore } from '../stores/authStore'
+import {
+  MasterDataPage,
+  MasterActionButton,
+  MasterPageHeader,
+  MasterStatsGrid,
+  MasterStatCard,
+  MasterFilterBar,
+  MasterSearchInput,
+  MasterFilterSelect,
+  MasterDataTable,
+  MasterStatusBadge,
+} from '../components/master-data'
+
+export default function MasterCapaianPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
+  const [dataCp, setDataCp] = useState([])
+  const [units, setUnits] = useState([])
+  const [tahunAjarans, setTahunAjarans] = useState([])
+  const [kurikulums, setKurikulums] = useState([])
+  const [subjects, setSubjects] = useState([])
+  const [stats, setStats] = useState({
+    total_cp: 0,
+    total_cp_aktif: 0,
+    total_cp_nonaktif: 0,
+  })
+
+  const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+
+  // Filters & Pagination
+  const [search, setSearch] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState('')
+  const [selectedTahun, setSelectedTahun] = useState('')
+  const [selectedKurikulum, setSelectedKurikulum] = useState('')
+  const [selectedSubject, setSelectedSubject] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    per_page: 15,
+  })
+
+  // User Auth & Teacher Scoping
+  const user = useAuthStore((state) => state.user)
+
+  const userRoles = useMemo(() => {
+    if (!user?.roles) return []
+    return user.roles.map((r) => (typeof r === 'string' ? r : r.name || r.role_name || ''))
+  }, [user])
+
+  const isGuru = useMemo(() => {
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    return (
+      rList.some((r) => r.includes('guru') || r.includes('wali_kelas') || r.includes('wali kelas')) ||
+      mainRole.includes('guru')
+    )
+  }, [userRoles, user?.role])
+
+  const teacherUnitIds = useMemo(() => {
+    if (!user) return []
+    const ids = []
+    if (user.unit_id) ids.push(String(user.unit_id))
+    if (user.unit_pendidikan_id) ids.push(String(user.unit_pendidikan_id))
+    if (user.education_unit_id) ids.push(String(user.education_unit_id))
+    if (user.unit?.id) ids.push(String(user.unit.id))
+    if (user.school_info?.id) ids.push(String(user.school_info.id))
+    if (Array.isArray(user.units)) {
+      user.units.forEach((u) => ids.push(String(typeof u === 'object' ? u.id : u)))
+    }
+    if (Array.isArray(user.unit_ids)) {
+      user.unit_ids.forEach((u) => ids.push(String(u)))
+    }
+    return Array.from(new Set(ids))
+  }, [user])
+
+  const teacherSubjectIds = useMemo(() => {
+    if (!user) return []
+    const ids = []
+    const rawList =
+      user.subject_ids ||
+      user.subjects ||
+      user.mata_pelajaran_ids ||
+      user.mata_pelajaran ||
+      user.teacher_subjects ||
+      user.assigned_subjects ||
+      []
+    if (Array.isArray(rawList)) {
+      rawList.forEach((s) => ids.push(String(typeof s === 'object' ? s.id : s)))
+    }
+    if (user.subject_id) ids.push(String(user.subject_id))
+    if (user.mata_pelajaran_id) ids.push(String(user.mata_pelajaran_id))
+    return Array.from(new Set(ids))
+  }, [user])
+
+  // Modal State
+  const [modalOpen, setModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
+  const [formSubmitting, setFormSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    unit_pendidikan_id: '',
+    tahun_ajaran_id: '',
+    kurikulum_id: '',
+    mata_pelajaran_id: '',
+    kode_cp: '',
+    nama_cp: '',
+    deskripsi: '',
+    fase: 'Fase A',
+    kelas_target: 'Kelas 1',
+    urutan: 1,
+    status: true,
+  })
+
+  const availableUnitsForModal = useMemo(() => {
+    if (isGuru && teacherUnitIds.length > 0) {
+      const filtered = units.filter((u) => teacherUnitIds.includes(String(u.id)))
+      return filtered.length > 0 ? filtered : units
+    }
+    return units
+  }, [isGuru, teacherUnitIds, units])
+
+  const availableKurikulumsForModal = useMemo(() => {
+    let list = kurikulums
+    const targetUnit = formData.unit_pendidikan_id || (isGuru && teacherUnitIds.length > 0 ? teacherUnitIds[0] : '')
+    if (targetUnit) {
+      list = list.filter(
+        (k) =>
+          !k.unit_pendidikan_id ||
+          String(k.unit_pendidikan_id) === String(targetUnit) ||
+          String(k.unit_id) === String(targetUnit)
+      )
+    }
+    return list
+  }, [kurikulums, formData.unit_pendidikan_id, isGuru, teacherUnitIds])
+
+  const availableSubjectsForModal = useMemo(() => {
+    let list = subjects
+    const targetUnit = formData.unit_pendidikan_id || (isGuru && teacherUnitIds.length > 0 ? teacherUnitIds[0] : '')
+    if (targetUnit) {
+      list = list.filter((s) => !s.unit_pendidikan_id || String(s.unit_pendidikan_id) === String(targetUnit))
+    }
+    if (formData.kurikulum_id) {
+      list = list.filter((s) => !s.kurikulum_id || String(s.kurikulum_id) === String(formData.kurikulum_id))
+    }
+    if (isGuru && teacherSubjectIds.length > 0) {
+      const guruSubjects = list.filter((s) => teacherSubjectIds.includes(String(s.id)))
+      if (guruSubjects.length > 0) list = guruSubjects
+    }
+    return list
+  }, [subjects, formData.unit_pendidikan_id, formData.kurikulum_id, isGuru, teacherUnitIds, teacherSubjectIds])
+
+  const loadDropdownMasterData = async () => {
+    try {
+      const [uRes, tRes, kRes, sRes, sStats] = await Promise.all([
+        educationUnitService.getDaftar().catch(() => ({ data: [] })),
+        tahunAjaranService.getDropdown().catch(() => []),
+        masterKurikulumService.getDropdown().catch(() => []),
+        subjectService.getDropdown().catch(() => ({ data: [] })),
+        capaianPembelajaranService.getStats().catch(() => null),
+      ])
+
+      const extractList = (res) => (Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [])
+
+      setUnits(extractList(uRes))
+      setTahunAjarans(extractList(tRes))
+      setKurikulums(extractList(kRes))
+      setSubjects(extractList(sRes))
+      if (sStats) setStats(sStats)
+    } catch (err) {
+      console.error('Error loading dropdown masters:', err)
+    }
+  }
+
+  const fetchDaftarCp = async () => {
+    setLoading(true)
+    setErrorMsg('')
+    try {
+      const response = await capaianPembelajaranService.getDaftar({
+        page,
+        search,
+        unit_pendidikan_id: selectedUnit,
+        tahun_ajaran_id: selectedTahun,
+        kurikulum_id: selectedKurikulum,
+        mata_pelajaran_id: selectedSubject,
+        status: selectedStatus,
+        per_page: 15,
+      })
+      if (response?.data) {
+        setDataCp(response.data)
+        if (response.meta) {
+          setPagination({
+            current_page: response.meta.current_page || 1,
+            last_page: response.meta.last_page || 1,
+            total: response.meta.total || 0,
+            per_page: response.meta.per_page || 15,
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching CP data:', err)
+      setErrorMsg('Gagal memuat data Capaian Pembelajaran. Silakan coba lagi.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadDropdownMasterData()
+  }, [])
+
+  useEffect(() => {
+    fetchDaftarCp()
+  }, [page, search, selectedUnit, selectedTahun, selectedKurikulum, selectedSubject, selectedStatus])
+
+  const handleOpenModal = (item = null) => {
+    if (item) {
+      setEditingItem(item)
+      setFormData({
+        unit_pendidikan_id: item.unit_pendidikan_id || '',
+        tahun_ajaran_id: item.tahun_ajaran_id || '',
+        kurikulum_id: item.kurikulum_id || '',
+        mata_pelajaran_id: item.mata_pelajaran_id || '',
+        kode_cp: item.kode_cp || '',
+        nama_cp: item.nama_cp || '',
+        deskripsi: item.deskripsi || '',
+        fase: item.fase || 'Fase A',
+        kelas_target: item.kelas_target || 'Kelas 1',
+        urutan: item.urutan || 1,
+        status: item.status !== undefined ? item.status : true,
+      })
+    } else {
+      setEditingItem(null)
+      const defaultUnit = isGuru && teacherUnitIds.length > 0
+        ? teacherUnitIds[0]
+        : (units.length > 0 ? units[0].id : '')
+
+      let matchingKur = kurikulums
+      if (defaultUnit) {
+        matchingKur = kurikulums.filter((k) => !k.unit_pendidikan_id || String(k.unit_pendidikan_id) === String(defaultUnit))
+      }
+      const defaultKur = matchingKur.length > 0 ? matchingKur[0].id : (kurikulums.length > 0 ? kurikulums[0].id : '')
+
+      let matchingSub = subjects
+      if (defaultUnit) {
+        matchingSub = matchingSub.filter((s) => !s.unit_pendidikan_id || String(s.unit_pendidikan_id) === String(defaultUnit))
+      }
+      if (defaultKur) {
+        matchingSub = matchingSub.filter((s) => !s.kurikulum_id || String(s.kurikulum_id) === String(defaultKur))
+      }
+      if (isGuru && teacherSubjectIds.length > 0) {
+        const guruSubs = matchingSub.filter((s) => teacherSubjectIds.includes(String(s.id)))
+        if (guruSubs.length > 0) matchingSub = guruSubs
+      }
+      const defaultSub = matchingSub.length > 0 ? matchingSub[0].id : (subjects.length > 0 ? subjects[0].id : '')
+
+      setFormData({
+        unit_pendidikan_id: defaultUnit,
+        tahun_ajaran_id: tahunAjarans.length > 0 ? tahunAjarans[0].id : '',
+        kurikulum_id: defaultKur,
+        mata_pelajaran_id: defaultSub,
+        kode_cp: `CP-MAPEL-${dataCp.length + 1}`,
+        nama_cp: '',
+        deskripsi: '',
+        fase: 'Fase A',
+        kelas_target: 'Kelas 1',
+        urutan: dataCp.length + 1,
+        status: true,
+      })
+    }
+    setModalOpen(true)
+  }
+
+  const handleUnitChangeInForm = (newUnitId) => {
+    let matchingKur = kurikulums
+    if (newUnitId) {
+      matchingKur = kurikulums.filter((k) => !k.unit_pendidikan_id || String(k.unit_pendidikan_id) === String(newUnitId))
+    }
+    const newKurId = matchingKur.length > 0 ? matchingKur[0].id : ''
+
+    let matchingSub = subjects
+    if (newUnitId) {
+      matchingSub = matchingSub.filter((s) => !s.unit_pendidikan_id || String(s.unit_pendidikan_id) === String(newUnitId))
+    }
+    if (newKurId) {
+      matchingSub = matchingSub.filter((s) => !s.kurikulum_id || String(s.kurikulum_id) === String(newKurId))
+    }
+    if (isGuru && teacherSubjectIds.length > 0) {
+      const guruSubs = matchingSub.filter((s) => teacherSubjectIds.includes(String(s.id)))
+      if (guruSubs.length > 0) matchingSub = guruSubs
+    }
+    const newSubId = matchingSub.length > 0 ? matchingSub[0].id : ''
+
+    setFormData({
+      ...formData,
+      unit_pendidikan_id: newUnitId,
+      kurikulum_id: newKurId,
+      mata_pelajaran_id: newSubId,
+    })
+  }
+
+  const handleKurikulumChangeInForm = (newKurId) => {
+    let matchingSub = subjects
+    if (formData.unit_pendidikan_id) {
+      matchingSub = matchingSub.filter((s) => !s.unit_pendidikan_id || String(s.unit_pendidikan_id) === String(formData.unit_pendidikan_id))
+    }
+    if (newKurId) {
+      matchingSub = matchingSub.filter((s) => !s.kurikulum_id || String(s.kurikulum_id) === String(newKurId))
+    }
+    if (isGuru && teacherSubjectIds.length > 0) {
+      const guruSubs = matchingSub.filter((s) => teacherSubjectIds.includes(String(s.id)))
+      if (guruSubs.length > 0) matchingSub = guruSubs
+    }
+    const newSubId = matchingSub.length > 0 ? matchingSub[0].id : ''
+
+    setFormData({
+      ...formData,
+      kurikulum_id: newKurId,
+      mata_pelajaran_id: newSubId,
+    })
+  }
+
+  const handleCloseModal = () => {
+    setModalOpen(false)
+    setEditingItem(null)
+  }
+
+  const handleSubmitForm = async (e) => {
+    e.preventDefault()
+    if (!formData.kurikulum_id) {
+      setErrorMsg('Kurikulum harus dipilih.')
+      return
+    }
+    if (!formData.mata_pelajaran_id) {
+      setErrorMsg('Mata Pelajaran harus dipilih.')
+      return
+    }
+    if (!formData.kode_cp.trim() || !formData.nama_cp.trim()) {
+      setErrorMsg('Kode dan Nama Capaian Pembelajaran wajib diisi.')
+      return
+    }
+
+    setFormSubmitting(true)
+    setErrorMsg('')
+    try {
+      if (editingItem) {
+        await capaianPembelajaranService.ubah({
+          id: editingItem.id,
+          payload: formData,
+        })
+        setSuccessMsg('Capaian Pembelajaran berhasil diperbarui!')
+      } else {
+        await capaianPembelajaranService.tambah(formData)
+        setSuccessMsg('Capaian Pembelajaran berhasil ditambahkan!')
+      }
+      handleCloseModal()
+      fetchDaftarCp()
+      loadDropdownMasterData()
+      setTimeout(() => setSuccessMsg(''), 4000)
+    } catch (err) {
+      console.error('Error submitting CP form:', err)
+      const msg = err.response?.data?.message || 'Gagal menyimpan data. Pastikan kolom diisi dengan benar.'
+      setErrorMsg(msg)
+    } finally {
+      setFormSubmitting(false)
+    }
+  }
+
+  const handleHapus = async (id, kode) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus Capaian Pembelajaran [${kode}]?`)) {
+      return
+    }
+    try {
+      await capaianPembelajaranService.hapus(id)
+      setSuccessMsg(`Capaian Pembelajaran [${kode}] berhasil dihapus.`)
+      fetchDaftarCp()
+      loadDropdownMasterData()
+      setTimeout(() => setSuccessMsg(''), 4000)
+    } catch (err) {
+      console.error('Error deleting CP:', err)
+      setErrorMsg('Gagal menghapus data Capaian Pembelajaran.')
+    }
+  }
+
+  const handleImport = async (rows) => {
+    const failures = []
+    let success = 0
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index]
+      try {
+        await capaianPembelajaranService.tambah({
+          unit_pendidikan_id: row.unit_pendidikan_id,
+          tahun_ajaran_id: row.tahun_ajaran_id,
+          kurikulum_id: row.kurikulum_id,
+          mata_pelajaran_id: row.mata_pelajaran_id,
+          kode_cp: row.kode_cp,
+          nama_cp: row.nama_cp,
+          deskripsi: row.deskripsi || '',
+          fase: row.fase || 'Fase A',
+          kelas_target: row.kelas_target || 'Kelas 1',
+          urutan: Number(row.urutan || index + 1),
+          status: !['0', 'false', 'nonaktif'].includes(String(row.status).toLowerCase()),
+        })
+        success += 1
+      } catch (error) { failures.push(`baris ${index + 2}: ${error.response?.data?.message || 'gagal'}`) }
+    }
+    await fetchDaftarCp(); await loadDropdownMasterData()
+    setSuccessMsg(`${success} CP berhasil diimpor${failures.length ? `, ${failures.length} gagal (${failures.slice(0, 3).join('; ')})` : '.'}`)
+  }
+
+  return (
+    <PageContainer maxW="7xl">
+      {!(embedded || hideBreadcrumb) && (
+        <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Capaian Pembelajaran' }]} />
+      )}
+      <MasterDataPage
+        className="education-unit-page cp-master-page"
+        hideBreadcrumb={embedded || hideBreadcrumb}
+      >
+      {/* Hero Banner */}
+      {!hidePageHeader && (
+        <MasterPageHeader
+          tone="brand"
+          icon={BookOpen}
+          title="Master Capaian Pembelajaran (CP)"
+          description="Kelola Master Capaian Pembelajaran (CP) berbasis Kurikulum, Unit Pendidikan, dan Mata Pelajaran sebagai fondasi utama penyusunan Tujuan Pembelajaran (TP) & Modul Ajar."
+        />
+      )}
+
+      <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} title="Capaian Pembelajaran" onImport={handleImport} columns={[
+        { key: 'unit_pendidikan_id' }, { key: 'tahun_ajaran_id' }, { key: 'kurikulum_id', required: true }, { key: 'mata_pelajaran_id', required: true },
+        { key: 'kode_cp', required: true, example: 'CP-MTK-01' }, { key: 'nama_cp', required: true, example: 'Bilangan' }, { key: 'deskripsi' }, { key: 'fase', example: 'Fase A' }, { key: 'kelas_target', example: 'Kelas 1' }, { key: 'urutan', example: '1' }, { key: 'status', example: '1' },
+      ]} />
+
+      {/* Stats Cards */}
+      <MasterStatsGrid className="education-unit-kpis">
+        <MasterStatCard icon={BookOpen} label="TOTAL CAPAIAN PEMBELAJARAN" value={stats.total_cp ?? 0} description="Terdaftar di sistem" variant="success" loading={loading} />
+        <MasterStatCard icon={CheckCircle} label="CP STATUS AKTIF" value={stats.total_cp_aktif ?? 0} description="Siap digunakan" variant="info" loading={loading} />
+        <MasterStatCard icon={AlertCircle} label="CP NONAKTIF" value={stats.total_cp_nonaktif ?? 0} description="Arsip / Nonaktif" variant="warning" loading={loading} />
+      </MasterStatsGrid>
+
+      {/* Notifications */}
+      {successMsg && (
+        <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-emerald-600" />
+            <span className="text-sm font-semibold">{successMsg}</span>
+          </div>
+          <button onClick={() => setSuccessMsg('')} className="text-emerald-500 hover:text-emerald-700">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {errorMsg && (
+        <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600" />
+            <span className="text-sm font-semibold">{errorMsg}</span>
+          </div>
+          <button onClick={() => setErrorMsg('')} className="text-rose-500 hover:text-rose-700">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="cp-table-title">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
+        <div>
+          <h2 id="cp-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Capaian Pembelajaran</h2>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data sesuai filter dan kewenangan pengguna.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <MasterActionButton variant="import" icon={Upload} onClick={() => setImportOpen(true)}>Import CSV</MasterActionButton>
+          <MasterActionButton icon={Plus} onClick={() => handleOpenModal()}>Tambah CP Baru</MasterActionButton>
+        </div>
+      </div>
+
+      {/* 2-Row Toolbar: Row 1 = Search, Row 2 = Filters */}
+      <div className="border-b border-slate-200/80 p-4 dark:border-slate-700 bg-slate-50/50 dark:bg-[#161F2E] space-y-3">
+        {/* Row 1: Search Input */}
+        <div className="w-full">
+          <MasterSearchInput
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            placeholder="Cari kode atau nama CP..."
+          />
+        </div>
+
+        {/* Row 2: Filter Group */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">Filter:</span>
+          
+          <MasterFilterSelect
+            className="grow sm:grow-0 min-w-[140px]"
+            value={selectedUnit}
+            onChange={(e) => { setSelectedUnit(e.target.value); setPage(1) }}
+          >
+            <option value="">Semua Unit</option>
+            {units.map((item) => <option key={item.id} value={item.id}>{item.name || item.code}</option>)}
+          </MasterFilterSelect>
+
+          <MasterFilterSelect
+            className="grow sm:grow-0 min-w-[160px]"
+            value={selectedTahun}
+            onChange={(e) => { setSelectedTahun(e.target.value); setPage(1) }}
+          >
+            <option value="">Semua Tahun Ajaran</option>
+            {tahunAjarans.map((item) => <option key={item.id} value={item.id}>{item.tahun || item.name}</option>)}
+          </MasterFilterSelect>
+
+          <MasterFilterSelect
+            className="grow sm:grow-0 min-w-[150px]"
+            value={selectedKurikulum}
+            onChange={(e) => { setSelectedKurikulum(e.target.value); setSelectedSubject(''); setPage(1) }}
+          >
+            <option value="">Semua Kurikulum</option>
+            {kurikulums.map((item) => <option key={item.id} value={item.id}>{item.nama_kurikulum || item.kode_kurikulum}</option>)}
+          </MasterFilterSelect>
+
+          <MasterFilterSelect
+            className="grow sm:grow-0 min-w-[170px]"
+            value={selectedSubject}
+            onChange={(e) => { setSelectedSubject(e.target.value); setPage(1) }}
+          >
+            <option value="">Semua Mata Pelajaran</option>
+            {subjects
+              .filter((item) => !selectedKurikulum || item.kurikulum_id === selectedKurikulum)
+              .map((item) => <option key={item.id} value={item.id}>{item.nama_mapel || item.name}</option>)}
+          </MasterFilterSelect>
+
+          <MasterFilterSelect
+            className="grow sm:grow-0 min-w-[135px]"
+            value={selectedStatus}
+            onChange={(e) => { setSelectedStatus(e.target.value); setPage(1) }}
+          >
+            <option value="">Semua Status</option>
+            <option value="aktif">Aktif</option>
+            <option value="tidak_aktif">Nonaktif</option>
+          </MasterFilterSelect>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch(''); setSelectedUnit(''); setSelectedTahun(''); setSelectedKurikulum(''); setSelectedSubject(''); setSelectedStatus(''); setPage(1)
+            }}
+            className="inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-[var(--master-control-radius,14px)] border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-rose-800 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-all cursor-pointer"
+            title="Reset Filter"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span>Reset</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Table */}
+      <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+          <table className="w-full table-fixed text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
+                <th className="w-[8%] px-3 py-4 text-center">Urutan</th>
+                <th className="w-[14%] px-3 py-4">Kode CP</th>
+                <th className="w-[32%] px-3 py-4">Nama & Deskripsi CP</th>
+                <th className="hidden w-[20%] px-3 py-4 md:table-cell">Kurikulum & Mapel</th>
+                <th className="hidden w-[12%] px-3 py-4 text-center lg:table-cell">Fase / Kelas</th>
+                <th className="hidden w-[10%] px-3 py-4 text-center sm:table-cell">Status</th>
+                <th className="w-[16%] px-3 py-4 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#0E5C44]" />
+                    Memuat data Capaian Pembelajaran...
+                  </td>
+                </tr>
+              ) : dataCp.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <FileText className="w-10 h-10 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+                    Belum ada data Capaian Pembelajaran yang ditemukan.
+                  </td>
+                </tr>
+              ) : (
+                dataCp.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                    <td className="py-4 px-5 text-center font-bold text-slate-500 dark:text-slate-400">
+                      #{item.urutan}
+                    </td>
+
+                    <td className="py-4 px-5 font-mono font-bold text-xs text-[#0E5C44] dark:text-[#3FBF75]">
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800">
+                        {item.kode_cp}
+                      </span>
+                    </td>
+
+                    <td className="py-4 px-5 max-w-md">
+                      <div className="font-bold text-slate-800 dark:text-slate-100">{item.nama_cp}</div>
+                      {item.deskripsi && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
+                          {item.deskripsi}
+                        </p>
+                      )}
+                    </td>
+
+                    <td className="hidden px-3 py-4 md:table-cell">
+                      <div className="font-semibold text-slate-800 dark:text-slate-200">
+                        {item.subject?.nama_mapel || item.subject?.name || '-'}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {item.kurikulum?.nama_kurikulum || 'Tanpa Kurikulum'}
+                      </div>
+                    </td>
+
+                    <td className="hidden px-3 py-4 text-center lg:table-cell">
+                      <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">
+                        {item.fase || '-'} ({item.kelas_target || 'Semua'})
+                      </span>
+                    </td>
+
+                    <td className="hidden px-3 py-4 text-center sm:table-cell">
+                      <MasterStatusBadge active={item.status} />
+                    </td>
+
+                    <td className="py-4 px-5 text-center">
+                      <ActionDropdown
+                        onEdit={() => handleOpenModal(item)}
+                        onDelete={() => handleHapus(item.id, item.kode_cp)}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        {pagination.last_page > 1 && (
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500">
+            <div>
+              Menampilkan Halaman <span className="font-bold">{pagination.current_page}</span> dari{' '}
+              <span className="font-bold">{pagination.last_page}</span> ({pagination.total} data total)
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                disabled={page >= pagination.last_page}
+                onClick={() => setPage((p) => Math.min(p + 1, pagination.last_page))}
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </MasterDataTable>
+      </section>
+
+      {/* Modal Form */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-[#1B2433] w-full max-w-xl rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#0E5C44] to-[#1E8E5A] p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <BookOpen className="w-6 h-6 text-emerald-200" />
+                <h3 className="text-lg font-bold">
+                  {editingItem ? 'Edit Capaian Pembelajaran' : 'Tambah Capaian Pembelajaran Baru'}
+                </h3>
+              </div>
+              <button onClick={handleCloseModal} className="text-emerald-100 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitForm} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Unit Pendidikan
+                  </label>
+                  <select
+                    value={formData.unit_pendidikan_id}
+                    onChange={(e) => handleUnitChangeInForm(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                  >
+                    <option value="">-- Pilih Unit --</option>
+                    {availableUnitsForModal.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Tahun Ajaran
+                  </label>
+                  <select
+                    value={formData.tahun_ajaran_id}
+                    onChange={(e) => setFormData({ ...formData, tahun_ajaran_id: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                  >
+                    <option value="">-- Pilih Tahun Ajaran --</option>
+                    {tahunAjarans.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.tahun || t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Kurikulum <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formData.kurikulum_id}
+                    onChange={(e) => handleKurikulumChangeInForm(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                    required
+                  >
+                    <option value="">-- Pilih Kurikulum --</option>
+                    {availableKurikulumsForModal.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.nama_kurikulum || k.kode_kurikulum}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Mata Pelajaran <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={formData.mata_pelajaran_id}
+                    onChange={(e) => setFormData({ ...formData, mata_pelajaran_id: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                    required
+                  >
+                    <option value="">-- Pilih Mata Pelajaran --</option>
+                    {availableSubjectsForModal.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nama_mapel || s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Kode CP <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: CP-MTK-SD-01"
+                    value={formData.kode_cp}
+                    onChange={(e) => setFormData({ ...formData, kode_cp: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Fase <span className="text-slate-400 font-normal">(Kurikulum Merdeka)</span>
+                  </label>
+                  <select
+                    value={formData.fase}
+                    onChange={(e) => setFormData({ ...formData, fase: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                  >
+                    <option value="Fase A">Fase A (Kelas 1-2)</option>
+                    <option value="Fase B">Fase B (Kelas 3-4)</option>
+                    <option value="Fase C">Fase C (Kelas 5-6)</option>
+                    <option value="Fase D">Fase D (Kelas 7-9)</option>
+                    <option value="Fase E">Fase E (Kelas 10)</option>
+                    <option value="Fase F">Fase F (Kelas 11-12)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                  Nama Capaian Pembelajaran (CP) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Masukkan nama / ringkasan Capaian Pembelajaran..."
+                  value={formData.nama_cp}
+                  onChange={(e) => setFormData({ ...formData, nama_cp: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                  Deskripsi Lengkap CP
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Deskripsi uraian kompetensi elemen CP..."
+                  value={formData.deskripsi}
+                  onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Urutan
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={formData.urutan}
+                    onChange={(e) => setFormData({ ...formData, urutan: parseInt(e.target.value) || 1 })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                    Status Aktivasi
+                  </label>
+                  <select
+                    value={formData.status ? 'true' : 'false'}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value === 'true' })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] dark:text-slate-100"
+                  >
+                    <option value="true">Aktif</option>
+                    <option value="false">Nonaktif</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={formSubmitting}
+                  className="inline-flex items-center gap-2 bg-[#0E5C44] hover:bg-[#1E8E5A] text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md transition disabled:opacity-50"
+                >
+                  {formSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Simpan CP
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </MasterDataPage>
+    </PageContainer>
+  )
+}
