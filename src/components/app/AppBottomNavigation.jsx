@@ -25,7 +25,7 @@ export default function AppBottomNavigation({
   return (
     <nav
       className={cn(
-        'fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-slate-200/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur-md md:hidden dark:border-slate-800 dark:bg-slate-900/95',
+        'app-bottom-nav fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-slate-200/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur-md lg:hidden dark:border-slate-800 dark:bg-slate-900/95',
         className
       )}
     >

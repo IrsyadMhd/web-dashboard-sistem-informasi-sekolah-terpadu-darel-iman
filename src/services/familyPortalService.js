@@ -3,6 +3,7 @@ import api from './api'
 const childParams = (childId) => ({ params: childId ? { child_id: childId } : {} })
 export const familyPortalService = {
   children: async () => (await api.get('/portal/children')).data,
+  updateChildPassword: async (childId, payload) => (await api.put(`/portal/children/${childId}/password`, payload)).data,
   dashboard: async (childId) => (await api.get('/portal/dashboard', childParams(childId))).data,
   list: async (resource, childId) => (await api.get(`/portal/${resource}`, childParams(childId))).data,
   submitPermission: async (payload) => (await api.post('/portal/permissions', payload)).data,

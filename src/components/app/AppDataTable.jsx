@@ -32,6 +32,7 @@ export default function AppDataTable({
   renderMobileCard,
   columns = [],
   data = [],
+  printableHeader,
   keyField = 'id',
   isLoading = false,
   isError = false,
@@ -168,7 +169,7 @@ export default function AppDataTable({
     >
       {/* Toolbar: search + filter + action */}
       {showToolbar && (onSearchChange || search !== undefined || hasFilters || actions || title) && (
-        <div className={cn('flex flex-col gap-3.5 border-b border-slate-100 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-800', toolbarClassName)}>
+        <div className={cn('flex flex-col gap-3.5 border-b border-slate-100 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-800 print:hidden', toolbarClassName)}>
           {/* Row 1: Title / Description on Left, Action Buttons (Import, Export, Tambah Unit) on Right */}
           {(title || description || actions) && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100/80 pb-3 dark:border-slate-800/60">
@@ -219,11 +220,11 @@ export default function AppDataTable({
 
       {/* Body states */}
       {isLoading ? (
-        <div className="app-data-table__state p-4">
+        <div className="app-data-table__state p-4 print:hidden">
           <AppSkeleton variant="table" rows={6} cols={Math.max(columns.length, 4)} />
         </div>
       ) : isError ? (
-        <div className="app-data-table__state p-4">
+        <div className="app-data-table__state p-4 print:hidden">
           <AppErrorState title={errorTitle} description={errorMessage} onRetry={onRetry} compact />
         </div>
       ) : resolvedIsEmpty ? (
@@ -240,7 +241,7 @@ export default function AppDataTable({
       ) : (
         <>
           {/* Mobile Card List View (Visible on < md screens if renderMobileCard or fallback card is enabled) */}
-          <div className="block md:hidden space-y-3 p-3.5">
+          <div className="block md:hidden space-y-3 p-3.5 print:hidden app-data-table__mobile-cards">
             {visibleData.map((row, rowIdx) => {
               const rowKey = row?.[keyField] ?? rowIdx
               const selected = selectedKeys.includes(rowKey)
@@ -303,12 +304,17 @@ export default function AppDataTable({
           </div>
 
           {/* Desktop Table View (Hidden on mobile < md screens) */}
-          <div className={cn('hidden md:block app-data-table__viewport min-w-0 px-4 sm:px-6 md:px-8', tableContainerClassName)}>
-            <TableRoot fullBleed={false}>
+          <div className={cn('hidden md:block app-data-table__viewport min-w-0 w-full overflow-x-auto px-4 sm:px-6 md:px-8 print:block print:px-0 print:m-0 print:p-0', tableContainerClassName)}>
+            {printableHeader && (
+              <div className="hidden print:block mb-1 mt-0 p-0 border-b border-slate-400 pb-1 text-slate-900">
+                {printableHeader}
+              </div>
+            )}
+            <TableRoot fullBleed={false} className="w-full min-w-[850px] border-collapse print:min-w-0 print:m-0">
               <TableHeader>
                 <TableRow className="hover:bg-transparent border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40">
                   {onToggleSelect && (
-                    <TableHead className="w-10 px-4">
+                    <TableHead className="w-10 px-4 print:hidden">
                       <input
                         type="checkbox"
                         aria-label="Pilih semua"
@@ -327,7 +333,12 @@ export default function AppDataTable({
                   {columns.map((col) => (
                     <TableHead
                       key={col.key || col.label}
-                      className={cn('whitespace-nowrap text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400', col.hideOnMobile && 'hidden lg:table-cell', col.className)}
+                      className={cn(
+                        'whitespace-nowrap text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400',
+                        col.hideOnMobile && 'hidden lg:table-cell print:table-cell',
+                        col.className,
+                        col.headerProps?.className
+                      )}
                     >
                       {col.sortable ? (
                         <button
@@ -336,7 +347,7 @@ export default function AppDataTable({
                           className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white text-xs font-bold"
                         >
                           <span>{col.label}</span>
-                          <ArrowBothDirectionHorizontal2 className={cn('h-3 w-3 shrink-0 transition-transform duration-200', sortKey === col.key ? 'text-[#0E5C44] dark:text-[#3FBF75] rotate-180' : 'text-slate-400')} />
+                          <ArrowBothDirectionHorizontal2 className={cn('h-3 w-3 shrink-0 transition-transform duration-200 print:hidden', sortKey === col.key ? 'text-[#0E5C44] dark:text-[#3FBF75] rotate-180' : 'text-slate-400')} />
                         </button>
                       ) : (
                         col.label
@@ -344,7 +355,7 @@ export default function AppDataTable({
                     </TableHead>
                   ))}
                   {hasActionColumn && (
-                    <TableHead className="w-[88px] min-w-[88px] text-center font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <TableHead className="w-[88px] min-w-[88px] text-center font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 print:hidden">
                       AKSI
                     </TableHead>
                   )}
@@ -366,7 +377,7 @@ export default function AppDataTable({
                       )}
                     >
                       {onToggleSelect && (
-                        <TableCell className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="px-4 py-3.5 print:hidden" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             aria-label={`Pilih ${rowKey}`}
@@ -384,13 +395,13 @@ export default function AppDataTable({
                       {columns.map((col) => (
                         <TableCell
                           key={col.key || col.label}
-                          className={cn(rowPadding, 'whitespace-nowrap text-xs text-slate-700 dark:text-slate-200', col.hideOnMobile && 'hidden lg:table-cell', col.className)}
+                          className={cn(rowPadding, 'text-xs text-slate-700 dark:text-slate-200 align-top', col.hideOnMobile && 'hidden lg:table-cell print:table-cell', col.className, col.cellProps?.className)}
                         >
                           {col.render ? col.render(row, rowIdx) : row?.[col.key] ?? '—'}
                         </TableCell>
                       ))}
                       {hasActionColumn && (
-                        <TableCell className={cn('w-[88px] min-w-[88px] text-center', rowPadding)} onClick={(e) => e.stopPropagation()}>
+                        <TableCell className={cn('w-[88px] min-w-[88px] text-center print:hidden', rowPadding)} onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1.5">
                             {extraActions?.({ row, rowIdx })}
                             {hasActionColumn && (
@@ -415,7 +426,7 @@ export default function AppDataTable({
 
       {/* Pagination */}
       {showPagination && !isLoading && !isError && !resolvedIsEmpty && (
-        <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800">
+        <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800 print:hidden">
           <Pagination
             currentPage={clientPagination ? resolvedClientPage : page}
             totalPages={clientPagination ? clientTotalPages : totalPages}

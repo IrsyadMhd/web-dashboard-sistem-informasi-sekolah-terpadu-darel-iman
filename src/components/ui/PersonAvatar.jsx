@@ -51,11 +51,27 @@ export default function PersonAvatar({
   }, [src])
 
   const resolvedSrc = useMemo(() => {
-    if (!src) return null
-    if (typeof src !== 'string') return null
+    if (!src || typeof src !== 'string') return null
     const trimmed = src.trim()
     if (!trimmed) return null
-    return trimmed
+
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+    const backendOrigin = apiBase.replace(/\/api\/?$/, '')
+
+    let url = trimmed
+    // Fix legacy URLs generated when APP_URL was missing port 8000
+    if (url.startsWith('http://localhost/storage/') || url.startsWith('http://127.0.0.1/storage/')) {
+      url = url.replace(/^http:\/\/(localhost|127\.0\.0\.1)\/storage\//, `${backendOrigin}/storage/`)
+    }
+
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+      return url
+    }
+    const cleanPath = url.startsWith('/') ? url : `/${url}`
+    if (cleanPath.startsWith('/storage/')) {
+      return `${backendOrigin}${cleanPath}`
+    }
+    return `${backendOrigin}/storage${cleanPath}`
   }, [src])
 
   const isCircle = shape === 'circle'
@@ -90,7 +106,6 @@ export default function PersonAvatar({
         src={resolvedSrc}
         alt={alt || name || 'Avatar'}
         loading="eager"
-        crossOrigin="anonymous"
         className="h-full w-full object-cover"
         onError={() => setImageFailed(true)}
       />

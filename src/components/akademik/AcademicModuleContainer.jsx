@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react'
 import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
+import AppBreadcrumb from '../app/AppBreadcrumb'
 
-export default function AcademicModuleContainer({ title, description, tabs, hideHeader = false, tabsBelowKpi = false, children }) {
+export default function AcademicModuleContainer({ title, description, tabs, hideHeader = false, tabsBelowKpi = false, breadcrumbItems = [], children }) {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const activeTab = searchParams.get('tab')
@@ -59,6 +60,9 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
 
   return (
     <section className="space-y-6">
+      {breadcrumbItems && breadcrumbItems.length > 0 && (
+        <AppBreadcrumb items={breadcrumbItems} />
+      )}
       {!hideHeader && (
         <header className="overflow-hidden rounded-[22px] bg-gradient-to-br from-[#0E5C44] via-[#167856] to-[#1E8E5A] p-6 text-white shadow-xl md:p-8">
           <div className="flex items-center gap-2">

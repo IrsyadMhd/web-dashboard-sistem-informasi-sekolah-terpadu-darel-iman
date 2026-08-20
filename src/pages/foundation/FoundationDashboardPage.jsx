@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Calendar,
   Bell,
+  Activity,
   RefreshCw,
   Eye,
   Filter,
@@ -47,6 +48,51 @@ const PASTEL_PALETTES = [
   { bg: 'bg-pink-50 dark:bg-pink-950/60', text: 'text-pink-600 dark:text-pink-400', border: 'border-pink-200/60 dark:border-pink-800/60', badge: 'bg-pink-100 text-pink-700 dark:bg-pink-900/60 dark:text-pink-300' },
   { bg: 'bg-rose-50 dark:bg-rose-950/60', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-200/60 dark:border-rose-800/60', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300' },
 ]
+
+const CATEGORY_COLOR_MAP = {
+  all: {
+    active: 'bg-emerald-700 text-white shadow-xs dark:bg-emerald-500 dark:text-slate-950',
+    inactive: 'bg-emerald-50/80 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60',
+    countActive: 'bg-white/25 text-white dark:bg-slate-950/30 dark:text-slate-950',
+    countInactive: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/80 dark:text-emerald-200'
+  },
+  TK: {
+    active: 'bg-sky-600 text-white shadow-xs dark:bg-sky-400 dark:text-slate-950',
+    inactive: 'bg-sky-50/80 text-sky-800 border border-sky-200/80 hover:bg-sky-100 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800/60',
+    countActive: 'bg-white/25 text-white dark:bg-slate-950/30 dark:text-slate-950',
+    countInactive: 'bg-sky-100 text-sky-900 dark:bg-sky-900/80 dark:text-sky-200'
+  },
+  SD: {
+    active: 'bg-amber-600 text-white shadow-xs dark:bg-amber-400 dark:text-slate-950',
+    inactive: 'bg-amber-50/80 text-amber-800 border border-amber-200/80 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/60',
+    countActive: 'bg-white/25 text-white dark:bg-slate-950/30 dark:text-slate-950',
+    countInactive: 'bg-amber-100 text-amber-900 dark:bg-amber-900/80 dark:text-amber-200'
+  },
+  SMP: {
+    active: 'bg-purple-600 text-white shadow-xs dark:bg-purple-400 dark:text-slate-950',
+    inactive: 'bg-purple-50/80 text-purple-800 border border-purple-200/80 hover:bg-purple-100 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/60',
+    countActive: 'bg-white/25 text-white dark:bg-slate-950/30 dark:text-slate-950',
+    countInactive: 'bg-purple-100 text-purple-900 dark:bg-purple-900/80 dark:text-purple-200'
+  },
+  SMA: {
+    active: 'bg-rose-600 text-white shadow-xs dark:bg-rose-400 dark:text-slate-950',
+    inactive: 'bg-rose-50/80 text-rose-800 border border-rose-200/80 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/60',
+    countActive: 'bg-white/25 text-white dark:bg-slate-950/30 dark:text-slate-950',
+    countInactive: 'bg-rose-100 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200'
+  },
+  PON: {
+    active: 'bg-indigo-600 text-white shadow-xs dark:bg-indigo-400 dark:text-slate-950',
+    inactive: 'bg-indigo-50/80 text-indigo-800 border border-indigo-200/80 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60',
+    countActive: 'bg-white/25 text-white dark:bg-slate-950/30 dark:text-slate-950',
+    countInactive: 'bg-indigo-100 text-indigo-900 dark:bg-indigo-900/80 dark:text-indigo-200'
+  },
+  MAH: {
+    active: 'bg-teal-600 text-white shadow-xs dark:bg-teal-400 dark:text-slate-950',
+    inactive: 'bg-teal-50/80 text-teal-800 border border-teal-200/80 hover:bg-teal-100 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800/60',
+    countActive: 'bg-white/25 text-white dark:bg-slate-950/30 dark:text-slate-950',
+    countInactive: 'bg-teal-100 text-teal-900 dark:bg-teal-900/80 dark:text-teal-200'
+  },
+}
 import {
   ChartContainer,
   ChartTooltip,
@@ -74,9 +120,22 @@ import ModalErrorBoundary from '../../components/common/ModalErrorBoundary'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
 
 export function FoundationDashboardPage() {
   const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const roles = useMemo(() => (Array.isArray(user?.roles) ? user.roles : []), [user?.roles])
+  const isKepalaSekolah = useMemo(
+    () =>
+      roles.some(
+        (role) =>
+          ['Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek'].includes(String(role).trim()) ||
+          String(role).toLowerCase().replace(/[\s_-]+/g, '') === 'kepalasekolah' ||
+          String(role).toLowerCase().replace(/[\s_-]+/g, '') === 'kepsek'
+      ),
+    [roles]
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
@@ -207,6 +266,22 @@ export function FoundationDashboardPage() {
     return code || 'OTHERS'
   }
 
+  const getShortUnitBadgeLabel = (row) => {
+    const val = (row?.jenis_unit || row?.level || '').trim()
+    if (!val) return 'Unit'
+    const upper = val.toUpperCase()
+    if (upper.includes('KANAK') || upper.includes('TK')) return 'TKIT'
+    if (upper.includes('USIA DINI') || upper.includes('TAUD')) return 'TAUD'
+    if (upper.includes('DASAR') || upper.includes('SD')) return 'SDIT'
+    if (upper.includes('IBTIDAIYAH') || upper.includes('MIT')) return 'MIT'
+    if (upper.includes('PERTAMA') || upper.includes('SMP')) return 'SMPIT'
+    if (upper.includes('ATAS') || upper.includes('SMA')) return 'SMAIT'
+    if (upper.includes('PESANTREN') || upper.includes('PON')) return 'Ponpes'
+    if (upper.includes('MAHAD') || upper.includes("MA'HAD") || upper.includes('MAH')) return "Ma'had"
+    if (val.length > 12) return val.substring(0, 10) + '...'
+    return val
+  }
+
   const categoryCounts = useMemo(() => {
     const counts = {
       all: unitSummaries.length,
@@ -268,7 +343,7 @@ export function FoundationDashboardPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* Breadcrumb Navigation */}
-      <AppBreadcrumb items={[{ label: 'Dashboard Pengurus Yayasan' }]} />
+      <AppBreadcrumb items={[{ label: isKepalaSekolah ? 'Dashboard Kepala Sekolah' : 'Dashboard Pengurus Yayasan' }]} />
 
       {/* Informasi Resmi & Aktivitas Terbaru */}
       <section className="space-y-3">
@@ -278,28 +353,38 @@ export function FoundationDashboardPage() {
         /> */}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          {/* Announcements Feed */}
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm space-y-4 lg:col-span-7 dark:border-slate-800 dark:bg-[#1B2433]">
+          {/* Announcements Feed (Card 1 - Soft Blue Accent) */}
+          <div className="rounded-[20px] border border-sky-200/80 bg-white p-5 shadow-sm space-y-4 lg:col-span-7 dark:border-sky-900/50 dark:bg-[#1B2433]">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Pengumuman & Agenda Yayasan</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Informasi dan edaran resmi terbaru</p>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-sky-200/80 bg-sky-50 text-sky-600 dark:border-sky-800/60 dark:bg-sky-950/60 dark:text-sky-400">
+                  <Bell className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Pengumuman & Agenda Yayasan</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Informasi dan edaran resmi terbaru</p>
+                </div>
               </div>
-              <AppBadge variant="info">{recentInformation.length} Informasi</AppBadge>
+              <span className="inline-flex items-center gap-1 rounded-xl bg-sky-100/90 px-3 py-1 text-xs font-black text-sky-800 dark:bg-sky-900/70 dark:text-sky-300">
+                {recentInformation.length} Informasi
+              </span>
             </div>
 
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <div className="space-y-3">
               {recentInformation.map((info) => (
-                <div key={info.id} className="py-3 first:pt-0 last:pb-0 space-y-1">
+                <div
+                  key={info.id}
+                  className="group rounded-xl border border-sky-100 border-l-4 border-l-sky-500 bg-sky-50/40 p-3.5 transition-all duration-200 hover:border-sky-300 hover:bg-sky-50/80 dark:border-sky-900/40 dark:border-l-sky-400 dark:bg-sky-950/20 dark:hover:bg-sky-950/40 space-y-1.5"
+                >
                   <div className="flex items-start justify-between gap-3">
-                    <h4 className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-1">
+                    <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-sky-600 dark:text-white dark:group-hover:text-sky-400 transition line-clamp-1">
                       {info.judul}
                     </h4>
-                    <span className="shrink-0 text-[10px] font-bold text-slate-400">
+                    <span className="shrink-0 rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-extrabold text-sky-700 dark:bg-sky-900/80 dark:text-sky-300">
                       {info.tanggal}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{info.isi}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">{info.isi}</p>
                 </div>
               ))}
               {!recentInformation.length && (
@@ -308,27 +393,39 @@ export function FoundationDashboardPage() {
             </div>
           </div>
 
-          {/* Activity Feed */}
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm space-y-4 lg:col-span-5 dark:border-slate-800 dark:bg-[#1B2433]">
+          {/* Activity Feed (Card 2 - Soft Emerald Green Accent) */}
+          <div className="rounded-[20px] border border-emerald-200/80 bg-white p-5 shadow-sm space-y-4 lg:col-span-5 dark:border-emerald-900/50 dark:bg-[#1B2433]">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Aktivitas Sistem Terbaru</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Log transaksi presensi dan aktivitas</p>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-emerald-200/80 bg-emerald-50 text-emerald-600 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-400">
+                  <Activity className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Aktivitas Sistem Terbaru</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Log transaksi presensi dan aktivitas</p>
+                </div>
               </div>
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              </span>
             </div>
 
             <div className="space-y-2.5">
               {recentActivities.map((act) => (
                 <div
                   key={act.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 dark:border-slate-800 dark:bg-slate-900/40"
+                  className="group flex items-center justify-between gap-3 rounded-xl border border-emerald-100 border-l-4 border-l-emerald-500 bg-emerald-50/40 p-3 transition-all duration-200 hover:border-emerald-300 hover:bg-emerald-50/80 dark:border-emerald-900/40 dark:border-l-emerald-400 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40"
                 >
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{act.title}</p>
-                    <p className="text-[10px] text-slate-400">{act.subtitle}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition">
+                      {act.title}
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
+                      {act.subtitle}
+                    </p>
                   </div>
-                  <span className="shrink-0 text-[10px] font-extrabold text-[#0E5C44] dark:text-[#3FBF75]">
+                  <span className="shrink-0 rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200">
                     {act.time}
                   </span>
                 </div>
@@ -806,21 +903,22 @@ export function FoundationDashboardPage() {
             {availableFilterCategories.map((cat) => {
               const count = categoryCounts[cat.id] || 0
               const isActive = cardUnitFilter === cat.id
+              const catColors = CATEGORY_COLOR_MAP[cat.id] || CATEGORY_COLOR_MAP.all
               return (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setCardUnitFilter(cat.id)}
                   className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all duration-200 ${isActive
-                    ? 'bg-[#0E5C44] text-white shadow-xs dark:bg-[#3FBF75] dark:text-slate-950 scale-[1.02]'
-                    : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
+                    ? `${catColors.active} scale-[1.03]`
+                    : catColors.inactive
                     }`}
                 >
                   <span>{cat.label}</span>
                   <span
                     className={`rounded-md px-1.5 py-0.5 text-[10px] font-extrabold ${isActive
-                      ? 'bg-white/25 text-white dark:bg-slate-950/20 dark:text-slate-950'
-                      : 'bg-slate-200/90 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                      ? catColors.countActive
+                      : catColors.countInactive
                       }`}
                   >
                     {count}
@@ -852,19 +950,26 @@ export function FoundationDashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {filteredUnitSummaries.map((row, idx) => {
             const palette = PASTEL_PALETTES[idx % PASTEL_PALETTES.length]
+            const shortBadge = getShortUnitBadgeLabel(row)
+            const fullBadge = row.jenis_unit || row.level || 'Unit'
+            const avatarCode = (row.code || getUnitCategoryKey(row) || 'UN').substring(0, 4).toUpperCase()
+
             return (
               <button
                 key={row.id}
                 type="button"
                 onClick={() => handleOpenUnitDetail(row)}
-                className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-[1.02] hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left"
+                className="group flex items-center justify-between gap-2.5 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-[1.02] hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border ${palette.bg} ${palette.text} ${palette.border} font-black text-xs transition-transform duration-200 group-hover:scale-110`}>
-                    {(row.code || row.name || 'UN').substring(0, 3).toUpperCase()}
+                    {avatarCode}
                   </div>
-                  <div className="min-w-0">
-                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                  <div className="min-w-0 flex-1">
+                    <h4
+                      className="font-extrabold text-xs text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300"
+                      title={row.name}
+                    >
                       {row.name}
                     </h4>
                     <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
@@ -872,8 +977,11 @@ export function FoundationDashboardPage() {
                     </p>
                   </div>
                 </div>
-                <span className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-extrabold ${palette.badge}`}>
-                  {row.jenis_unit || row.level || 'Unit'}
+                <span
+                  className={`shrink-0 max-w-[95px] sm:max-w-[110px] truncate rounded-lg px-2 py-1 text-[10px] font-extrabold ${palette.badge}`}
+                  title={fullBadge}
+                >
+                  {shortBadge}
                 </span>
               </button>
             )

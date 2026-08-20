@@ -21,7 +21,8 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppPageHeader from '../components/app/AppPageHeader'
 import AppDataTable from '../components/app/AppDataTable'
 import ActionDropdown from '../components/app/ActionDropdown'
-import { MasterStatusBadge, MasterStatCard, MasterStatsGrid } from '../components/master-data'
+import ConfirmDialog from '../components/app/ConfirmDialog'
+import { MasterStatusBadge, MasterStatCard, MasterStatsGrid, MasterDeleteDialog } from '../components/master-data'
 import { Button } from '@/components/tailgrids/core/button'
 import {
   HoverCard,
@@ -29,13 +30,16 @@ import {
   HoverCardTrigger,
 } from '@/components/tailgrids/core/hover-card'
 import { useAuthStore } from '../stores/authStore'
-import { hasAnyRole } from '../auth/portalResolver'
+import { hasAnyRole, isGlobalAccessManager, isUnitAccessManager } from '../auth/portalResolver'
 
 export default function MasterJabatanPage() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || (user?.role ? [user.role] : [])
   const isKepalaSekolah = hasAnyRole(roles, ['Kepala Sekolah', 'kepala_sekolah', 'kepsek'])
+  const canManageGlobalPositions = isGlobalAccessManager(roles)
+  const canManageUnitPositions = isUnitAccessManager(roles)
+  const canEditPosition = canManageGlobalPositions || canManageUnitPositions
 
   const isPengurusYayasanRow = (row) => {
     if (!row) return false
@@ -49,7 +53,11 @@ export default function MasterJabatanPage() {
   }
 
   const isRowRestrictedForUser = (row) => {
-    return isKepalaSekolah && isPengurusYayasanRow(row)
+    const isGlobalPosition = Number(row?.level_jabatan) <= 2
+      || ['semua_unit', 'bidang_pendidikan'].includes(row?.scope_akses)
+      || row?.satuan_kerja !== 'Unit Pendidikan'
+
+    return !canManageGlobalPositions && (isPengurusYayasanRow(row) || !row?.unit_sekolah_id || isGlobalPosition)
   }
 
   // Filter & Pagination States
@@ -68,6 +76,9 @@ export default function MasterJabatanPage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedJabatanForDetail, setSelectedJabatanForDetail] = useState(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [pendingSaveData, setPendingSaveData] = useState(null)
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false)
 
   // Query Options Dropdown
   const { data: options = {} } = useQuery({
@@ -214,12 +225,13 @@ export default function MasterJabatanPage() {
 
   // Handlers
   const handleOpenCreate = () => {
+    if (!canManageGlobalPositions) return
     setSelectedJabatanForEdit(null)
     setIsFormModalOpen(true)
   }
 
   const handleOpenEdit = (item) => {
-    if (isRowRestrictedForUser(item)) {
+    if (!canEditPosition || isRowRestrictedForUser(item)) {
       Swal.fire({
         icon: 'warning',
         title: 'Akses Dibatasi',
@@ -237,7 +249,7 @@ export default function MasterJabatanPage() {
   }
 
   const handleDelete = (item) => {
-    if (isRowRestrictedForUser(item)) {
+    if (!canManageGlobalPositions || isRowRestrictedForUser(item)) {
       Swal.fire({
         icon: 'warning',
         title: 'Akses Dibatasi',
@@ -245,23 +257,19 @@ export default function MasterJabatanPage() {
       })
       return
     }
-    Swal.fire({
-      title: 'Hapus Data Jabatan?',
-      html: `Apakah Anda yakin ingin menghapus jabatan <strong>${item.nama_jabatan || item.name}</strong> (${item.kode_jabatan || item.code})?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Hapus (Soft Delete)',
-      cancelButtonText: 'Batal',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        hapusMutation.mutate(item.id)
-      }
-    })
+    setDeleteTarget(item)
+  }
+
+  const handleConfirmDelete = () => {
+    if (deleteTarget) {
+      hapusMutation.mutate(deleteTarget.id, {
+        onSettled: () => setDeleteTarget(null),
+      })
+    }
   }
 
   const handleRestore = (item) => {
+    if (!canEditPosition || isRowRestrictedForUser(item)) return
     Swal.fire({
       title: 'Pulihkan Data Jabatan?',
       html: `Apakah Anda yakin ingin memulihkan jabatan <strong>${item.nama_jabatan || item.name}</strong>?`,
@@ -279,11 +287,18 @@ export default function MasterJabatanPage() {
   }
 
   const handleFormSubmit = (data) => {
+    setPendingSaveData(data)
+    setShowSaveConfirmModal(true)
+  }
+
+  const handleConfirmSaveForm = () => {
+    if (!pendingSaveData) return
     if (selectedJabatanForEdit) {
-      ubahMutation.mutate({ id: selectedJabatanForEdit.id, payload: data })
+      ubahMutation.mutate({ id: selectedJabatanForEdit.id, payload: pendingSaveData })
     } else {
-      simpanMutation.mutate(data)
+      simpanMutation.mutate(pendingSaveData)
     }
+    setShowSaveConfirmModal(false)
   }
 
   const handleResetFilters = () => {
@@ -619,7 +634,7 @@ export default function MasterJabatanPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {/* Import Button (Soft Sky Blue Squircle) */}
-            <div className="group relative inline-flex">
+            {canManageGlobalPositions && <div className="group relative inline-flex">
               <button
                 type="button"
                 title="Import Data Jabatan"
@@ -633,10 +648,10 @@ export default function MasterJabatanPage() {
                 <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
                 Import Data
               </div>
-            </div>
+            </div>}
 
             {/* Export Button (Soft Amber Squircle) */}
-            <div className="group relative inline-flex">
+            {canEditPosition && <div className="group relative inline-flex">
               <button
                 type="button"
                 title="Export Data Jabatan CSV"
@@ -650,10 +665,10 @@ export default function MasterJabatanPage() {
                 <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
                 Export CSV
               </div>
-            </div>
+            </div>}
 
             {/* Tambah Jabatan Button (Soft Emerald Squircle) */}
-            <div className="group relative inline-flex">
+            {canManageGlobalPositions && <div className="group relative inline-flex">
               <button
                 type="button"
                 title="Tambah Jabatan Baru"
@@ -667,7 +682,7 @@ export default function MasterJabatanPage() {
                 <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
                 Tambah Jabatan
               </div>
-            </div>
+            </div>}
           </div>
         }
         columns={columns}
@@ -801,8 +816,8 @@ export default function MasterJabatanPage() {
           </div>
         }
         onView={(row) => handleOpenDetail(row)}
-        onEdit={(row) => !row.terhapus && !isRowRestrictedForUser(row) ? handleOpenEdit(row) : undefined}
-        onDelete={(row) => !row.terhapus && !isRowRestrictedForUser(row) ? handleDelete(row) : undefined}
+        onEdit={(row) => canEditPosition && !row.terhapus && !isRowRestrictedForUser(row) ? handleOpenEdit(row) : undefined}
+        onDelete={(row) => canManageGlobalPositions && !row.terhapus && !isRowRestrictedForUser(row) ? handleDelete(row) : undefined}
         extraActions={extraActions}
         renderMobileCard={renderMobileCard}
         showPagination
@@ -829,7 +844,8 @@ export default function MasterJabatanPage() {
         initialData={selectedJabatanForEdit}
         options={options}
         isSubmitting={simpanMutation.isPending || ubahMutation.isPending}
-        isKepalaSekolah={isKepalaSekolah}
+        isKepalaSekolah={isKepalaSekolah || canManageUnitPositions}
+        isUnitScopedManager={canManageUnitPositions && !canManageGlobalPositions}
       />
 
       <JabatanDetailModal
@@ -846,6 +862,27 @@ export default function MasterJabatanPage() {
         onClose={() => setIsImportModalOpen(false)}
         onImport={(rows) => importMutation.mutate(rows)}
         isSubmitting={importMutation.isPending}
+      />
+
+      {/* Save / Edit Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showSaveConfirmModal}
+        onClose={() => setShowSaveConfirmModal(false)}
+        onConfirm={handleConfirmSaveForm}
+        isLoading={simpanMutation.isPending || ubahMutation.isPending}
+        action={selectedJabatanForEdit ? 'update' : 'create'}
+        title={selectedJabatanForEdit ? 'Konfirmasi Ubah Jabatan' : 'Konfirmasi Simpan Jabatan'}
+        message={selectedJabatanForEdit ? `Apakah Anda yakin ingin menyimpan perubahan data jabatan ${pendingSaveData?.name || pendingSaveData?.nama_jabatan}?` : `Apakah Anda yakin ingin menambahkan data jabatan baru ${pendingSaveData?.name || pendingSaveData?.nama_jabatan}?`}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <MasterDeleteDialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        isLoading={hapusMutation.isPending}
+        title="Hapus Data Jabatan?"
+        description={`Apakah Anda yakin ingin menghapus data jabatan ${deleteTarget?.nama_jabatan || deleteTarget?.name}? Data akan dipindahkan ke soft delete.`}
       />
     </PageContainer>
   )

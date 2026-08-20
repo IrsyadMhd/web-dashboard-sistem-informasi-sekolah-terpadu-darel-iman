@@ -6,12 +6,18 @@ import {
   useDaftarPengumumanSekolah,
 } from '../hooks/useDashboardPemantauan'
 import { reportService } from '../services/reportService'
+import ConfirmDialog from '../components/app/ConfirmDialog'
 
 export default function NotificationsPage() {
   const { data: daftarPengumuman } = useDaftarPengumumanSekolah({ per_page: 20 })
   const aksiPengumuman = useAksiPengumumanSekolah()
   const [notifications, setNotifications] = useState([])
   const [loadingNotif, setLoadingNotif] = useState(true)
+
+  // Dialog Konfirmasi States
+  const [pendingPengumuman, setPendingPengumuman] = useState(null)
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -49,7 +55,7 @@ export default function NotificationsPage() {
     },
   })
 
-  const submitPengumuman = async (values) => {
+  const submitPengumuman = (values) => {
     const payload = {
       judul_pengumuman: values.judul_pengumuman,
       isi_pengumuman: values.isi_pengumuman,
@@ -60,13 +66,25 @@ export default function NotificationsPage() {
       status_aktif: values.status_aktif,
       data_tambahan: { sumber: 'modul-notifikasi' },
     }
+    setPendingPengumuman(payload)
+    setShowSaveConfirm(true)
+  }
 
-    await aksiPengumuman.tambah.mutateAsync(payload)
+  const handleConfirmSavePengumuman = async () => {
+    if (!pendingPengumuman) return
+    await aksiPengumuman.tambah.mutateAsync(pendingPengumuman)
     formPengumuman.reset({
       ...formPengumuman.getValues(),
       judul_pengumuman: '',
       isi_pengumuman: '',
     })
+    setShowSaveConfirm(false)
+  }
+
+  const handleConfirmDeletePengumuman = async () => {
+    if (!deleteTarget) return
+    await aksiPengumuman.hapus.mutateAsync(deleteTarget.id)
+    setDeleteTarget(null)
   }
 
   return (
@@ -150,7 +168,7 @@ export default function NotificationsPage() {
                     <button
                       type="button"
                       className="aksi kecil danger"
-                      onClick={() => aksiPengumuman.hapus.mutate(row.id)}
+                      onClick={() => setDeleteTarget(row)}
                     >
                       Hapus
                     </button>
@@ -161,6 +179,28 @@ export default function NotificationsPage() {
           </table>
         </div>
       </section>
+
+      {/* Konfirmasi Simpan Pengumuman */}
+      <ConfirmDialog
+        isOpen={showSaveConfirm}
+        onClose={() => setShowSaveConfirm(false)}
+        onConfirm={handleConfirmSavePengumuman}
+        isLoading={aksiPengumuman.tambah.isPending}
+        action="create"
+        title="Konfirmasi Simpan Pengumuman"
+        message={`Apakah Anda yakin ingin mempublikasikan pengumuman "${pendingPengumuman?.judul_pengumuman}"?`}
+      />
+
+      {/* Konfirmasi Hapus Pengumuman */}
+      <ConfirmDialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDeletePengumuman}
+        isLoading={aksiPengumuman.hapus.isPending}
+        action="delete"
+        title="Konfirmasi Hapus Pengumuman"
+        message={`Apakah Anda yakin ingin menghapus pengumuman "${deleteTarget?.judul_pengumuman}"?`}
+      />
     </div>
   )
 }

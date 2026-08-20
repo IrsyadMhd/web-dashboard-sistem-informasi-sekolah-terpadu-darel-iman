@@ -16,6 +16,8 @@ import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
 export function LaporanSdmPage() {
@@ -27,6 +29,7 @@ export function LaporanSdmPage() {
   // Modals state
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
+  const [exportFormat, setExportFormat] = useState('excel')
   const [detailModalData, setDetailModalData] = useState(null)
 
   const fetchReport = async () => {
@@ -64,9 +67,18 @@ export function LaporanSdmPage() {
     }
   }
 
-  const handleConfirmExport = ({ format, orientation }) => {
-    const url = reportService.exportFoundationReport('sdm', { ...filters, format, orientation })
-    window.open(url, '_blank')
+  const handleExportPdf = () => {
+    setExportFormat('pdf')
+    setIsExportOpen(true)
+  }
+
+  const handleExportExcel = () => {
+    setExportFormat('excel')
+    setIsExportOpen(true)
+  }
+
+  const handleConfirmExport = async ({ format, orientation, options }) => {
+    await reportService.exportFoundationReport('sdm', { ...filters, format, orientation, ...options })
   }
 
   if (loading && !reportData) return <ReportSkeleton />
@@ -98,82 +110,98 @@ export function LaporanSdmPage() {
   ]
 
   const detailColumns = [
-    { header: 'NIY / NIK', accessor: 'niy' },
-    { header: 'Nama Lengkap', accessor: 'nama' },
-    { header: 'Jenis SDM', accessor: 'jenis_sdm' },
-    { header: 'Unit Pendidikan', accessor: 'unit' },
-    { header: 'Jabatan', accessor: 'jabatan' },
-    { header: 'Divisi / Mapel', accessor: 'divisi_mapel' },
+    { header: 'Pegawai & Jenis SDM', accessor: 'nama' },
+    { header: 'Unit & Jabatan', accessor: 'unit' },
     { header: 'Status Kepegawaian', accessor: 'status_kepegawaian' },
     { header: 'Tanggal Masuk', accessor: 'tanggal_masuk' },
-    { header: 'Status', accessor: 'status' },
   ]
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="laporan-page-content space-y-6 pb-12">
       {/* 1. Header Laporan */}
       <ReportHeader
         title={report.title}
         description={report.description}
-        periodLabel={report.period.label}
+        periodLabel={report.period?.label}
         generatedAt={report.generated_at}
-        onRefresh={fetchReport}
-        onOpenPreview={() => setIsPreviewOpen(true)}
-        onPrint={() => window.print()}
-        onExportPdf={() => setIsExportOpen(true)}
-        onExportExcel={() => setIsExportOpen(true)}
-        loading={loading}
       />
 
-      {/* 2. Filter Periode */}
+      {/* 2. Ringkasan Analisis Laporan (Di bawah Header) */}
+      <div className="print:hidden">
+        <ReportInsightCard insights={insights} />
+      </div>
+
+      {/* 3. Catatan & Identitas Laporan */}
+      <div className="print:hidden">
+        <ReportNotesCard
+          periodLabel={report.period?.label}
+          generatedAt={report.generated_at}
+        />
+      </div>
+
+      {/* 4. Filter Periode & Aksi Laporan */}
       <ReportPeriodFilter
         period={filters.period}
         startDate={filters.tanggal_mulai}
         endDate={filters.tanggal_selesai}
         onChange={handlePeriodChange}
         onReset={handleResetFilter}
+        onRefresh={fetchReport}
+        onOpenPreview={() => setIsPreviewOpen(true)}
+        onPrint={() => window.print()}
+        onExportPdf={handleExportPdf}
+        onExportExcel={handleExportExcel}
+        loading={loading}
       />
 
-      {/* 3. KPI Ringkasan */}
+      {/* 5. KPI Ringkasan */}
       <ReportKpiGrid items={kpiItems} />
 
-      {/* 4. Grafik & Visualisasi */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-3">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Distribusi Guru vs Pegawai per Unit</h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={charts.unit_distribution || []}>
-                <XAxis dataKey="name" stroke="#888888" fontSize={11} />
-                <YAxis stroke="#888888" fontSize={11} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="guru" name="Guru" fill="#0E5C44" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="non_guru" name="Pegawai Non-Guru" fill="#3FBF75" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* 6. Grafik & Visualisasi */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 print:hidden">
+        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Distribusi Guru vs Pegawai per Unit</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts.unit_distribution || []}>
+                  <XAxis dataKey="name" stroke="#888888" fontSize={11} />
+                  <YAxis stroke="#888888" fontSize={11} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="guru" name="Guru" fill="#0E5C44" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="non_guru" name="Pegawai Non-Guru" fill="#3FBF75" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-3">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Status Kepegawaian SDM</h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={charts.status_kepegawaian || []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                  {(charts.status_kepegawaian || []).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Status Kepegawaian SDM</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={charts.status_kepegawaian || []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                    {(charts.status_kepegawaian || []).map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* 5. Rekap Per Unit */}
+      {/* 6. Rekap Per Unit */}
       <ReportRecapTable
         title="Rekapitulasi SDM per Unit Pendidikan"
         columns={recapColumns}
@@ -181,25 +209,21 @@ export function LaporanSdmPage() {
         totalRow={unit_recaps_total}
       />
 
-      {/* 6. Data Rinci & Action Popup */}
+      {/* 7. Data Rinci & Action Popup */}
       <ReportDetailTable
         title="Rincian Data SDM Pegawai"
+        description="Daftar rincian data pembentuk angka laporan. Hanya aksi Lihat Detail yang tersedia."
         columns={detailColumns}
         data={details}
         meta={meta}
         search={filters.search}
+        perPage={filters.per_page}
         onSearchChange={(val) => setFilters((prev) => ({ ...prev, search: val, page: 1 }))}
+        onPerPageChange={(perPage) => setFilters((prev) => ({ ...prev, per_page: perPage, page: 1 }))}
         onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
         onViewDetail={handleViewDetail}
-      />
-
-      {/* 7. Summary Insight */}
-      <ReportInsightCard insights={insights} />
-
-      {/* 8. Notes & Metadata */}
-      <ReportNotesCard
-        periodLabel={report.period.label}
-        generatedAt={report.generated_at}
+        filters={filters}
+        onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }))}
       />
 
       {/* Modals */}
@@ -215,6 +239,7 @@ export function LaporanSdmPage() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         onConfirmExport={handleConfirmExport}
+        defaultFormat={exportFormat}
       />
 
       <ReadOnlyDetailModal

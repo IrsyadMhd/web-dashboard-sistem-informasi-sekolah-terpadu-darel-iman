@@ -1,21 +1,25 @@
 import { useRef, useState, useEffect } from 'react'
-import { FiCamera, FiCheck, FiUser } from 'react-icons/fi'
+import { FiCamera, FiCheck } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import PersonAvatar from '../ui/PersonAvatar'
 import { useAuthStore } from '../../stores/authStore'
+import { authService } from '../../services/authService'
 import { educationUnitService } from '../../services/educationUnitService'
 
 export default function UserProfileCard() {
   const { user, setSession, token, loginTime } = useAuthStore()
   const fileInputRef = useRef(null)
   const [unitOptions, setUnitOptions] = useState([])
-
-  useEffect(() => {
-    educationUnitService.getDaftar().then((res) => {
-      const data = res?.data?.data || res?.data || []
-      if (Array.isArray(data)) setUnitOptions(data)
-    }).catch(() => {})
-  }, [])
+  const [saving, setSaving] = useState(false)
+  const userRoles = Array.isArray(user?.roles) ? user.roles : [user?.role || user?.roles].filter(Boolean)
+  const ALLOWED_ADMIN_ROLES = [
+    'super admin', 'superadmin', 'super_admin',
+    'admin',
+    'pengurus yayasan', 'yayasan', 'ketua yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan',
+    'kepala sekolah', 'kepala_sekolah', 'kepsek',
+    'divisi pendidikan', 'divisi_pendidikan'
+  ]
+  const canEditUnitAndRole = userRoles.some((r) => ALLOWED_ADMIN_ROLES.includes(String(r).toLowerCase()))
 
   const formattedLoginTime = loginTime
     ? new Date(loginTime).toLocaleString('id-ID', {
@@ -29,14 +33,52 @@ export default function UserProfileCard() {
 
   const [profile, setProfile] = useState({
     fullName: user?.name || user?.fullName || '',
-    nip: user?.nip || '',
+    nip: user?.nip || user?.employee?.niy || user?.employee?.nik || '',
     email: user?.email || '',
-    phone: user?.phone || '',
-    role: user?.role || '',
-    unit: user?.unit || '',
-    avatar: user?.avatar || null,
+    phone: user?.phone || user?.employee?.no_hp || '',
+    role: user?.role || user?.roles?.[0] || '',
+    unit: user?.unit || user?.employee?.unit?.name || '',
+    avatar: user?.avatar || user?.foto || user?.employee?.foto || null,
   })
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    educationUnitService.getDaftar().then((res) => {
+      const data = res?.data?.data || res?.data || []
+      if (Array.isArray(data)) setUnitOptions(data)
+    }).catch(() => {})
+
+    authService.profile().then((res) => {
+      const data = res?.data || res
+      if (data) {
+        setProfile({
+          fullName: data.fullName || data.name || data.employee?.nama_lengkap || '',
+          nip: data.employee?.niy || data.employee?.nik || data.nip || '',
+          email: data.email || '',
+          phone: data.phone || data.employee?.no_hp || '',
+          role: Array.isArray(data.roles) && data.roles.length > 0 ? data.roles[0] : (data.role || data.employee?.position?.name || ''),
+          unit: data.unit || data.employee?.unit?.name || '',
+          avatar: data.foto || data.avatar || data.employee?.foto || null,
+        })
+        if (token) {
+          setSession({
+            token,
+            user: {
+              ...user,
+              name: data.fullName || data.name || data.employee?.nama_lengkap,
+              fullName: data.fullName || data.name || data.employee?.nama_lengkap,
+              email: data.email,
+              phone: data.phone || data.employee?.no_hp,
+              avatar: data.foto || data.avatar || data.employee?.foto,
+              unit: data.unit || data.employee?.unit?.name,
+            },
+          })
+        }
+      }
+    }).catch((err) => {
+      console.warn('Gagal memuat profil backend:', err)
+    })
+  }, [])
 
   const handlePhotoClick = () => {
     if (fileInputRef.current) {
@@ -44,60 +86,120 @@ export default function UserProfileCard() {
     }
   }
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
       Swal.fire('Ukuran File Terlalu Besar', 'Ukuran foto maksimal adalah 2MB.', 'warning')
+      e.target.value = ''
       return
     }
 
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setProfile((prev) => ({ ...prev, avatar: reader.result }))
+    const formData = new FormData()
+    formData.append('foto', file)
+    formData.append('avatar', file)
+
+    try {
+      const response = await authService.uploadAvatar(formData)
+      const avatarUrl = response?.data?.foto || response?.data?.avatar || response?.foto || response?.avatar
+      setProfile((prev) => ({ ...prev, avatar: avatarUrl }))
+
+      if (token) {
+        setSession({
+          token,
+          user: {
+            ...user,
+            avatar: avatarUrl,
+            foto: avatarUrl,
+          },
+        })
+      }
+      Swal.fire({
+        icon: 'success',
+        title: 'Foto Profil Diperbarui',
+        text: 'Foto profil Anda telah disimpan ke server database.',
+        timer: 1500,
+        showConfirmButton: false,
+      })
+    } catch (error) {
+      console.error('Gagal upload avatar:', error)
+      const msg = error?.response?.data?.message || 'Gagal mengunggah foto profil ke server.'
+      Swal.fire('Gagal Upload', msg, 'error')
+    } finally {
+      if (e.target) e.target.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   const handleReset = () => {
     setProfile({
-      fullName: user?.name || user?.fullName || 'Ahmad Zaky',
-      nip: user?.nip || 'ADM001',
-      email: user?.email || 'ahmadzaky@dareliman.sch.id',
-      phone: user?.phone || '0812-3456-7890',
-      role: user?.role || 'Super Admin',
-      unit: user?.unit || 'SDIT Dar El-Iman',
-      avatar: user?.avatar || null,
+      fullName: user?.name || user?.fullName || '',
+      nip: user?.nip || user?.employee?.niy || user?.employee?.nik || '',
+      email: user?.email || '',
+      phone: user?.phone || user?.employee?.no_hp || '',
+      role: user?.role || user?.roles?.[0] || '',
+      unit: user?.unit || user?.employee?.unit?.name || '',
+      avatar: user?.avatar || user?.foto || user?.employee?.foto || null,
     })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setSaving(true)
 
-    // Update global auth store state and localStorage
-    const updatedUser = {
-      ...user,
-      name: profile.fullName,
-      fullName: profile.fullName,
-      email: profile.email,
-      phone: profile.phone,
-      role: profile.role,
-      unit: profile.unit,
-      avatar: profile.avatar,
+    try {
+      let uploadedAvatar = profile.avatar
+      if (profile.avatar && typeof profile.avatar === 'string' && profile.avatar.startsWith('data:')) {
+        const avatarBase64 = profile.avatar.split(',')[1]
+        const blob = await fetch(`data:image/png;base64,${avatarBase64}`).then(res => res.blob())
+        const formData = new FormData()
+        formData.append('foto', blob, 'avatar.jpg')
+
+        const avatarRes = await authService.uploadAvatar(formData)
+        uploadedAvatar = avatarRes?.data?.foto || avatarRes?.data?.avatar || avatarRes?.foto || uploadedAvatar
+        setProfile((prev) => ({ ...prev, avatar: uploadedAvatar }))
+      }
+
+      const updatePayload = {
+        name: profile.fullName,
+        fullName: profile.fullName,
+        email: profile.email,
+        phone: profile.phone,
+        unit: profile.unit,
+      }
+
+      const response = await authService.updateProfile(updatePayload)
+      const updatedData = response?.data || response
+
+      const updatedUser = {
+        ...user,
+        name: updatedData?.name || profile.fullName,
+        fullName: updatedData?.fullName || updatedData?.name || profile.fullName,
+        email: updatedData?.email || profile.email,
+        phone: updatedData?.phone || profile.phone,
+        role: profile.role || user?.role,
+        unit: updatedData?.unit || profile.unit,
+        avatar: updatedData?.foto || updatedData?.avatar || uploadedAvatar || profile.avatar,
+      }
+
+      setSession({ token, user: updatedUser })
+
+      setSaved(true)
+      Swal.fire({
+        icon: 'success',
+        title: 'Profil Berhasil Diperbarui',
+        text: 'Data profil dan informasi akun Anda telah disimpan permanen di database.',
+        timer: 2000,
+        showConfirmButton: false,
+      })
+      setTimeout(() => setSaved(false), 2500)
+    } catch (error) {
+      console.error('Update profile error:', error)
+      const msg = error.response?.data?.message || 'Gagal menyimpan perubahan profil ke server.'
+      Swal.fire('Gagal Menyimpan', msg, 'error')
+    } finally {
+      setSaving(false)
     }
-
-    setSession({ token, user: updatedUser })
-
-    setSaved(true)
-    Swal.fire({
-      icon: 'success',
-      title: 'Profil Berhasil Diperbarui',
-      text: 'Data profil dan informasi akun Anda telah disimpan.',
-      timer: 2000,
-      showConfirmButton: false,
-    })
-    setTimeout(() => setSaved(false), 2500)
   }
 
   return (
@@ -230,39 +332,74 @@ export default function UserProfileCard() {
 
               {/* Role / Jabatan */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Role / Jabatan
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Role / Jabatan</span>
+                  {!canEditUnitAndRole && (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      Terkunci
+                    </span>
+                  )}
                 </label>
                 <select
                   value={profile.role}
                   onChange={(e) => setProfile({ ...profile, role: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm"
+                  disabled={!canEditUnitAndRole}
+                  className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm ${
+                    !canEditUnitAndRole ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200/80' : 'bg-white text-slate-800'
+                  }`}
                 >
+                  <option value={profile.role}>{profile.role || 'Pilih Role'}</option>
                   <option value="Super Admin">Super Admin</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Pengurus Yayasan">Pengurus Yayasan</option>
                   <option value="Kepala Sekolah">Kepala Sekolah</option>
+                  <option value="Divisi Pendidikan">Divisi Pendidikan</option>
                   <option value="Guru">Guru</option>
                   <option value="Tata Usaha">Tata Usaha</option>
-                  <option value="Divisi Pendidikan">Divisi Pendidikan</option>
+                  <option value="Operator">Operator</option>
+                  <option value="Musyrif">Musyrif</option>
+                  <option value="Siswa">Siswa</option>
+                  <option value="Orang Tua">Orang Tua</option>
                 </select>
+                {!canEditUnitAndRole && (
+                  <p className="text-[11px] text-slate-400 mt-1 font-medium flex items-center gap-1">
+                    <span>🔒</span>
+                    <span>Hanya dapat diubah oleh Administrator / Kepala Sekolah.</span>
+                  </p>
+                )}
               </div>
 
               {/* Unit Pendidikan */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Unit Pendidikan
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Unit Pendidikan</span>
+                  {!canEditUnitAndRole && (
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      Terkunci
+                    </span>
+                  )}
                 </label>
                 <select
                   value={profile.unit}
                   onChange={(e) => setProfile({ ...profile, unit: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm"
+                  disabled={!canEditUnitAndRole}
+                  className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm ${
+                    !canEditUnitAndRole ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200/80' : 'bg-white text-slate-800'
+                  }`}
                 >
-                  <option value="">Pilih Unit</option>
+                  <option value={profile.unit}>{profile.unit || 'Pilih Unit'}</option>
                   {unitOptions.map((u) => (
                     <option key={u.id || u.nama_unit} value={u.nama_unit || u.name}>
                       {u.nama_unit || u.name}
                     </option>
                   ))}
                 </select>
+                {!canEditUnitAndRole && (
+                  <p className="text-[11px] text-slate-400 mt-1 font-medium flex items-center gap-1">
+                    <span>🔒</span>
+                    <span>Unit Pendidikan terikat pada penugasan akun Anda.</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -277,9 +414,10 @@ export default function UserProfileCard() {
               </button>
               <button
                 type="submit"
-                className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all"
+                disabled={saving}
+                className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all disabled:opacity-50"
               >
-                Simpan Perubahan
+                {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
               </button>
             </div>
           </div>

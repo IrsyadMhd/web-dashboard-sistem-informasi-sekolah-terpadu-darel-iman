@@ -5852,3 +5852,273 @@ th {
     transition: none;
   }
 }
+
+/* ==========================================================================
+   App Bottom Navigation — Responsive Orientation Rules
+   Tampilkan bottom nav di semua orientasi (portrait & landscape)
+   pada perangkat sentuh (handphone & tablet), termasuk landscape tablet
+   yang lebarnya melebihi breakpoint lg (1024px).
+   ========================================================================== */
+
+/* Safe-area padding (iOS notch / Android gesture bar) */
+.app-bottom-nav {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+/**
+ * Perangkat sentuh — HP & Tablet (pointer: coarse), lebar ≤ 1366px
+ * Mencakup iPad Pro 12.9" landscape (1366px) dan semua HP landscape/portrait.
+ */
+@media screen and (pointer: coarse) and (max-width: 1366px) {
+  .app-bottom-nav {
+    display: flex !important;
+  }
+}
+
+/**
+ * Landscape HP (tinggi ≤ 500px) — tetap tampil & lebih ringkas.
+ */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .app-bottom-nav {
+    display: flex !important;
+    padding-top: 4px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
+}
+
+/**
+ * Landscape tablet (tinggi 501px–900px, touch device).
+ * Misal: iPad landscape, Galaxy Tab landscape, dll.
+ */
+@media screen and (orientation: landscape) and (min-height: 501px) and (max-height: 900px) and (pointer: coarse) {
+  .app-bottom-nav {
+    display: flex !important;
+  }
+}
+
+/* ==========================================================================
+   Auth Impersonating Banner — Sembunyikan saat popup auth tampil
+   Banner "Mode akses role aktif" disembunyikan ketika AuthPopup terbuka
+   agar tidak terlihat di balik backdrop blur modal.
+   ========================================================================== */
+body[data-auth-popup-open] .auth-impersonating-banner {
+  display: none !important;
+}
+
+/* ==========================================================================
+   Global Print Styles — Laporan & Preview Modal
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm 6mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 8pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Sembunyikan SEMUA elemen navigasi, banner role, sidebar, topbar, filter, tombol, backdrop, & kartu mobile */
+  header:not(.print-letterhead),
+  nav,
+  aside,
+  .sidebar,
+  .topbar,
+  .app-bottom-nav,
+  .auth-impersonating-banner,
+  .print\:hidden,
+  .app-data-table__mobile-cards,
+  .block.md\:hidden,
+  .md\:hidden,
+  [data-slot="backdrop"],
+  button,
+  input,
+  select,
+  textarea,
+  .pagination,
+  .action-buttons,
+  .ls-header-actions,
+  .ls-aside {
+    display: none !important;
+  }
+
+  .app-data-table__viewport,
+  .hidden.md\:block {
+    display: block !important;
+  }
+
+  /* Sembunyikan halaman latar belakang & tabel utama jika modal dialog sedang terbuka */
+  body:has([role="dialog"]) .laporan-page-content,
+  body:has([role="dialog"]) .main-page-app-data-table {
+    display: none !important;
+  }
+
+  /* Reset outer layout height, margins, & background on print */
+  @page {
+    size: auto;
+    margin: 12mm 12mm 12mm 12mm;
+  }
+
+  html,
+  body,
+  #root,
+  main,
+  .app-layout,
+  .page-container {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Sembunyikan chrome UI, sidebar, topbar, & footer modal saat mencetak */
+  .sidebar,
+  .topbar,
+  header,
+  nav,
+  footer,
+  button,
+  .no-print,
+  .print\:hidden,
+  [role="tooltip"] {
+    display: none !important;
+  }
+
+  /* RESET TOTAL: Hilangkan backdrop gelap (bg-black/50), fixed inset-0, & dark overlay pada cetakan */
+  [data-slot="backdrop"],
+  .backdrop,
+  div[class*="backdrop"],
+  div[class*="fixed inset-0"],
+  div.fixed.inset-0,
+  div[data-rac],
+  .react-aria-ModalOverlay,
+  div[class*="react-aria-ModalOverlay"] {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    box-shadow: none !important;
+    border: none !important;
+    opacity: 1 !important;
+  }
+
+  /* RESET TOTAL DIALOG MODAL: Ubah modal mengambang menjadi halaman cetak utuh 100% lebar */
+  [role="dialog"],
+  [data-slot="dialog"],
+  div[class*="Dialog"],
+  div[class*="max-w-3xl"],
+  div[class*="max-w-2xl"],
+  div[class*="max-w-"] {
+    position: static !important;
+    transform: none !important;
+    inset: auto !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* Hilangkan max-height scrollbar pada tabel modal saat mencetak agar seluruh baris tercetak utuh */
+  div[class*="max-h-"],
+  .overflow-y-auto,
+  .overflow-x-auto {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Tampilkan header kop laporan resmi saat mencetak */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Tabel data cetak rapi & bersih */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt !important;
+    table-layout: auto !important;
+    margin-top: 12px !important;
+    color: #000000 !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    padding: 6px 8px !important;
+    font-size: 8.5pt !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    border: 1px solid #64748b !important;
+    text-align: left !important;
+  }
+
+  td {
+    padding: 6px 8px !important;
+    font-size: 8.5pt !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    vertical-align: middle !important;
+    background-color: #ffffff !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Soft pastel grid cards saat dicetak */
+  .grid {
+    break-inside: avoid !important;
+  }
+
+  /* Styling badge saat dicetak */
+  span[class*="rounded-"] {
+    border: 1px solid #94a3b8 !important;
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+  }
+}
+
+
+
+

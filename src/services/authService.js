@@ -38,9 +38,7 @@ export const authService = {
   },
 
   uploadAvatar: async (formData) => {
-    const { data } = await api.post('/profile/avatar', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await api.post('/profile/avatar', formData)
     return data
   },
 

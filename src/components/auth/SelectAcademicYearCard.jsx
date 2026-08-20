@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { FiCalendar, FiCheckCircle } from 'react-icons/fi'
 import { tahunAjaranService } from '../../services/tahunAjaranService'
 
-export default function SelectAcademicYearCard({ onNavigate }) {
+export default function SelectAcademicYearCard({ onNavigate, disabled = false }) {
   const [year, setYear] = useState('')
   const [semester, setSemester] = useState('Genap')
   const [academicYears, setAcademicYears] = useState([])
@@ -18,16 +18,23 @@ export default function SelectAcademicYearCard({ onNavigate }) {
   }, [])
 
   const handleContinue = () => {
-    if (onNavigate) onNavigate(8) // Navigate to Session Login or Dashboard
+    if (!disabled && onNavigate) onNavigate(8) // Navigate to Session Login or Dashboard
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-emerald-100 p-6 lg:p-8 space-y-6">
+    <div className={`w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-emerald-100 p-6 lg:p-8 space-y-6 ${disabled ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-800">Pilih Tahun Ajaran</h2>
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center justify-between">
+          <span>Pilih Tahun Ajaran</span>
+          {disabled && (
+            <span className="text-xs font-semibold px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full">
+              🔒 Terkunci (Non-Aktif)
+            </span>
+          )}
+        </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Tentukan tahun ajaran dan semester aktif.
+          {disabled ? 'Tahun ajaran aktif terikat pada sistem dan tidak dapat diubah.' : 'Tentukan tahun ajaran dan semester aktif.'}
         </p>
       </div>
 
@@ -39,8 +46,9 @@ export default function SelectAcademicYearCard({ onNavigate }) {
           </label>
           <select
             value={year}
+            disabled={disabled}
             onChange={(e) => setYear(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm"
+            className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
           >
             {academicYears.map((ay) => (
               <option key={ay.id} value={ay.nama || ay.tahun_ajaran}>
@@ -56,8 +64,9 @@ export default function SelectAcademicYearCard({ onNavigate }) {
           </label>
           <select
             value={semester}
+            disabled={disabled}
             onChange={(e) => setSemester(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm"
+            className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
           >
             <option value="Genap">Genap</option>
             <option value="Ganjil">Ganjil</option>
@@ -104,8 +113,9 @@ export default function SelectAcademicYearCard({ onNavigate }) {
       <div className="flex justify-end pt-4 border-t border-slate-100">
         <button
           type="button"
+          disabled={disabled}
           onClick={handleContinue}
-          className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all"
+          className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Lanjutkan
         </button>

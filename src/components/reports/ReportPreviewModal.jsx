@@ -1,5 +1,8 @@
 import React from 'react'
-import { X, Printer, Download, ShieldCheck, Building2 } from 'lucide-react'
+import { Printer, Download, ShieldCheck, Building2 } from 'lucide-react'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogClose } from '@/components/tailgrids/core/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+import { Button } from '@/components/tailgrids/core/button'
 
 export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExportPdf }) {
   if (!isOpen || !reportData) return null
@@ -10,45 +13,34 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
   const generatedAt = report?.generated_at ? new Date(report.generated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm print:p-0">
-      <div className="flex h-full max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl bg-white shadow-2xl dark:bg-[#1B2433] print:max-h-full print:w-full print:rounded-none print:shadow-none">
+    <OverlayWrapper isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Backdrop className="print:hidden" isOpen={isOpen} onOpenChange={(open) => !open && onClose()} />
+      <Dialog className="max-w-4xl max-h-[90vh] print:max-w-full print:max-h-none print:h-auto print:border-none print:shadow-none print:bg-white print:static print:p-0">
+        <DialogHeader className="print:hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full pr-6">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle>Dokumen Preview Laporan</DialogTitle>
+                <DialogDescription>Pratinjau sebelum cetak atau ekspor PDF</DialogDescription>
+              </div>
+            </div>
 
-        {/* Header toolbar */}
-        <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-800 print:hidden">
-          <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-white">
-            <ShieldCheck className="h-4 w-4 text-[#0E5C44]" />
-            <span>Dokumen Preview Laporan</span>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={onPrint} prefixIcon={<Printer className="h-3.5 w-3.5" />}>
+                Cetak
+              </Button>
+              <Button variant="success" appearance="fill" size="sm" onClick={onExportPdf} prefixIcon={<Download className="h-3.5 w-3.5" />}>
+                Download PDF
+              </Button>
+            </div>
           </div>
+          <DialogClose onClick={onClose} />
+        </DialogHeader>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onPrint}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              <span>Cetak Document</span>
-            </button>
-            <button
-              type="button"
-              onClick={onExportPdf}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#0E5C44] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#0B4936] transition"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Download PDF</span>
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 transition"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Document Body */}
-        <div className="flex-1 overflow-y-auto p-8 space-y-6 text-slate-800 dark:text-slate-100 font-sans">
+        <DialogBody className="space-y-6 py-4 overflow-y-auto max-h-[72vh] print:max-h-none print:overflow-visible print:p-0 print:text-slate-900 text-slate-800 dark:text-slate-100 font-sans">
           {/* Foundation Letterhead */}
           <div className="border-b-2 border-[#0E5C44] pb-4 text-center">
             <div className="inline-flex items-center gap-2 text-[#0E5C44] dark:text-emerald-400 font-black text-xl uppercase tracking-wide">
@@ -64,7 +56,7 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
               <h4 className="font-bold text-xs uppercase text-[#0E5C44] dark:text-emerald-400 mb-2 border-l-2 border-[#0E5C44] pl-2">
                 Ringkasan KPI Utama
               </h4>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {Object.entries(summary).map(([key, val], idx) => (
                   <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
                     <span className="text-[10px] font-semibold text-slate-400 uppercase block">{key.replace(/_/g, ' ')}</span>
@@ -140,9 +132,9 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
             <span>Sistem Manajemen Sekolah Terpadu • Dokumentasi Pengurus Yayasan</span>
             <span>Halaman 1 / 1</span>
           </div>
-        </div>
-
-      </div>
-    </div>
+        </DialogBody>
+      </Dialog>
+    </OverlayWrapper>
   )
 }
+

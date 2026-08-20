@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FiSearch, FiCheck } from 'react-icons/fi'
 import { FaGraduationCap, FaSchool, FaBookQuran, FaBuildingColumns } from 'react-icons/fa6'
 
-export default function SelectUnitCard({ onNavigate }) {
+export default function SelectUnitCard({ onNavigate, disabled = false }) {
   const [selectedUnit, setSelectedUnit] = useState('sdit')
   const [search, setSearch] = useState('')
 
@@ -58,16 +58,23 @@ export default function SelectUnitCard({ onNavigate }) {
   )
 
   const handleSelect = () => {
-    if (onNavigate) onNavigate(7) // Navigate to Pilih Tahun Ajaran
+    if (!disabled && onNavigate) onNavigate(7) // Navigate to Pilih Tahun Ajaran
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-emerald-100 p-6 lg:p-8 space-y-6">
+    <div className={`w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-emerald-100 p-6 lg:p-8 space-y-6 ${disabled ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-800">Pilih Unit Pendidikan</h2>
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center justify-between">
+          <span>Pilih Unit Pendidikan</span>
+          {disabled && (
+            <span className="text-xs font-semibold px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full">
+              🔒 Terkunci (Non-Aktif)
+            </span>
+          )}
+        </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Pilih unit pendidikan yang akan Anda kelola.
+          {disabled ? 'Pemilihan unit pendidikan tidak aktif untuk role akun ini.' : 'Pilih unit pendidikan yang akan Anda kelola.'}
         </p>
       </div>
 
@@ -79,9 +86,10 @@ export default function SelectUnitCard({ onNavigate }) {
         <input
           type="text"
           value={search}
+          disabled={disabled}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Cari unit pendidikan..."
-          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 text-slate-800 text-sm rounded-xl border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm"
+          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 text-slate-800 text-sm rounded-xl border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100"
         />
       </div>
 
@@ -94,8 +102,8 @@ export default function SelectUnitCard({ onNavigate }) {
           return (
             <div
               key={unit.id}
-              onClick={() => setSelectedUnit(unit.id)}
-              className={`relative cursor-pointer p-5 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${
+              onClick={() => !disabled && setSelectedUnit(unit.id)}
+              className={`relative p-5 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-50/80' : 'cursor-pointer'} ${
                 isSelected
                   ? 'border-emerald-700 bg-emerald-50/40 shadow-md ring-2 ring-emerald-600/20'
                   : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50/50 shadow-sm'
@@ -135,8 +143,9 @@ export default function SelectUnitCard({ onNavigate }) {
       <div className="flex justify-end pt-4 border-t border-slate-100">
         <button
           type="button"
+          disabled={disabled}
           onClick={handleSelect}
-          className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all"
+          className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Pilih Unit Ini
         </button>

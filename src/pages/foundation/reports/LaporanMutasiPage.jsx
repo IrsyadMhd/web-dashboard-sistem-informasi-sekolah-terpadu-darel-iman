@@ -15,6 +15,7 @@ import { ReadOnlyDetailModal } from '../../../components/reports/ReadOnlyDetailM
 import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -26,6 +27,7 @@ export function LaporanMutasiPage() {
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
+  const [exportFormat, setExportFormat] = useState('pdf')
   const [detailModalData, setDetailModalData] = useState(null)
 
   const fetchReport = useCallback(async () => {
@@ -63,12 +65,22 @@ export function LaporanMutasiPage() {
     }
   }
 
+  const handleExportPdf = () => {
+    setExportFormat('pdf')
+    setIsExportOpen(true)
+  }
+
+  const handleExportExcel = () => {
+    setExportFormat('excel')
+    setIsExportOpen(true)
+  }
+
   const handleConfirmExport = ({ format, orientation }) => {
+    setIsExportOpen(false)
     const url = reportService.exportFoundationReport('mutasi', { ...filters, format, orientation })
     window.open(url, '_blank')
   }
 
-  // Pure single-branch rendering for loading, error, and empty state
   if (loading && !reportData) return <ReportSkeleton />
   if (error) return <ReportErrorState onRetry={fetchReport} />
   if (!reportData || !reportData.summary) return <ReportEmptyState onReset={handleResetFilter} />
@@ -112,99 +124,120 @@ export function LaporanMutasiPage() {
   ]
 
   const detailColumns = [
-    { header: 'Nomor Mutasi', accessor: 'nomor_mutasi' },
-    { header: 'NIS', accessor: 'nis' },
-    { header: 'Nama Siswa', accessor: 'nama_siswa' },
-    { header: 'Jenis Mutasi', accessor: 'jenis_mutasi' },
-    { header: 'Unit Asal', accessor: 'unit_asal' },
-    { header: 'Unit Tujuan', accessor: 'unit_tujuan' },
+    { header: 'Nomor Mutasi & Siswa', accessor: 'nama' },
+    { header: 'Unit Asal & Tujuan', accessor: 'unit' },
+    { header: 'Status Mutasi', accessor: 'status' },
     { header: 'Tanggal Efektif', accessor: 'tanggal_efektif' },
-    { header: 'Status', accessor: 'status' },
   ]
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* 1. Header */}
+    <div className="laporan-page-content space-y-6 pb-12">
+      {/* 1. Header Laporan */}
       <ReportHeader
         title={report.title}
         description={report.description}
         periodLabel={report.period?.label ?? 'Tahun Ajaran'}
         generatedAt={report.generated_at}
-        onRefresh={fetchReport}
-        onOpenPreview={() => setIsPreviewOpen(true)}
-        onPrint={() => window.print()}
-        onExportPdf={() => setIsExportOpen(true)}
-        onExportExcel={() => setIsExportOpen(true)}
-        loading={loading}
       />
 
-      {/* 2. Filter Periode */}
+      {/* 2. Ringkasan Analisis Laporan (Di bawah Header) */}
+      <div className="print:hidden">
+        <ReportInsightCard insights={insights} />
+      </div>
+
+      {/* 3. Catatan & Identitas Laporan */}
+      <div className="print:hidden">
+        <ReportNotesCard
+          periodLabel={report.period?.label ?? 'Tahun Ajaran'}
+          generatedAt={report.generated_at}
+        />
+      </div>
+
+      {/* 4. Filter Periode & Aksi Laporan */}
       <ReportPeriodFilter
         period={filters.period}
         startDate={filters.tanggal_mulai}
         endDate={filters.tanggal_selesai}
         onChange={handlePeriodChange}
         onReset={handleResetFilter}
+        onRefresh={fetchReport}
+        onOpenPreview={() => setIsPreviewOpen(true)}
+        onPrint={() => window.print()}
+        onExportPdf={handleExportPdf}
+        onExportExcel={handleExportExcel}
+        loading={loading}
       />
 
-      {/* 3. KPI Grid */}
+      {/* 5. KPI Ringkasan */}
       <ReportKpiGrid items={kpiItems} />
 
-      {/* 4. Visual Charts */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-3">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Tren Pergerakan Mutasi Siswa per Bulan</h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={charts.monthly_trend || []}>
-                <XAxis dataKey="month" stroke="#888888" fontSize={11} />
-                <YAxis stroke="#888888" fontSize={11} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="masuk" name="Pindah Masuk" stroke="#0E5C44" strokeWidth={2} />
-                <Line type="monotone" dataKey="keluar" name="Pindah Keluar" stroke="#F43F5E" strokeWidth={2} />
-                <Line type="monotone" dataKey="berhenti" name="Berhenti" stroke="#F59E0B" strokeWidth={2} />
-                <Line type="monotone" dataKey="antarunit" name="Antarunit" stroke="#0284C7" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* 6. Visual Charts */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 print:hidden">
+        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Tren Pergerakan Mutasi Siswa per Bulan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={charts.monthly_trend || []}>
+                  <XAxis dataKey="month" stroke="#888888" fontSize={11} />
+                  <YAxis stroke="#888888" fontSize={11} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="masuk" name="Pindah Masuk" stroke="#0E5C44" strokeWidth={2} />
+                  <Line type="monotone" dataKey="keluar" name="Pindah Keluar" stroke="#F43F5E" strokeWidth={2} />
+                  <Line type="monotone" dataKey="berhenti" name="Berhenti" stroke="#F59E0B" strokeWidth={2} />
+                  <Line type="monotone" dataKey="antarunit" name="Antarunit" stroke="#0284C7" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-3">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Status Proses Permohonan Mutasi</h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={charts.status_proses || []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                  {(charts.status_proses || []).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Status Proses Permohonan Mutasi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={charts.status_proses || []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                    {(charts.status_proses || []).map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-3 md:col-span-2">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Perbandingan Mutasi Masuk vs Keluar per Unit Pendidikan</h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={charts.unit_comparison || []}>
-                <XAxis dataKey="name" stroke="#888888" fontSize={11} />
-                <YAxis stroke="#888888" fontSize={11} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="masuk" name="Pindah Masuk" fill="#0E5C44" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="keluar" name="Pindah Keluar" fill="#F43F5E" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433] md:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Perbandingan Mutasi Masuk vs Keluar per Unit Pendidikan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts.unit_comparison || []}>
+                  <XAxis dataKey="name" stroke="#888888" fontSize={11} />
+                  <YAxis stroke="#888888" fontSize={11} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="masuk" name="Pindah Masuk" fill="#0E5C44" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="keluar" name="Pindah Keluar" fill="#F43F5E" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* 5. Rekap Per Unit */}
+      {/* 7. Rekap Per Unit */}
       <ReportRecapTable
         title="Rekapitulasi Mutasi Siswa per Unit Pendidikan"
         columns={recapColumns}
@@ -212,25 +245,21 @@ export function LaporanMutasiPage() {
         totalRow={unit_recaps_total}
       />
 
-      {/* 6. Data Rinci */}
+      {/* 8. Data Rinci */}
       <ReportDetailTable
         title="Rincian Data Mutasi Siswa"
+        description="Daftar rincian data pembentuk angka laporan. Hanya aksi Lihat Detail yang tersedia."
         columns={detailColumns}
         data={details}
         meta={meta}
         search={filters.search}
+        perPage={filters.per_page}
         onSearchChange={(val) => setFilters((prev) => ({ ...prev, search: val, page: 1 }))}
+        onPerPageChange={(perPage) => setFilters((prev) => ({ ...prev, per_page: perPage, page: 1 }))}
         onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
         onViewDetail={handleViewDetail}
-      />
-
-      {/* 7. Summary Insights */}
-      <ReportInsightCard insights={insights} />
-
-      {/* 8. Notes */}
-      <ReportNotesCard
-        periodLabel={report.period?.label ?? 'Tahun Ajaran'}
-        generatedAt={report.generated_at}
+        filters={filters}
+        onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }))}
       />
 
       {/* Modals */}
@@ -246,12 +275,13 @@ export function LaporanMutasiPage() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         onConfirmExport={handleConfirmExport}
+        defaultFormat={exportFormat}
       />
 
       <ReadOnlyDetailModal
         isOpen={!!detailModalData}
         onClose={() => setDetailModalData(null)}
-        title="Detail Dokumen Mutasi Siswa"
+        title="Detail Permohonan & Riwayat Mutasi"
         data={detailModalData}
       />
     </div>

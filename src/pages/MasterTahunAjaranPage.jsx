@@ -18,6 +18,7 @@ import TahunAjaranDetailModal from '../components/tahun-ajaran/TahunAjaranDetail
 import TahunAjaranImportModal from '../components/tahun-ajaran/TahunAjaranImportModal'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import ConfirmDialog from '../components/app/ConfirmDialog'
 import {
   MasterActionButton,
   MasterDataPage,
@@ -42,6 +43,8 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [pendingSavePayload, setPendingSavePayload] = useState(null)
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false)
   const [notifications, setNotifications] = useState([])
   const perPage = 15
 
@@ -257,9 +260,24 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
       {showExportModal && <SimpleModal title="Export Tahun Ajaran" description="Format yang didukung oleh modul saat ini adalah CSV." onClose={() => setShowExportModal(false)} icon={FileText}><div className="p-5"><button type="button" className="flex w-full items-center gap-3 rounded-xl border-2 border-emerald-600 bg-emerald-50 p-4 text-left dark:bg-emerald-950/30" onClick={exportCsv}><FileSpreadsheet className="h-6 w-6 text-emerald-700" /><span><b className="block text-sm dark:text-white">CSV (.csv)</b><small className="text-slate-500">Data mengikuti pencarian dan filter status aktif.</small></span></button></div><footer className="flex justify-end gap-2 border-t border-slate-100 p-4 dark:border-slate-700"><button onClick={() => setShowExportModal(false)} className="h-11 rounded-xl border border-slate-200 px-4 text-xs font-semibold dark:border-slate-700 dark:text-white">Batal</button><button onClick={exportCsv} className="h-11 rounded-xl bg-emerald-800 px-5 text-xs font-semibold text-white">Export CSV</button></footer></SimpleModal>}
 
       <MasterDeleteDialog isOpen={Boolean(deleteTarget)} onClose={() => setDeleteTarget(null)} onConfirm={() => hapusMutation.mutate(deleteTarget.id)} isLoading={hapusMutation.isPending} title={`Hapus tahun ajaran ${deleteTarget?.name || ''}?`} description="Data akan dipindahkan ke arsip dan dapat dipulihkan kembali." />
-      <TahunAjaranFormModal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} onSubmit={(payload) => selectedForEdit ? ubahMutation.mutate({ id: selectedForEdit.id, payload }) : simpanMutation.mutate(payload)} initialData={selectedForEdit} isSubmitting={simpanMutation.isPending || ubahMutation.isPending} />
+      <TahunAjaranFormModal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} onSubmit={(payload) => { setPendingSavePayload(payload); setShowSaveConfirmModal(true) }} initialData={selectedForEdit} isSubmitting={simpanMutation.isPending || ubahMutation.isPending} />
       <TahunAjaranDetailModal isOpen={Boolean(selectedForDetail)} onClose={() => setSelectedForDetail(null)} data={selectedForDetail} />
       <TahunAjaranImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onImport={(rows) => importMutation.mutate(rows)} isSubmitting={importMutation.isPending} />
+
+      <ConfirmDialog
+        isOpen={showSaveConfirmModal}
+        onClose={() => setShowSaveConfirmModal(false)}
+        onConfirm={() => {
+          if (!pendingSavePayload) return
+          if (selectedForEdit) ubahMutation.mutate({ id: selectedForEdit.id, payload: pendingSavePayload })
+          else simpanMutation.mutate(pendingSavePayload)
+          setShowSaveConfirmModal(false)
+        }}
+        isLoading={simpanMutation.isPending || ubahMutation.isPending}
+        action={selectedForEdit ? 'update' : 'create'}
+        title={selectedForEdit ? 'Konfirmasi Ubah Tahun Ajaran' : 'Konfirmasi Simpan Tahun Ajaran'}
+        message={selectedForEdit ? `Apakah Anda yakin ingin menyimpan perubahan tahun ajaran ${pendingSavePayload?.name}?` : `Apakah Anda yakin ingin menambahkan tahun ajaran baru ${pendingSavePayload?.name}?`}
+      />
 
       <div className="fixed bottom-5 right-4 z-60 grid w-[min(24rem,calc(100vw-2rem))] gap-2" aria-live="polite">
         {notifications.map((item) => <div key={item.id} className={`flex items-start gap-3 rounded-2xl border bg-white p-4 shadow-xl dark:bg-[#1B2433] ${item.tone === 'danger' ? 'border-rose-200' : item.tone === 'warning' ? 'border-amber-200' : 'border-emerald-200'}`}><CheckCircle2 className={`mt-0.5 h-5 w-5 shrink-0 ${item.tone === 'danger' ? 'text-rose-600' : item.tone === 'warning' ? 'text-amber-600' : 'text-emerald-600'}`} /><div className="min-w-0 flex-1"><b className="text-sm text-slate-900 dark:text-white">{item.title}</b><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-300">{item.message}</p></div><button onClick={() => setNotifications((items) => items.filter((n) => n.id !== item.id))} aria-label="Tutup notifikasi"><X className="h-4 w-4 text-slate-400" /></button></div>)}

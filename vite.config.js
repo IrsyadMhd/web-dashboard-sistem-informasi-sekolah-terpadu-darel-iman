@@ -11,12 +11,28 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    warmup: {
+      clientFiles: [
+        './src/main.jsx',
+        './src/routes/index.jsx',
+        './src/layouts/DashboardLayout.jsx',
+      ],
+    },
+  },
   build: {
+    target: 'esnext',
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) {
             return undefined
+          }
+
+          if (id.includes('lucide-react') || id.includes('@tailgrids/icons')) {
+            return 'vendor-icons'
           }
 
           if (id.includes('recharts')) {

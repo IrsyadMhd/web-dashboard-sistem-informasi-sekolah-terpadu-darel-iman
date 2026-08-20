@@ -39,6 +39,9 @@ import PersonIdentityCell from '../components/ui/PersonIdentityCell'
 import { hasAnyRole } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
 import PageContainer from '../components/app/PageContainer'
+import { Printer } from 'lucide-react'
+import { OverlayWrapper, Backdrop } from '../components/tailgrids/core/overlay'
+import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/tailgrids/core/dialog'
 import { Download1, Upload1, Plus as PlusIcon } from '@tailgrids/icons'
 import {
   MasterActionButton,
@@ -121,6 +124,12 @@ export default function StudentsPage() {
   const [showFormModal, setShowFormModal] = useState(false)
   const [showCetakModal, setShowCetakModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [statCardModal, setStatCardModal] = useState({
+    isOpen: false,
+    title: '',
+    filterType: '',
+  })
+  const [statModalSearch, setStatModalSearch] = useState('')
 
   // Import Data States
   const [importFile, setImportFile] = useState(null)
@@ -503,6 +512,195 @@ export default function StudentsPage() {
     })
   }, [formattedStudents, unitFilter, kelasFilter, statusFilter, searchInput])
 
+  // Filtered Items for Stat Card Modal Popup
+  const statModalItems = useMemo(() => {
+    if (!statCardModal.isOpen) return []
+
+    let result = formattedStudents || []
+
+    if (statCardModal.filterType === 'male') {
+      result = result.filter((s) => s.gender === 'Laki-laki')
+    } else if (statCardModal.filterType === 'female') {
+      result = result.filter((s) => s.gender === 'Perempuan')
+    } else if (statCardModal.filterType === 'aktif') {
+      result = result.filter((s) => s.status === 'Aktif')
+    }
+
+    if (statModalSearch.trim()) {
+      const q = statModalSearch.toLowerCase().trim()
+      result = result.filter(
+        (s) =>
+          s.nama.toLowerCase().includes(q) ||
+          s.nis.toLowerCase().includes(q) ||
+          s.nisn.toLowerCase().includes(q) ||
+          s.kelas.toLowerCase().includes(q) ||
+          s.unit.toLowerCase().includes(q)
+      )
+    }
+
+    return result
+  }, [formattedStudents, statCardModal, statModalSearch])
+
+  // Silent In-Page Iframe Print Handler
+  const printContentSilently = (htmlString) => {
+    let iframe = document.getElementById('print-isolation-frame')
+    if (!iframe) {
+      iframe = document.createElement('iframe')
+      iframe.id = 'print-isolation-frame'
+      iframe.style.position = 'fixed'
+      iframe.style.right = '0'
+      iframe.style.bottom = '0'
+      iframe.style.width = '0'
+      iframe.style.height = '0'
+      iframe.style.border = '0'
+      document.body.appendChild(iframe)
+    }
+
+    const doc = iframe.contentWindow.document
+    doc.open()
+    doc.write(htmlString)
+    doc.close()
+
+    setTimeout(() => {
+      iframe.contentWindow.focus()
+      iframe.contentWindow.print()
+    }, 250)
+  }
+
+  const handlePrintMainTable = () => {
+    const currentDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    const unitName = rawUnits?.find((u) => String(u.id) === String(unitFilter))?.name || (unitFilter || 'Semua Unit')
+    const kelasName = rawClasses?.find((k) => String(k.id) === String(kelasFilter))?.name || (kelasFilter ? `Kelas ${kelasFilter}` : '')
+    const filterInfo = kelasName ? ` | Kelas: ${kelasName}` : ''
+
+    const rowsHtml = filteredStudents.map((std) => {
+      const nisNisn = `NIS: ${std.nis} / NISN: ${std.nisn}`
+      return `
+        <tr>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold;">
+            ${std.nama}<br/>
+            <span style="font-size: 8pt; color: #64748b; font-family: monospace;">${nisNisn}</span>
+          </td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${std.unit}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${std.kelas}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">${std.gender}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: ${std.status === 'Aktif' ? '#047857' : '#dc2626'};">${std.status}</td>
+        </tr>
+      `
+    }).join('')
+
+    printContentSilently(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Laporan Direktori Data Siswa SIT</title>
+          <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            body { font-family: system-ui, -apple-system, sans-serif; font-size: 9pt; color: #0f172a; margin: 0; padding: 10px; }
+            .kop { border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
+            .kop h1 { font-size: 14pt; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; }
+            .kop p { font-size: 9.5pt; margin: 3px 0 0 0; color: #334155; font-weight: 600; }
+            .meta { display: flex; justify-content: space-between; font-size: 8.5pt; color: #475569; margin-top: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8.5pt; }
+            th { background-color: #0E5C44; color: #ffffff; padding: 7px 8px; font-size: 8.5pt; text-align: left; border: 1px solid #0E5C44; font-weight: bold; }
+            td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: middle; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+          </style>
+        </head>
+        <body>
+          <div class="kop">
+            <h1>LAPORAN DIREKTORI & DATA SISWA SIT</h1>
+            <p>Sekolah Islam Terpadu — Unit: ${unitName}${filterInfo}</p>
+            <div class="meta">
+              <span>Tanggal Cetak: ${currentDate}</span>
+              <span>Total Data Terfilter: ${filteredStudents.length} Siswa</span>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%;">NIS / NISN & Nama Siswa</th>
+                <th style="width: 25%;">Unit Kerja</th>
+                <th style="width: 20%;">Kelas / Rombel</th>
+                <th style="width: 13%; text-align: center;">Jenis Kelamin</th>
+                <th style="width: 12%; text-align: center;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || '<tr><td colSpan="5" style="text-align:center;">Tidak ada data siswa</td></tr>'}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `)
+  }
+
+  const handlePrintStatCardModal = () => {
+    const currentDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    const unitName = rawUnits?.find((u) => String(u.id) === String(unitFilter))?.name || (unitFilter || 'Semua Unit')
+
+    const rowsHtml = statModalItems.map((std) => {
+      const nisNisn = `NIS: ${std.nis} / NISN: ${std.nisn}`
+      return `
+        <tr>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold;">
+            ${std.nama}<br/>
+            <span style="font-size: 8pt; color: #64748b; font-family: monospace;">${nisNisn}</span>
+          </td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${std.unit}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${std.kelas}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">${std.gender}</td>
+          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: ${std.status === 'Aktif' ? '#047857' : '#dc2626'};">${std.status}</td>
+        </tr>
+      `
+    }).join('')
+
+    printContentSilently(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${statCardModal.title || 'Laporan Detail Statistik Siswa'}</title>
+          <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            body { font-family: system-ui, -apple-system, sans-serif; font-size: 9pt; color: #0f172a; margin: 0; padding: 10px; }
+            .kop { border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
+            .kop h1 { font-size: 13pt; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; }
+            .kop p { font-size: 9pt; margin: 3px 0 0 0; color: #334155; font-weight: 600; }
+            .meta { display: flex; justify-content: space-between; font-size: 8.5pt; color: #475569; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8.5pt; }
+            th { background-color: #0E5C44; color: #ffffff; padding: 7px 8px; font-size: 8.5pt; text-align: left; border: 1px solid #0E5C44; font-weight: bold; }
+            td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: middle; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+          </style>
+        </head>
+        <body>
+          <div class="kop">
+            <h1>${(statCardModal.title || 'LAPORAN DETAIL STATISTIK SISWA SIT').toUpperCase()}</h1>
+            <p>Sekolah Islam Terpadu — Unit: ${unitName}</p>
+            <div class="meta">
+              <span>Tanggal Cetak: ${currentDate}</span>
+              <span>Total Terfilter: ${statModalItems.length} Siswa</span>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 30%;">NIS / NISN & Nama Siswa</th>
+                <th style="width: 25%;">Unit Kerja</th>
+                <th style="width: 20%;">Kelas / Rombel</th>
+                <th style="width: 13%; text-align: center;">Jenis Kelamin</th>
+                <th style="width: 12%; text-align: center;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || '<tr><td colSpan="5" style="text-align:center;">Tidak ada data siswa</td></tr>'}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `)
+  }
+
   // Pagination
   const totalPages = Math.max(1, studentPagination.lastPage)
   const paginatedStudents = filteredStudents
@@ -724,7 +922,20 @@ export default function StudentsPage() {
 
         {/* Quick Summary Cards */}
         <MasterStatsGrid className="education-unit-kpis">
-          <MasterStatCard loading={isSummaryLoading} icon={FaUserGraduate} label="Total Siswa" value={studentStats.total_siswa ?? 0} description="Terdaftar di sistem" variant="success" delay={40} />
+          <MasterStatCard
+            loading={isSummaryLoading}
+            icon={FaUserGraduate}
+            label="Total Siswa"
+            value={studentStats.total_siswa ?? 0}
+            description="Terdaftar di sistem"
+            variant="success"
+            delay={40}
+            onClick={() => {
+              setStatCardModal({ isOpen: true, title: 'Detail Data: Total Siswa', filterType: 'all' })
+              setStatModalSearch('')
+            }}
+            active={statCardModal.isOpen && statCardModal.filterType === 'all'}
+          />
           <MasterStatCard
             icon={FaMale}
             label="Siswa Laki-laki"
@@ -733,6 +944,11 @@ export default function StudentsPage() {
             description="Berdasarkan data siswa"
             variant="info"
             delay={80}
+            onClick={() => {
+              setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Laki-laki', filterType: 'male' })
+              setStatModalSearch('')
+            }}
+            active={statCardModal.isOpen && statCardModal.filterType === 'male'}
           />
           <MasterStatCard
             icon={FaFemale}
@@ -742,6 +958,11 @@ export default function StudentsPage() {
             description="Berdasarkan data siswa"
             variant="danger"
             delay={120}
+            onClick={() => {
+              setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Perempuan', filterType: 'female' })
+              setStatModalSearch('')
+            }}
+            active={statCardModal.isOpen && statCardModal.filterType === 'female'}
           />
           <MasterStatCard
             icon={FaCheckCircle}
@@ -751,6 +972,11 @@ export default function StudentsPage() {
             description="Berstatus aktif"
             variant="warning"
             delay={160}
+            onClick={() => {
+              setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Status Aktif', filterType: 'aktif' })
+              setStatModalSearch('')
+            }}
+            active={statCardModal.isOpen && statCardModal.filterType === 'aktif'}
           />
         </MasterStatsGrid>
 
@@ -822,6 +1048,23 @@ export default function StudentsPage() {
                   </div>
                 </div>
               )}
+
+              {/* Cetak Datatable Button - Soft Pastel Indigo */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Cetak Data Laporan (Print)"
+                  aria-label="Cetak Data Laporan"
+                  onClick={handlePrintMainTable}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-[#E0E7FF] text-[#4338CA] hover:bg-[#C7D2FE] dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                >
+                  <Printer className="size-5" />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Cetak Data (Print)
+                </div>
+              </div>
 
               {/* Tambah Button (Soft Emerald Squircle) */}
               {canCreateStudent && (
@@ -1373,6 +1616,117 @@ export default function StudentsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Modal Detail Data Statistik Siswa (ERP Stat Cards Popup) */}
+        {statCardModal.isOpen && (
+          <OverlayWrapper
+            isOpen={statCardModal.isOpen}
+            onOpenChange={(open) => {
+              if (!open) setStatCardModal((prev) => ({ ...prev, isOpen: false }))
+            }}
+            isDismissable
+          >
+            <Backdrop isOpen={statCardModal.isOpen} />
+            <Dialog className="max-w-4xl w-full p-6 space-y-5">
+              <DialogHeader className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <DialogTitle className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wide">
+                    {statCardModal.title}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Daftar rinci siswa terfilter berdasarkan statistik
+                  </DialogDescription>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="relative flex-1 max-w-sm">
+                    <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={statModalSearch}
+                      onChange={(e) => setStatModalSearch(e.target.value)}
+                      placeholder="Cari nama, NIS, NISN, atau kelas..."
+                      className="w-full pl-9 pr-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    Total: {statModalItems.length} Siswa
+                  </span>
+                </div>
+
+                <div className="max-h-96 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left text-xs">
+                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th className="p-3">Nama Siswa & NIS/NISN</th>
+                        <th className="p-3">Unit Kerja</th>
+                        <th className="p-3">Kelas</th>
+                        <th className="p-3 text-center">Jenis Kelamin</th>
+                        <th className="p-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {statModalItems.length > 0 ? (
+                        statModalItems.map((std) => (
+                          <tr key={std.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                            <td className="p-3">
+                              <div className="flex items-center gap-3">
+                                <PersonAvatar src={std.foto} name={std.nama} size="sm" />
+                                <div>
+                                  <p className="font-bold text-slate-900 dark:text-white">{std.nama}</p>
+                                  <p className="font-mono text-[10px] text-slate-400">NIS: {std.nis} | NISN: {std.nisn}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-3 font-semibold text-emerald-700 dark:text-emerald-400">{std.unit}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-300 font-semibold">{std.kelas}</td>
+                            <td className="p-3 text-center text-slate-600 dark:text-slate-300">{std.gender}</td>
+                            <td className="p-3 text-center">
+                              <AppBadge variant={std.status === 'Aktif' ? 'success' : 'danger'} dot>
+                                {std.status}
+                              </AppBadge>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">
+                            Data siswa tidak ditemukan.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <DialogFooter className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
+                <Button
+                  variant="primary"
+                  appearance="fill"
+                  size="sm"
+                  onClick={handlePrintStatCardModal}
+                  className="flex items-center gap-1.5 font-bold cursor-pointer"
+                >
+                  <Printer className="size-4" />
+                  Cetak Tabel Popup
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  appearance="outline"
+                  size="sm"
+                  onClick={() => setStatCardModal((prev) => ({ ...prev, isOpen: false }))}
+                  className="font-semibold"
+                >
+                  Tutup
+                </Button>
+              </DialogFooter>
+            </Dialog>
+          </OverlayWrapper>
         )}
       </MasterDataPage>
     </PageContainer>

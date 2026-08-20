@@ -13,6 +13,10 @@ import { BsQrCode } from 'react-icons/bs'
 import { authService } from '../../services/authService'
 import { useAuthStore } from '../../stores/authStore'
 import { usePengaturanStore } from '../../stores/pengaturanStore'
+import { Button } from '@/components/tailgrids/core/button'
+import { Spinner } from '@/components/tailgrids/core/spinner'
+import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/tailgrids/core/alert'
+import { showAuthPopup } from '../ui/AuthPopup'
 
 export default function LoginCard({ onNavigate, onLoginSuccess }) {
   const setSession = useAuthStore((state) => state.setSession)
@@ -29,6 +33,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [sessionNotice, setSessionNotice] = useState('')
+  const [successNotice, setSuccessNotice] = useState(null)
   const [workspaceOptions, setWorkspaceOptions] = useState([])
 
   useEffect(() => {
@@ -130,10 +135,20 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
     }
   }, [showQrModal])
 
+  const getRoleDisplayName = (user) => {
+    if (!user) return 'Pengguna'
+    if (Array.isArray(user.roles) && user.roles.length > 0) {
+      return user.roles.join(', ')
+    }
+    if (user.role) return user.role
+    return 'Pengguna'
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccessNotice(null)
     setWorkspaceOptions([])
 
     try {
@@ -144,12 +159,31 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
       })
 
       if (!result.token || !result.user) throw new Error('Respons autentikasi tidak valid.')
+
+      const roleName = getRoleDisplayName(result.user)
+      const userName = result.user?.name || result.user?.nama || form.identifier
+
+      setSuccessNotice({
+        title: 'Autentikasi Berhasil!',
+        description: `Selamat datang, ${userName}! Anda berhasil masuk ke sistem. Mengalihkan...`,
+      })
+
       setSession({ token: result.token, user: result.user, loginTime: new Date().toISOString() })
-      if (onLoginSuccess) onLoginSuccess(result)
-      else if (onNavigate) onNavigate(6)
+
+      showAuthPopup({
+        type: 'success',
+        title: 'Berhasil Masuk!',
+        message: `Selamat datang, ${userName}! Anda berhasil masuk ke sistem.`,
+      })
+
+      setTimeout(() => {
+        if (onLoginSuccess) onLoginSuccess(result)
+        else if (onNavigate) onNavigate(6)
+      }, 450)
     } catch (err) {
       if (err?.response?.status === 409 && err.response.data?.workspace_chooser) {
         setWorkspaceOptions(err.response.data.workspaces || [])
+        setLoading(false)
         return
       }
       const msg =
@@ -157,7 +191,11 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
         err?.response?.data?.errors?.identifier?.[0] ||
         'Username, NIP, NIS, NIK, atau password tidak valid.'
       setError(msg)
-    } finally {
+      showAuthPopup({
+        type: 'error',
+        title: 'Username / Password Salah',
+        message: msg,
+      })
       setLoading(false)
     }
   }
@@ -165,6 +203,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
   const handleWorkspaceLogin = async (portalType) => {
     setLoading(true)
     setError('')
+    setSuccessNotice(null)
 
     try {
       const result = await authService.loginParentStudent({
@@ -175,13 +214,30 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
       })
 
       if (!result.token || !result.user) throw new Error('Respons autentikasi tidak valid.')
+
+      const roleName = getRoleDisplayName(result.user)
+      const userName = result.user?.name || result.user?.nama || form.identifier
+
+      setSuccessNotice({
+        title: 'Akses Berhasil!',
+        description: `Selamat datang, ${userName}! Anda berhasil masuk ke portal. Mengalihkan...`,
+      })
+
       setSession({ token: result.token, user: result.user, loginTime: new Date().toISOString() })
       setWorkspaceOptions([])
-      if (onLoginSuccess) onLoginSuccess(result)
-      else if (onNavigate) onNavigate(6)
+
+      showAuthPopup({
+        type: 'success',
+        title: 'Berhasil Masuk!',
+        message: `Selamat datang, ${userName}! Anda berhasil masuk ke portal.`,
+      })
+
+      setTimeout(() => {
+        if (onLoginSuccess) onLoginSuccess(result)
+        else if (onNavigate) onNavigate(6)
+      }, 450)
     } catch (err) {
       setError(err?.response?.data?.message || 'Kredensial atau workspace tidak valid.')
-    } finally {
       setLoading(false)
     }
   }
@@ -191,6 +247,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
     if (!qrTokenInput.trim()) return
     setQrLoading(true)
     setQrError('')
+    setSuccessNotice(null)
 
     try {
       const result = await authService.loginEmployeeQr({
@@ -199,19 +256,36 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
       })
 
       if (!result.token || !result.user) throw new Error('Respons autentikasi tidak valid.')
+
+      const roleName = getRoleDisplayName(result.user)
+      const userName = result.user?.name || result.user?.nama || 'Pegawai'
+
+      setSuccessNotice({
+        title: 'Verifikasi QR Code Berhasil!',
+        description: `ID Card Pegawai atas nama ${userName} berhasil diverifikasi. Mengalihkan ke sistem...`,
+      })
+
       setSession({
         token: result.token,
         user: result.user,
         loginTime: new Date().toISOString(),
       })
 
+      showAuthPopup({
+        type: 'success',
+        title: 'Verifikasi QR Berhasil!',
+        message: `ID Card atas nama ${userName} berhasil diverifikasi.`,
+      })
+
       setShowQrModal(false)
-       if (onLoginSuccess) onLoginSuccess(result)
-      else if (onNavigate) onNavigate(6)
+
+      setTimeout(() => {
+        if (onLoginSuccess) onLoginSuccess(result)
+        else if (onNavigate) onNavigate(6)
+      }, 450)
     } catch (err) {
       const msg = err?.response?.data?.message || 'QR Code tidak valid, kedaluwarsa, atau telah dicabut.'
       setQrError(msg)
-    } finally {
       setQrLoading(false)
     }
   }
@@ -260,20 +334,37 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
 
         {/* Form Input */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Session Notice Banner */}
-          {sessionNotice && (
-            <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 text-xs font-medium animate-fade-in">
-              <FiAlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>{sessionNotice}</span>
-            </div>
+          {/* Success Notice Banner with TailGrids Alert */}
+          {successNotice && (
+            <Alert status="success" className="animate-fade-in">
+              <AlertIndicator />
+              <AlertContent>
+                <AlertTitle>{successNotice.title}</AlertTitle>
+                <AlertDescription>{successNotice.description}</AlertDescription>
+              </AlertContent>
+            </Alert>
           )}
 
-          {/* Error Banner */}
-          {error && (
-            <div className="flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-800 rounded-xl p-3 text-xs font-medium animate-fade-in">
-              <FiAlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-              <span>{error}</span>
-            </div>
+          {/* Session Notice Banner with TailGrids Alert */}
+          {sessionNotice && !successNotice && (
+            <Alert status="warning" className="animate-fade-in">
+              <AlertIndicator />
+              <AlertContent>
+                <AlertTitle>Pemberitahuan Sesi</AlertTitle>
+                <AlertDescription>{sessionNotice}</AlertDescription>
+              </AlertContent>
+            </Alert>
+          )}
+
+          {/* Error Banner with TailGrids Alert */}
+          {error && !successNotice && (
+            <Alert status="error" className="animate-fade-in">
+              <AlertIndicator />
+              <AlertContent>
+                <AlertTitle>Gagal Autentikasi</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </AlertContent>
+            </Alert>
           )}
 
           {workspaceOptions.length > 0 && (
@@ -282,15 +373,19 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
               <p className="mt-1">Pilih workspace setelah password berhasil diverifikasi.</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 {workspaceOptions.map((workspace) => (
-                  <button
+                  <Button
                     key={workspace.portal_type}
                     type="button"
                     onClick={() => handleWorkspaceLogin(workspace.portal_type)}
-                    disabled={loading}
-                    className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-left font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+                    disabled={loading || Boolean(successNotice)}
+                    pending={loading || Boolean(successNotice)}
+                    variant="primary"
+                    appearance="outline"
+                    size="sm"
+                    className="w-full text-left justify-start font-semibold text-amber-900 border-amber-300 hover:bg-amber-100"
                   >
                     Masuk sebagai {workspace.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -363,24 +458,22 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             </button>
           </div>
 
-          {/* Submit Button */}
-          <button
+          {/* Submit Button with TailGrids Button & Spinner */}
+          <Button
             type="submit"
-            disabled={loading}
-            className="w-full py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all flex items-center justify-center gap-2"
+            disabled={loading || Boolean(successNotice)}
+            pending={loading || Boolean(successNotice)}
+            variant="primary"
+            appearance="fill"
+            size="md"
+            className="w-full h-11 font-semibold shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all"
           >
-            {loading ? (
-              <>
-                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Memproses Autentikasi...
-              </>
+            {(loading || successNotice) ? (
+              <span>{successNotice ? 'Berhasil! Mengalihkan Sesi...' : 'Memverifikasi Hak Akses...'}</span>
             ) : (
               'Masuk ke Sistem'
             )}
-          </button>
+          </Button>
         </form>
 
         {/* Alternative QR Code Button */}
@@ -510,13 +603,24 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
                 >
                   Batal
                 </button>
-                <button
+                <Button
                   type="submit"
-                  disabled={qrLoading || !qrTokenInput.trim()}
-                  className="flex-1 py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+                  disabled={qrLoading || !qrTokenInput.trim() || Boolean(successNotice)}
+                  pending={qrLoading || Boolean(successNotice)}
+                  variant="primary"
+                  appearance="fill"
+                  size="sm"
+                  className="flex-1 font-semibold shadow-sm"
                 >
-                  {qrLoading ? 'Memvalidasi...' : 'Verifikasi QR'}
-                </button>
+                  {(qrLoading || successNotice) ? (
+                    <>
+                      <Spinner size="xs" />
+                      <span>{successNotice ? 'Berhasil...' : 'Memverifikasi...'}</span>
+                    </>
+                  ) : (
+                    'Verifikasi QR'
+                  )}
+                </Button>
               </div>
             </form>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   LayoutDashboard,
   Database,
@@ -27,6 +28,9 @@ import {
   BookMarked,
   Users,
   Building2,
+  CalendarDays,
+  ShieldCheck,
+  RefreshCw,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { authService } from '../services/authService'
@@ -53,6 +57,8 @@ import {
   DropdownMenuTrigger,
 } from '../components/tailgrids/core/dropdown'
 import { UserCircle1, Gear1, Exit, Bell1 } from '@tailgrids/icons'
+import AuthToast, { showAuthToast } from '../components/ui/AuthToast'
+import AuthPopup from '../components/ui/AuthPopup'
 
 export default function DashboardLayout() {
   const location = useLocation()
@@ -71,7 +77,10 @@ export default function DashboardLayout() {
   const roles = Array.isArray(user?.roles) ? user.roles : []
   const permissions = Array.isArray(user?.permissions) ? user.permissions : []
   const hasRole = (...names) => names.some((name) => roles.some((role) => String(role).toLowerCase().replace(/[\s_-]+/g, '') === String(name).toLowerCase().replace(/[\s_-]+/g, '')))
-  const can = (...names) => hasRole('Super Admin') || names.some((name) => permissions.includes(name))
+  const hasFullMenuAccess = hasRole('Super Admin', 'Admin')
+  const can = (...names) => hasFullMenuAccess || names.some((name) => permissions.includes(name))
+  const isTataUsaha = hasRole('Tata Usaha', 'TU', 'tu', 'tata_usaha')
+  const isKepalaSekolah = hasRole('Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek')
   const canViewEducationUnits = can('unit.view', 'unit.view_all', 'foundation.unit.view', 'sistem.master_data')
   const canViewStudents = can('student.view', 'student.view_all', 'kesiswaan.data_lengkap_siswa')
   const canCreateStudent = can('student.create')
@@ -94,6 +103,30 @@ export default function DashboardLayout() {
     if (saved === 'dark') return true
     return false // Default to Light Mode
   })
+
+  const [isResettingCache, setIsResettingCache] = useState(false)
+
+  const handleResetCache = () => {
+    setIsResettingCache(true)
+    try {
+      const keysToKeep = ['token', 'user', 'school_erp_user_session', 'theme']
+      Object.keys(localStorage).forEach((key) => {
+        if (!keysToKeep.includes(key)) {
+          localStorage.removeItem(key)
+        }
+      })
+      sessionStorage.clear()
+      showAuthToast('Cache aplikasi & data berhasil diatur ulang!', 'success')
+
+      setTimeout(() => {
+        setIsResettingCache(false)
+        window.location.reload()
+      }, 600)
+    } catch {
+      setIsResettingCache(false)
+      showAuthToast('Gagal mengatur ulang cache', 'error')
+    }
+  }
 
   const [dbUnits, setDbUnits] = useState([])
   const [serverNow, setServerNow] = useState(null)
@@ -160,10 +193,12 @@ export default function DashboardLayout() {
     }
   }, [serverTimeEndpoint])
 
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const profileDropdownRef = useRef(null)
   const unitDropdownRef = useRef(null)
   const themeDropdownRef = useRef(null)
   const roleAccessRef = useRef(null)
+  const quickCreateRef = useRef(null)
 
   // Sync dark mode class on html & body
   useEffect(() => {
@@ -235,11 +270,11 @@ export default function DashboardLayout() {
       if (unitDropdownRef.current && !unitDropdownRef.current.contains(e.target)) {
         setUnitDropdownOpen(false)
       }
-      if (themeDropdownRef.current && !themeDropdownRef.current.contains(e.target)) {
-        setThemeMenuOpen(false)
-      }
       if (roleAccessRef.current && !roleAccessRef.current.contains(e.target)) {
         setRoleAccessOpen(false)
+      }
+      if (quickCreateRef.current && !quickCreateRef.current.contains(e.target)) {
+        setQuickCreateOpen(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -268,6 +303,12 @@ export default function DashboardLayout() {
     } finally {
       clearSession()
       localStorage.removeItem('school_erp_superadmin_session')
+      // Kirim sinyal toast ke halaman login via sessionStorage
+      sessionStorage.setItem('auth_toast', JSON.stringify({
+        type: 'logout',
+        title: 'Berhasil Keluar',
+        message: `Anda telah keluar dari sistem. Sampai jumpa, ${user?.name || 'Pengguna'}!`,
+      }))
       window.location.href = '/masuk'
     }
   }
@@ -338,24 +379,18 @@ export default function DashboardLayout() {
   ]
 
   const attendanceSubmenus = [
-    ...(hasRole('Wali Kelas') && can('attendance.homeroom.dashboard', 'homeroom_attendance.dashboard', 'homeroom_attendance.view') ? [
+    ...((hasFullMenuAccess || isTataUsaha || hasRole('Wali Kelas', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan')) && (isTataUsaha || hasRole('Wali Kelas', 'Tata Usaha', 'TU', 'tata_usaha', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan') || can('attendance.homeroom.dashboard', 'homeroom_attendance.dashboard', 'homeroom_attendance.view', 'attendance.view', 'kehadiran.siswa.monitoring')) ? [
       { to: '/absensi/dashboard-wali-kelas', label: 'Dashboard Wali Kelas' },
-      { to: '/absensi/rekap-kehadiran', label: 'Rekap Kehadiran' },
-      { to: '/absensi/verifikasi-izin', label: 'Verifikasi Izin/Sakit' },
-      { to: '/absensi/koreksi', label: 'Koreksi Presensi' },
-      { to: '/absensi/tindak-lanjut', label: 'Tindak Lanjut Siswa' },
+      { to: '/absensi/rekap-kehadiran', label: 'Manajemen Kehadiran Siswa' },
       { to: '/absensi/laporan', label: 'Laporan Rombel' },
     ] : []),
     // Submenu presensi guru telah dikonsolidasikan ke dalam Portal Guru -> Workspace Pembelajaran Guru
-    ...(isStudentRole(roles) && can('attendance.student.view_own', 'student_attendance.view_own') ? [
+    ...((hasFullMenuAccess || isStudentRole(roles)) && can('attendance.student.view_own', 'student_attendance.view_own') ? [
       { to: '/absensi/kehadiran-saya', label: 'Kehadiran Saya' },
       { to: '/absensi/riwayat-saya', label: 'Riwayat Kehadiran' },
     ] : []),
-    ...(can('teacher_monitoring.view') ? [
+    ...(hasFullMenuAccess || can('teacher_monitoring.view') ? [
       { to: '/dashboard/pemantauan', label: 'Monitoring Guru Mengajar' },
-    ] : []),
-    ...(can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') ? [
-      { to: '/dashboard/monitoring-divisi', label: 'Input Monitoring Divisi' },
     ] : []),
     ...(!hasRole('Guru') && !hasRole('Guru Tahfizh') && !hasRole('Wali Kelas') && !hasRole('Siswa') ? [
       { to: '/dashboard/absensi-gerbang', label: 'Absensi Gerbang' },
@@ -372,7 +407,7 @@ export default function DashboardLayout() {
   ].filter((item, index, list) => list.findIndex((entry) => entry.to === item.to) === index)
 
   const isRestrictedFoundationOrPrincipal =
-    !hasRole('Super Admin', 'superadmin', 'SuperAdmin') &&
+    !hasFullMenuAccess &&
     hasRole(
       'Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus',
       'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek'
@@ -390,10 +425,10 @@ export default function DashboardLayout() {
   const setoranTahfizhMenuLabel = isPesantrenUnit ? 'Setoran Tahfizh Santri' : 'Setoran Tahfizh Siswa'
 
   const bolehBukaMenu = (to) => {
-    if (hasRole('Super Admin')) return true
+    if (hasFullMenuAccess) return true
 
-    if (to.startsWith('/portal-siswa')) return isStudentRole(roles)
-    if (to.startsWith('/portal-orangtua')) return isParentRole(roles)
+    if (to.startsWith('/portal-siswa')) return isStudentRole(roles) || isParentRole(roles)
+    if (to.startsWith('/portal-orangtua')) return isParentRole(roles) || isStudentRole(roles)
     if (to.startsWith('/portal-guru')) {
       if (isRestrictedFoundationOrPrincipal) return false
       return isTeacherRole(roles)
@@ -404,7 +439,10 @@ export default function DashboardLayout() {
     }
     if (to === '/dashboard') return can('dashboard.view')
     if (to.startsWith('/dashboard/pemantauan')) return can('dashboard.pemantauan.lihat', 'teacher_monitoring.view')
-    if (to.startsWith('/dashboard/monitoring-divisi')) return can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat')
+    if (to.startsWith('/dashboard/monitoring-divisi')) {
+      return can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') ||
+             hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Divisi')
+    }
     // Data pribadi hanya memberi akses ke profil siswa sendiri di portal,
     // bukan ke master data seluruh siswa.
     if (to === '/dashboard/students') return canViewStudents
@@ -427,7 +465,10 @@ export default function DashboardLayout() {
     if (to.includes('/master-tahun-ajaran')) {
       return can('master.view', 'sistem.master_data')
     }
-    if (to.includes('/chat-pegawai')) return can('chat.conversation.view', 'chat.manage')
+    if (to.includes('/chat-pegawai')) {
+      if ((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess) return false
+      return can('chat.conversation.view', 'chat.manage')
+    }
     if (to.includes('/akademik/nilai-rapor') || to.includes('/lms/penilaian') || to.includes('/lms/rapor')) {
       if (hasRole(
         'Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan',
@@ -469,7 +510,7 @@ export default function DashboardLayout() {
     if (to.includes('/lms/bank-soal')) return can('pembelajaran.bank_soal')
     if (to.includes('/jadwal-pelajaran')) return can('pembelajaran.jadwal_pelajaran')
     if (to.includes('/master-kurikulum')) return can('pembelajaran.kurikulum.view')
-    if (to === '/dashboard/mutabaah/rekap') return can('mutabaah.recap.view', 'mutabaah.report.view', 'mutabaah.report.export')
+    if (to === '/dashboard/mutabaah/rekap') return !isTataUsaha && can('mutabaah.recap.view', 'mutabaah.report.view', 'mutabaah.report.export')
     if (to === '/dashboard/tahfizh' || to.startsWith('/dashboard/tahfizh')) {
       return (
         hasRole(
@@ -488,25 +529,39 @@ export default function DashboardLayout() {
         )
       )
     }
+    if (to === '/dashboard/absensi-pembelajaran' || to.startsWith('/dashboard/absensi-pembelajaran') || to.includes('/absensi-pembelajaran')) {
+      return (
+        hasRole('Super Admin', 'Admin', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Waka Kurikulum', 'Waka Kesiswaan', 'Guru', 'Wali Kelas') ||
+        can('lesson_attendance.view', 'attendance.view', 'kehadiran.siswa.monitoring')
+      )
+    }
+    if (to === '/dashboard/absensi-gerbang' || to.startsWith('/dashboard/absensi-gerbang') || to.includes('/absensi-gerbang')) {
+      return (
+        hasRole('Super Admin', 'Admin', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Waka Kesiswaan', 'Guru', 'Wali Kelas') ||
+        can('attendance.view', 'gate_attendance.view', 'kehadiran.siswa.absensi_digital', 'kehadiran.siswa.monitoring')
+      )
+    }
     if (to === '/dashboard/absensi-ibadah-siswa' || to.startsWith('/dashboard/absensi-ibadah-siswa')) {
       return (
         hasRole(
-          'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah',
+          'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
+          'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan',
           'Guru', 'guru', 'Wali Kelas', 'wali_kelas',
           'Super Admin', 'Admin', 'Tata Usaha', 'TU', 'Operator',
-          'Yayasan', 'Divisi Pendidikan'
+          'Yayasan'
         ) ||
-        can('student_worship_attendance.view', 'student_worship_attendance.manage', 'worship_attendance.view')
+        can('student_worship_attendance.view', 'student_worship_attendance.manage', 'worship_attendance.view', 'kehadiran.siswa.monitoring')
       )
     }
     if (to === '/dashboard/absensi-ibadah' || to.startsWith('/dashboard/absensi-ibadah') || to.includes('/worship')) {
       return (
         hasRole(
-          'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah',
+          'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
+          'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan',
           'Musyrif', 'Musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing',
-          'Super Admin', 'Admin', 'Yayasan', 'Divisi Pendidikan'
+          'Super Admin', 'Admin', 'Yayasan', 'Tata Usaha', 'TU', 'tata_usaha'
         ) ||
-        can('worship_attendance.view', 'worship_attendance.verify')
+        can('worship_attendance.view', 'worship_attendance.verify', 'kehadiran.siswa.monitoring')
       )
     }
     if (to.includes('/monitoring-tahfizh-ibadah') || to.includes('/mutabaah')) {
@@ -515,21 +570,41 @@ export default function DashboardLayout() {
         can('mutabaah.view', 'mutabaah.input', 'mutabaah.agenda.manage', 'sistem.master_data', 'mutabaah.dashboard.view', 'mutabaah.recap.view', 'mutabaah.daily.view', 'mutabaah.agenda.view', 'mutabaah.template.view', 'mutabaah.supervisor.view', 'mutabaah.parent.monitor', 'divisi.monitoring')
       )
     }
-    if (to.includes('/laporan-absensi')) return can('kehadiran.siswa.monitoring', 'kehadiran.siswa.rekap_keterlambatan', 'kehadiran.siswa.rekap_ketidakhadiran')
-    if (to.includes('/rekap-absensi-gerbang')) return can('kehadiran.siswa.monitoring', 'gate_attendance.view')
-    if (to.includes('/rekap-absensi-ibadah')) return can('worship_attendance.view', 'worship_attendance.verify')
+    if (to.includes('/laporan-absensi')) {
+      return (
+        hasRole('Super Admin', 'Admin', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan') ||
+        can('kehadiran.siswa.monitoring', 'kehadiran.siswa.rekap_keterlambatan', 'kehadiran.siswa.rekap_ketidakhadiran', 'report.attendance.view', 'report.view')
+      )
+    }
+    if (to.includes('/rekap-absensi-gerbang')) {
+      return (
+        hasRole('Super Admin', 'Admin', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan') ||
+        can('kehadiran.siswa.monitoring', 'gate_attendance.view', 'report.attendance.view')
+      )
+    }
+    if (to.includes('/rekap-absensi-ibadah')) {
+      return (
+        hasRole('Super Admin', 'Admin', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan') ||
+        can('worship_attendance.view', 'worship_attendance.verify', 'report.attendance.view', 'kehadiran.siswa.monitoring')
+      )
+    }
     if (to.includes('/laporan-siswa')) return can('kesiswaan.rekap_prestasi', 'kesiswaan.kelulusan_per_unit', 'kesiswaan.kelulusan_per_tahun')
-    if (to.includes('/laporan-alumni')) return can('kesiswaan.alumni_tujuan_lanjut')
+    if (to.includes('/laporan-alumni')) return can('kesiswaan.alumni_tujuan_lanjut', 'alumni.view', 'foundation.alumni.view', 'report.view', 'kesiswaan.kelulusan_per_tahun')
     if (to.startsWith('/absensi') || to.includes('/attendance') || to.includes('/lms/presensi')) {
-      return can(
-        'kehadiran.siswa.absensi_digital',
-        'kehadiran.siswa.barcode_kartu',
-        'lesson_attendance.view',
-        'lesson_attendance.view_own',
-        'student_attendance.view_own',
+      return (
+        hasRole('Super Admin', 'Admin', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Wali Kelas', 'Guru') ||
+        can(
+          'kehadiran.siswa.absensi_digital',
+          'kehadiran.siswa.barcode_kartu',
+          'kehadiran.siswa.monitoring',
+          'lesson_attendance.view',
+          'lesson_attendance.view_own',
+          'student_attendance.view_own',
+        )
       )
     }
     if (to.startsWith('/dashboard/yayasan')) {
+      if (isDivisiPendidikanOnly) return false
       return (
         hasRole('Super Admin', 'Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan') ||
         can(
@@ -548,21 +623,63 @@ export default function DashboardLayout() {
         )
       )
     }
+    if (to === '/dashboard/berita-informasi' || to.includes('/berita-informasi')) {
+      return (
+        hasRole(
+          'Super Admin', 'Admin', 'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan', 'pengurus_yayasan',
+          'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan',
+          'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'Guru', 'Wali Kelas'
+        ) ||
+        can('foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data')
+      )
+    }
+    if (to.includes('/profil-akun') || to.includes('/profil-saya') || to === '/dashboard/profil-akun') return true
     if (to.includes('/hak-akses')) return can('sistem.hak_akses', 'permission.manage', 'role.manage')
-    if (to.includes('/pengaturan')) return can('sistem.pengaturan', 'setting.manage')
+    if (to.includes('/pengaturan')) {
+      if ((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess && !hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Kepala Sekolah', 'Tata Usaha', 'TU')) {
+        return false
+      }
+      return can('sistem.pengaturan', 'setting.manage', 'dashboard.tata-usaha.view', 'dashboard.operator.view', 'sekolah.informasi_sekolah')
+    }
 
     return can('sistem.master_data')
   }
 
+  const isDivisiPendidikanOnly =
+    hasRole('Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Pengawasan Akademik') &&
+    !hasRole('Super Admin', 'SuperAdmin', 'super_admin', 'Admin', 'admin', 'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan')
+
   const isFoundationUser =
-    !hasRole('Super Admin', 'superadmin', 'SuperAdmin') &&
+    !hasFullMenuAccess &&
     (hasRole('Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan') ||
       can('foundation.dashboard.view'))
+
+  const shouldHideFromTataUsaha = (item, submenu = null) => {
+    if (hasFullMenuAccess || !isTataUsaha) return false
+    if (item.key === 'portal-guru' || item.key === 'mutabaah') return true
+    if (submenu?.to === '/dashboard/mutabaah/rekap') return true
+    return item.key === 'master-data' && ['/dashboard/master-jabatan', '/dashboard/employees'].includes(submenu?.to)
+  }
+
+  const shouldHideFromKepalaSekolah = (item, submenu = null) => {
+    if (hasFullMenuAccess || !isKepalaSekolah) return false
+    if (item.key === 'master-data') return true
+    const to = submenu?.to || item?.to || ''
+    if (
+      to === '/dashboard/students/unit-pendidikan' ||
+      to === '/dashboard/yayasan/unit-pendidikan' ||
+      to === '/dashboard/master/unit-pendidikan' ||
+      to === '/dashboard/master-jenis-unit'
+    ) {
+      return true
+    }
+    return false
+  }
 
   const sidebarMenu = (isFoundationUser ? [
     {
       key: 'dashboard-yayasan',
-      label: 'Dashboard Yayasan',
+      label: isKepalaSekolah ? 'Dashboard Kepala Sekolah' : 'Dashboard Yayasan',
       icon: LayoutDashboard,
       to: '/dashboard/yayasan',
     },
@@ -570,15 +687,23 @@ export default function DashboardLayout() {
       key: 'yayasan-monitoring',
       label: 'Monitoring',
       icon: Building2,
-      submenus: [
+      submenus: isKepalaSekolah ? [
+        { to: '/dashboard/employees', label: 'Pegawai' },
+        { to: '/dashboard/students', label: 'Siswa' },
+        { to: '/dashboard/berita-informasi', label: 'Berita & Pengumuman' },
+        ...(can('teacher_monitoring.view') ? [{ to: '/dashboard/pemantauan', label: 'Monitoring Guru Mengajar' }] : []),
+        ...(hasFullMenuAccess || can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') || hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Divisi') ? [
+          { to: '/dashboard/monitoring-divisi', label: 'Monitoring Divisi' },
+        ] : []),
+      ] : [
         { to: '/dashboard/yayasan/unit-pendidikan', label: 'Unit Pendidikan' },
         { to: '/dashboard/yayasan/pegawai-guru', label: 'Pegawai & Guru' },
         { to: '/dashboard/yayasan/siswa', label: 'Data Siswa' },
-        { to: '/dashboard/yayasan/siswa-baru', label: 'Siswa Baru' },
-        { to: '/dashboard/yayasan/mutasi-siswa', label: 'Mutasi Siswa' },
-        { to: '/dashboard/yayasan/kelulusan-alumni', label: 'Kelulusan & Alumni' },
         { to: '/dashboard/yayasan/informasi-sekolah', label: 'Informasi Sekolah' },
         ...(can('teacher_monitoring.view') ? [{ to: '/dashboard/pemantauan', label: 'Monitoring Guru Mengajar' }] : []),
+        ...(hasFullMenuAccess || can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') || hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Divisi') ? [
+          { to: '/dashboard/monitoring-divisi', label: 'Monitoring Divisi' },
+        ] : []),
       ],
     },
     {
@@ -613,23 +738,32 @@ export default function DashboardLayout() {
     },
     {
       key: 'dashboard-yayasan-menu',
-      label: 'DASHBOARD YAYASAN',
+      label: isKepalaSekolah ? 'DASHBOARD KEPALA SEKOLAH' : 'DASHBOARD YAYASAN',
       icon: Building2,
-      submenus: [
+      submenus: isKepalaSekolah ? [
         { to: '/dashboard/yayasan', label: 'Ringkasan Utama' },
+        ...(hasFullMenuAccess || can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') || hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Divisi') ? [
+          { to: '/dashboard/monitoring-divisi', label: 'Monitoring Divisi' },
+        ] : []),
+        { to: '/dashboard/employees', label: 'Pegawai' },
+        { to: '/dashboard/students', label: 'Siswa' },
+        { to: '/dashboard/berita-informasi', label: 'Berita & Pengumuman' },
+        { to: '/dashboard/yayasan/laporan', label: 'Laporan Lintas Unit' },
+      ] : [
+        { to: '/dashboard/yayasan', label: 'Ringkasan Utama' },
+        ...(hasFullMenuAccess || can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') || hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Divisi') ? [
+          { to: '/dashboard/monitoring-divisi', label: 'Monitoring Divisi' },
+        ] : []),
         { to: '/dashboard/yayasan/unit-pendidikan', label: 'Unit Pendidikan' },
         { to: '/dashboard/yayasan/pegawai-guru', label: 'Pegawai & Guru' },
         { to: '/dashboard/yayasan/siswa', label: 'Data Siswa' },
-        { to: '/dashboard/yayasan/siswa-baru', label: 'Siswa Baru' },
-        { to: '/dashboard/yayasan/mutasi-siswa', label: 'Mutasi Siswa' },
-        { to: '/dashboard/yayasan/kelulusan-alumni', label: 'Kelulusan & Alumni' },
         { to: '/dashboard/yayasan/informasi-sekolah', label: 'Informasi Sekolah' },
         { to: '/dashboard/yayasan/laporan', label: 'Laporan Lintas Unit' },
       ],
     },
     {
       key: 'master-data',
-      label: hasRole('Kepala Sekolah') ? 'MANAJEMEN DATA' : 'MASTER DATA',
+      label: hasFullMenuAccess || hasRole('Kepala Sekolah') ? 'MANAJEMEN DATA' : 'MASTER DATA',
       icon: Database,
       submenus: [
         { to: '/dashboard/students/unit-pendidikan', label: 'Unit Pendidikan' },
@@ -637,6 +771,7 @@ export default function DashboardLayout() {
         { to: '/dashboard/master-jabatan', label: 'Jabatan' },
         { to: '/dashboard/employees', label: 'Pegawai' },
         { to: '/dashboard/students', label: 'Siswa' },
+        { to: '/dashboard/berita-informasi', label: 'Berita & Pengumuman' },
         { to: '/dashboard/master-quran-surah', label: 'Al-Qur’an' },
         { to: '/dashboard/master-jadwal-sholat', label: 'Sholat' },
         { to: '/dashboard/master-doa', label: 'Do’a & Dzikir' },
@@ -668,11 +803,22 @@ export default function DashboardLayout() {
       label: hasRole('Orang Tua') ? 'PORTAL ORANG TUA' : hasRole('Siswa') ? 'PORTAL SISWA' : 'PORTAL ORANG TUA & SISWA',
       icon: Users,
       submenus: [
-        ...(isParentRole(roles) || hasRole('Super Admin', 'Admin') ? [
+         ...(isParentRole(roles) || (hasFullMenuAccess && !isStudentRole(roles)) ? [
           { to: '/portal-orangtua?tab=ringkasan', label: 'Dashboard' },
           { to: '/portal-orangtua?tab=chat', label: 'Chat Guru' },
+          { to: '/portal-orangtua?tab=profile', label: 'Profil & Biodata' },
+          { to: '/portal-orangtua?tab=announcements', label: 'Informasi Sekolah' },
+          { to: '/portal-orangtua?tab=schedules', label: 'Jadwal' },
+          { to: '/portal-orangtua?tab=materials', label: 'Materi' },
+          { to: '/portal-orangtua?tab=assignments', label: 'Tugas' },
+          { to: '/portal-orangtua?tab=tahfizh', label: 'Tahfizh' },
+          { to: '/portal-orangtua?tab=grades', label: 'Nilai' },
+          { to: '/portal-orangtua?tab=student-notes', label: 'Komentar Guru' },
+          { to: '/portal-orangtua?tab=kisi', label: 'Kisi-kisi' },
+          { to: '/portal-orangtua?tab=ujian', label: 'Ujian CBT' },
+          { to: '/portal-orangtua?tab=hasil', label: 'Hasil' },
         ] : []),
-        ...(isStudentRole(roles) ? [
+         ...(isStudentRole(roles) || (hasFullMenuAccess && !isParentRole(roles)) ? [
           { to: '/portal-siswa/profil', label: 'Profil & Biodata' },
           { to: '/portal-siswa/informasi-sekolah', label: 'Informasi Sekolah' },
           { to: '/portal-siswa/jadwal', label: 'Jadwal' },
@@ -761,17 +907,26 @@ export default function DashboardLayout() {
       label: 'PENGATURAN',
       icon: Settings,
       submenus: [
-        { to: '/dashboard/pengaturan', label: 'Profil Sekolah' },
+        { to: '/dashboard/profil-akun', label: 'Profil Saya & Akun' },
+        ...(!(isParentRole(roles) || isStudentRole(roles)) || hasFullMenuAccess || hasRole('Super Admin', 'Admin', 'Tata Usaha', 'TU', 'Kepala Sekolah') ? [
+          { to: '/dashboard/pengaturan', label: 'Profil Sekolah' },
+        ] : []),
         { to: '/dashboard/hak-akses', label: 'Hak Akses' },
-        // { to: '/dashboard/pengaturan?tab=unit', label: 'Pengaturan Unit' },
       ],
     },
   ]).map((item) => (
     item.submenus
-      ? { ...item, submenus: item.submenus.filter((submenu) => bolehBukaMenu(submenu.to)) }
+      ? { ...item, submenus: item.submenus.filter((submenu) => !shouldHideFromTataUsaha(item, submenu) && !shouldHideFromKepalaSekolah(item, submenu) && bolehBukaMenu(submenu.to)) }
       : item
   )).filter((item) => {
-    if (isRestrictedFoundationOrPrincipal && (item.key === 'portal-guru' || item.key === 'musyrif-asrama')) {
+    if (shouldHideFromTataUsaha(item) || shouldHideFromKepalaSekolah(item)) return false
+    if (isDivisiPendidikanOnly && (item.key === 'dashboard-yayasan-menu' || item.key === 'dashboard-yayasan')) {
+      return false
+    }
+    if (
+      (isRestrictedFoundationOrPrincipal || ((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess)) &&
+      (item.key === 'portal-guru' || item.key === 'musyrif-asrama')
+    ) {
       return false
     }
     return item.submenus ? item.submenus.length > 0 : bolehBukaMenu(item.to)
@@ -784,6 +939,20 @@ export default function DashboardLayout() {
   const isSubActive = (to, siblings = [], sectionKey = null) => {
     const target = normalizePath(to)
     const current = normalizePath(location.pathname)
+
+    if (to && to.includes('?')) {
+      const [toPath, toQuery] = to.split('?')
+      if (current === normalizePath(toPath)) {
+        const currentParams = new URLSearchParams(location.search)
+        const targetParams = new URLSearchParams(toQuery)
+        const currentTab = currentParams.get('tab') || 'ringkasan'
+        const targetTab = targetParams.get('tab')
+        if (targetTab) {
+          return currentTab === targetTab
+        }
+      }
+      return false
+    }
 
     // Jika route beda dan bukan nested path
     if (current !== target && !current.startsWith(target + '/')) return false
@@ -987,7 +1156,6 @@ export default function DashboardLayout() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-bold text-white leading-tight">{namaTampil}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="truncate text-[10px] font-medium text-[#3FBF75]">{roleTampil}</p>
                     <span className="text-[9px] text-emerald-300 font-semibold">• Online</span>
                   </div>
                 </div>
@@ -1014,31 +1182,48 @@ export default function DashboardLayout() {
         <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#0F172A]">
           {/* Topbar Header (Clean White bg-white with subtle shadow shadow-sm) */}
           <header
-            className={`${pengaturan.header_sticky ? 'sticky top-0' : 'relative'} z-30 flex h-16 min-w-0 items-center justify-between overflow-visible border-b border-slate-200/80 px-3 sm:px-4 lg:px-8 bg-white dark:bg-slate-900 shadow-sm backdrop-blur-md transition-colors duration-200 dark:border-slate-800/80`}
+            className={`${pengaturan.header_sticky ? 'sticky top-0' : 'relative'} z-30 flex min-h-[4rem] min-w-0 items-center justify-between overflow-visible border-b border-slate-200/80 px-3 sm:px-4 lg:px-6 gap-3 bg-white dark:bg-slate-900 shadow-sm backdrop-blur-md transition-colors duration-200 dark:border-slate-800/80`}
           >
-            {/* Left Controls: Mobile Menu Toggle & Active Unit Switcher */}
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(true)}
-                className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 md:hidden dark:border-slate-800 dark:text-slate-300"
-                aria-label="Buka Menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+            {/* LEFT CONTROLS: Mobile Menu Toggle, Active Unit Switcher & Field Pencarian (Search Field moved to left near unit) */}
+            <div className="flex flex-1 min-w-0 items-center gap-2 sm:gap-3">
+              {/* Mobile Menu Toggle */}
+              <div className="group relative flex items-center justify-center md:hidden">
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300 transition-all shadow-xs"
+                  aria-label="Buka Menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                <div className="pointer-events-none absolute left-0 top-full mt-2.5 hidden group-hover:flex flex-col items-start z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                  <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                    Buka Menu Navigasi Samping
+                  </div>
+                </div>
+              </div>
 
-              {/* Active Unit Dropdown Switcher */}
-              <div className="relative shrink-0" ref={unitDropdownRef}>
+              {/* 1. Active Unit Dropdown Switcher (Soft Pastel Sky Blue) */}
+              <div className="relative shrink-0 group" ref={unitDropdownRef}>
                 <button
                   type="button"
                   onClick={() => setUnitDropdownOpen(!unitDropdownOpen)}
-                  className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800 hover:bg-slate-100 hover:border-[#064E3B]/30 transition-all dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200 btn-master"
+                  className="flex items-center gap-2 rounded-2xl border border-sky-200/90 bg-sky-50/80 px-3.5 py-2 text-xs font-bold text-sky-900 hover:bg-sky-100/80 transition-all dark:border-sky-800/80 dark:bg-sky-950/60 dark:text-sky-300 shadow-xs cursor-pointer"
                 >
-                  <Layers className="h-4 w-4 text-[#064E3B] dark:text-[#3FBF75] stroke-[2]" />
-                  <span className="hidden sm:inline text-slate-500 font-medium">Unit:</span>
-                  <span className="font-extrabold text-[#064E3B] dark:text-[#3FBF75]">{activeUnit || 'Semua Unit'}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                  <Layers className="h-4 w-4 text-sky-600 dark:text-sky-400 stroke-[2.2]" />
+                  <span className="hidden sm:inline text-sky-600/80 dark:text-sky-400/80 font-medium">Unit:</span>
+                  <span className="font-extrabold text-sky-900 dark:text-sky-200">{activeUnit || 'Semua Unit'}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-sky-500" />
                 </button>
+
+                {/* Instant Floating Tooltip */}
+                {!unitDropdownOpen && (
+                  <div className="pointer-events-none absolute left-0 top-full mt-2.5 hidden group-hover:flex flex-col items-start z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                    <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                      Pilih unit pendidikan aktif untuk memfilter data
+                    </div>
+                  </div>
+                )}
 
                 {unitDropdownOpen && (
                   <div className="absolute left-0 top-full mt-2 w-56 rounded-[18px] bg-white p-1.5 shadow-2xl border border-slate-200/80 z-50 animate-[masterDropdownSlide_0.2s_ease-out] dark:bg-[#1B2433] dark:border-slate-800">
@@ -1053,234 +1238,281 @@ export default function DashboardLayout() {
                           setActiveUnit(unit.id)
                           setUnitDropdownOpen(false)
                         }}
-                        className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${activeUnit === unit.id
-                          ? 'bg-[#064E3B]/10 text-[#064E3B] font-bold dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]'
-                          : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60'
-                          }`}
+                        className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                          activeUnit === unit.id
+                            ? 'bg-sky-100 text-sky-900 font-bold dark:bg-sky-950/80 dark:text-sky-300'
+                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60'
+                        }`}
                       >
                         <span>{unit.name}</span>
-                        {activeUnit === unit.id && <span className="h-2 w-2 rounded-full bg-[#064E3B] dark:bg-[#3FBF75]" />}
+                        {activeUnit === unit.id && <span className="h-2 w-2 rounded-full bg-sky-600 dark:bg-sky-400" />}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Centered Clean Dynamic Search Bar */}
-            <div className="flex-1 flex justify-center max-w-md mx-auto px-2 sm:px-4">
-              <div
-                onClick={() => setIsSearchModalOpen(true)}
-                className="relative w-full hidden md:flex items-center transition-all duration-300 focus-within:max-w-md cursor-pointer group"
-              >
-                <Search className="absolute left-3 text-slate-400 group-hover:text-[#064E3B] h-4 w-4 transition-colors" />
-                <input
-                  type="text"
-                  readOnly
-                  placeholder="Cari siswa, guru, kelas, modul..."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/90 pl-9 pr-14 py-1.5 text-xs font-medium text-slate-800 placeholder-slate-400 group-hover:bg-white group-hover:border-[#064E3B]/40 focus:bg-white focus:border-[#064E3B] focus:outline-none focus:ring-2 focus:ring-[#064E3B]/20 transition-all duration-200 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-100 dark:placeholder-slate-500 cursor-pointer shadow-2xs"
-                />
-                <span className="absolute right-3 rounded-md bg-slate-200/70 border border-slate-300/60 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300">
-                  Ctrl + K
-                </span>
+              {/* 2. Field Pencarian (Search Bar - Soft Pastel Emerald Green, Geser ke kiri mendekati unit) */}
+              <div className="hidden sm:flex flex-1 min-w-0 max-w-xs items-center group relative">
+                <button
+                  type="button"
+                  onClick={() => setIsSearchModalOpen(true)}
+                  className="flex w-full items-center gap-2 rounded-2xl border border-emerald-200/90 bg-emerald-50/70 px-3.5 py-2 text-xs font-semibold text-emerald-900 shadow-xs transition-all hover:bg-emerald-100/80 hover:border-emerald-300 active:scale-[0.99] dark:border-emerald-800/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60 focus:outline-none cursor-pointer"
+                >
+                  <Search className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />
+                  <span className="flex-1 text-left text-xs font-semibold truncate text-emerald-800 dark:text-emerald-300">Cari siswa, guru, modul...</span>
+                  <kbd className="shrink-0 hidden lg:inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white/90 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/80 dark:text-emerald-300">
+                    Ctrl + K
+                  </kbd>
+                </button>
+
+                {/* Instant Floating Tooltip */}
+                <div className="pointer-events-none absolute left-0 top-full mt-2.5 hidden group-hover:flex flex-col items-start z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                  <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                    Pencarian cepat siswa, guru, kelas, modul & fitur (Ctrl + K)
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Right Controls: Date, Role Switcher, Notifications, Theme, Profile */}
-            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-3">
-              {/* Realtime Date Display */}
-              <div className="hidden lg:flex items-center gap-2 rounded-xl bg-slate-100/70 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
-                <Calendar className="h-3.5 w-3.5 text-[#064E3B] dark:text-[#3FBF75]" />
-                <span>{tanggalTampil}</span>
+            {/* RIGHT CONTROLS: Tanggal (geser dekat notifikasi), Akses Role (Super Admin/Admin only, samping notifikasi), Notification Bell, Cache Reset, Dark Mode, Profile Avatar */}
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              {/* 3. Tanggal Hari Ini (Soft Pastel Cyan/Teal, posisi dekat button notifikasi) */}
+              <div className="group relative hidden lg:flex items-center">
+                <div
+                  className="shrink-0 flex items-center gap-1.5 rounded-2xl border border-cyan-200/90 bg-cyan-50/80 px-3 py-2 shadow-xs dark:border-cyan-800/80 dark:bg-cyan-950/60 transition hover:scale-[1.02]"
+                >
+                  <CalendarDays className="h-4 w-4 text-cyan-600 dark:text-cyan-400 stroke-[2.2]" />
+                  <span className="text-xs font-extrabold text-cyan-900 dark:text-cyan-200 whitespace-nowrap">{tanggalTampil}</span>
+                </div>
+                {/* Instant Floating Tooltip */}
+                <div className="pointer-events-none absolute right-0 top-full mt-2.5 hidden group-hover:flex flex-col items-end z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                  <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                    Tanggal sistem & kalender akademik hari ini
+                  </div>
+                </div>
               </div>
 
-              {/* Super Admin: switch into a representative role session */}
-              {hasRole('Super Admin') && !impersonating && (
-                <div className="relative" ref={roleAccessRef}>
+              {/* 4. Dropdown Akses Role (HANYA muncul jika Super Admin / Admin, terletak tepat di samping button notifikasi) */}
+              {hasFullMenuAccess && (
+                <div className="relative shrink-0 group" ref={roleAccessRef}>
                   <button
                     type="button"
-                    onClick={() => setRoleAccessOpen((open) => !open)}
-                    aria-label="Akses Role"
-                    aria-haspopup="menu"
-                    aria-expanded={roleAccessOpen}
-                    className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-[#064E3B] transition hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300"
-                    title="Masuk sebagai role lain"
+                    onClick={() => setRoleAccessOpen(!roleAccessOpen)}
+                    className={`flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-extrabold transition-all hover:scale-[1.03] active:scale-[0.97] shadow-xs focus:outline-none cursor-pointer ${
+                      roleAccessOpen
+                        ? 'border-purple-300 bg-purple-100 text-purple-900 dark:border-purple-700 dark:bg-purple-950 dark:text-purple-200'
+                        : 'border-purple-200/90 bg-purple-50/80 text-purple-900 hover:bg-purple-100/80 dark:border-purple-800/80 dark:bg-purple-950/60 dark:text-purple-300'
+                    }`}
                   >
-                    <Users className="h-4 w-4" />
+                    <ShieldCheck className="h-4 w-4 text-purple-600 dark:text-purple-400 stroke-[2.2]" />
                     <span className="hidden xl:inline">Akses Role</span>
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform text-purple-500 ${roleAccessOpen ? 'rotate-180' : ''}`} />
                   </button>
 
+                  {/* Instant Floating Tooltip */}
+                  {!roleAccessOpen && (
+                    <div className="pointer-events-none absolute right-0 top-full mt-2.5 hidden group-hover:flex flex-col items-end z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                      <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                        Beralih akun sebagai role pengguna lain (Super Admin / Admin)
+                      </div>
+                    </div>
+                  )}
+
                   {roleAccessOpen && (
-                    <div role="menu" className="absolute left-0 right-auto top-full z-50 mt-2 w-64 rounded-[18px] border border-slate-200/80 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-[#13221f] sm:left-auto sm:right-0">
-                      <div className="px-2 pb-2 pt-1">
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Login sebagai</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">Pilih role untuk melihat portal dan hak aksesnya.</p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-0.5">
-                        {roleAccessOptions.map((option) => (
-                          <button
-                            key={option.role}
-                            type="button"
-                            role="menuitem"
-                            disabled={Boolean(roleAccessLoading)}
-                            onClick={() => accessAsRole(option)}
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-[#064E3B] disabled:cursor-wait disabled:opacity-60 dark:text-slate-200 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300"
-                          >
-                            <span>{option.label}</span>
-                            {roleAccessLoading === option.role ? (
-                              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
+                    <div className="absolute right-0 top-full mt-2 w-52 rounded-[18px] bg-white p-1.5 shadow-2xl border border-slate-200/80 z-50 animate-[masterDropdownSlide_0.2s_ease-out] dark:bg-[#1B2433] dark:border-slate-800">
+                      <p className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Akses Sebagai Role
+                      </p>
+                      {roleAccessOptions.map((option) => (
+                        <button
+                          key={option.role}
+                          type="button"
+                          disabled={!!roleAccessLoading}
+                          onClick={() => accessAsRole(option)}
+                          className="w-full text-left flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-purple-50 dark:text-slate-200 dark:hover:bg-purple-950/50 transition-colors disabled:opacity-50"
+                        >
+                          <span>{option.label}</span>
+                          {roleAccessLoading === option.role && (
+                            <span className="h-3.5 w-3.5 rounded-full border-2 border-purple-600 border-t-transparent animate-spin" />
+                          )}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Notification Center (Dynamic Notification Icon on Right) */}
-              {!isPortalUser && <NotificationCenter />}
+              {/* 5. Notification Center Bell Icon (Soft Pastel Light Indigo/Blue) */}
+              <div className="group relative">
+                <NotificationCenter
+                  bellClassName="border border-indigo-200/90 bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100/90 dark:border-indigo-800/80 dark:bg-indigo-950/60 dark:text-indigo-300 shadow-xs transition hover:scale-[1.03]"
+                />
+                {/* Instant Floating Tooltip */}
+                <div className="pointer-events-none absolute right-0 top-full mt-2.5 hidden group-hover:flex flex-col items-end z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                  <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                    Pusat notifikasi & pemberitahuan sistem
+                  </div>
+                </div>
+              </div>
 
-              {/* Mode Tampilan Switcher (Light / Dark Mode) */}
-              <div className="relative" ref={themeDropdownRef}>
+              {/* 6. Cache Reset Button (Soft Pastel Amber/Orange) */}
+              <div className="group relative">
                 <button
                   type="button"
-                  onClick={() => setThemeMenuOpen(!themeMenuOpen)}
-                  aria-label="Pilih mode tampilan"
-                  aria-haspopup="menu"
-                  aria-expanded={themeMenuOpen}
-                  className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200 transition-all btn-master"
-                  title="Pilih Mode Tampilan"
+                  onClick={handleResetCache}
+                  disabled={isResettingCache}
+                  aria-label="Atur ulang cache aplikasi"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-200/90 bg-amber-50/80 text-amber-800 shadow-xs transition-all hover:bg-amber-100/90 hover:scale-[1.03] active:scale-[0.97] dark:border-amber-800/80 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/60 focus:outline-none cursor-pointer disabled:opacity-50"
                 >
-                  {isDarkMode ? <Moon className="h-4 w-4 text-emerald-400" /> : <Sun className="h-4 w-4 text-amber-500" />}
-                  <span className="hidden sm:inline font-semibold">{isDarkMode ? 'Night Mode' : 'Light Mode'}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                  <RefreshCw className={`h-4.5 w-4.5 stroke-[2] text-amber-600 dark:text-amber-400 ${isResettingCache ? 'animate-spin' : ''}`} />
+                </button>
+                {/* Instant Floating Tooltip */}
+                <div className="pointer-events-none absolute right-0 top-full mt-2.5 hidden group-hover:flex flex-col items-end z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                  <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                    Atur ulang cache sistem & bersihkan data sementara
+                  </div>
+                </div>
+              </div>
+
+              {/* 7. Light / Dark Mode Button (Soft Pastel Fuchsia/Pink) */}
+              <div className="group relative">
+                <button
+                  type="button"
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  aria-label="Toggle mode tampilan"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-fuchsia-200/90 bg-fuchsia-50/80 text-fuchsia-800 shadow-xs transition-all hover:bg-fuchsia-100/90 hover:scale-[1.03] active:scale-[0.97] dark:border-fuchsia-800/80 dark:bg-fuchsia-950/60 dark:text-fuchsia-300 dark:hover:bg-fuchsia-900/60 focus:outline-none cursor-pointer"
+                >
+                  {isDarkMode ? <Sun className="h-4.5 w-4.5 stroke-[2] text-amber-500" /> : <Moon className="h-4.5 w-4.5 stroke-[2] text-fuchsia-600 dark:text-fuchsia-400" />}
+                </button>
+                {/* Instant Floating Tooltip */}
+                <div className="pointer-events-none absolute right-0 top-full mt-2.5 hidden group-hover:flex flex-col items-end z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                  <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                    {isDarkMode ? 'Ganti ke Mode Terang' : 'Ganti ke Mode Gelap'}
+                  </div>
+                </div>
+              </div>
+
+              {/* 8. User Profile Avatar Squircle Trigger (Soft Pastel Rose/Coral Border) */}
+              <div className="relative group" ref={profileDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl overflow-hidden border border-rose-200/90 bg-rose-50/80 shadow-xs hover:scale-[1.03] active:scale-[0.97] transition-all cursor-pointer dark:border-rose-800/80 focus:outline-none"
+                  aria-label="Menu profil user"
+                >
+                  <PersonAvatar
+                    src={user?.photo_url || user?.avatar_url || user?.avatar || user?.photo || user?.profile_photo_url}
+                    name={namaTampil}
+                    size="table"
+                    shape="square"
+                    alt={`Foto profil ${namaTampil}`}
+                    className="h-full w-full object-cover border-0 rounded-2xl"
+                  />
                 </button>
 
-                {themeMenuOpen && (
-                  <div role="menu" className="absolute right-0 top-full mt-2 w-48 rounded-[18px] bg-white p-1.5 shadow-2xl border border-slate-200/80 z-50 animate-[masterDropdownSlide_0.2s_ease-out] dark:bg-[#13221f] dark:border-slate-800">
-                    <p className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Mode Tampilan
-                    </p>
-
-                    <button
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={!isDarkMode}
-                      onClick={() => {
-                        setIsDarkMode(false)
-                        setThemeMenuOpen(false)
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${!isDarkMode
-                        ? 'bg-[#064E3B]/10 text-[#064E3B] font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                        }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Sun className="h-4 w-4 text-amber-500" />
-                        <span>Light Mode</span>
-                      </div>
-                      {!isDarkMode && <span className="h-2 w-2 rounded-full bg-[#064E3B] dark:bg-emerald-400" />}
-                    </button>
-
-                    <button
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={isDarkMode}
-                      onClick={() => {
-                        setIsDarkMode(true)
-                        setThemeMenuOpen(false)
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${isDarkMode
-                        ? 'bg-[#064E3B]/10 text-[#064E3B] font-bold dark:bg-emerald-500/20 dark:text-emerald-300'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                        }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Moon className="h-4 w-4 text-emerald-400" />
-                        <span>Night Mode</span>
-                      </div>
-                      {isDarkMode && <span className="h-2 w-2 rounded-full bg-[#064E3B] dark:bg-emerald-400" />}
-                    </button>
+                {/* Instant Floating Tooltip */}
+                {!profileDropdownOpen && (
+                  <div className="pointer-events-none absolute right-0 top-full mt-2.5 hidden group-hover:flex flex-col items-end z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                    <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                      Menu profil & akun pengguna ({namaTampil})
+                    </div>
                   </div>
                 )}
-              </div>
-              {/* User Profile Avatar Dropdown (Right side of header) */}
-              <DropdownMenu>
-                <DropdownMenuTrigger className="group flex items-center gap-2.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-all shadow-xs dark:border-slate-800 dark:bg-[#111827] dark:text-slate-200">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#064E3B] text-[10px] font-bold text-white shadow-sm border border-emerald-400/30">
-                    {namaTampil.charAt(0).toLowerCase()}
-                  </div>
-                  <span className="hidden sm:inline font-medium text-slate-900 dark:text-white">{namaTampil}</span>
-                  <ChevronDown className="size-3.5 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-56 p-1.5 border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-[#1B2433]">
-                  <DropdownMenuSection>
-                    <DropdownMenuHeader className="px-3 py-1.5 space-y-1">
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                        Akun ({roleTampil})
-                      </p>
-                      {loginTime && (
-                        <div className="py-1 px-2 text-[11px] text-emerald-800 dark:text-emerald-300 font-mono bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-100 dark:border-emerald-900/60">
-                          <span className="block font-semibold">Login: {new Date(loginTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB</span>
-                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Browser Sesi Aktif</span>
+
+                <AnimatePresence>
+                  {profileDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                      transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                      className="absolute right-0 top-full mt-3 w-72 sm:w-80 rounded-3xl bg-white dark:bg-[#1B2433] p-5 shadow-2xl border border-slate-100 dark:border-slate-800 z-50"
+                    >
+                      {/* Profile Header (Matching Image 3) */}
+                      <div className="flex items-center gap-3.5">
+                        <PersonAvatar
+                          src={user?.photo_url || user?.avatar_url || user?.avatar || user?.photo || user?.profile_photo_url}
+                          name={namaTampil}
+                          size="card"
+                          shape="square"
+                          alt={`Foto profil ${namaTampil}`}
+                          className="h-14 w-14 rounded-2xl object-cover border border-slate-100 dark:border-slate-700 shadow-xs"
+                        />
+                        <div className="min-w-0">
+                          <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate tracking-tight">{namaTampil}</h4>
+                          <p className="text-xs font-medium text-slate-400 dark:text-slate-400 truncate mt-0.5">{user?.email || 'murphy.mitc@example.com'}</p>
                         </div>
-                      )}
-                    </DropdownMenuHeader>
-                    <DropdownMenuItem
-                      textValue="Lihat Profil"
-                      onAction={() => navigate(isFoundationUser ? '/dashboard/yayasan/profil' : '/dashboard/profil-akun')}
-                      className="cursor-pointer gap-2.5 py-2 text-xs font-medium text-slate-700 hover:text-emerald-700 dark:text-slate-200"
-                    >
-                      <UserCircle1 className="size-5 text-[#064E3B] dark:text-[#3FBF75]" />
-                      <span>Lihat Profil</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      textValue="Notifikasi"
-                      onAction={() => {
-                        if (isParentRole(roles)) {
-                          navigate('/portal-orangtua?tab=notifications')
-                        } else if (isStudentRole(roles)) {
-                          navigate('/portal-siswa/informasi-sekolah')
-                        } else {
-                          navigate(isFoundationUser ? '/dashboard/yayasan/notifikasi' : '/notifications')
-                        }
-                      }}
-                      className="cursor-pointer gap-2.5 py-2 text-xs font-medium text-slate-700 hover:text-emerald-700 dark:text-slate-200"
-                    >
-                      <Bell1 className="size-5 text-slate-400" />
-                      <span>Notifikasi</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      textValue="Pengaturan Akun"
-                      onAction={() => navigate(isFoundationUser ? '/dashboard/yayasan/profil' : '/dashboard/pengaturan?tab=keamanan')}
-                      className="cursor-pointer gap-2.5 py-2 text-xs font-medium text-slate-700 hover:text-emerald-700 dark:text-slate-200"
-                    >
-                      <Gear1 className="size-5 text-slate-400" />
-                      <span>Pengaturan Akun</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuSection>
-                  <DropdownMenuSeparator className="-mx-1.5 my-1 border-slate-200 dark:border-slate-800" />
-                  <DropdownMenuItem
-                    textValue="Keluar Sistem"
-                    onAction={() => logout()}
-                    className="cursor-pointer gap-2.5 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 dark:text-rose-400"
-                  >
-                    <Exit className="size-5 text-rose-500" />
-                    <span>Keluar Sistem</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      </div>
+
+                      <hr className="my-3.5 border-slate-100 dark:border-slate-800" />
+
+                      {/* Menu Items (Matching Image 3) */}
+                      <div className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileDropdownOpen(false)
+                            if (isStudentRole(roles)) navigate('/portal-siswa/profil')
+                            else if (isParentRole(roles)) navigate('/portal-orangtua?tab=profile')
+                            else if (isFoundationUser) navigate('/dashboard/yayasan/profil')
+                            else navigate('/dashboard/profil-akun')
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                        >
+                          <Settings className="h-5 w-5 text-slate-600 dark:text-slate-300 stroke-[1.8]" />
+                          <span>Pengaturan Akun</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileDropdownOpen(false)
+                            navigate('/dashboard/students/unit-pendidikan')
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                        >
+                          <Building2 className="h-5 w-5 text-slate-600 dark:text-slate-300 stroke-[1.8]" />
+                          <span>Unit Pendidikan</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileDropdownOpen(false)
+                            navigate('/dashboard/bantuan')
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                        >
+                          <HelpCircle className="h-5 w-5 text-slate-600 dark:text-slate-300 stroke-[1.8]" />
+                          <span>Bantuan {'&'} Panduan</span>
+                        </button>
+                      </div>
+
+                      <hr className="my-3.5 border-slate-100 dark:border-slate-800" />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProfileDropdownOpen(false)
+                          logout()
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-bold text-slate-700 hover:text-rose-600 dark:text-slate-200 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                      >
+                        <LogOut className="h-5 w-5 text-slate-600 dark:text-slate-300 stroke-[1.8]" />
+                        <span>Keluar</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </header>
 
           {/* Main Page Workspace Container (Light Gray bg-slate-50) */}
-          <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-5 lg:p-6 space-y-6 max-w-7xl w-full mx-auto pb-24 md:pb-10">
+          <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-5 lg:p-6 space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-10">
             {impersonating && (
-              <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
+              <div className="auth-impersonating-banner flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
                 <div>
                   <p className="text-xs font-extrabold">Mode akses role aktif: {roleTampil}</p>
                   <p className="mt-0.5 text-[11px] opacity-75">Anda sedang melihat sistem sebagai {namaTampil}.</p>
@@ -1346,7 +1578,8 @@ export default function DashboardLayout() {
         isOpen={isSearchModalOpen}
         onClose={() => setIsSearchModalOpen(false)}
       />
+      <AuthPopup />
+      <AuthToast />
     </div>
   )
 }
-

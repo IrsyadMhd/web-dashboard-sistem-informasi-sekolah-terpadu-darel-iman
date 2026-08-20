@@ -12,12 +12,18 @@ import {
 } from 'lucide-react'
 import { AppTabs } from '../app'
 
+import { useAuthStore } from '../../stores/authStore'
+
 export function MutabaahSubNav() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const roles = user?.roles || []
+  const isTU = roles.some((r) => typeof r === 'string' && /tata usaha|\btu\b/i.test(r))
+
   const navItems = [
     { id: '/dashboard/mutabaah', path: '/dashboard/mutabaah', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" />, end: true },
-    { id: '/dashboard/mutabaah/rekap', path: '/dashboard/mutabaah/rekap', label: 'Rekap', icon: <FileSpreadsheet className="h-4 w-4" /> },
+    ...(!isTU ? [{ id: '/dashboard/mutabaah/rekap', path: '/dashboard/mutabaah/rekap', label: 'Rekap', icon: <FileSpreadsheet className="h-4 w-4" /> }] : []),
     { id: '/dashboard/mutabaah/target-evaluasi', path: '/dashboard/mutabaah/target-evaluasi', label: 'Target & Evaluasi', icon: <Target className="h-4 w-4" /> },
     { id: '/dashboard/mutabaah/rincian-agenda', path: '/dashboard/mutabaah/rincian-agenda', label: 'Agenda TU', icon: <CalendarDays className="h-4 w-4" /> },
     { id: '/dashboard/mutabaah/template-agenda', path: '/dashboard/mutabaah/template-agenda', label: 'Template Agenda', icon: <FileCode2 className="h-4 w-4" /> },

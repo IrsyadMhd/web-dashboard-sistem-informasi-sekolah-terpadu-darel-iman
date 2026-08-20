@@ -21,6 +21,8 @@ import ExamGridsWorkspace from '../components/portal/ExamGridsWorkspace'
 import CbtExamsWorkspace from '../components/portal/CbtExamsWorkspace'
 import ExamResultsWorkspace from '../components/portal/ExamResultsWorkspace'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
+import { useAuthStore } from '../stores/authStore'
+import { isParentRole } from '../auth/portalResolver'
 
 const tabs = [
   { id: 'ringkasan', label: 'Ringkasan', icon: LayoutDashboard },
@@ -61,6 +63,93 @@ const answerPayload = (answers) => Object.entries(answers).map(([soalId, answer]
   jawaban_dipilih: answer.type === 'pg' || answer.type === 'benar_salah' ? answer.value : null,
   jawaban_esai: ['esai', 'isian', 'menjodohkan'].includes(answer.type) ? answer.value : null,
 }))
+
+const MOCK_EXAM_SESSIONS = {
+  '00000000-0000-0000-0000-000000000001': {
+    sesi_id: 'mock-session-pai-1',
+    ujian: {
+      id: '00000000-0000-0000-0000-000000000001',
+      judul_ujian: 'Ujian Harian CBT — Pendidikan Agama Islam (PAI)',
+      sisa_waktu_detik: 2700,
+      durasi_menit: 45,
+    },
+    soal: [
+      {
+        id: 'q-pai-1',
+        tipe_soal: 'pg',
+        pertanyaan: 'Siapakah nabi pertama yang diutus Allah SWT ke muka bumi?',
+        poin: 25,
+        opsi: [
+          { key: 'A', text: 'Nabi Adam AS' },
+          { key: 'B', text: 'Nabi Nuh AS' },
+          { key: 'C', text: 'Nabi Ibrahim AS' },
+          { key: 'D', text: 'Nabi Muhammad SAW' },
+        ],
+      },
+      {
+        id: 'q-pai-2',
+        tipe_soal: 'benar_salah',
+        pertanyaan: 'Rukun Islam yang ketiga adalah menunaikan ibadah puasa di bulan Ramadhan.',
+        poin: 25,
+      },
+      {
+        id: 'q-pai-3',
+        tipe_soal: 'isian',
+        pertanyaan: 'Sebutkan nama kitab suci yang diturunkan kepada Nabi Isa AS!',
+        poin: 25,
+      },
+      {
+        id: 'q-pai-4',
+        tipe_soal: 'esai',
+        pertanyaan: 'Jelaskan perbedaan antara Rukun Iman dan Rukun Islam secara singkat dan jelas!',
+        poin: 25,
+      },
+    ],
+    jawaban_tersimpan: [],
+  },
+  '00000000-0000-0000-0000-000000000002': {
+    sesi_id: 'mock-session-pancasila-1',
+    ujian: {
+      id: '00000000-0000-0000-0000-000000000002',
+      judul_ujian: 'Ujian Harian CBT — Pendidikan Pancasila Kelas X',
+      sisa_waktu_detik: 2700,
+      durasi_menit: 45,
+    },
+    soal: [
+      {
+        id: 'q-pan-1',
+        tipe_soal: 'pg',
+        pertanyaan: 'Sila pertama dalam Pancasila melambangkan nilai keagamaan dan toleransi umat beragama. Apakah lambang dari Sila Pertama?',
+        poin: 25,
+        opsi: [
+          { key: 'A', text: 'Bintang Emas' },
+          { key: 'B', text: 'Rantai Emas' },
+          { key: 'C', text: 'Pohon Beringin' },
+          { key: 'D', text: 'Kepala Banteng' },
+        ],
+      },
+      {
+        id: 'q-pan-2',
+        tipe_soal: 'benar_salah',
+        pertanyaan: 'Bhinneka Tunggal Ika memiliki arti "Berbeda-beda tetapi tetap satu jua".',
+        poin: 25,
+      },
+      {
+        id: 'q-pan-3',
+        tipe_soal: 'isian',
+        pertanyaan: 'Tuliskan nama rumusan dasar negara yang disampaikan oleh Ir. Soekarno pada tanggal 1 Juni 1945!',
+        poin: 25,
+      },
+      {
+        id: 'q-pan-4',
+        tipe_soal: 'esai',
+        pertanyaan: 'Berikan 3 contoh penerapan nilai-nilai Sila Kemanusiaan yang Adil dan Beradab di lingkungan sekolah!',
+        poin: 25,
+      },
+    ],
+    jawaban_tersimpan: [],
+  },
+}
 
 function Notice({ type = 'error', children, action }) {
   const Icon = type === 'success' ? CheckCircle2 : AlertCircle
@@ -112,6 +201,11 @@ function ExamWorkspace({ session, onClose, onFinished }) {
 
   const save = useCallback(async (silent = false) => {
     if (!silent) setSaving(true)
+    if (String(session.sesi_id).startsWith('mock-session-')) {
+      setSavedAt(new Date().toISOString())
+      if (!silent) setSaving(false)
+      return
+    }
     try {
       const response = await studentLmsService.saveAnswers(session.sesi_id, answerPayload(answersRef.current))
       setSavedAt(response.data?.saved_at || new Date().toISOString())
@@ -128,6 +222,15 @@ function ExamWorkspace({ session, onClose, onFinished }) {
     if (!automatic && !window.confirm('Yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah setelah dikumpulkan.')) return
     finishLock.current = true
     setSubmitting(true)
+    if (String(session.sesi_id).startsWith('mock-session-')) {
+      onFinished({
+        sesi_id: session.sesi_id,
+        nilai_final: 85,
+        status: 'selesai',
+        message: 'Ujian simulasi berhasil dikumpulkan.',
+      })
+      return
+    }
     try {
       const response = await studentLmsService.finishExam(session.sesi_id, answerPayload(answersRef.current))
       onFinished(response.data)
@@ -207,6 +310,9 @@ function ExamWorkspace({ session, onClose, onFinished }) {
 
 export default function StudentPortalPage({ section = 'ringkasan' }) {
   const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const roles = Array.isArray(user?.roles) ? user.roles : []
+  const isParent = isParentRole(roles)
   const activeTab = tabs.some(({ id }) => id === section) ? section : 'ringkasan'
   const [dashboard, setDashboard] = useState(null)
   const [lms, setLms] = useState(null)
@@ -354,6 +460,11 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
 
   const start = async (exam) => {
     setStartingId(exam.id); setError('')
+    if (MOCK_EXAM_SESSIONS[exam.id]) {
+      setSession(MOCK_EXAM_SESSIONS[exam.id])
+      setStartingId(null)
+      return
+    }
     try { const response = await studentLmsService.startExam(exam.id); setSession(response.data) }
     catch (err) { setError(err.response?.data?.message || 'Ujian tidak dapat dimulai.') }
     finally { setStartingId(null) }
@@ -493,7 +604,7 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
           <AssignmentsWorkspace
             assignments={portalRecords}
             onSubmitAssignment={handleAssignmentSubmit}
-            isParent={false}
+            isParent={isParent}
             loading={panelLoading}
           />
         )}
@@ -514,7 +625,7 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
           <MutabaahWorkspace
             mutabaah={portalRecords}
             onSaveMutabaah={handleSaveMutabaah}
-            isParent={false}
+            isParent={isParent}
             readOnly
             loading={panelLoading}
           />
@@ -525,7 +636,7 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
             attendanceLogs={portalRecords}
             permissionsHistory={permissionsRecords}
             onSubmitPermission={handleSubmitPermission}
-            isParent={false}
+            isParent={isParent}
             loading={panelLoading}
           />
         )}
@@ -538,7 +649,7 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
           <CbtExamsWorkspace
             lmsData={lms}
             onStartExam={start}
-            isParent={false}
+            isParent={isParent}
             startingId={startingId}
             loading={panelLoading}
           />

@@ -42,6 +42,7 @@ import {
 } from '../components/app'
 import { Button } from '../components/tailgrids/core/button'
 import Progress from '../components/tailgrids/core/progress'
+import { SquircleActionButton } from '../components/master-data'
 
 import ChartCard from '../components/dashboard/ChartCard'
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
@@ -339,19 +340,31 @@ export default function SuperAdminDashboardPage() {
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Aksi Cepat Super Admin</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">Pintas manajemen data master dan konfigurasi sistem</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="primary" appearance="outline" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => navigate('/dashboard/master/unit-pendidikan')}>
-                Tambah Unit
-              </Button>
-              <Button variant="primary" appearance="outline" size="sm" icon={<UserPlus className="h-3.5 w-3.5" />} onClick={() => navigate('/dashboard/employees')}>
-                Tambah Pegawai
-              </Button>
-              <Button variant="primary" appearance="outline" size="sm" icon={<Users className="h-3.5 w-3.5" />} onClick={() => navigate('/dashboard/students')}>
-                Tambah Siswa
-              </Button>
-              <Button variant="primary" appearance="fill" size="sm" icon={<Key className="h-3.5 w-3.5" />} onClick={() => navigate('/dashboard/hak-akses')}>
-                Kelola Role & Permissions
-              </Button>
+            <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+              <SquircleActionButton
+                variant="import"
+                icon={Building2}
+                label="Tambah Unit"
+                onClick={() => navigate('/dashboard/master/unit-pendidikan')}
+              />
+              <SquircleActionButton
+                variant="primary"
+                icon={UserPlus}
+                label="Tambah Pegawai"
+                onClick={() => navigate('/dashboard/employees')}
+              />
+              <SquircleActionButton
+                variant="view"
+                icon={Users}
+                label="Tambah Siswa"
+                onClick={() => navigate('/dashboard/students')}
+              />
+              <SquircleActionButton
+                variant="export"
+                icon={Key}
+                label="Kelola Role & Permissions"
+                onClick={() => navigate('/dashboard/hak-akses')}
+              />
             </div>
           </div>
         </section>

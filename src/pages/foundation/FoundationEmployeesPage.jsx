@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
+import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import api from '../../services/api'
 import {
@@ -89,7 +90,9 @@ export function FoundationEmployeesPage() {
   const [selectedUnit, setSelectedUnit] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [page, setPage] = useState(1)
-  const perPage = 15
+  const [perPage, setPerPage] = useState(10)
+  const [sortKey, setSortKey] = useState('nama')
+  const [sortOrder, setSortOrder] = useState('asc')
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null)
   const [selectedDetailType, setSelectedDetailType] = useState('pegawai')
@@ -161,9 +164,48 @@ export function FoundationEmployeesPage() {
     return matchesJenis && matchesSearch && matchesUnit && matchesStatus
   }), [employees, jenis, search, selectedUnit, selectedStatus])
 
-  const totalItems = filteredEmployees.length
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortOrder('asc')
+    }
+  }
+
+  const sortedEmployees = useMemo(() => {
+    return [...filteredEmployees].sort((a, b) => {
+      let aVal = ''
+      let bVal = ''
+      if (sortKey === 'nama') {
+        aVal = (a.nama_lengkap || a.nama || '').toString().toLowerCase()
+        bVal = (b.nama_lengkap || b.nama || '').toString().toLowerCase()
+      } else if (sortKey === 'jenis') {
+        aVal = isGuru(a) ? 'guru' : 'pegawai'
+        bVal = isGuru(b) ? 'guru' : 'pegawai'
+      } else if (sortKey === 'unit') {
+        aVal = (a.unit?.name || a.unit?.code || '').toString().toLowerCase()
+        bVal = (b.unit?.name || b.unit?.code || '').toString().toLowerCase()
+      } else if (sortKey === 'jabatan') {
+        aVal = (a.position?.nama_jabatan || a.jabatan || '').toString().toLowerCase()
+        bVal = (b.position?.nama_jabatan || b.jabatan || '').toString().toLowerCase()
+      } else if (sortKey === 'status_pegawai') {
+        aVal = (a.status_pegawai || '').toString().toLowerCase()
+        bVal = (b.status_pegawai || '').toString().toLowerCase()
+      } else if (sortKey === 'status') {
+        aVal = a.status === 'aktif' || !a.status ? 1 : 0
+        bVal = b.status === 'aktif' || !b.status ? 1 : 0
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredEmployees, sortKey, sortOrder])
+
+  const totalItems = sortedEmployees.length
   const lastPage = Math.max(1, Math.ceil(totalItems / perPage))
-  const paginatedEmployees = filteredEmployees.slice((page - 1) * perPage, page * perPage)
+  const paginatedEmployees = sortedEmployees.slice((page - 1) * perPage, page * perPage)
 
   const totalGuru = employees.filter((e) => isGuru(e)).length
   const totalSDM = employees.length
@@ -377,6 +419,18 @@ export function FoundationEmployeesPage() {
               <option value="aktif">Aktif</option>
               <option value="nonaktif">Nonaktif</option>
             </MasterFilterSelect>
+            <MasterFilterSelect
+              value={perPage}
+              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
+              aria-label="Tampilkan per halaman"
+            >
+              <option value={5}>5 per Halaman</option>
+              <option value={10}>10 per Halaman</option>
+              <option value={15}>15 per Halaman</option>
+              <option value={25}>25 per Halaman</option>
+              <option value={50}>50 per Halaman</option>
+              <option value={100}>100 per Halaman</option>
+            </MasterFilterSelect>
             <button
               type="button"
               onClick={handleRefresh}
@@ -416,12 +470,66 @@ export function FoundationEmployeesPage() {
               <thead className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
                 <tr>
                   <th className="w-[5%] px-2 py-3 text-center">No</th>
-                  <th className="w-[22%] px-3 py-3 font-bold">Nama SDM</th>
-                  <th className="hidden w-[9%] px-3 py-3 font-bold md:table-cell">Jenis</th>
-                  <th className="hidden w-[18%] px-3 py-3 font-bold lg:table-cell">Unit Kerja</th>
-                  <th className="hidden w-[18%] px-3 py-3 font-bold xl:table-cell">Jabatan</th>
-                  <th className="hidden w-[12%] px-3 py-3 font-bold lg:table-cell">Status Pegawai</th>
-                  <th className="hidden w-[9%] px-2 py-3 text-center font-bold sm:table-cell">Status</th>
+                  <th className="w-[22%] px-3 py-3 font-bold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('nama')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Nama SDM</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'nama' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[9%] px-3 py-3 font-bold md:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('jenis')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Jenis</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'jenis' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[18%] px-3 py-3 font-bold lg:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('unit')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Unit Kerja</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'unit' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[18%] px-3 py-3 font-bold xl:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('jabatan')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Jabatan</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'jabatan' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[12%] px-3 py-3 font-bold lg:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('status_pegawai')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Status Pegawai</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'status_pegawai' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[9%] px-2 py-3 text-center font-bold sm:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('status')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white mx-auto"
+                    >
+                      <span>Status</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'status' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
                   <th className="w-[7%] px-2 py-3 text-center font-bold">Aksi</th>
                 </tr>
               </thead>

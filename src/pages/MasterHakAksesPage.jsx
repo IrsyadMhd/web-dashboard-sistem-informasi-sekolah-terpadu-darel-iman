@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Swal from 'sweetalert2'
+import ConfirmDialog from '../components/app/ConfirmDialog'
+import { MasterDeleteDialog } from '../components/master-data'
 import {
   Shield,
   Plus,
@@ -26,6 +28,8 @@ import { hakAksesService } from '../services/hakAksesService'
 import { educationUnitService } from '../services/educationUnitService'
 import { getModulLabel, getPermissionLabel } from '../utils/permissionTranslations'
 import UserAccountManagement from '../components/auth/UserAccountManagement'
+import { ROLES, hasAnyRole, isGlobalAccessManager, isUnitAccessManager, getTierForRole, canEditRole, getEditableTiers } from '../auth/portalResolver'
+import { useAuthStore } from '../stores/authStore'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import {
@@ -43,6 +47,38 @@ import {
   MasterActionIconButton,
   MasterPagination,
 } from '../components/master-data'
+
+// GLOBAL_ROLE_NAMES: nama role yang tidak bisa diubah oleh Unit Manager
+// Dibangun dari ROLES constants agar sinkron dengan portalResolver
+const GLOBAL_ROLE_NAMES = [
+  ...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN,
+]
+
+const GLOBAL_ACCESS_PERMISSIONS = [
+  'sistem.hak_akses', 'sistem.master_data', 'sistem.pengaturan',
+  'permission.manage', 'role.manage', 'employee.view_all', 'employee.create', 'employee.delete', 'employee.import',
+  'unit.view_all', 'unit.create', 'unit.update', 'unit.delete',
+  'master.create', 'master.update', 'master.delete',
+]
+
+// Warna badge tier
+const TIER_COLOR_MAP = {
+  red:     { bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200'    },
+  purple:  { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  blue:    { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'   },
+  emerald: { bg: 'bg-emerald-50',text: 'text-emerald-700',border: 'border-emerald-200'},
+  sky:     { bg: 'bg-sky-50',    text: 'text-sky-700',    border: 'border-sky-200'    },
+  amber:   { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200'  },
+  teal:    { bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200'   },
+  gray:    { bg: 'bg-slate-100', text: 'text-slate-600',  border: 'border-slate-200'  },
+}
+
+// Label scope
+const SCOPE_LABEL = {
+  global:   { text: 'Global',   bg: 'bg-violet-50',  textCls: 'text-violet-700', border: 'border-violet-200' },
+  unit:     { text: 'Per Unit', bg: 'bg-amber-50',   textCls: 'text-amber-700',  border: 'border-amber-200'  },
+  external: { text: 'Eksternal',bg: 'bg-slate-100',  textCls: 'text-slate-600',  border: 'border-slate-200'  },
+}
 
 // ─────────────────────────────────────────────────────────────────
 // MODAL ROLE FORM
@@ -265,11 +301,14 @@ function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availabl
 
   React.useEffect(() => {
     if (isOpen && employee) {
-      setRoleName(employee.primary_role !== 'Belum Ada Role' ? employee.primary_role : (availableRoles[0] || 'Guru'))
-      setSelectedPerms(employee.direct_permissions || [])
+      const currentRole = employee.primary_role !== 'Belum Ada Role' && availableRoles.includes(employee.primary_role)
+        ? employee.primary_role
+        : (availableRoles[0] || '')
+      setRoleName(currentRole)
+      setSelectedPerms((employee.direct_permissions || []).filter((permission) => allPermissions.includes(permission)))
       setPassword('')
     }
-  }, [isOpen, employee, availableRoles])
+  }, [isOpen, employee, availableRoles, allPermissions])
 
   if (!isOpen || !employee) return null
 
@@ -358,12 +397,22 @@ function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availabl
             <select
               value={roleName}
               onChange={(e) => setRoleName(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              required
+              disabled={availableRoles.length === 0}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
             >
+              <option value="">
+                {availableRoles.length === 0 ? 'Tidak ada role yang dapat ditetapkan' : 'Pilih role utama pegawai'}
+              </option>
               {availableRoles.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
+            {availableRoles.length === 0 && (
+              <p className="mt-1.5 text-[11px] text-amber-600 font-medium">
+                Daftar role belum tersedia. Pastikan role sudah dibuat di tab Role atau hubungi administrator sistem.
+              </p>
+            )}
           </div>
 
           {/* Direct Custom Permissions */}
@@ -425,6 +474,19 @@ function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availabl
 // ─────────────────────────────────────────────────────────────────
 export default function MasterHakAksesPage() {
   const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
+  const userRoles = user?.roles || (user?.role ? [user.role] : [])
+  const canManageGlobalAccess = isGlobalAccessManager(userRoles)
+  const canManageUnitAccess = isUnitAccessManager(userRoles)
+  const canManageAccess = canManageGlobalAccess || canManageUnitAccess
+
+  // Kepala Sekolah & Divisi Pendidikan: hanya bisa kelola unit sendiri
+  const isUnitScopeOnly = canManageUnitAccess && !canManageGlobalAccess
+
+  // Daftar tier yang bisa diedit oleh pengguna yang sedang login
+  const editableTierIds = new Set(
+    getEditableTiers(userRoles).map(({ tier }) => tier.id)
+  )
 
   const [activeTab, setActiveTab] = useState('roles')
   const [search, setSearch] = useState('')
@@ -442,6 +504,12 @@ export default function MasterHakAksesPage() {
   const [isPegawaiModalOpen, setIsPegawaiModalOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState(null)
 
+  // Dialog Konfirmasi CRUD
+  const [deleteTargetRole, setDeleteTargetRole] = useState(null)
+  const [deleteTargetPerm, setDeleteTargetPerm] = useState(null)
+  const [pendingRoleData, setPendingRoleData] = useState(null)
+  const [showSaveRoleConfirmModal, setShowSaveRoleConfirmModal] = useState(false)
+
   // Query Units
   const { data: unitsData = {} } = useQuery({
     queryKey: ['education-units-filter'],
@@ -450,6 +518,16 @@ export default function MasterHakAksesPage() {
   })
   const educationUnits = unitsData?.data || unitsData?.items || (Array.isArray(unitsData) ? unitsData : [])
 
+  React.useEffect(() => {
+    if (isUnitScopeOnly && !selectedUnitId) {
+      if (user?.unit_id) {
+        setSelectedUnitId(String(user.unit_id))
+      } else if (educationUnits.length > 0) {
+        setSelectedUnitId(String(educationUnits[0].id))
+      }
+    }
+  }, [isUnitScopeOnly, user?.unit_id, educationUnits, selectedUnitId])
+
   // Query Stats
   const { data: stats = {} } = useQuery({
     queryKey: ['hak-akses-stats'],
@@ -457,18 +535,36 @@ export default function MasterHakAksesPage() {
     staleTime: 30000,
   })
 
-  // Query Roles
+  // Query Roles (tab Role — terfilter pencarian)
   const { data: rolesData = {}, isLoading: isLoadingRoles } = useQuery({
     queryKey: ['hak-akses-roles', search],
     queryFn: () => hakAksesService.getDaftarRole({ search }),
+    enabled: activeTab === 'roles',
     staleTime: 15000,
   })
 
-  // Query Permissions
+  // Query Roles lengkap untuk modal penetapan akses (tanpa filter pencarian tab)
+  const { data: allRolesData = {} } = useQuery({
+    queryKey: ['hak-akses-roles-all'],
+    queryFn: () => hakAksesService.getDaftarRole({}),
+    enabled: canManageAccess,
+    staleTime: 60000,
+  })
+
+  // Query Permissions (tab Izin — terfilter pencarian)
   const { data: permData = {}, isLoading: isLoadingPerms } = useQuery({
     queryKey: ['hak-akses-permissions', search],
     queryFn: () => hakAksesService.getDaftarPermission({ search }),
+    enabled: activeTab === 'permissions',
     staleTime: 15000,
+  })
+
+  // Query Permissions lengkap untuk modal penetapan akses
+  const { data: allPermData = {} } = useQuery({
+    queryKey: ['hak-akses-permissions-all'],
+    queryFn: () => hakAksesService.getDaftarPermission({}),
+    enabled: canManageAccess,
+    staleTime: 60000,
   })
 
   // Query Pegawai (Menarik Data Pegawai Berdasarkan Unit)
@@ -481,9 +577,17 @@ export default function MasterHakAksesPage() {
 
 
   const roles = rolesData?.data || []
-  const availableRoleNames = roles.map((r) => r.name)
+  const allRoleRecords = allRolesData?.data || roles
+  const availableRoleNames = allRoleRecords.map((r) => r.name)
+  const assignableRoleNames = canManageGlobalAccess
+    ? availableRoleNames
+    : availableRoleNames.filter((name) => !hasAnyRole([name], GLOBAL_ROLE_NAMES))
   const permissionsGrouped = permData?.data || []
-  const allPerms = permData?.flat_list || []
+  const allPerms = permData?.flat_list || allPermData?.flat_list || []
+  const allPermsForAssignment = allPermData?.flat_list || allPerms
+  const assignablePerms = canManageGlobalAccess
+    ? allPermsForAssignment
+    : allPermsForAssignment.filter((permission) => !GLOBAL_ACCESS_PERMISSIONS.includes(permission))
 
   const listPegawai = pegawaiData?.data || []
   const metaPegawai = pegawaiData?.meta || {}
@@ -493,6 +597,7 @@ export default function MasterHakAksesPage() {
     mutationFn: (payload) => hakAksesService.tambahRole(payload),
     onSuccess: (res) => {
       queryClient.invalidateQueries(['hak-akses-roles'])
+      queryClient.invalidateQueries(['hak-akses-roles-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
       setIsRoleModalOpen(false)
       Swal.fire({ icon: 'success', title: 'Berhasil!', text: res?.message, timer: 2000, showConfirmButton: false })
@@ -504,6 +609,7 @@ export default function MasterHakAksesPage() {
     mutationFn: ({ id, payload }) => hakAksesService.ubahRole({ id, payload }),
     onSuccess: (res) => {
       queryClient.invalidateQueries(['hak-akses-roles'])
+      queryClient.invalidateQueries(['hak-akses-roles-all'])
       setIsRoleModalOpen(false)
       setSelectedRole(null)
       Swal.fire({ icon: 'success', title: 'Berhasil!', text: res?.message, timer: 2000, showConfirmButton: false })
@@ -515,6 +621,7 @@ export default function MasterHakAksesPage() {
     mutationFn: (id) => hakAksesService.hapusRole(id),
     onSuccess: (res) => {
       queryClient.invalidateQueries(['hak-akses-roles'])
+      queryClient.invalidateQueries(['hak-akses-roles-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
       Swal.fire({ icon: 'success', title: 'Terhapus!', text: res?.message, timer: 2000, showConfirmButton: false })
     },
@@ -526,6 +633,7 @@ export default function MasterHakAksesPage() {
     mutationFn: (payload) => hakAksesService.tambahPermission(payload),
     onSuccess: (res) => {
       queryClient.invalidateQueries(['hak-akses-permissions'])
+      queryClient.invalidateQueries(['hak-akses-permissions-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
       setIsPermModalOpen(false)
       Swal.fire({ icon: 'success', title: 'Berhasil!', text: res?.message, timer: 2000, showConfirmButton: false })
@@ -537,6 +645,7 @@ export default function MasterHakAksesPage() {
     mutationFn: (id) => hakAksesService.hapusPermission(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['hak-akses-permissions'])
+      queryClient.invalidateQueries(['hak-akses-permissions-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
       Swal.fire({ icon: 'success', title: 'Terhapus!', timer: 1500, showConfirmButton: false })
     },
@@ -549,6 +658,7 @@ export default function MasterHakAksesPage() {
     onSuccess: (res) => {
       queryClient.invalidateQueries(['hak-akses-pegawai'])
       queryClient.invalidateQueries(['hak-akses-roles'])
+      queryClient.invalidateQueries(['hak-akses-roles-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
       setIsPegawaiModalOpen(false)
       setSelectedEmployee(null)
@@ -558,9 +668,15 @@ export default function MasterHakAksesPage() {
   })
 
   // Handlers
-  const handleOpenCreateRole = () => { setSelectedRole(null); setIsRoleModalOpen(true) }
+  const handleOpenCreateRole = () => {
+    if (!canManageGlobalAccess) return
+    setSelectedRole(null)
+    setIsRoleModalOpen(true)
+  }
 
   const handleOpenEditRole = async (role) => {
+    const { allowed } = canEditRole(userRoles, role.name)
+    if (!allowed) return
     try {
       const detail = await hakAksesService.getDetailRole(role.id)
       setSelectedRole(detail)
@@ -572,35 +688,47 @@ export default function MasterHakAksesPage() {
   }
 
   const handleDeleteRole = (role) => {
-    Swal.fire({
-      title: `Hapus Role "${role.name}"?`,
-      text: 'Role yang memiliki pengguna aktif tidak dapat dihapus.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonText: 'Batal',
-      confirmButtonText: 'Ya, Hapus!',
-    }).then((result) => { if (result.isConfirmed) hapusRoleMutation.mutate(role.id) })
+    const { allowed } = canEditRole(userRoles, role.name)
+    const tier = getTierForRole(role.name)
+    if (!allowed || tier?.isProtected) return
+    setDeleteTargetRole(role)
+  }
+
+  const handleConfirmDeleteRole = () => {
+    if (deleteTargetRole) {
+      hapusRoleMutation.mutate(deleteTargetRole.id, {
+        onSettled: () => setDeleteTargetRole(null),
+      })
+    }
   }
 
   const handleDeletePerm = (perm) => {
-    Swal.fire({
-      title: `Hapus izin "${perm.name}"?`,
-      text: 'Izin yang dihapus akan dicabut dari semua role.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonText: 'Batal',
-      confirmButtonText: 'Ya, Hapus!',
-    }).then((result) => { if (result.isConfirmed) hapusPermMutation.mutate(perm.id) })
+    if (!canManageGlobalAccess) return
+    setDeleteTargetPerm(perm)
+  }
+
+  const handleConfirmDeletePerm = () => {
+    if (deleteTargetPerm) {
+      hapusPermMutation.mutate(deleteTargetPerm.id, {
+        onSettled: () => setDeleteTargetPerm(null),
+      })
+    }
   }
 
   const handleRoleSubmit = (formData) => {
+    if (!canManageGlobalAccess) return
+    setPendingRoleData(formData)
+    setShowSaveRoleConfirmModal(true)
+  }
+
+  const handleConfirmSaveRole = () => {
+    if (!pendingRoleData) return
     if (selectedRole?.id) {
-      ubahRoleMutation.mutate({ id: selectedRole.id, payload: formData })
+      ubahRoleMutation.mutate({ id: selectedRole.id, payload: pendingRoleData })
     } else {
-      tambahRoleMutation.mutate(formData)
+      tambahRoleMutation.mutate(pendingRoleData)
     }
+    setShowSaveRoleConfirmModal(false)
   }
   const handleOpenPegawaiModal = (employee) => {
     setSelectedEmployee(employee)
@@ -655,7 +783,7 @@ export default function MasterHakAksesPage() {
         icon={ShieldCheck}
         title="Manajemen Hak Akses & Matriks Role"
         description="Atur hak akses pengguna, role penugasan pegawai, serta kontrol permission sistem secara terpusat."
-        actions={
+        actions={canManageGlobalAccess ? (
           <>
             <button
               type="button"
@@ -674,7 +802,7 @@ export default function MasterHakAksesPage() {
               <span>Tambah Role</span>
             </button>
           </>
-        }
+        ) : null}
       />
 
       {/* Stats Grid */}
@@ -724,18 +852,31 @@ export default function MasterHakAksesPage() {
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             {activeTab === 'pegawai' && educationUnits.length > 0 && (
               <div className="relative min-w-[200px]">
-                <select
-                  value={selectedUnitId}
-                  onChange={(e) => { setSelectedUnitId(e.target.value); setPage(1) }}
-                  className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-emerald-600"
-                >
-                  <option value="">Semua Unit Pendidikan</option>
-                  {educationUnits.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.nama_unit || u.code}
-                    </option>
-                  ))}
-                </select>
+                {isUnitScopeOnly ? (
+                  // Kepala Sekolah / Divisi: unit dikunci ke unit sendiri
+                  <div className="flex items-center gap-2 min-h-10 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">
+                      {educationUnits.find((u) => String(u.id) === String(selectedUnitId))?.name
+                        || educationUnits.find((u) => String(u.id) === String(user?.unit_id))?.name
+                        || 'Unit Anda'}
+                    </span>
+                    <span className="text-[10px] text-amber-500 ml-auto shrink-0">Terkunci</span>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedUnitId}
+                    onChange={(e) => { setSelectedUnitId(e.target.value); setPage(1) }}
+                    className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-emerald-600"
+                  >
+                    <option value="">Semua Unit Pendidikan</option>
+                    {educationUnits.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.nama_unit || u.code}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
             <div className="relative w-full sm:w-72">
@@ -766,6 +907,7 @@ export default function MasterHakAksesPage() {
               <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
                 <th className="py-3.5 px-4 w-10 text-center">NO</th>
                 <th className="py-3.5 px-4">NAMA ROLE</th>
+                <th className="py-3.5 px-4 text-center">TIER & SCOPE</th>
                 <th className="py-3.5 px-4 text-center">JUMLAH IZIN</th>
                 <th className="py-3.5 px-4 text-center">PENGGUNA</th>
                 <th className="py-3.5 px-4">IZIN AKSES (PREVIEW)</th>
@@ -777,11 +919,11 @@ export default function MasterHakAksesPage() {
                 <tr><td colSpan={6} className="py-16 text-center text-slate-400 text-xs font-medium">Memuat daftar role...</td></tr>
               ) : roles.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-16 text-center">
+                  <td colSpan={7} className="px-4 py-16 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><Shield className="h-5 w-5" /></div>
                     <p className="mt-3 text-sm font-extrabold text-slate-800">{search ? 'Role tidak ditemukan' : 'Belum ada role'}</p>
                     <p className="mt-1 text-xs text-slate-400">{search ? 'Coba gunakan kata kunci yang berbeda.' : 'Buat role pertama untuk mulai mengatur akses pengguna.'}</p>
-                    {!search && <button type="button" onClick={handleOpenCreateRole} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#064e3b] px-4 py-2 text-xs font-bold text-white"><Plus className="h-3 w-3" />Tambah role</button>}
+                    {!search && canManageGlobalAccess && <button type="button" onClick={handleOpenCreateRole} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#064e3b] px-4 py-2 text-xs font-bold text-white"><Plus className="h-3 w-3" />Tambah role</button>}
                   </td>
                 </tr>
               ) : roles.map((role, idx) => (
@@ -789,14 +931,44 @@ export default function MasterHakAksesPage() {
                   <td className="py-3.5 px-4 text-center text-xs font-bold text-slate-500">{idx + 1}</td>
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-[#dcfce7] flex items-center justify-center shrink-0">
-                        <Shield className="w-3.5 h-3.5 text-[#15803d]" />
-                      </div>
+                      {(() => {
+                        const tier = getTierForRole(role.name)
+                        const colors = tier ? (TIER_COLOR_MAP[tier.color] || TIER_COLOR_MAP.gray) : TIER_COLOR_MAP.gray
+                        return (
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${colors.bg}`}>
+                            <Shield className={`w-3.5 h-3.5 ${colors.text}`} />
+                          </div>
+                        )
+                      })()}
                       <div>
                         <p className="font-extrabold text-slate-900 text-sm">{role.name}</p>
                         <p className="text-[10px] text-slate-400">Guard: {role.guard_name}</p>
                       </div>
                     </div>
+                  </td>
+                  {/* KOLOM TIER & SCOPE */}
+                  <td className="py-3.5 px-4 text-center">
+                    {(() => {
+                      const tier = getTierForRole(role.name)
+                      if (!tier) return <span className="text-[10px] italic text-slate-400">–</span>
+                      const colors = TIER_COLOR_MAP[tier.color] || TIER_COLOR_MAP.gray
+                      const scopeInfo = SCOPE_LABEL[tier.scope] || SCOPE_LABEL.global
+                      return (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}>
+                            {tier.label}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${scopeInfo.bg} ${scopeInfo.textCls} ${scopeInfo.border}`}>
+                            {scopeInfo.text}
+                          </span>
+                          {tier.isProtected && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">
+                              <Lock className="w-2.5 h-2.5" /> Dilindungi
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td className="py-3.5 px-4 text-center">
                     <span className="inline-flex items-center gap-1 font-extrabold text-xs text-[#1d4ed8] bg-[#dbeafe] border border-blue-200 px-2.5 py-1 rounded-lg">
@@ -825,24 +997,40 @@ export default function MasterHakAksesPage() {
                       {(role.permissions || []).length === 0 && <span className="text-[11px] italic text-slate-400">Belum ada izin</span>}
                     </div>
                   </td>
-                  <td className="py-3.5 px-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => handleOpenEditRole(role)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 bg-[#fffbe6] text-[#d97706] hover:bg-amber-100 transition-colors"
-                        title="Edit Role"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRole(role)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-[#fef2f2] text-[#dc2626] hover:bg-red-100 transition-colors"
-                        title="Hapus Role"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
+                   <td className="py-3.5 px-4 text-center">
+                     {(() => {
+                       const { allowed } = canEditRole(userRoles, role.name)
+                       const tier = getTierForRole(role.name)
+                       const isProtected = tier?.isProtected || false
+                       if (!allowed) {
+                         return (
+                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400">
+                             <Lock className="w-3 h-3" /> Hanya lihat
+                           </span>
+                         )
+                       }
+                       return (
+                         <div className="flex items-center justify-center gap-1.5">
+                           <button
+                             onClick={() => handleOpenEditRole(role)}
+                             className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 bg-[#fffbe6] text-[#d97706] hover:bg-amber-100 transition-colors"
+                             title="Edit Permission Role"
+                           >
+                             <Pencil className="w-3.5 h-3.5" />
+                           </button>
+                           {!isProtected && (
+                             <button
+                               onClick={() => handleDeleteRole(role)}
+                               className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-[#fef2f2] text-[#dc2626] hover:bg-red-100 transition-colors"
+                               title="Hapus Role"
+                             >
+                               <Trash2 className="w-3.5 h-3.5" />
+                             </button>
+                           )}
+                         </div>
+                       )
+                     })()}
+                   </td>
                 </tr>
               ))}
             </tbody>
@@ -893,13 +1081,15 @@ export default function MasterHakAksesPage() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeletePerm(perm)}
-                      className="text-slate-300 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 shrink-0 p-1 rounded-md hover:bg-rose-50"
-                      title="Hapus izin"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                    {canManageGlobalAccess && (
+                      <button
+                        onClick={() => handleDeletePerm(perm)}
+                        className="text-slate-300 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 shrink-0 p-1 rounded-md hover:bg-rose-50"
+                        title="Hapus izin"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -971,14 +1161,16 @@ export default function MasterHakAksesPage() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleOpenPegawaiModal(emp)}
-                        className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 transition-all hover:border-emerald-700 hover:bg-emerald-700 hover:text-white"
-                      >
-                        <UserCog className="w-3.5 h-3.5" />
-                        <span>Kelola akses</span>
-                        <ArrowRight className="h-2.5 w-2.5" />
-                      </button>
+                      {canManageAccess && (
+                        <button
+                          onClick={() => handleOpenPegawaiModal(emp)}
+                          className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 transition-all hover:border-emerald-700 hover:bg-emerald-700 hover:text-white"
+                        >
+                          <UserCog className="w-3.5 h-3.5" />
+                          <span>Kelola akses</span>
+                          <ArrowRight className="h-2.5 w-2.5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1038,7 +1230,12 @@ export default function MasterHakAksesPage() {
               </select>
             </div>
           )}
-          <UserAccountManagement roles={availableRoleNames} unitId={selectedUnitId} />
+          <UserAccountManagement
+            roles={assignableRoleNames}
+            unitId={selectedUnitId}
+            canManageGlobalAccess={canManageGlobalAccess}
+            canManageUnitAccess={canManageUnitAccess}
+          />
         </div>
       )}
 
@@ -1064,9 +1261,40 @@ export default function MasterHakAksesPage() {
         onClose={() => { setIsPegawaiModalOpen(false); setSelectedEmployee(null) }}
         onSubmit={(data) => assignPegawaiRoleMutation.mutate(data)}
         employee={selectedEmployee}
-        availableRoles={availableRoleNames}
-        allPermissions={allPerms}
+        availableRoles={assignableRoleNames}
+        allPermissions={assignablePerms}
         isSubmitting={isPegawaiSubmitting}
+      />
+
+      {/* Role Save Confirmation */}
+      <ConfirmDialog
+        isOpen={showSaveRoleConfirmModal}
+        onClose={() => setShowSaveRoleConfirmModal(false)}
+        onConfirm={handleConfirmSaveRole}
+        isLoading={isRoleSubmitting}
+        action={selectedRole?.id ? 'update' : 'create'}
+        title={selectedRole?.id ? 'Konfirmasi Ubah Role' : 'Konfirmasi Simpan Role'}
+        message={selectedRole?.id ? `Apakah Anda yakin ingin menyimpan perubahan pada role "${pendingRoleData?.name}"?` : `Apakah Anda yakin ingin menambahkan role baru "${pendingRoleData?.name}"?`}
+      />
+
+      {/* Role Delete Confirmation */}
+      <MasterDeleteDialog
+        isOpen={Boolean(deleteTargetRole)}
+        onClose={() => setDeleteTargetRole(null)}
+        onConfirm={handleConfirmDeleteRole}
+        isLoading={hapusRoleMutation.isPending}
+        title={`Hapus Role "${deleteTargetRole?.name}"?`}
+        description="Role yang memiliki pengguna aktif tidak dapat dihapus."
+      />
+
+      {/* Permission Delete Confirmation */}
+      <MasterDeleteDialog
+        isOpen={Boolean(deleteTargetPerm)}
+        onClose={() => setDeleteTargetPerm(null)}
+        onConfirm={handleConfirmDeletePerm}
+        isLoading={hapusPermMutation.isPending}
+        title={`Hapus Izin "${deleteTargetPerm?.name}"?`}
+        description="Izin yang dihapus akan dicabut secara permanen dari seluruh role."
       />
     </MasterDataPage>
     </PageContainer>

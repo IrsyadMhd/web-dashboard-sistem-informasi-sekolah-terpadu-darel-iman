@@ -77,6 +77,7 @@ export default function JabatanFormModal({
   options = {},
   isSubmitting = false,
   isKepalaSekolah = false,
+  isUnitScopedManager = false,
 }) {
   const isEdit = Boolean(initialData?.id)
   const [currentStep, setCurrentStep] = useState(1)
@@ -271,7 +272,9 @@ export default function JabatanFormModal({
 	                          { value: 'Bidang Pendidikan', label: 'Bidang Pendidikan' },
 	                          { value: 'Unit Pendidikan', label: 'Unit Pendidikan' },
 	                        ])
-                          .filter((item) => !isKepalaSekolah || item.value !== 'Pengurus')
+                          .filter((item) => isUnitScopedManager
+                            ? item.value === 'Unit Pendidikan'
+                            : (!isKepalaSekolah || item.value !== 'Pengurus'))
                           .map((item) => (
 	                          <option key={item.value} value={item.value}>{item.label}</option>
 	                        ))}
@@ -323,7 +326,7 @@ export default function JabatanFormModal({
 	                          { value: 'rombel_sendiri', label: 'Rombel Sendiri' },
 	                          { value: 'kelas_mapel_sendiri', label: 'Kelas & Mata Pelajaran Sendiri' },
 	                          { value: 'siswa_binaan', label: 'Siswa Binaan' },
-	                        ]).map((item) => (
+                        ]).filter((item) => !isUnitScopedManager || !['semua_unit', 'bidang_pendidikan'].includes(item.value)).map((item) => (
 	                          <option key={item.value} value={item.value}>{item.label}</option>
 	                        ))}
 	                      </select>
@@ -362,6 +365,7 @@ export default function JabatanFormModal({
                       >
                         <option value="">-- Pilih Level Jabatan --</option>
                         {(options.level_jabatan?.length > 0 ? options.level_jabatan : LEVEL_JABATAN_OPTIONS)
+                          .filter((lvl) => !isUnitScopedManager || Number(lvl.value) > 2)
                           .filter((lvl) => !isKepalaSekolah || Number(lvl.value) !== 1)
                           .map((lvl) => (
                             <option key={lvl.value} value={lvl.value}>
@@ -383,7 +387,7 @@ export default function JabatanFormModal({
                         {...register('unit_sekolah_id')}
                         className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
                       >
-                        <option value="">-- Semua Unit / Yayasan --</option>
+                        {!isUnitScopedManager && <option value="">-- Semua Unit / Yayasan --</option>}
                         {(options.unit_sekolah || []).map((unit) => (
                           <option key={unit.id} value={unit.id}>
                             {unit.nama} {unit.kode ? `(${unit.kode})` : ''}

@@ -51,6 +51,7 @@ const CONTAINERS = {
   pengaturan: {
     title: 'Pengaturan Akademik',
     description: 'Kelola periode, kurikulum, kelas, mata pelajaran, dan jadwal tanpa mengubah alur CRUD masing-masing modul.',
+    hideHeaderCard: true,
     tabs: [
       {
         key: 'tahun-ajaran',
@@ -311,6 +312,12 @@ export default function AcademicLmsContainerPage({ section }) {
     squircleStyle: t.squircleStyle,
   }))
 
+  const breadcrumbItems = useMemo(() => [
+    { label: 'Akademik', to: location.pathname },
+    { label: config.title, to: `${location.pathname}?tab=${defaultTab}` },
+    { label: selected.label }
+  ], [location.pathname, config.title, defaultTab, selected.label])
+
   return (
     <AcademicModuleContainer
       title={config.title}
@@ -318,6 +325,7 @@ export default function AcademicLmsContainerPage({ section }) {
       tabs={tabs}
       hideHeader={config.hideHeaderCard}
       tabsBelowKpi={config.tabsBelowKpi}
+      breadcrumbItems={breadcrumbItems}
     >
       <ActivePage embedded hidePageHeader hideBreadcrumb />
     </AcademicModuleContainer>

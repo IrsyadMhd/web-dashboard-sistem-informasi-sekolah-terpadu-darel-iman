@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarPlus, FileSpreadsheet, GraduationCap, RefreshCcw, ShieldAlert, UserCheck, UserRound } from 'lucide-react'
+import { Award, CalendarPlus, FileSpreadsheet, GraduationCap, RefreshCcw, ShieldAlert, UserCheck, UserMinus, UserRound, UsersRound } from 'lucide-react'
+import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import api from '../../services/api'
 import {
-  MasterActionButton,
-  MasterActionIconButton,
   MasterBadge,
   MasterDataPage,
   MasterDataTable,
@@ -12,7 +11,6 @@ import {
   MasterErrorState,
   MasterFilterBar,
   MasterFilterSelect,
-  MasterPageHeader,
   MasterPagination,
   MasterSearchInput,
   MasterStatCard,
@@ -38,7 +36,9 @@ export function FoundationNewStudentsPage() {
   const [search, setSearch] = useState('')
   const [selectedUnit, setSelectedUnit] = useState('all')
   const [page, setPage] = useState(1)
-  const perPage = 15
+  const [perPage, setPerPage] = useState(10)
+  const [sortKey, setSortKey] = useState('nama')
+  const [sortOrder, setSortOrder] = useState('asc')
 
   const [selectedStudentId, setSelectedStudentId] = useState(null)
   const [showExport, setShowExport] = useState(false)
@@ -95,9 +95,48 @@ export function FoundationNewStudentsPage() {
     return matchesSearch && matchesUnit
   }), [students, search, selectedUnit])
 
-  const totalItems = filteredStudents.length
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortOrder('asc')
+    }
+  }
+
+  const sortedStudents = useMemo(() => {
+    return [...filteredStudents].sort((a, b) => {
+      let aVal = ''
+      let bVal = ''
+      if (sortKey === 'nama') {
+        aVal = (a.full_name || a.nama || '').toString().toLowerCase()
+        bVal = (b.full_name || b.nama || '').toString().toLowerCase()
+      } else if (sortKey === 'unit') {
+        aVal = (a.education_unit?.name || a.unit?.name || '').toString().toLowerCase()
+        bVal = (b.education_unit?.name || b.unit?.name || '').toString().toLowerCase()
+      } else if (sortKey === 'tahun') {
+        aVal = Number(a.tahun_masuk || 0)
+        bVal = Number(b.tahun_masuk || 0)
+      } else if (sortKey === 'tanggal') {
+        aVal = new Date(a.created_at || 0).getTime()
+        bVal = new Date(b.created_at || 0).getTime()
+      } else if (sortKey === 'kelas') {
+        aVal = (a.kelas?.nama_kelas || a.school_class?.name || '').toString().toLowerCase()
+        bVal = (b.kelas?.nama_kelas || b.school_class?.name || '').toString().toLowerCase()
+      } else if (sortKey === 'status') {
+        aVal = a.is_active || a.status === 'aktif' ? 1 : 0
+        bVal = b.is_active || b.status === 'aktif' ? 1 : 0
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredStudents, sortKey, sortOrder])
+
+  const totalItems = sortedStudents.length
   const lastPage = Math.max(1, Math.ceil(totalItems / perPage))
-  const paginatedStudents = filteredStudents.slice((page - 1) * perPage, page * perPage)
+  const paginatedStudents = sortedStudents.slice((page - 1) * perPage, page * perPage)
 
   const totalNew = students.length
   const maleCount = students.filter((s) => s.gender === 'male' || s.gender === 'L').length
@@ -121,30 +160,86 @@ export function FoundationNewStudentsPage() {
 
   return (
     <MasterDataPage hideBreadcrumb className="foundation-new-students-page">
-      <MasterPageHeader
-        title="Penerimaan Siswa Baru"
-        description="Pantau penerimaan dan jumlah siswa baru pada seluruh Unit Pendidikan Tahun Ajaran Aktif."
-        tone="brand"
-        icon={CalendarPlus}
-        actions={(
-          <>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-2 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-              <ShieldAlert className="h-3 w-3" />
-              Mode Monitoring • Akses Read-Only
-            </span>
-            <MasterActionButton variant="export" icon={FileSpreadsheet} onClick={() => setShowExport(true)}>
-              Export Data
-            </MasterActionButton>
-          </>
-        )}
-      />
-
+      {/* Stat Cards Ringkasan Siswa Baru */}
       <MasterStatsGrid>
         <MasterStatCard icon={GraduationCap} label="Total Siswa Baru" value={totalNew} description="Tahun ajaran aktif" variant="success" delay={40} />
         <MasterStatCard icon={UserRound} label="Laki-Laki" value={maleCount} description="Siswa baru laki-laki" variant="info" delay={80} />
         <MasterStatCard icon={UserCheck} label="Perempuan" value={femaleCount} description="Siswi baru perempuan" variant="warning" delay={120} />
-        <MasterStatCard icon={GraduationCap} label="Masuk Rombel" value={inRombelCount} description={`${totalNew - inRombelCount} belum masuk rombel`} variant="neutral" delay={160} />
+        <MasterStatCard icon={GraduationCap} label="Masuk Rombel" value={inRombelCount} description={`${totalNew - inRombelCount} belum masuk rombel`} variant="success" delay={160} />
       </MasterStatsGrid>
+
+      {/* Soft Pastel Squircle KPI & Quick Action Navigation Buttons */}
+      <section className="mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 1. Siswa Aktif (Tahun Ajaran) */}
+          <a
+            href="/dashboard/yayasan/siswa"
+            className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-emerald-50 text-emerald-600 border-emerald-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Siswa Aktif (Tahun Ajaran)</p>
+                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">Siswa Aktif Terdaftar</p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-lg bg-emerald-100 px-2 py-1 text-[10px] font-extrabold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">Aktif</span>
+          </a>
+
+          {/* 2. Siswa Masuk (Baru) */}
+          <a
+            href="/dashboard/yayasan/siswa-baru"
+            className="group flex items-center justify-between gap-3 rounded-2xl border border-sky-500/30 bg-sky-50/60 p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-sky-800/60 dark:bg-sky-950/40 text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-sky-100 text-sky-700 border-sky-200 transition-transform duration-200 group-hover:scale-110 dark:bg-sky-900/60 dark:text-sky-300 dark:border-sky-700">
+                <UserCheck className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-sky-700 dark:group-hover:text-sky-300">Siswa Masuk (Baru)</p>
+                <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">{totalNew} Siswa Baru</p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-lg bg-sky-200/80 px-2 py-1 text-[10px] font-extrabold text-sky-800 dark:bg-sky-900 dark:text-sky-200">Baru</span>
+          </a>
+
+          {/* 3. Siswa Keluar (Mutasi) */}
+          <a
+            href="/dashboard/yayasan/mutasi-siswa"
+            className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-amber-50 text-amber-600 border-amber-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60">
+                <UserMinus className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-amber-700 dark:group-hover:text-amber-300">Siswa Keluar (Mutasi)</p>
+                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">Riwayat Mutasi Siswa</p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-lg bg-amber-100 px-2 py-1 text-[10px] font-extrabold text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">Mutasi</span>
+          </a>
+
+          {/* 4. Kelulusan & Alumni */}
+          <a
+            href="/dashboard/yayasan/kelulusan-alumni"
+            className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-purple-50 text-purple-600 border-purple-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-purple-950/60 dark:text-purple-400 dark:border-purple-800/60">
+                <Award className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-purple-700 dark:group-hover:text-purple-300">Kelulusan & Alumni</p>
+                <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">Data Lulusan & Alumni</p>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-lg bg-purple-100 px-2 py-1 text-[10px] font-extrabold text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">Alumni</span>
+          </a>
+        </div>
+      </section>
 
       <MasterFilterBar
         search={<MasterSearchInput placeholder="Cari NIS, NISN, atau nama siswa baru..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />}
@@ -153,6 +248,18 @@ export function FoundationNewStudentsPage() {
             <MasterFilterSelect value={selectedUnit} onChange={(e) => { setSelectedUnit(e.target.value); setPage(1) }} aria-label="Filter unit pendidikan">
               <option value="all">Semua Unit Pendidikan</option>
               {units.map((u) => <option key={u.id} value={u.id}>{u.name || u.code}</option>)}
+            </MasterFilterSelect>
+            <MasterFilterSelect
+              value={perPage}
+              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
+              aria-label="Tampilkan per halaman"
+            >
+              <option value={5}>5 per Halaman</option>
+              <option value={10}>10 per Halaman</option>
+              <option value={15}>15 per Halaman</option>
+              <option value={25}>25 per Halaman</option>
+              <option value={50}>50 per Halaman</option>
+              <option value={100}>100 per Halaman</option>
             </MasterFilterSelect>
             <button
               type="button"
@@ -173,7 +280,17 @@ export function FoundationNewStudentsPage() {
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Siswa Baru</h2>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Penerimaan siswa baru sesuai filter dan kewenangan pengguna.</p>
           </div>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">{totalItems} siswa baru</span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">{totalItems} siswa baru</span>
+            <button
+              type="button"
+              onClick={() => setShowExport(true)}
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-sky-200/60 bg-sky-50 px-3.5 py-1.5 text-xs font-bold text-sky-700 shadow-xs transition-all duration-200 hover:scale-105 hover:bg-sky-100 hover:shadow-md dark:border-sky-800/60 dark:bg-sky-950/60 dark:text-sky-300 cursor-pointer"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-sky-600" />
+              <span>Export Data</span>
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           {error ? (
@@ -183,12 +300,66 @@ export function FoundationNewStudentsPage() {
               <thead className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
                 <tr>
                   <th className="w-[5%] px-2 py-3 text-center">No</th>
-                  <th className="w-[24%] px-3 py-3 font-bold">Nama Siswa</th>
-                  <th className="hidden w-[16%] px-3 py-3 font-bold md:table-cell">Unit Pendidikan</th>
-                  <th className="hidden w-[11%] px-3 py-3 font-bold lg:table-cell">Tahun Ajaran</th>
-                  <th className="hidden w-[12%] px-3 py-3 font-bold xl:table-cell">Tanggal Masuk</th>
-                  <th className="hidden w-[13%] px-3 py-3 font-bold xl:table-cell">Kelas / Rombel</th>
-                  <th className="hidden w-[9%] px-2 py-3 text-center font-bold sm:table-cell">Status</th>
+                  <th className="w-[24%] px-3 py-3 font-bold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('nama')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Nama Siswa</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'nama' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[16%] px-3 py-3 font-bold md:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('unit')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Unit Pendidikan</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'unit' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[11%] px-3 py-3 font-bold lg:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('tahun')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Tahun Ajaran</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'tahun' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[12%] px-3 py-3 font-bold xl:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('tanggal')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Tanggal Masuk</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'tanggal' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[13%] px-3 py-3 font-bold xl:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('kelas')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Kelas / Rombel</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'kelas' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[9%] px-2 py-3 text-center font-bold sm:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('status')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white mx-auto"
+                    >
+                      <span>Status</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'status' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
                   <th className="w-[7%] px-2 py-3 text-center font-bold">Aksi</th>
                 </tr>
               </thead>

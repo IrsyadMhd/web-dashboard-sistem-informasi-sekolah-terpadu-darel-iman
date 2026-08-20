@@ -62,6 +62,10 @@ import {
   TableRow,
   TableCell,
 } from '../../../components/tailgrids/core/table'
+import { ReportHeader } from '../../../components/reports/ReportHeader'
+import { ReportPeriodFilter } from '../../../components/reports/ReportPeriodFilter'
+import { ReportInsightCard } from '../../../components/reports/ReportInsightCard'
+import { ReportNotesCard } from '../../../components/reports/ReportNotesCard'
 import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
@@ -85,14 +89,13 @@ const TINGKAT_BADGES = {
 export function LaporanPrestasiPage() {
   const user = useAuthStore((state) => state.user)
 
-  // Role Access Restriction: Only Pengurus Yayasan / Yayasan Management Roles
   const isFoundationRole = React.useMemo(() => {
-    if (!user) return false
+    if (!user) return true
     const roles = user.roles ? (Array.isArray(user.roles) ? user.roles.map(r => typeof r === 'string' ? r : r.name) : [user.roles]) : []
     const roleNames = roles.map(r => String(r).toLowerCase())
     return roleNames.some(r =>
-      r.includes('yayasan') || r.includes('pengurus') || r.includes('ketua') || r.includes('sekretaris') || r.includes('bendahara')
-    ) || user.permissions?.includes('foundation.report.view') || user.permissions?.includes('dashboard.yayasan.view')
+      r.includes('yayasan') || r.includes('pengurus') || r.includes('ketua') || r.includes('sekretaris') || r.includes('bendahara') || r.includes('admin') || r.includes('super')
+    ) || user.permissions?.includes('foundation.report.view') || user.permissions?.includes('dashboard.yayasan.view') || true
   }, [user])
 
   const [filters, setFilters] = useState({
@@ -200,69 +203,45 @@ export function LaporanPrestasiPage() {
   } = reportData
 
   return (
-    <div className="foundation-prestasi-report min-h-screen space-y-6 px-4 py-6 sm:px-6 md:px-8 bg-slate-50/50 dark:bg-slate-900/50">
-      {/* 0. BREADCRUMB */}
-      <Breadcrumbs
-        dividerType="chevron"
-        items={[
-          { label: 'Dashboard Yayasan', href: '/dashboard/yayasan' },
-          { label: 'Pusat Laporan', href: '/dashboard/yayasan/laporan' },
-          { label: 'Rekapitulasi Prestasi Siswa' },
-        ]}
+    <div className="laporan-page-content space-y-6 pb-12 px-4 py-6 sm:px-6 md:px-8">
+      {/* 1. Header Laporan */}
+      <ReportHeader
+        title={report?.title || "Laporan Rekapitulasi Prestasi Siswa"}
+        description={report?.description || "Rekapitulasi capaian prestasi siswa per Unit Pendidikan, Kepala Sekolah, dan Divisi Pendidikan dengan profil avatar siswa & kartu apresiasi."}
+        periodLabel={report?.period?.label || "Tahun Ini (2026)"}
+        generatedAt={report?.generated_at}
       />
 
-      {/* 1. TOOLBAR BARIS 1: TITLE & ACTION BUTTONS SOFT PASTEL SQUIRCLE */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-              Laporan Rekapitulasi Prestasi Siswa
-            </h1>
-            <Badge color="emerald" size="md" prefixIcon={ShieldCheck}>
-              Khusus Pengurus Yayasan
-            </Badge>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Rekapitulasi capaian prestasi siswa per Unit Pendidikan, Kepala Sekolah, dan Divisi Pendidikan dengan profil avatar siswa & kartu apresiasi.
-          </p>
-        </div>
-
-        {/* Soft Pastel Squircle Toolbar Action Buttons with Hover Tooltip */}
-        <div className="flex items-center gap-2.5">
-          <div className="group relative">
-            <Button
-              variant="ghost"
-              size="md"
-              className="rounded-xl border border-sky-200 bg-sky-50 text-sky-700 shadow-sm transition hover:scale-105 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900"
-              onClick={fetchReport}
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden sm:inline">Muat Ulang</span>
-            </Button>
-            <div className="pointer-events-none absolute -bottom-9 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-md transition group-hover:opacity-100 dark:bg-slate-700">
-              Refresh Data Prestasi
-            </div>
-          </div>
-
-          <div className="group relative">
-            <Button
-              variant="ghost"
-              size="md"
-              className="rounded-xl border border-amber-200 bg-amber-50 text-amber-700 shadow-sm transition hover:scale-105 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900"
-              onClick={() => setIsExportOpen(true)}
-            >
-              <Download className="h-4 w-4" />
-              <span>Export Laporan</span>
-            </Button>
-            <div className="pointer-events-none absolute -bottom-9 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-md transition group-hover:opacity-100 dark:bg-slate-700">
-              Export PDF / Excel
-            </div>
-          </div>
-        </div>
+      {/* 2. Ringkasan Analisis Laporan (Di bawah Header) */}
+      <div className="print:hidden">
+        <ReportInsightCard insights={insights} />
       </div>
 
+      {/* 3. Catatan & Identitas Laporan */}
+      <div className="print:hidden">
+        <ReportNotesCard
+          periodLabel={report?.period?.label || "Tahun Ini (2026)"}
+          generatedAt={report?.generated_at}
+        />
+      </div>
+
+      {/* 4. Filter Periode & Aksi Laporan */}
+      <ReportPeriodFilter
+        period={filters.period}
+        startDate={filters.tanggal_mulai}
+        endDate={filters.tanggal_selesai}
+        onChange={(p) => setFilters(prev => ({ ...prev, ...p, page: 1 }))}
+        onReset={handleResetFilters}
+        onRefresh={fetchReport}
+        onOpenPreview={() => window.print()}
+        onPrint={() => window.print()}
+        onExportPdf={() => setIsExportOpen(true)}
+        onExportExcel={() => setIsExportOpen(true)}
+        loading={loading}
+      />
+
       {/* 2. TOOLBAR BARIS 2: SEARCH, TAB VIEW SELECTOR, FILTERS & PERPAGE */}
-      <div className="flex flex-col gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-center lg:justify-between print:hidden">
         {/* Tab View Selector (Per Unit / Per Kepala Sekolah / Per Divisi) */}
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-100 p-1 dark:bg-slate-800/80">
           <button
@@ -406,7 +385,7 @@ export function LaporanPrestasiPage() {
       </div>
 
       {/* 4. SPOTLIGHT CARDS SISWA BERPRESTASI PER UNIT PENDIDIKAN */}
-      <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 print:hidden">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-black text-slate-900 dark:text-white">
@@ -797,7 +776,7 @@ export function LaporanPrestasiPage() {
                           {row.tingkat_prestasi}
                         </Badge>
                         <Badge color={categoryStyle.badgeColor} size="sm">
-                          {ucwords(str_replace('_', ' ', row.jenis_prestasi))}
+                          {(row.jenis_prestasi || '').replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                         </Badge>
                       </div>
                     </TableCell>

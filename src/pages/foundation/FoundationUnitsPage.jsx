@@ -51,6 +51,8 @@ import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
 import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
 
+import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
+
 const LEVEL_OPTIONS = ['TKIT', 'TAUD', 'SDIT', 'MIT', 'SMPIT', 'SMAIT', 'PONPES', 'Mahad']
 
 export function FoundationUnitsPage() {
@@ -94,7 +96,9 @@ export function FoundationUnitsPage() {
   const [selectedLevel, setSelectedLevel] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [page, setPage] = useState(1)
-  const perPage = 15
+  const [perPage, setPerPage] = useState(10)
+  const [sortKey, setSortKey] = useState('name')
+  const [sortOrder, setSortOrder] = useState('asc')
 
   const [selectedUnitId, setSelectedUnitId] = useState(null)
   const [activeKpiModal, setActiveKpiModal] = useState(null)
@@ -151,9 +155,45 @@ export function FoundationUnitsPage() {
     return matchesSearch && matchesLevel && matchesStatus
   }), [units, search, selectedLevel, selectedStatus])
 
-  const totalItems = filteredUnits.length
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortOrder('asc')
+    }
+  }
+
+  const sortedUnits = useMemo(() => {
+    return [...filteredUnits].sort((a, b) => {
+      let aVal = ''
+      let bVal = ''
+      if (sortKey === 'name') {
+        aVal = (a.name || a.nama || '').toString().toLowerCase()
+        bVal = (b.name || b.nama || '').toString().toLowerCase()
+      } else if (sortKey === 'location') {
+        aVal = (a.location || a.description || '').toString().toLowerCase()
+        bVal = (b.location || b.description || '').toString().toLowerCase()
+      } else if (sortKey === 'kepala_sekolah') {
+        aVal = (a.kepala_sekolah || '').toString().toLowerCase()
+        bVal = (b.kepala_sekolah || '').toString().toLowerCase()
+      } else if (sortKey === 'siswa') {
+        aVal = Number(a.siswa_aktif_count || 0)
+        bVal = Number(b.siswa_aktif_count || 0)
+      } else if (sortKey === 'status') {
+        aVal = a.is_active || a.status === 'aktif' ? 1 : 0
+        bVal = b.is_active || b.status === 'aktif' ? 1 : 0
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredUnits, sortKey, sortOrder])
+
+  const totalItems = sortedUnits.length
   const lastPage = Math.max(1, Math.ceil(totalItems / perPage))
-  const paginatedUnits = filteredUnits.slice((page - 1) * perPage, page * perPage)
+  const paginatedUnits = sortedUnits.slice((page - 1) * perPage, page * perPage)
 
   const totalGuru = units.reduce((acc, u) => acc + Number(u.guru_count || 0), 0)
   const totalPegawai = units.reduce((acc, u) => acc + Number(u.pegawai_count || 0), 0)
@@ -379,6 +419,18 @@ export function FoundationUnitsPage() {
               <option value="aktif">Aktif</option>
               <option value="nonaktif">Nonaktif</option>
             </MasterFilterSelect>
+            <MasterFilterSelect
+              value={perPage}
+              onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
+              aria-label="Tampilkan per halaman"
+            >
+              <option value={5}>5 per Halaman</option>
+              <option value={10}>10 per Halaman</option>
+              <option value={15}>15 per Halaman</option>
+              <option value={25}>25 per Halaman</option>
+              <option value={50}>50 per Halaman</option>
+              <option value={100}>100 per Halaman</option>
+            </MasterFilterSelect>
             <button
               type="button"
               onClick={handleRefresh}
@@ -418,11 +470,56 @@ export function FoundationUnitsPage() {
               <thead className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
                 <tr>
                   <th className="w-[5%] px-2 py-3 text-center">No</th>
-                  <th className="w-[26%] px-3 py-3 font-bold">Identitas Unit</th>
-                  <th className="hidden w-[16%] px-3 py-3 font-bold md:table-cell">Lokasi</th>
-                  <th className="hidden w-[18%] px-3 py-3 font-bold lg:table-cell">Kepala Sekolah</th>
-                  <th className="hidden w-[19%] px-3 py-3 font-bold xl:table-cell">Statistik</th>
-                  <th className="hidden w-[9%] px-2 py-3 text-center font-bold sm:table-cell">Status</th>
+                  <th className="w-[26%] px-3 py-3 font-bold">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('name')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Identitas Unit</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'name' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[16%] px-3 py-3 font-bold md:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('location')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Lokasi</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'location' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[18%] px-3 py-3 font-bold lg:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('kepala_sekolah')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Kepala Sekolah</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'kepala_sekolah' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[19%] px-3 py-3 font-bold xl:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('siswa')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white"
+                    >
+                      <span>Statistik</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'siswa' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
+                  <th className="hidden w-[9%] px-2 py-3 text-center font-bold sm:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('status')}
+                      className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white mx-auto"
+                    >
+                      <span>Status</span>
+                      <ArrowBothDirectionHorizontal2 className={`h-3 w-3 shrink-0 transition-transform duration-200 ${sortKey === 'status' ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400'}`} />
+                    </button>
+                  </th>
                   <th className="w-[7%] px-2 py-3 text-center font-bold">Aksi</th>
                 </tr>
               </thead>

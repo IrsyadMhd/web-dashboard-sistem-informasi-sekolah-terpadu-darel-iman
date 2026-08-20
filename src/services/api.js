@@ -9,6 +9,13 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    if (config.headers) {
+      delete config.headers['Content-Type']
+      delete config.headers['content-type']
+    }
+  }
+
   const token = sessionStorage.getItem('school_erp_token') || localStorage.getItem('school_erp_token')
 
   if (token) {

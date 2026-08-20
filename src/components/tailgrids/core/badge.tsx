@@ -1,6 +1,7 @@
 import { cn } from "@/utils/cn";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
+import React from "react";
 
 const badgeStyles = cva(
   "inline-flex items-center gap-2 rounded-full font-medium [&>svg]:size-3",
@@ -132,6 +133,21 @@ export function Badge({
   children,
   ...props
 }: PropsType) {
+  const renderIcon = (icon: React.ReactNode) => {
+    if (!icon) return null;
+    if (React.isValidElement(icon)) {
+      return icon;
+    }
+    if (
+      typeof icon === "function" ||
+      (typeof icon === "object" && icon !== null && ("render" in icon || "$$typeof" in icon))
+    ) {
+      const IconComp = icon as React.ComponentType<{ className?: string }>;
+      return <IconComp className="size-3" />;
+    }
+    return icon;
+  };
+
   return (
     <span
       className={cn(
@@ -145,9 +161,9 @@ export function Badge({
       )}
       {...props}
     >
-      {prefixIcon}
+      {renderIcon(prefixIcon)}
       {children}
-      {suffixIcon}
+      {renderIcon(suffixIcon)}
     </span>
   );
 }

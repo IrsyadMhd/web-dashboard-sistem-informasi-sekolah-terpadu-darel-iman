@@ -16,43 +16,170 @@ function Skeletons() { return <div className="grid gap-3">{[1, 2, 3].map((item) 
 function Empty({ label }) { return <div className="rounded-[18px] border border-dashed border-slate-300 px-5 py-14 text-center dark:border-slate-700"><FileText className="mx-auto h-9 w-9 text-slate-300"/><p className="mt-3 text-sm font-bold text-slate-600 dark:text-slate-300">{label}</p></div> }
 function Badge({ children, className = '' }) { return <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${className}`}>{children}</span> }
 
+const isMatchChildUnit = (itemUnit, childUnitName, childUnitCode) => {
+  if (!itemUnit) return true
+  const unitLower = String(itemUnit).toLowerCase().trim()
+  if (
+    unitLower === 'seluruh yayasan' ||
+    unitLower === 'semua unit' ||
+    unitLower === 'yayasan' ||
+    unitLower === 'semua' ||
+    unitLower.includes('yayasan darel iman') ||
+    unitLower.includes('seluruh')
+  ) {
+    return true
+  }
+  if (!childUnitName && !childUnitCode) return true
+
+  const childNameLower = String(childUnitName || '').toLowerCase().trim()
+  const childCodeLower = String(childUnitCode || '').toLowerCase().trim()
+
+  if (childNameLower && unitLower.includes(childNameLower)) return true
+  if (childNameLower && childNameLower.includes(unitLower)) return true
+  if (childCodeLower && (unitLower.includes(childCodeLower) || childCodeLower.includes(unitLower))) return true
+
+  if (childNameLower.includes('sd') && unitLower.includes('sd')) return true
+  if (childNameLower.includes('smp') && unitLower.includes('smp')) return true
+  if (childNameLower.includes('sma') && unitLower.includes('sma')) return true
+  if (
+    (childNameLower.includes('pesantren') || childNameLower.includes('ponpes') || childCodeLower === 'ponpes') &&
+    (unitLower.includes('pesantren') || unitLower.includes('ponpes') || unitLower.includes('asrama'))
+  ) {
+    return true
+  }
+
+  return false
+}
+
 export default function SchoolInformationWorkspace({ studentId, student, embedded = false }) {
   const client = useQueryClient()
   const [tab, setTab] = useState('all'), [page, setPage] = useState(1), [detail, setDetail] = useState(null), [savedOnly, setSavedOnly] = useState(false)
   const [draftSearch, setDraftSearch] = useState(''), [filtersOpen, setFiltersOpen] = useState(false)
   const [filters, setFilters] = useState({ search: '', category: '', priority: '', read_status: '', has_attachment: '' })
   useEffect(() => { const timer = setTimeout(() => setFilters((old) => ({ ...old, search: draftSearch })), 350); return () => clearTimeout(timer) }, [draftSearch])
-  useEffect(() => setPage(1), [tab, filters, savedOnly, studentId])
-  const key = ['portal-school-information', studentId || 'self', student?.education_unit_id, tab, filters, savedOnly, page]
-  const summary = useQuery({ queryKey: ['portal-school-information-summary', studentId || 'self'], queryFn: () => schoolInformationService.summary(studentId) })
-  const listing = useQuery({ queryKey: key, queryFn: () => schoolInformationService.list(studentId, { ...filters, type: tab, bookmarked: savedOnly ? 1 : undefined, has_attachment: filters.has_attachment || undefined, page, per_page: 12 }) })
-  const data = unwrap(listing.data), summaryData = unwrap(summary.data), items = data?.data || []
+  useEffect(() => setPage(1), [tab, filters, savedOnly, studentId, student?.unit_name])
+  const key = ['portal-school-information', studentId || 'self', student?.education_unit_id, student?.unit_name, student?.unit_code, tab, filters, savedOnly, page]
+  const summary = useQuery({ queryKey: ['portal-school-information-summary', studentId || 'self', student?.education_unit_id, student?.unit_name, student?.unit_code], queryFn: () => schoolInformationService.summary(studentId, { unit_name: student?.unit_name, unit_code: student?.unit_code, education_unit_id: student?.education_unit_id }) })
+  const listing = useQuery({ queryKey: key, queryFn: () => schoolInformationService.list(studentId, { ...filters, type: tab, bookmarked: savedOnly ? 1 : undefined, has_attachment: filters.has_attachment || undefined, page, per_page: 12, unit_name: student?.unit_name, unit_code: student?.unit_code, education_unit_id: student?.education_unit_id }) })
+  const data = unwrap(listing.data), summaryData = unwrap(summary.data), rawItems = data?.data || []
+  
+  const items = useMemo(() => {
+    return rawItems.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+  }, [rawItems, student?.unit_name, student?.unit_code])
+
+  const calendarItems = useMemo(() => {
+    return (summaryData?.calendar || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+  }, [summaryData?.calendar, student?.unit_name, student?.unit_code])
+
+  const events = useMemo(() => {
+    return (summaryData?.upcoming_events || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+  }, [summaryData?.upcoming_events, student?.unit_name, student?.unit_code])
+
+  const news = useMemo(() => {
+    return (summaryData?.latest_news || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+  }, [summaryData?.latest_news, student?.unit_name, student?.unit_code])
+
+  const circulars = useMemo(() => {
+    return (summaryData?.latest_circulars || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+  }, [summaryData?.latest_circulars, student?.unit_name, student?.unit_code])
+
+  const galleries = useMemo(() => {
+    return (summaryData?.galleries || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+  }, [summaryData?.galleries, student?.unit_name, student?.unit_code])
+
+  const importantItems = useMemo(() => {
+    return (summaryData?.important || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+  }, [summaryData?.important, student?.unit_name, student?.unit_code])
+
   const mutate = useMutation({ mutationFn: ({ id, action }) => schoolInformationService.updateState(id, action, studentId), onSuccess: (response) => { const updated = unwrap(response); setDetail((old) => old?.id === updated?.id ? updated : old); client.invalidateQueries({ queryKey: ['portal-school-information'] }); client.invalidateQueries({ queryKey: ['portal-school-information-summary'] }); client.invalidateQueries({ queryKey: ['notifications'] }) } })
   const markAll = useMutation({ mutationFn: () => schoolInformationService.markAllRead(studentId), onSuccess: () => { client.invalidateQueries({ queryKey: ['portal-school-information'] }); client.invalidateQueries({ queryKey: ['portal-school-information-summary'] }) } })
   const openDetail = (item) => { setDetail(item); if (!item.is_read) mutate.mutate({ id: item.id, action: 'read' }) }
   const reset = () => { setDraftSearch(''); setFilters({ search: '', category: '', priority: '', read_status: '', has_attachment: '' }); setSavedOnly(false) }
-  const emptyLabel = { announcement: 'Belum ada pengumuman yang dipublikasikan.', event: 'Belum ada agenda mendatang.', news: 'Belum ada berita terbaru.', circular: 'Belum ada surat edaran.', gallery: 'Belum ada dokumentasi kegiatan.' }[tab] || 'Belum ada informasi yang dipublikasikan.'
-  const calendarItems = summaryData?.calendar || [], events = summaryData?.upcoming_events || [], news = summaryData?.latest_news || [], circulars = summaryData?.latest_circulars || [], galleries = summaryData?.galleries || []
+  const emptyLabel = { announcement: 'Belum ada pengumuman yang dipublikasikan untuk unit sekolah ini.', event: 'Belum ada agenda mendatang untuk unit sekolah ini.', news: 'Belum ada berita terbaru.', circular: 'Belum ada surat edaran.', gallery: 'Belum ada dokumentasi kegiatan.' }[tab] || 'Belum ada informasi yang dipublikasikan untuk unit sekolah anak ini.'
   const monthTitle = useMemo(() => new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(new Date()), [])
+
+  const categoryCounts = useMemo(() => {
+    const rawAll = rawItems.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    return {
+      all: rawAll.length,
+      announcement: rawAll.filter((i) => i.type === 'announcement' || i.type === 'pengumuman').length,
+      event: events.length,
+      news: news.length,
+      circular: circulars.length,
+      calendar: calendarItems.length,
+      gallery: galleries.length,
+    }
+  }, [rawItems, events, news, circulars, calendarItems, galleries, student?.unit_name, student?.unit_code])
 
   return <div className={`space-y-5 ${embedded ? '' : 'mx-auto max-w-7xl p-4 sm:p-6'}`}>
     <header className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] p-6 text-white shadow-lg sm:p-8">
       <School className="absolute -bottom-8 right-4 h-40 w-40 text-white/10" aria-hidden="true"/>
-      <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><p className="text-[11px] font-black uppercase tracking-[.2em] text-emerald-100">Portal / Informasi Sekolah</p><h1 className="mt-2 text-2xl font-black sm:text-3xl">Informasi Sekolah</h1><p className="mt-2 max-w-2xl text-xs leading-5 text-emerald-50">Temukan pengumuman, agenda, berita, surat edaran, dan informasi resmi sekolah dalam satu halaman.</p>{student && <p className="mt-3 text-xs font-bold">Melihat informasi untuk: {student.full_name} — {student.kelas?.nama_kelas || 'Kelas'}</p>}</div>
-      <div className="flex flex-wrap gap-2"><button onClick={() => setSavedOnly(!savedOnly)} className="flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 text-xs font-bold backdrop-blur"><Bookmark className="h-4 w-4"/>Tersimpan ({summaryData?.bookmarked_count || 0})</button><button disabled={markAll.isPending || !summaryData?.unread_count} onClick={() => markAll.mutate()} className="flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 text-xs font-bold disabled:opacity-50"><Check className="h-4 w-4"/>Tandai Semua Dibaca</button><button onClick={() => { listing.refetch(); summary.refetch() }} aria-label="Refresh informasi" className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/30 bg-white/15"><RefreshCw className="h-4 w-4"/></button><span className="flex h-11 min-w-11 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-[#0E5C44]" aria-label={`${summaryData?.unread_count || 0} informasi belum dibaca`}>{summaryData?.unread_count || 0} baru</span></div></div>
+      <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[.2em] text-emerald-100">Portal / Informasi Sekolah</p>
+          <h1 className="mt-2 text-2xl font-black sm:text-3xl">Informasi Sekolah</h1>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-emerald-50">Pengumuman, agenda, berita, dan surat edaran disesuaikan khusus untuk unit sekolah anak Anda.</p>
+          {student && (
+            <div className="mt-3.5 flex flex-wrap items-center gap-2">
+              <span className="rounded-xl bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur shadow-xs">
+                Siswa: <b className="text-amber-200 font-extrabold">{student.full_name}</b> {student.kelas?.nama_kelas ? `(${student.kelas.nama_kelas})` : ''}
+              </span>
+              <span className="rounded-xl bg-emerald-950/70 border border-emerald-300/40 px-3 py-1.5 text-xs font-black text-emerald-200 shadow-xs">
+                Unit Sekolah: {student.unit_name || student.unit || 'Sekolah Terpadu'}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setSavedOnly(!savedOnly)} className="flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 text-xs font-bold backdrop-blur"><Bookmark className="h-4 w-4"/>Tersimpan ({summaryData?.bookmarked_count || 0})</button>
+          <button disabled={markAll.isPending || !summaryData?.unread_count} onClick={() => markAll.mutate()} className="flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 text-xs font-bold disabled:opacity-50"><Check className="h-4 w-4"/>Tandai Semua Dibaca</button>
+          <button onClick={() => { listing.refetch(); summary.refetch() }} aria-label="Refresh informasi" className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/30 bg-white/15"><RefreshCw className="h-4 w-4"/></button>
+          <span className="flex h-11 min-w-11 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-[#0E5C44]" aria-label={`${summaryData?.unread_count || 0} informasi belum dibaca`}>{summaryData?.unread_count || 0} baru</span>
+        </div>
+      </div>
     </header>
 
-    {!!summaryData?.important?.length && <section aria-labelledby="important-title"><div className="mb-3 flex items-center gap-2"><Star className="h-5 w-5 text-amber-500"/><h2 id="important-title" className="text-base font-black">Informasi Penting</h2></div><div className="grid gap-3 lg:grid-cols-3">{summaryData.important.map((item) => <button key={item.id} onClick={() => openDetail(item)} className={`min-h-44 rounded-[18px] border p-5 text-left shadow-sm transition hover:-translate-y-0.5 ${priorityStyle[item.priority] || priorityStyle.umum}`}><div className="flex justify-between gap-3"><Badge className="border-current"><AlertCircle className="h-3 w-3"/>{item.priority}</Badge>{!item.is_read && <span className="h-2.5 w-2.5 rounded-full bg-blue-500" aria-label="Belum dibaca"/>}</div><h3 className="mt-4 text-sm font-black text-slate-900 dark:text-white">{item.title}</h3><p className="mt-2 line-clamp-2 text-xs leading-5 opacity-80">{item.summary}</p><p className="mt-3 text-[10px] font-bold uppercase">{item.education_unit} · {formatDate(item.published_at)}</p></button>)}</div></section>}
+    {!!importantItems.length && <section aria-labelledby="important-title"><div className="mb-3 flex items-center gap-2"><Star className="h-5 w-5 text-amber-500"/><h2 id="important-title" className="text-base font-black">Informasi Penting Unit ({student?.unit_name || 'Sekolah'})</h2></div><div className="grid gap-3 lg:grid-cols-3">{importantItems.map((item) => <button key={item.id} onClick={() => openDetail(item)} className={`min-h-44 rounded-[18px] border p-5 text-left shadow-sm transition hover:-translate-y-0.5 ${priorityStyle[item.priority] || priorityStyle.umum}`}><div className="flex justify-between gap-3"><Badge className="border-current"><AlertCircle className="h-3 w-3"/>{item.priority}</Badge>{!item.is_read && <span className="h-2.5 w-2.5 rounded-full bg-blue-500" aria-label="Belum dibaca"/>}</div><h3 className="mt-4 text-sm font-black text-slate-900 dark:text-white">{item.title}</h3><p className="mt-2 line-clamp-2 text-xs leading-5 opacity-80">{item.summary}</p><p className="mt-3 text-[10px] font-bold uppercase">{item.education_unit} · {formatDate(item.published_at)}</p></button>)}</div></section>}
 
     <section className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-label="Filter informasi"><div className="flex flex-col gap-3 lg:flex-row"><label className="relative flex-1"><span className="sr-only">Cari informasi</span><Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400"/><input value={draftSearch} onChange={(e) => setDraftSearch(e.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-xs outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800" placeholder="Cari pengumuman, agenda, berita, atau surat edaran..."/></label><button onClick={() => setFiltersOpen(!filtersOpen)} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-xs font-bold dark:border-slate-700"><Filter className="h-4 w-4"/>Filter</button><button onClick={reset} className="h-11 rounded-xl px-4 text-xs font-bold text-slate-500">Reset</button></div>
       {filtersOpen && <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800"><select aria-label="Kategori" value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"><option value="">Semua kategori</option>{['Umum','Akademik','Keuangan','Kegiatan','Keamanan'].map((x) => <option key={x}>{x}</option>)}</select><select aria-label="Prioritas" value={filters.priority} onChange={(e) => setFilters({ ...filters, priority: e.target.value.toLowerCase() })} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"><option value="">Semua prioritas</option>{['Mendesak','Penting','Akademik','Umum'].map((x) => <option key={x}>{x}</option>)}</select><select aria-label="Status baca" value={filters.read_status} onChange={(e) => setFilters({ ...filters, read_status: e.target.value })} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"><option value="">Semua status baca</option><option value="unread">Belum dibaca</option><option value="read">Sudah dibaca</option></select><label className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs dark:border-slate-700"><input type="checkbox" checked={filters.has_attachment === '1'} onChange={(e) => setFilters({ ...filters, has_attachment: e.target.checked ? '1' : '' })}/> Memiliki lampiran</label></div>}
     </section>
 
-    <nav className="flex gap-1 overflow-x-auto rounded-[18px] border border-slate-200 bg-white p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-label="Kategori informasi">{tabs.map(([id, label, Icon]) => <button key={id} onClick={() => setTab(id)} className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 ${tab === id ? 'bg-emerald-50 text-[#0E5C44] dark:bg-emerald-950 dark:text-emerald-300' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Icon className="h-4 w-4"/>{label}<span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] dark:bg-white/10">{summaryData?.counts?.[id] ?? 0}</span></button>)}</nav>
+    <nav className="flex gap-2 overflow-x-auto rounded-[20px] border border-slate-200/80 bg-slate-50/80 p-2 shadow-xs dark:border-slate-800 dark:bg-slate-900/80" aria-label="Kategori informasi">
+      {tabs.map(([id, label, Icon]) => {
+        const isActive = tab === id
+        const count = categoryCounts[id] ?? summaryData?.counts?.[id] ?? 0
+        return (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-xs font-bold transition-all duration-200 active:scale-[0.97] ${
+              isActive
+                ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20 ring-2 ring-emerald-700/30 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40'
+                : 'bg-white text-slate-600 border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/60 hover:text-emerald-800 dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-emerald-300'
+            }`}
+          >
+            <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+            <span>{label}</span>
+            <span
+              className={`ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black ${
+                isActive
+                  ? 'bg-white/20 text-white'
+                  : count > 0
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-slate-100 text-slate-400 dark:bg-slate-700/60 dark:text-slate-400'
+              }`}
+            >
+              {count}
+            </span>
+          </button>
+        )
+      })}
+    </nav>
 
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]"><main><div className="mb-3 flex items-center justify-between"><div><h2 className="text-base font-black">{savedOnly ? 'Informasi Tersimpan' : typeLabels[tab]}</h2><p className="text-xs text-slate-500">{data?.total || 0} informasi sesuai akses Anda</p></div></div>{listing.isLoading ? <Skeletons/> : listing.isError ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 p-6 text-center dark:border-rose-900 dark:bg-rose-950/30"><AlertCircle className="mx-auto h-8 w-8 text-rose-500"/><h3 className="mt-3 font-black">Informasi Tidak Dapat Dimuat</h3><p className="mt-1 text-xs text-slate-500">Terjadi kesalahan saat memuat informasi sekolah.</p><button onClick={() => listing.refetch()} className="mt-4 h-11 rounded-xl bg-[#0E5C44] px-4 text-xs font-bold text-white">Coba Lagi</button></div> : !items.length ? <Empty label={emptyLabel}/> : <div className="space-y-3">{items.map((item) => <article key={item.id} tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && openDetail(item)} className={`rounded-[18px] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${item.is_read ? 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' : 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20'}`}><div className="flex gap-4"><div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-[#0E5C44] sm:flex"><Megaphone className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">{typeLabels[item.type] || item.category}</Badge><Badge className={priorityStyle[item.priority] || priorityStyle.umum}>{item.priority}</Badge>{!item.is_read && <Badge className="border-blue-200 bg-blue-50 text-blue-700">● Belum dibaca</Badge>}</div><h3 className={`mt-3 text-sm ${item.is_read ? 'font-bold' : 'font-black'}`}>{item.title}</h3><p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-500">{item.summary}</p><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-slate-400"><span>{item.education_unit}</span><span>{item.audience}</span><span>{formatDate(item.published_at)}</span>{item.attachments?.length > 0 && <span className="flex items-center gap-1"><Paperclip className="h-3 w-3"/>{item.attachments.length} lampiran</span>}</div><div className="mt-4 flex flex-wrap gap-2"><button onClick={() => openDetail(item)} className="h-10 rounded-xl bg-[#0E5C44] px-4 text-xs font-bold text-white">Baca Selengkapnya</button><button onClick={() => mutate.mutate({ id: item.id, action: item.is_bookmarked ? 'unbookmark' : 'bookmark' })} aria-label={item.is_bookmarked ? 'Hapus dari tersimpan' : 'Simpan informasi'} className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold dark:border-slate-700">{item.is_bookmarked ? <BookmarkCheck className="h-4 w-4 text-emerald-600"/> : <Bookmark className="h-4 w-4"/>}{item.is_bookmarked ? 'Tersimpan' : 'Simpan'}</button></div></div></div></article>)}</div>}
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]"><main><div className="mb-3 flex items-center justify-between"><div><h2 className="text-base font-black">{savedOnly ? 'Informasi Tersimpan' : typeLabels[tab]} ({student?.unit_name || 'Unit Sekolah'})</h2><p className="text-xs text-slate-500">{items.length} informasi sesuai unit sekolah anak</p></div></div>{listing.isLoading ? <Skeletons/> : listing.isError ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 p-6 text-center dark:border-rose-900 dark:bg-rose-950/30"><AlertCircle className="mx-auto h-8 w-8 text-rose-500"/><h3 className="mt-3 font-black">Informasi Tidak Dapat Dimuat</h3><p className="mt-1 text-xs text-slate-500">Terjadi kesalahan saat memuat informasi sekolah.</p><button onClick={() => listing.refetch()} className="mt-4 h-11 rounded-xl bg-[#0E5C44] px-4 text-xs font-bold text-white">Coba Lagi</button></div> : !items.length ? <Empty label={emptyLabel}/> : <div className="space-y-3">{items.map((item) => <article key={item.id} tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && openDetail(item)} className={`rounded-[18px] border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${item.is_read ? 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900' : 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20'}`}><div className="flex gap-4"><div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-[#0E5C44] sm:flex"><Megaphone className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">{typeLabels[item.type] || item.category}</Badge><Badge className={priorityStyle[item.priority] || priorityStyle.umum}>{item.priority}</Badge>{!item.is_read && <Badge className="border-blue-200 bg-blue-50 text-blue-700">● Belum dibaca</Badge>}</div><h3 className={`mt-3 text-sm ${item.is_read ? 'font-bold' : 'font-black'}`}>{item.title}</h3><p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-500">{item.summary}</p><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-bold text-slate-400"><span>{item.education_unit}</span><span>{item.audience}</span><span>{formatDate(item.published_at)}</span>{item.attachments?.length > 0 && <span className="flex items-center gap-1"><Paperclip className="h-3 w-3"/>{item.attachments.length} lampiran</span>}</div><div className="mt-4 flex flex-wrap gap-2"><button onClick={() => openDetail(item)} className="h-10 rounded-xl bg-[#0E5C44] px-4 text-xs font-bold text-white">Baca Selengkapnya</button><button onClick={() => mutate.mutate({ id: item.id, action: item.is_bookmarked ? 'unbookmark' : 'bookmark' })} aria-label={item.is_bookmarked ? 'Hapus dari tersimpan' : 'Simpan informasi'} className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs font-bold dark:border-slate-700">{item.is_bookmarked ? <BookmarkCheck className="h-4 w-4 text-emerald-600"/> : <Bookmark className="h-4 w-4"/>}{item.is_bookmarked ? 'Tersimpan' : 'Simpan'}</button></div></div></div></article>)}</div>}
       {(data?.last_page || 1) > 1 && <div className="mt-4 flex items-center justify-between rounded-[18px] border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"><button disabled={page <= 1} onClick={() => setPage(page - 1)} className="flex h-10 items-center gap-1 rounded-xl px-3 text-xs font-bold disabled:opacity-40"><ChevronLeft className="h-4 w-4"/>Sebelumnya</button><span className="text-xs text-slate-500">Halaman {data.current_page} dari {data.last_page}</span><button disabled={page >= data.last_page} onClick={() => setPage(page + 1)} className="flex h-10 items-center gap-1 rounded-xl px-3 text-xs font-bold disabled:opacity-40">Berikutnya<ChevronRight className="h-4 w-4"/></button></div>}</main>
-      <aside className="space-y-4"><section className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Agenda Mendatang</h2><div className="mt-4 space-y-3">{events.map((item) => <button key={item.id} onClick={() => openDetail(item)} className="flex w-full gap-3 text-left"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-xs font-black text-emerald-700 dark:bg-emerald-950">{new Date(item.event?.start_at || item.published_at).getDate()}</span><span><b className="line-clamp-2 text-xs">{item.title}</b><small className="mt-1 block text-[10px] text-slate-500">{item.event?.location || item.education_unit}</small></span></button>)}{!events.length && <p className="text-xs text-slate-400">Belum ada agenda mendatang.</p>}</div></section><section className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="flex items-center justify-between"><h2 className="font-black">Kalender Pendidikan</h2><CalendarDays className="h-5 w-5 text-emerald-600"/></div><p className="mt-1 text-xs capitalize text-slate-500">{monthTitle}</p><div className="mt-4 space-y-2">{calendarItems.slice(0, 5).map((item) => <button key={item.id} onClick={() => openDetail(item)} className="block w-full rounded-xl bg-slate-50 p-3 text-left text-xs dark:bg-slate-800"><b>{item.title}</b><span className="mt-1 block text-[10px] text-slate-500">{formatDate(item.calendar_date || item.published_at)}</span></button>)}{!calendarItems.length && <p className="text-xs text-slate-400">Belum ada kalender pendidikan yang dipublikasikan.</p>}</div></section></aside></div>
+      <aside className="space-y-4"><section className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Agenda Mendatang</h2><div className="mt-4 space-y-3">{events.map((item) => <button key={item.id} onClick={() => openDetail(item)} className="flex w-full gap-3 text-left"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-xs font-black text-emerald-700 dark:bg-emerald-950">{new Date(item.event?.start_at || item.published_at).getDate()}</span><span><b className="line-clamp-2 text-xs">{item.title}</b><small className="mt-1 block text-[10px] text-slate-500">{item.event?.location || item.education_unit}</small></span></button>)}{!events.length && <p className="text-xs text-slate-400">Belum ada agenda mendatang untuk unit sekolah ini.</p>}</div></section><section className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="flex items-center justify-between"><h2 className="font-black">Kalender Pendidikan</h2><CalendarDays className="h-5 w-5 text-emerald-600"/></div><p className="mt-1 text-xs capitalize text-slate-500">{monthTitle}</p><div className="mt-4 space-y-2">{calendarItems.slice(0, 5).map((item) => <button key={item.id} onClick={() => openDetail(item)} className="block w-full rounded-xl bg-slate-50 p-3 text-left text-xs dark:bg-slate-800"><b>{item.title}</b><span className="mt-1 block text-[10px] text-slate-500">{formatDate(item.calendar_date || item.published_at)}</span></button>)}{!calendarItems.length && <p className="text-xs text-slate-400">Belum ada kalender pendidikan yang dipublikasikan.</p>}</div></section></aside></div>
 
     {(news.length > 0 || circulars.length > 0 || galleries.length > 0) && <section className="grid gap-5 lg:grid-cols-3"><SummarySection title="Berita Sekolah" items={news} onOpen={openDetail}/><SummarySection title="Surat Edaran" items={circulars} onOpen={openDetail}/><SummarySection title="Galeri Kegiatan" items={galleries} onOpen={openDetail}/></section>}
 

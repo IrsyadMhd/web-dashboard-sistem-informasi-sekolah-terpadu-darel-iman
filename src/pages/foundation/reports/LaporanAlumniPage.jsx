@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { GraduationCap, Heart, BookOpen, Briefcase, Building, HelpCircle, PhoneCall, Trophy } from 'lucide-react'
+import { GraduationCap, Heart, BookOpen, Briefcase, Building, HelpCircle, PhoneCall } from 'lucide-react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts'
 import { reportService } from '../../../services/reportService'
 import { ReportHeader } from '../../../components/reports/ReportHeader'
@@ -15,6 +15,7 @@ import { ReadOnlyDetailModal } from '../../../components/reports/ReadOnlyDetailM
 import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -26,6 +27,7 @@ export function LaporanAlumniPage() {
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
+  const [exportFormat, setExportFormat] = useState('pdf')
   const [detailModalData, setDetailModalData] = useState(null)
 
   const fetchReport = async () => {
@@ -63,7 +65,18 @@ export function LaporanAlumniPage() {
     }
   }
 
+  const handleExportPdf = () => {
+    setExportFormat('pdf')
+    setIsExportOpen(true)
+  }
+
+  const handleExportExcel = () => {
+    setExportFormat('excel')
+    setIsExportOpen(true)
+  }
+
   const handleConfirmExport = ({ format, orientation }) => {
+    setIsExportOpen(false)
     const url = reportService.exportFoundationReport('alumni', { ...filters, format, orientation })
     window.open(url, '_blank')
   }
@@ -104,80 +117,98 @@ export function LaporanAlumniPage() {
   ]
 
   const detailColumns = [
-    { header: 'NIS / NISN', accessor: 'nis_nisn' },
-    { header: 'Nama Alumni', accessor: 'nama' },
-    { header: 'Unit Asal', accessor: 'unit_asal' },
-    { header: 'Angkatan', accessor: 'angkatan' },
+    { header: 'Alumni & NISN', accessor: 'nama' },
+    { header: 'Unit Asal & Angkatan', accessor: 'unit' },
+    { header: 'Status Karir', accessor: 'status' },
     { header: 'Tahun Lulus', accessor: 'tahun_lulus' },
-    { header: 'Pendidikan / Pekerjaan', accessor: 'pendidikan_pekerjaan' },
-    { header: 'Status', accessor: 'status' },
   ]
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* 1. Header */}
+    <div className="laporan-page-content space-y-6 pb-12">
+      {/* 1. Header Laporan */}
       <ReportHeader
         title={report.title}
         description={report.description}
-        periodLabel={report.period.label}
+        periodLabel={report.period?.label}
         generatedAt={report.generated_at}
-        onRefresh={fetchReport}
-        onOpenPreview={() => setIsPreviewOpen(true)}
-        onPrint={() => window.print()}
-        onExportPdf={() => setIsExportOpen(true)}
-        onExportExcel={() => setIsExportOpen(true)}
-        loading={loading}
       />
 
-      {/* 2. Filter Periode */}
+      {/* 2. Ringkasan Analisis Laporan (Di bawah Header) */}
+      <div className="print:hidden">
+        <ReportInsightCard insights={insights} />
+      </div>
+
+      {/* 3. Catatan & Identitas Laporan */}
+      <div className="print:hidden">
+        <ReportNotesCard
+          periodLabel={report.period?.label}
+          generatedAt={report.generated_at}
+        />
+      </div>
+
+      {/* 4. Filter Periode & Aksi Laporan */}
       <ReportPeriodFilter
         period={filters.period}
         startDate={filters.tanggal_mulai}
         endDate={filters.tanggal_selesai}
         onChange={handlePeriodChange}
         onReset={handleResetFilter}
+        onRefresh={fetchReport}
+        onOpenPreview={() => setIsPreviewOpen(true)}
+        onPrint={() => window.print()}
+        onExportPdf={handleExportPdf}
+        onExportExcel={handleExportExcel}
+        loading={loading}
       />
 
-      {/* 3. KPI Grid */}
+      {/* 5. KPI Ringkasan */}
       <ReportKpiGrid items={kpiItems} />
 
-      {/* 4. Visual Charts */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-3">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Alumni per Unit Asal & Karir</h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={charts.alumni_by_unit || []}>
-                <XAxis dataKey="name" stroke="#888888" fontSize={11} />
-                <YAxis stroke="#888888" fontSize={11} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="total" name="Total Alumni" fill="#0E5C44" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="kuliah" name="Melanjutkan Kuliah" fill="#0284C7" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* 6. Visual Charts */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 print:hidden">
+        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Alumni per Unit Asal & Karir</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts.alumni_by_unit || []}>
+                  <XAxis dataKey="name" stroke="#888888" fontSize={11} />
+                  <YAxis stroke="#888888" fontSize={11} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="total" name="Total Alumni" fill="#0E5C44" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="kuliah" name="Melanjutkan Kuliah" fill="#0284C7" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-3">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Status Pendidikan & Pekerjaan Alumni</h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={charts.status_lanjutan || []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                  {(charts.status_lanjutan || []).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Status Pendidikan & Pekerjaan Alumni</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={charts.status_lanjutan || []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                    {(charts.status_lanjutan || []).map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* 5. Rekap Per Unit */}
+      {/* 7. Rekap Per Unit */}
       <ReportRecapTable
         title="Rekapitulasi Alumni per Unit Asal Pendidikan"
         columns={recapColumns}
@@ -185,7 +216,7 @@ export function LaporanAlumniPage() {
         totalRow={unit_recaps_total}
       />
 
-      {/* 5b. Rekap Per Angkatan */}
+      {/* 7b. Rekap Per Angkatan */}
       {batch_recaps && batch_recaps.length > 0 && (
         <ReportRecapTable
           title="Rekapitulasi Alumni per Angkatan"
@@ -194,25 +225,21 @@ export function LaporanAlumniPage() {
         />
       )}
 
-      {/* 6. Data Rinci */}
+      {/* 8. Data Rinci */}
       <ReportDetailTable
         title="Rincian Data Alumni"
+        description="Daftar rincian data pembentuk angka laporan. Hanya aksi Lihat Detail yang tersedia."
         columns={detailColumns}
         data={details}
         meta={meta}
         search={filters.search}
+        perPage={filters.per_page}
         onSearchChange={(val) => setFilters((prev) => ({ ...prev, search: val, page: 1 }))}
+        onPerPageChange={(perPage) => setFilters((prev) => ({ ...prev, per_page: perPage, page: 1 }))}
         onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
         onViewDetail={handleViewDetail}
-      />
-
-      {/* 7. Summary Insights */}
-      <ReportInsightCard insights={insights} />
-
-      {/* 8. Notes */}
-      <ReportNotesCard
-        periodLabel={report.period.label}
-        generatedAt={report.generated_at}
+        filters={filters}
+        onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }))}
       />
 
       {/* Modals */}
@@ -228,6 +255,7 @@ export function LaporanAlumniPage() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         onConfirmExport={handleConfirmExport}
+        defaultFormat={exportFormat}
       />
 
       <ReadOnlyDetailModal

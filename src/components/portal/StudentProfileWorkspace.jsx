@@ -3,14 +3,15 @@ import { motion } from 'framer-motion'
 import { QRCodeCanvas } from 'qrcode.react'
 import {
   Activity, AlertCircle, Award, BookOpenCheck, CalendarCheck, CalendarDays,
-  CheckCircle2, ClipboardList, Clock3, Download, Droplets, FileText, GraduationCap,
-  HeartPulse, Home, IdCard, Mail, MapPin, MessageCircle, Phone, QrCode, School,
+  CheckCircle2, ClipboardList, Clock3, Download, Droplets, Eye, EyeOff, FileText, GraduationCap,
+  HeartPulse, Home, IdCard, KeyRound, Loader2, LockKeyhole, Mail, MapPin, MessageCircle, Phone, QrCode, School,
   ShieldCheck, Sparkles, Trophy, UserRound, UsersRound,
 } from 'lucide-react'
 import { Modal } from '../ui/modal'
 import { EmptyState } from '../ui/empty-state'
 import PersonAvatar from '../../components/ui/PersonAvatar'
 import api from '../../services/api'
+import { familyPortalService } from '../../services/familyPortalService'
 
 const card = 'rounded-[18px] border border-slate-200/80 bg-white shadow-[0_16px_40px_-28px_rgba(15,23,42,.45)] dark:border-slate-800 dark:bg-slate-900'
 const valueOf = (source, keys, fallback = '-') => {
@@ -153,7 +154,117 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
 
 
 
+    {!readOnly && <ChildPasswordSettingsSection student={student} />}
+
     <Modal isOpen={qrOpen} onClose={() => setQrOpen(false)} title="QR Kartu Siswa" maxWidth="max-w-md" footer={<button type="button" onClick={() => setQrOpen(false)} className="h-10 rounded-xl bg-[#0E5C44] px-5 text-xs font-bold text-white">Tutup</button>}><div className="flex flex-col items-center text-center"><div className="flex min-h-[252px] min-w-[252px] items-center justify-center rounded-[18px] bg-white p-4 shadow-inner">{qrToken ? <QRCodeCanvas value={qrToken} size={220} level="M" /> : <p className="max-w-[220px] text-xs font-semibold text-slate-500">{qrError || 'Memuat QR kartu...'}</p>}</div><h3 className="mt-5 font-black">{name}</h3><p className="mt-1 text-xs text-slate-500">QR hanya berisi identitas kartu opaque.</p></div></Modal>
     <Modal isOpen={Boolean(detail)} onClose={() => setDetail(null)} title={detail?.type === 'document' ? 'Detail Dokumen' : 'Detail Prestasi'} maxWidth="max-w-2xl" footer={<button type="button" onClick={() => setDetail(null)} className="h-10 rounded-xl bg-[#0E5C44] px-5 text-xs font-bold text-white">Tutup</button>}>{detail && <div>{detail.type === 'document' ? <div className="space-y-4"><InfoGrid items={[{ label: 'Nama Dokumen', value: detail.item.name || detail.item.nama || detail.item.type || detail.item.jenis || 'Dokumen', icon: FileText }, { label: 'Status', value: detail.item.status || 'Tersimpan', icon: CheckCircle2 }]} />{(detail.item.url || detail.item.path) ? <a href={detail.item.url || detail.item.path} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#0E5C44] px-4 text-xs font-bold text-white"><Download className="h-4 w-4" />Buka dokumen</a> : <EmptyState title="Pratinjau belum tersedia" description="File dokumen tidak menyertakan URL yang dapat dibuka." />}</div> : <InfoGrid items={Object.entries(detail.item).filter(([, value]) => ['string', 'number'].includes(typeof value)).map(([key, value]) => ({ label: key.replaceAll('_', ' '), value, icon: Award }))} />}</div>}</Modal>
   </div>
+}
+
+function ChildPasswordSettingsSection({ student }) {
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState({ text: '', type: '' })
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setMessage({ text: '', type: '' })
+
+    if (password.length < 6) {
+      setMessage({ text: 'Password minimal 6 karakter.', type: 'error' })
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setMessage({ text: 'Konfirmasi password baru tidak cocok.', type: 'error' })
+      return
+    }
+
+    setLoading(true)
+    try {
+      await familyPortalService.updateChildPassword(student.id, {
+        password,
+        password_confirmation: confirmPassword,
+      })
+      setMessage({ text: `Password login untuk ${student.full_name || student.nama_lengkap || 'anak'} berhasil diperbarui!`, type: 'success' })
+      setPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      setMessage({ text: err.response?.data?.message || 'Gagal memperbarui password login anak.', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className={`${card} p-5 sm:p-6 border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-white to-slate-50 dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900`}>
+      <SectionTitle
+        icon={LockKeyhole}
+        title="Pengaturan Password Login Anak"
+        description="Tentukan atau ubah password yang digunakan anak Anda untuk login ke Portal Siswa."
+      />
+
+      {message.text && (
+        <div className={`mb-4 rounded-xl p-3.5 text-xs font-bold ${message.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'}`}>
+          {message.text}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-800/80">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Identitas Login Anak</p>
+          <p className="mt-1 text-sm font-extrabold text-slate-900 dark:text-white">
+            {student.nis ? `NIS: ${student.nis}` : student.nisn ? `NISN: ${student.nisn}` : student.full_name || 'Siswa'}
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Password Baru Anak</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Minimal 6 karakter..."
+                required
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                aria-label="Toggle password visibility"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Konfirmasi Password Baru</label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Ulangi password baru..."
+              required
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+          {loading ? 'Menyimpan...' : 'Simpan Password Login Anak'}
+        </button>
+      </form>
+    </section>
+  )
 }

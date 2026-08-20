@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { kelasService } from '../services/kelasService'
 import { studentService } from '../services/studentService'
-import { ActionDropdown, AppBadge, PersonIdentityCell } from '../components/app'
+import { ActionDropdown, AppBadge, PersonIdentityCell, ConfirmDialog } from '../components/app'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import {
@@ -138,6 +138,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   const [detailKelas, setDetailKelas] = useState(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   // Modal Student List State
@@ -496,11 +497,16 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
 
   const handleSubmitForm = (e) => {
     e?.preventDefault()
+    setShowSaveConfirmModal(true)
+  }
+
+  const handleConfirmSaveForm = () => {
     if (isEditMode) {
       updateMutation.mutate({ id: formData.id, payload: formData })
     } else {
       createMutation.mutate(formData)
     }
+    setShowSaveConfirmModal(false)
   }
 
   const handleExportExcel = () => {
@@ -1308,6 +1314,17 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
           </DialogFooter>
         </Dialog>
       )}
+
+      {/* Save / Edit Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showSaveConfirmModal}
+        onClose={() => setShowSaveConfirmModal(false)}
+        onConfirm={handleConfirmSaveForm}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+        action={isEditMode ? 'update' : 'create'}
+        title={isEditMode ? 'Konfirmasi Ubah Kelas' : 'Konfirmasi Simpan Kelas'}
+        message={isEditMode ? `Apakah Anda yakin ingin menyimpan perubahan data kelas ${formData.nama_kelas}?` : `Apakah Anda yakin ingin menambahkan data kelas baru ${formData.nama_kelas}?`}
+      />
 
       {/* Delete Confirmation */}
       <MasterDeleteDialog

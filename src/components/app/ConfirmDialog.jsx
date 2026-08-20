@@ -1,25 +1,33 @@
 import React from 'react'
-import { AlertTriangle, LoaderCircle } from 'lucide-react'
-import { Modal } from '../ui/modal'
-import AppButton from './AppButton'
+import { AlertDialog } from '@/components/tailgrids/core/alert-dialog'
+import { Button } from '@/components/tailgrids/core/button'
+import {
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/tailgrids/core/dialog'
+import { OverlayWrapper } from '@/components/tailgrids/core/overlay'
+import { AlertTriangle, LoaderCircle, CheckCircle2, Info } from 'lucide-react'
 
 const CONFIRM_QUESTIONS = {
-  create: 'Apakah Anda yakin ingin menambahkan data ini?',
-  update: 'Apakah Anda yakin ingin menyimpan perubahan?',
-  delete: 'Data yang dihapus tidak dapat dikembalikan.',
+  create: 'Apakah Anda yakin ingin menambahkan data baru ini ke dalam sistem?',
+  update: 'Apakah Anda yakin ingin menyimpan perubahan pada data ini?',
+  delete: 'Apakah Anda yakin ingin menghapus data ini? Tindakan ini bersifat permanen dan data tidak dapat dikembalikan.',
   import: 'Import akan menambahkan atau memperbarui data.',
   export: 'Export data sesuai filter yang dipilih?',
   approve: 'Setujui data ini?',
   assign: 'Yakin menetapkan data ini?',
-  custom: '',
+  custom: 'Apakah Anda yakin ingin melanjutkan tindakan ini?',
 }
 
 /**
- * ConfirmDialog - canonical dialog konfirmasi.
+ * ConfirmDialog - canonical TailGrids UI dialog konfirmasi.
  * WAJIB muncul sebelum seluruh aksi CRUD dijalankan.
  *
  * action: create | update | delete | import | export | approve | assign | custom
- * isDanger: mengubah tombol konfirmasi menjadi merah
+ * isDanger: mengubah tombol konfirmasi menjadi merah (destructive)
  */
 export default function ConfirmDialog({
   isOpen,
@@ -27,48 +35,91 @@ export default function ConfirmDialog({
   onConfirm,
   title,
   message,
-  confirmLabel = 'Ya, Lanjutkan',
+  confirmLabel,
   cancelLabel = 'Batal',
   isLoading = false,
   isDanger = false,
   action = 'custom',
-  icon: Icon = AlertTriangle,
+  icon: IconProps,
 }) {
-  const question = message ?? CONFIRM_QUESTIONS[action] ?? ''
+  if (!isOpen) return null
+
+  const question = message ?? CONFIRM_QUESTIONS[action] ?? CONFIRM_QUESTIONS.custom
+  const isDelete = action === 'delete' || isDanger
+
+  const defaultTitle = isDelete
+    ? 'Konfirmasi Hapus Data'
+    : action === 'create'
+    ? 'Konfirmasi Simpan Data'
+    : action === 'update'
+    ? 'Konfirmasi Ubah Data'
+    : 'Konfirmasi Tindakan'
+
+  const finalTitle = title || defaultTitle
+  const finalConfirmLabel = confirmLabel || (isDelete ? 'Ya, Hapus Data' : action === 'create' ? 'Simpan Data' : action === 'update' ? 'Simpan Perubahan' : 'Ya, Lanjutkan')
+
+  const IconComponent = IconProps || (isDelete ? AlertTriangle : action === 'create' ? CheckCircle2 : Info)
+  const iconBg = isDelete
+    ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+    : action === 'create'
+    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+    : 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
+
+  const handleOpenChange = (open) => {
+    if (!open && onClose) onClose()
+  }
+
+  const handleConfirmAction = async (e) => {
+    e?.preventDefault()
+    if (onConfirm) {
+      await onConfirm()
+    }
+  }
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title || 'Konfirmasi Tindakan'}
-      maxWidth="max-w-md"
-      footer={
-        <div className="flex w-full items-center justify-end gap-2.5">
-          <AppButton variant="secondary" size="sm" onClick={onClose} disabled={isLoading}>
-            {cancelLabel}
-          </AppButton>
-          <AppButton
-            variant={isDanger ? 'destructive' : 'primary'}
+    <OverlayWrapper>
+      <AlertDialog isOpen={isOpen} onOpenChange={handleOpenChange}>
+        <div className="flex items-start gap-4">
+          <div className={`p-3 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+            {isLoading ? (
+              <LoaderCircle className="w-6 h-6 animate-spin" />
+            ) : (
+              <IconComponent className="w-6 h-6" />
+            )}
+          </div>
+          <div className="flex-1 space-y-1">
+            <DialogHeader>
+              <DialogTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {finalTitle}
+              </DialogTitle>
+              <DialogDescription className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 mt-1">
+                {question}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+        </div>
+
+        <DialogFooter className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <DialogClose
+            appearance="outline"
             size="sm"
-            onClick={onConfirm}
-            loading={isLoading}
-            loadingText={confirmLabel}
+            onClick={onClose}
             disabled={isLoading}
           >
-            {confirmLabel}
-          </AppButton>
-        </div>
-      }
-    >
-      <div className="flex flex-col items-center gap-4 py-2 text-center">
-        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${isDanger ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-[#0E5C44]/10 text-[#0E5C44] dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]'}`}>
-          {isLoading ? <LoaderCircle className="h-7 w-7 animate-spin" /> : <Icon className="h-7 w-7" />}
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{question || 'Lanjutkan tindakan ini?'}</p>
-          {isDanger && <p className="mt-1 text-xs text-rose-500">Tindakan ini tidak dapat dibatalkan.</p>}
-        </div>
-      </div>
-    </Modal>
+            {cancelLabel}
+          </DialogClose>
+          <Button
+            variant={isDelete ? 'danger' : 'primary'}
+            size="sm"
+            onClick={handleConfirmAction}
+            pending={isLoading}
+            disabled={isLoading}
+          >
+            {finalConfirmLabel}
+          </Button>
+        </DialogFooter>
+      </AlertDialog>
+    </OverlayWrapper>
   )
 }
+

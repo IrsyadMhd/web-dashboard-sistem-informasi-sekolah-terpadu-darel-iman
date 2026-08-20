@@ -15,19 +15,34 @@ import { useAuthStore } from '../stores/authStore'
 
 import UserProfileCard from '../components/auth/UserProfileCard'
 import ChangePasswordCard from '../components/auth/ChangePasswordCard'
+import ChildPasswordManagementCard from '../components/auth/ChildPasswordManagementCard'
 import TwoFactorAuthCard from '../components/auth/TwoFactorAuthCard'
 import SessionLoginCard from '../components/auth/SessionLoginCard'
 import ActivityLoginCard from '../components/auth/ActivityLoginCard'
 import SelectUnitCard from '../components/auth/SelectUnitCard'
 import SelectAcademicYearCard from '../components/auth/SelectAcademicYearCard'
+import { KeyRound } from 'lucide-react'
 
-const VALID_TABS = ['profil', 'ganti-password', '2fa', 'session-login', 'activity-login', 'unit-tahun']
+const VALID_TABS = ['profil', 'ganti-password', 'password-anak', '2fa', 'session-login', 'activity-login', 'unit-tahun']
 
 export default function UserProfileManagementPage() {
   const user = useAuthStore((state) => state.user)
   const primaryRole = Array.isArray(user?.roles) && user.roles.length > 0
     ? user.roles[0]
     : user?.role || 'Pegawai'
+
+  const userRoles = Array.isArray(user?.roles) ? user.roles : [user?.role || user?.roles].filter(Boolean)
+  const ALLOWED_ADMIN_ROLES = [
+    'super admin', 'superadmin', 'super_admin',
+    'admin',
+    'pengurus yayasan', 'yayasan', 'ketua yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan',
+    'kepala sekolah', 'kepala_sekolah', 'kepsek',
+    'divisi pendidikan', 'divisi_pendidikan'
+  ]
+  const canEditUnitAndRole = userRoles.some((r) => ALLOWED_ADMIN_ROLES.includes(String(r).toLowerCase()))
+  const isParent = userRoles.some((r) =>
+    ['orang tua', 'orang_tua', 'orang-tua', 'orangtua', 'wali murid', 'parent'].includes(String(r).toLowerCase())
+  )
 
   const [searchParams] = useSearchParams()
   const tabFromUrl = searchParams.get('tab')
@@ -45,10 +60,11 @@ export default function UserProfileManagementPage() {
   const tabs = [
     { id: 'profil', label: 'Profil User', icon: User },
     { id: 'ganti-password', label: 'Ganti Password', icon: Lock },
+    ...(isParent ? [{ id: 'password-anak', label: 'Password Login Anak', icon: KeyRound }] : []),
     { id: '2fa', label: 'Keamanan 2FA', icon: ShieldCheck },
     { id: 'session-login', label: 'Session Login', icon: Monitor },
     { id: 'activity-login', label: 'Activity Login', icon: Activity },
-    { id: 'unit-tahun', label: 'Unit & Tahun Ajaran', icon: Grid },
+    { id: 'unit-tahun', label: 'Unit & Tahun Ajaran', icon: Grid, restricted: !canEditUnitAndRole },
   ]
 
   return (
@@ -89,6 +105,11 @@ export default function UserProfileManagementPage() {
             >
               <IconComp className={`w-4 h-4 ${isActive ? 'text-emerald-200 dark:text-slate-900' : 'text-slate-400'}`} />
               <span>{tab.label}</span>
+              {tab.restricted && (
+                <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-semibold border border-amber-300">
+                  🔒 Terkunci
+                </span>
+              )}
             </button>
           )
         })}
@@ -98,13 +119,27 @@ export default function UserProfileManagementPage() {
       <div className="transition-all duration-200">
         {activeTab === 'profil' && <UserProfileCard />}
         {activeTab === 'ganti-password' && <ChangePasswordCard />}
+        {activeTab === 'password-anak' && <ChildPasswordManagementCard />}
         {activeTab === '2fa' && <TwoFactorAuthCard />}
         {activeTab === 'session-login' && <SessionLoginCard />}
         {activeTab === 'activity-login' && <ActivityLoginCard />}
         {activeTab === 'unit-tahun' && (
           <div className="space-y-6">
-            <SelectUnitCard />
-            <SelectAcademicYearCard />
+            {!canEditUnitAndRole && (
+              <div className="bg-amber-50/90 border border-amber-200/90 text-amber-900 rounded-2xl p-5 shadow-xs flex items-start gap-4">
+                <div className="p-2.5 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-amber-900">Akses Terbatas: Pemilihan Unit Pendidikan & Tahun Ajaran</h3>
+                  <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                    Fitur pergantian Unit Pendidikan & Tahun Ajaran aktif <strong>terkunci</strong> dan tidak dapat diubah oleh role Anda. Akses ini hanya diberikan kepada <strong>Super Admin, Admin, Pengurus Yayasan, Kepala Sekolah, dan Divisi Pendidikan</strong>.
+                  </p>
+                </div>
+              </div>
+            )}
+            <SelectUnitCard disabled={!canEditUnitAndRole} />
+            <SelectAcademicYearCard disabled={!canEditUnitAndRole} />
           </div>
         )}
       </div>

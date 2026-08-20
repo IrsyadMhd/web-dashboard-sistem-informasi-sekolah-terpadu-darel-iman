@@ -10,7 +10,7 @@ const emptyForm = {
   password: '', password_confirmation: '',
 }
 
-function AccountModal({ open, user, roles, saving, onClose, onSave }) {
+function AccountModal({ open, user, roles, saving, onClose, onSave, roleOnly = false }) {
   const [form, setForm] = useState(emptyForm)
   const editing = Boolean(user?.id)
 
@@ -35,9 +35,11 @@ function AccountModal({ open, user, roles, saving, onClose, onSave }) {
       Swal.fire('Password tidak sama', 'Konfirmasi password harus sama dengan password.', 'warning')
       return
     }
-    const payload = editing
-      ? { name: form.name, email: form.email, phone: form.phone || null, role: form.role, is_active: form.is_active }
-      : form
+    const payload = roleOnly
+      ? { role: form.role }
+      : editing
+        ? { name: form.name, email: form.email, phone: form.phone || null, role: form.role, is_active: form.is_active }
+        : form
     onSave(payload)
   }
 
@@ -46,28 +48,28 @@ function AccountModal({ open, user, roles, saving, onClose, onSave }) {
       <form onSubmit={submit} className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
-            <h3 className="font-black text-slate-900">{editing ? 'Edit Akun Login' : 'Tambah Akun Login'}</h3>
-            <p className="text-xs text-slate-500">Password tersimpan terenkripsi dan tidak dapat dilihat kembali.</p>
+            <h3 className="font-black text-slate-900">{roleOnly ? 'Ubah Role Akun' : editing ? 'Edit Akun Login' : 'Tambah Akun Login'}</h3>
+            <p className="text-xs text-slate-500">{roleOnly ? 'Pengelola unit hanya dapat mengubah role akun pada unitnya.' : 'Password tersimpan terenkripsi dan tidak dapat dilihat kembali.'}</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><FaTimes /></button>
         </div>
         <div className="grid gap-4 p-6 sm:grid-cols-2">
-          <label className="sm:col-span-2 text-xs font-bold text-slate-700">Nama lengkap
+          {!roleOnly && <label className="sm:col-span-2 text-xs font-bold text-slate-700">Nama lengkap
             <input required value={form.name} onChange={(e) => change('name', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-medium outline-none focus:ring-2 focus:ring-emerald-600" />
-          </label>
-          <label className="sm:col-span-2 text-xs font-bold text-slate-700">Email login
+          </label>}
+          {!roleOnly && <label className="sm:col-span-2 text-xs font-bold text-slate-700">Email login
             <input required type="email" value={form.email} onChange={(e) => change('email', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-medium outline-none focus:ring-2 focus:ring-emerald-600" />
-          </label>
-          <label className="text-xs font-bold text-slate-700">Nomor HP
+          </label>}
+          {!roleOnly && <label className="text-xs font-bold text-slate-700">Nomor HP
             <input value={form.phone} onChange={(e) => change('phone', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-medium outline-none focus:ring-2 focus:ring-emerald-600" />
-          </label>
+          </label>}
           <label className="text-xs font-bold text-slate-700">Role
             <select required value={form.role} onChange={(e) => change('role', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-medium outline-none focus:ring-2 focus:ring-emerald-600">
               <option value="">Pilih role</option>
               {roles.map((role) => <option key={role} value={role}>{role}</option>)}
             </select>
           </label>
-          {!editing && <>
+          {!roleOnly && !editing && <>
             <label className="text-xs font-bold text-slate-700">Password awal
               <input required minLength={8} type="password" value={form.password} onChange={(e) => change('password', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-medium outline-none focus:ring-2 focus:ring-emerald-600" />
             </label>
@@ -76,10 +78,10 @@ function AccountModal({ open, user, roles, saving, onClose, onSave }) {
             </label>
             <p className="sm:col-span-2 text-[11px] text-slate-500">Minimal 8 karakter dan wajib memiliki huruf besar, huruf kecil, angka, serta simbol.</p>
           </>}
-          <label className="sm:col-span-2 flex items-center gap-2 text-xs font-bold text-slate-700">
+          {!roleOnly && <label className="sm:col-span-2 flex items-center gap-2 text-xs font-bold text-slate-700">
             <input type="checkbox" checked={form.is_active} onChange={(e) => change('is_active', e.target.checked)} className="h-4 w-4 rounded text-emerald-700" />
             Akun aktif dan dapat login
-          </label>
+          </label>}
         </div>
         <div className="flex justify-end gap-2 border-t bg-slate-50 px-6 py-4">
           <button type="button" onClick={onClose} className="rounded-xl border px-4 py-2 text-xs font-bold text-slate-600">Batal</button>
@@ -90,7 +92,7 @@ function AccountModal({ open, user, roles, saving, onClose, onSave }) {
   )
 }
 
-export default function UserAccountManagement({ roles, unitId = '' }) {
+export default function UserAccountManagement({ roles, unitId = '', canManageGlobalAccess = false, canManageUnitAccess = false }) {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -113,10 +115,11 @@ export default function UserAccountManagement({ roles, unitId = '' }) {
   const create = useMutation({ mutationFn: hakAksesService.tambahUser, onSuccess: finish, onError: fail })
   const update = useMutation({ mutationFn: hakAksesService.ubahUser, onSuccess: finish, onError: fail })
   const remove = useMutation({ mutationFn: hakAksesService.hapusUser, onSuccess: finish, onError: fail })
+  const roleOnly = canManageUnitAccess && !canManageGlobalAccess
 
   const save = (payload) => selected
     ? update.mutate({ id: selected.id, payload })
-    : create.mutate(payload)
+    : canManageGlobalAccess && create.mutate(payload)
 
   const resetPassword = async (user) => {
     const result = await Swal.fire({
@@ -157,7 +160,7 @@ export default function UserAccountManagement({ roles, unitId = '' }) {
           <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400" />
           <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} placeholder="Cari nama atau email login..." className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-600" />
         </div>
-        <button onClick={() => { setSelected(null); setModalOpen(true) }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white"><FaPlus /> Tambah akun</button>
+         {canManageGlobalAccess && <button onClick={() => { setSelected(null); setModalOpen(true) }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white"><FaPlus /> Tambah akun</button>}
       </div>
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full min-w-[800px] text-left text-sm">
@@ -179,13 +182,13 @@ export default function UserAccountManagement({ roles, unitId = '' }) {
                 <td className="px-4 py-3">{user.is_active ? <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700"><FaUserCheck /> Aktif</span> : <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600"><FaUserTimes /> Nonaktif</span>}</td>
                 <td className="px-4 py-3 text-xs text-slate-500">{user.must_change_password ? 'Wajib diganti' : 'Sudah diatur'}</td>
                 <td className="px-4 py-3"><div className="flex justify-center">
-                  <ActionDropdown
-                    onEdit={() => { setSelected(user); setModalOpen(true) }}
-                    onDelete={() => deleteUser(user)}
-                    extraItems={[
-                      { label: 'Reset Password', icon: <FaKey className="h-4 w-4 text-amber-500" />, onClick: () => resetPassword(user) }
-                    ]}
-                  />
+                   <ActionDropdown
+                     onEdit={() => { setSelected(user); setModalOpen(true) }}
+                     onDelete={canManageGlobalAccess ? () => deleteUser(user) : undefined}
+                     extraItems={canManageGlobalAccess ? [
+                       { label: 'Reset Password', icon: <FaKey className="h-4 w-4 text-amber-500" />, onClick: () => resetPassword(user) }
+                     ] : []}
+                   />
                 </div></td>
               </tr>)}
           </tbody>
@@ -193,7 +196,7 @@ export default function UserAccountManagement({ roles, unitId = '' }) {
       </div>
 
       {meta.last_page > 1 && <div className="flex items-center justify-end gap-3 text-xs"><button disabled={page <= 1} onClick={() => setPage((value) => value - 1)} className="rounded-lg border px-3 py-2 disabled:opacity-40">Sebelumnya</button><span>{page} / {meta.last_page}</span><button disabled={page >= meta.last_page} onClick={() => setPage((value) => value + 1)} className="rounded-lg border px-3 py-2 disabled:opacity-40">Berikutnya</button></div>}
-      <AccountModal open={modalOpen} user={selected} roles={roles} saving={create.isPending || update.isPending} onClose={() => { setModalOpen(false); setSelected(null) }} onSave={save} />
+       <AccountModal open={modalOpen} user={selected} roles={roles} roleOnly={roleOnly} saving={create.isPending || update.isPending} onClose={() => { setModalOpen(false); setSelected(null) }} onSave={save} />
     </div>
   )
 }

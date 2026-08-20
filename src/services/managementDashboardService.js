@@ -5,6 +5,10 @@ export const managementDashboardService = {
     const response = await api.get('/dashboard/divisi-pendidikan', { params })
     return response.data
   },
+  getDivisiPendidikanKpiDetail: async (type, params = {}) => {
+    const response = await api.get(`/dashboard/divisi-pendidikan/kpi/${type}`, { params })
+    return response.data
+  },
   getWakaKurikulum: async (params = {}) => {
     const response = await api.get('/dashboard/waka-kurikulum', { params })
     return response.data
@@ -15,6 +19,10 @@ export const managementDashboardService = {
   },
   getTataUsaha: async (params = {}) => {
     const response = await api.get('/dashboard/tata-usaha', { params })
+    return response.data
+  },
+  getTataUsahaKpiDetail: async (type, params = {}) => {
+    const response = await api.get(`/dashboard/tata-usaha/kpi/${type}`, { params })
     return response.data
   },
   getGuruTahfizh: async (params = {}) => {

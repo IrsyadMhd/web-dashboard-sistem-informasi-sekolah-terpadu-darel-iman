@@ -1,14 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { Bell, CheckCheck, Inbox } from 'lucide-react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Bell, CheckCheck, Inbox, X, UserRound, FileText, TrendingUp, Info } from 'lucide-react'
 import { Drawer } from '../ui/drawer'
 import { cn } from '../../lib/utils'
 import AppBadge from './AppBadge'
 import { reportService } from '../../services/reportService'
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger
-} from '../tailgrids/core/hover-card'
 import { AnimatePresence, motion } from 'framer-motion'
 
 const CATEGORIES = [
@@ -31,7 +26,7 @@ function inferCategory(notification) {
   const map = [
     ['crud', ['tambah', 'perbarui', 'hapus', 'simpan', 'crud']],
     ['approval', ['setuju', 'tolak', 'approval', 'persetujuan', 'disetujui']],
-    ['chat', ['chat', 'pesan', 'komentar']],
+    ['chat', ['chat', 'pesan', 'komentar', 'obrolan']],
     ['absensi', ['absensi', 'hadir', 'izin', 'sakit', 'presensi']],
     ['tahfizh', ['tahfizh', 'setoran', 'hafalan']],
     ['mutabaah', ['mutabaah', 'ibadah', 'amalan']],
@@ -46,15 +41,6 @@ function inferCategory(notification) {
   return 'system'
 }
 
-/**
- * NotificationCenter - canonical global notification center.
- *
- * Self-contained: mengambil notifikasi via reportService, menampilkan bell
- * dengan unread counter, dan drawer dengan filter kategori.
- *
- * Bisa dikontrol eksternal via prop `items` / `unreadCount`.
- * Dibuka lewat bell atau event window `open-notification-center`.
- */
 export default function NotificationCenter({
   items: controlledItems,
   unreadCount: controlledUnread,
@@ -64,11 +50,13 @@ export default function NotificationCenter({
   bellClassName = '',
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [popoverOpen, setPopoverOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState('semua')
   const [items, setItems] = useState(controlledItems || [])
   const [unreadCount, setUnreadCount] = useState(controlledUnread || 0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
+  const popoverRef = useRef(null)
 
   const controlled = Boolean(controlledItems)
 
@@ -96,15 +84,28 @@ export default function NotificationCenter({
 
   useEffect(() => {
     muatNotifikasi()
-    const interval = setInterval(muatNotifikasi, 60000)
+    const interval = setInterval(muatNotifikasi, 15000) // Poll every 15s for real-time notification updates
     return () => clearInterval(interval)
   }, [muatNotifikasi])
 
   useEffect(() => {
-    const handler = () => setIsOpen(true)
+    const handler = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+        setPopoverOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = () => {
+      setIsOpen(true)
+      muatNotifikasi()
+    }
     window.addEventListener('open-notification-center', handler)
     return () => window.removeEventListener('open-notification-center', handler)
-  }, [])
+  }, [muatNotifikasi])
 
   const resolvedItems = controlledItems || items
   const resolvedUnread = controlledUnread ?? unreadCount
@@ -119,7 +120,7 @@ export default function NotificationCenter({
       setUnreadCount(0)
       setItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })))
     } catch {
-      // abaikan error; status lokal tetap konsisten
+      // ignore
     }
   }
 
@@ -133,7 +134,7 @@ export default function NotificationCenter({
       setUnreadCount((prev) => Math.max(0, prev - 1))
       setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, read_at: new Date().toISOString() } : n)))
     } catch {
-      // abaikan
+      // ignore
     }
   }
 
@@ -144,89 +145,132 @@ export default function NotificationCenter({
 
   const normalized = useMemo(
     () =>
-      filteredItems.map((item) => {
-        const time = item.created_at ? new Date(item.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : ''
-        return { ...item, time, category: inferCategory(item), unread: !item.read_at }
+      filteredItems.map((item, idx) => {
+        const time = item.created_at ? new Date(item.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Baru saja'
+        const themes = [
+          { bg: 'bg-amber-100 text-amber-500 dark:bg-amber-950/60 dark:text-amber-400', Icon: UserRound },
+          { bg: 'bg-rose-100 text-rose-500 dark:bg-rose-950/60 dark:text-rose-400', Icon: FileText },
+          { bg: 'bg-emerald-100 text-emerald-500 dark:bg-emerald-950/60 dark:text-emerald-400', Icon: TrendingUp },
+          { bg: 'bg-blue-100 text-blue-500 dark:bg-blue-950/60 dark:text-blue-400', Icon: Info },
+        ]
+        const theme = themes[idx % themes.length]
+        return {
+          ...item,
+          time: item.time || time,
+          title: item.title || item.message || item.body || 'Notifikasi Baru',
+          category: inferCategory(item),
+          unread: !item.read_at,
+          bg: theme.bg,
+          Icon: theme.Icon,
+        }
       }),
     [filteredItems]
   )
 
-  const [isHoverOpen, setIsHoverOpen] = useState(false)
+  const popoverDisplayItems = normalized.slice(0, 5)
 
   return (
-    <>
-      {/* Notification Bell with TailGrids HoverCard */}
-      <HoverCard open={isHoverOpen} onOpenChange={setIsHoverOpen}>
-        <HoverCardTrigger
-          onClick={() => setIsOpen(true)}
-          className={cn(
-            'relative rounded-xl border border-slate-200/80 bg-slate-50/80 p-2 text-slate-600 transition-all hover:bg-slate-100 hover:text-[#0E5C44] dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-800',
-            bellClassName
-          )}
-          title="Notifikasi Sistem"
-          aria-label={`Notifikasi${resolvedUnread > 0 ? `, ${resolvedUnread} belum dibaca` : ''}`}
-        >
-          <Bell className="h-4 w-4" />
-          {resolvedUnread > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white shadow-xs">
-              {resolvedUnread > 9 ? '9+' : resolvedUnread}
-            </span>
-          )}
-        </HoverCardTrigger>
-        <AnimatePresence>
-          {isHoverOpen && (
-            <HoverCardContent className="w-64 p-0 bg-transparent ring-0 shadow-none border-none">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.92, y: 15, rotateX: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10, rotateX: -5 }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 350,
-                  damping: 25,
-                  mass: 1,
-                }}
-                className="w-64 rounded-xl border border-slate-200 bg-white p-4 text-xs shadow-xl dark:border-slate-800 dark:bg-[#1B2433]"
+    <div className="relative" ref={popoverRef}>
+      {/* Squircle Notification Bell Button */}
+      <button
+        type="button"
+        onClick={() => setPopoverOpen(!popoverOpen)}
+        className={cn(
+          'relative flex h-10 w-10 items-center justify-center rounded-2xl border transition-all duration-200 cursor-pointer shadow-2xs hover:scale-[1.03] active:scale-[0.97] focus:outline-none',
+          popoverOpen
+            ? 'border-2 border-[#3B59FE] bg-white text-[#3B59FE] dark:bg-slate-900 dark:border-[#3B59FE]'
+            : 'border-slate-200/80 bg-slate-50/80 text-slate-700 hover:bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-800',
+          bellClassName
+        )}
+        title="Pemberitahuan Sistem"
+        aria-label="Pemberitahuan"
+      >
+        <Bell className="h-5 w-5 stroke-[1.8]" />
+        {(resolvedUnread > 0 || popoverDisplayItems.some((d) => d.unread)) && (
+          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-[#FF3B30] ring-2 ring-white dark:ring-slate-900" />
+        )}
+      </button>
+
+      {/* Popover Dropdown Card Matching Image 2 */}
+      <AnimatePresence>
+        {popoverOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+            className="absolute right-0 top-full mt-3 w-80 sm:w-96 rounded-3xl bg-white dark:bg-[#1B2433] p-5 shadow-2xl border border-slate-100 dark:border-slate-800 z-50"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">Notifikasi</h3>
+              <button
+                type="button"
+                onClick={() => setPopoverOpen(false)}
+                className="rounded-full p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-emerald-500/20 text-[#0E5C44] dark:text-[#3FBF75] flex items-center justify-center font-bold">
-                      <Bell className="size-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 dark:text-white text-[13px]">
-                        Pemberitahuan Sistem
-                      </h4>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        {resolvedUnread > 0 ? `${resolvedUnread} Belum Dibaca` : 'Semua Sudah Dibaca'}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-[12px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                    {resolvedUnread > 0
-                      ? `Anda memiliki ${resolvedUnread} pemberitahuan baru yang memerlukan perhatian.`
-                      : 'Belum ada notifikasi baru saat ini. Klik icon untuk melihat riwayat log.'}
-                  </p>
-                  <div className="flex gap-2 pt-1">
-                    <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden dark:bg-slate-800">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: resolvedUnread > 0 ? '100%' : '30%' }}
-                        transition={{
-                          delay: 0.2,
-                          duration: 0.8,
-                          ease: 'easeInOut',
-                        }}
-                        className={`h-full ${resolvedUnread > 0 ? 'bg-emerald-500' : 'bg-slate-400'}`}
-                      />
-                    </div>
-                  </div>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="py-2 space-y-1.5 max-h-[340px] overflow-y-auto custom-scrollbar">
+              {popoverDisplayItems.length === 0 ? (
+                <div className="py-8 text-center">
+                  <Inbox className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tidak ada notifikasi baru</p>
                 </div>
-              </motion.div>
-            </HoverCardContent>
-          )}
-        </AnimatePresence>
-      </HoverCard>
+              ) : (
+                popoverDisplayItems.map((item) => {
+                  const ItemIcon = item.Icon || Info
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        if (item.unread) tandaiDibaca(item)
+                      }}
+                      className="flex items-center justify-between gap-3 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className={cn('h-11 w-11 shrink-0 rounded-full flex items-center justify-center transition-transform group-hover:scale-105', item.bg)}>
+                          <ItemIcon className="h-5 w-5 stroke-[2]" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-[#3B59FE] dark:group-hover:text-blue-400 transition-colors">
+                            {item.title}
+                          </p>
+                          <p className="text-xs font-medium text-slate-400 dark:text-slate-400 mt-0.5">{item.time}</p>
+                        </div>
+                      </div>
+                      {item.unread && (
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-blue-600 animate-pulse" />
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setPopoverOpen(false)
+                  setIsOpen(true)
+                }}
+                className="font-bold text-[#3B59FE] hover:underline dark:text-blue-400"
+              >
+                Lihat Semua Riwayat
+              </button>
+              <button
+                type="button"
+                onClick={tandaiSemuaDibaca}
+                className="font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                Tandai dibaca
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Notification Drawer */}
       <Drawer isOpen={isOpen} onClose={() => setIsOpen(false)} title="Pemberitahuan & Activity Log" position="right">
@@ -315,6 +359,6 @@ export default function NotificationCenter({
           ))}
         </div>
       </Drawer>
-    </>
+    </div>
   )
 }

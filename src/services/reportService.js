@@ -50,9 +50,37 @@ export const reportService = {
   getFoundationPrestasiReport: async (params = {}) => unwrap(await api.get('/foundation/laporan/prestasi', { params })),
   getFoundationPrestasiDetail: async (id) => unwrap(await api.get(`/foundation/laporan/prestasi/detail/${id}`)),
 
-  exportFoundationReport: (type, params = {}) => {
-    const query = new URLSearchParams(params).toString()
-    return `${api.defaults.baseURL}/foundation/laporan/${type}/export?${query}`
+  exportFoundationReport: async (type, params = {}) => {
+    const token = sessionStorage.getItem('school_erp_token') || localStorage.getItem('school_erp_token')
+    try {
+      const response = await api.get(`/foundation/laporan/${type}/export`, {
+        params,
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data], {
+        type: response.headers['content-type'] || (params.format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+      })
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      const contentDisposition = response.headers['content-disposition']
+      let fileName = `Laporan_${type}_${new Date().toISOString().slice(0, 10)}.${params.format === 'pdf' ? 'pdf' : 'xlsx'}`
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";]+)"?/)
+        if (match && match[1]) fileName = match[1]
+      }
+      link.setAttribute('download', fileName)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(downloadUrl)
+    } catch (err) {
+      console.warn('Axios blob export fallback to URL open:', err)
+      const queryParams = new URLSearchParams({ ...params })
+      if (token) queryParams.set('token', token)
+      const url = `${api.defaults.baseURL}/foundation/laporan/${type}/export?${queryParams.toString()}`
+      window.open(url, '_blank')
+    }
   },
 }
 

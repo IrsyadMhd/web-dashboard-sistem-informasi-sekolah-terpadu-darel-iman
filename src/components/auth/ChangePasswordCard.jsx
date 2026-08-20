@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { FiLock, FiEye, FiEyeOff, FiClock, FiCheckCircle } from 'react-icons/fi'
+import { FiEye, FiEyeOff, FiClock, FiCheckCircle } from 'react-icons/fi'
+import Swal from 'sweetalert2'
+import { authService } from '../../services/authService'
 
 export default function ChangePasswordCard() {
   const [form, setForm] = useState({
@@ -10,19 +12,68 @@ export default function ChangePasswordCard() {
   const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [updated, setUpdated] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+
     if (form.newPassword !== form.confirmPassword) {
-      alert('Konfirmasi password baru tidak cocok!')
+      Swal.fire('Konfirmasi Password Tidak Cocok', 'Password baru dan konfirmasi password harus sama.', 'warning')
       return
     }
-    setUpdated(true)
-    setTimeout(() => {
-      setUpdated(false)
+
+    if (form.newPassword.length < 8) {
+      Swal.fire('Password Kurang Panjang', 'Password baru minimal harus 8 karakter.', 'warning')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await authService.changePassword({
+        current_password: form.oldPassword,
+        password: form.newPassword,
+        password_confirmation: form.confirmPassword,
+      })
+
+      setUpdated(true)
       setForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
-    }, 2000)
+      Swal.fire({
+        icon: 'success',
+        title: 'Password Berhasil Diubah',
+        text: 'Password Anda telah berhasil diperbarui di server database.',
+        timer: 2000,
+        showConfirmButton: false,
+      })
+      setTimeout(() => setUpdated(false), 3000)
+    } catch (err) {
+      console.error('Gagal ganti password:', err)
+      const msg = err.response?.data?.message || 'Gagal mengubah password. Pastikan password lama Anda benar.'
+      Swal.fire('Gagal Mengubah Password', msg, 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleForgotCurrentPassword = () => {
+    Swal.fire({
+      title: 'Lupa Password Saat Ini?',
+      html: `
+        <div class="text-left text-xs space-y-3 text-slate-600">
+          <p>Demi keamanan sistem, password asli Anda tersimpan dalam bentuk terenkripsi (hash <i>bcrypt</i>) di database server sehingga tidak dapat dibaca kembali dalam bentuk teks biasa.</p>
+          <p>Jika Anda lupa password lama yang sedang aktif, silakan gunakan fitur <strong>Reset Password</strong> atau hubungi <strong>Administrator Sistem / Tata Usaha</strong> untuk menyetel ulang password akun Anda.</p>
+        </div>
+      `,
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: 'Bantuan Reset Admin',
+      cancelButtonText: 'Tutup',
+      confirmButtonColor: '#0E5C44',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire('Bantuan Administrator', 'Silakan hubungi Administrator SIMSIT / Tata Usaha Sekolah untuk meminta reset password akun Anda.', 'success')
+      }
+    })
   }
 
   return (
@@ -47,24 +98,34 @@ export default function ChangePasswordCard() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Password Lama */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Password Lama
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-700">
+                  Password Saat Ini (Lama)
+                </label>
+                <button
+                  type="button"
+                  onClick={handleForgotCurrentPassword}
+                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline focus:outline-none"
+                >
+                  Lupa password lama?
+                </button>
+              </div>
               <div className="relative">
                 <input
                   type={showOld ? 'text' : 'password'}
                   value={form.oldPassword}
                   onChange={(e) => setForm({ ...form, oldPassword: e.target.value })}
-                  placeholder="••••••••••••"
+                  placeholder="Masukkan password saat ini"
                   className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm pr-10"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowOld(!showOld)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                  title={showOld ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
-                  {showOld ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                  {showOld ? <FiEyeOff className="w-4 h-4 text-emerald-600" /> : <FiEye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -79,16 +140,18 @@ export default function ChangePasswordCard() {
                   type={showNew ? 'text' : 'password'}
                   value={form.newPassword}
                   onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
-                  placeholder="••••••••••••"
+                  placeholder="Masukkan password baru (minimal 8 karakter)"
                   className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm pr-10"
                   required
+                  minLength={8}
                 />
                 <button
                   type="button"
                   onClick={() => setShowNew(!showNew)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                  title={showNew ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
-                  {showNew ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                  {showNew ? <FiEyeOff className="w-4 h-4 text-emerald-600" /> : <FiEye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -103,16 +166,18 @@ export default function ChangePasswordCard() {
                   type={showConfirm ? 'text' : 'password'}
                   value={form.confirmPassword}
                   onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  placeholder="••••••••••••"
+                  placeholder="Ulangi password baru Anda"
                   className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm pr-10"
                   required
+                  minLength={8}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                  title={showConfirm ? 'Sembunyikan password' : 'Tampilkan password'}
                 >
-                  {showConfirm ? <FiEyeOff className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                  {showConfirm ? <FiEyeOff className="w-4 h-4 text-emerald-600" /> : <FiEye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -120,9 +185,10 @@ export default function ChangePasswordCard() {
             <div className="pt-2">
               <button
                 type="submit"
-                className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all"
+                disabled={loading}
+                className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all disabled:opacity-50"
               >
-                Update Password
+                {loading ? 'Menyimpan...' : 'Update Password'}
               </button>
             </div>
           </form>
@@ -133,36 +199,28 @@ export default function ChangePasswordCard() {
           <div>
             <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
               <FiClock className="text-emerald-700" />
-              <span>Riwayat Perubahan</span>
+              <span>Ketentuan Keamanan Password</span>
             </h3>
 
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 text-xs border-l-2 border-emerald-600 pl-3 py-1">
-                <div className="space-y-0.5">
-                  <p className="font-mono text-slate-700 tracking-wider">••••••••</p>
-                  <p className="text-[11px] text-slate-400">28 Mei 2024 10:32</p>
-                </div>
+            <div className="space-y-3 text-xs text-slate-600">
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                <p>Minimal 8 karakter.</p>
               </div>
-
-              <div className="flex items-start gap-3 text-xs border-l-2 border-slate-200 pl-3 py-1">
-                <div className="space-y-0.5">
-                  <p className="font-mono text-slate-500 tracking-wider">••••••••</p>
-                  <p className="text-[11px] text-slate-400">15 Apr 2024 09:15</p>
-                </div>
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                <p>Kombinasi huruf besar, huruf kecil, dan angka.</p>
               </div>
-
-              <div className="flex items-start gap-3 text-xs border-l-2 border-slate-200 pl-3 py-1">
-                <div className="space-y-0.5">
-                  <p className="font-mono text-slate-500 tracking-wider">••••••••</p>
-                  <p className="text-[11px] text-slate-400">10 Mar 2024 14:22</p>
-                </div>
+              <div className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                <p>Hindari kata sandi yang mudah ditebak.</p>
               </div>
             </div>
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-500 bg-emerald-50/50 rounded-xl p-3 border border-emerald-100">
             <span className="font-medium text-slate-700 block">Informasi Keamanan:</span>
-            Password terakhir diubah pada <strong>28 Mei 2024 10:32</strong>.
+            Perubahan password memerlukan autentikasi password lama Anda yang aktif.
           </div>
         </div>
       </div>

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Calendar, FileSpreadsheet, FileText, Megaphone, RefreshCcw, ShieldAlert, User } from 'lucide-react'
+import { Calendar, FileText, Megaphone, RefreshCcw, User } from 'lucide-react'
 import api from '../../services/api'
 import {
-  MasterActionButton,
   MasterBadge,
   MasterDataPage,
   MasterDetailModal,
@@ -10,14 +9,12 @@ import {
   MasterErrorState,
   MasterFilterBar,
   MasterFilterSelect,
-  MasterPageHeader,
   MasterPagination,
   MasterSearchInput,
   MasterStatCard,
   MasterStatsGrid,
   masterStyles,
 } from '../../components/master-data'
-import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
 
 function categoryVariant(category) {
   const key = (category || '').toLowerCase()
@@ -44,7 +41,6 @@ export function FoundationInformationPage() {
   const perPage = 9
 
   const [selectedInfo, setSelectedInfo] = useState(null)
-  const [showExport, setShowExport] = useState(false)
 
   const fetchInformation = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -107,39 +103,49 @@ export function FoundationInformationPage() {
     fetchInformation(Boolean(information.length))
   }
 
-  const exportRows = paginatedInfo.map((info, idx) => ({
-    No: (page - 1) * perPage + idx + 1,
-    Judul: info.judul_pengumuman || info.judul || info.title || '-',
-    Kategori: info.kategori || info.jenis || 'Pengumuman',
-    Penulis: info.penulis || 'Humas Yayasan',
-    'Tanggal Publikasi': formatFullDate(info.created_at),
-  }))
-
   return (
     <MasterDataPage hideBreadcrumb className="foundation-information-page">
-      <MasterPageHeader
-        title="Informasi Sekolah"
-        description="Lihat berita, pengumuman, agenda, dan informasi resmi dari seluruh Unit Pendidikan Dar el-Iman."
-        tone="brand"
-        icon={Megaphone}
-        actions={(
-          <>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-2 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
-              <ShieldAlert className="h-3 w-3" />
-              Mode Monitoring • Akses Read-Only
-            </span>
-            <MasterActionButton variant="export" icon={FileSpreadsheet} onClick={() => setShowExport(true)}>
-              Export Data
-            </MasterActionButton>
-          </>
-        )}
-      />
-
       <MasterStatsGrid>
-        <MasterStatCard icon={FileText} label="Total Informasi" value={totalCount} description="Semua kategori" variant="success" delay={40} />
-        <MasterStatCard icon={Megaphone} label="Pengumuman" value={pengumumanCount} description="Pengumuman resmi" variant="info" delay={80} />
-        <MasterStatCard icon={FileText} label="Berita Terbit" value={beritaCount} description="Berita sekolah" variant="warning" delay={120} />
-        <MasterStatCard icon={Calendar} label="Agenda" value={agendaCount} description="Agenda mendatang" variant="neutral" delay={160} />
+        <MasterStatCard
+          icon={FileText}
+          label="Total Informasi"
+          value={totalCount}
+          description="Semua kategori"
+          variant="success"
+          delay={40}
+          active={activeTab === 'all'}
+          onClick={() => { setActiveTab('all'); setPage(1) }}
+        />
+        <MasterStatCard
+          icon={Megaphone}
+          label="Pengumuman"
+          value={pengumumanCount}
+          description="Pengumuman resmi"
+          variant="info"
+          delay={80}
+          active={activeTab === 'pengumuman'}
+          onClick={() => { setActiveTab('pengumuman'); setPage(1) }}
+        />
+        <MasterStatCard
+          icon={FileText}
+          label="Berita Terbit"
+          value={beritaCount}
+          description="Berita sekolah"
+          variant="warning"
+          delay={120}
+          active={activeTab === 'berita'}
+          onClick={() => { setActiveTab('berita'); setPage(1) }}
+        />
+        <MasterStatCard
+          icon={Calendar}
+          label="Agenda"
+          value={agendaCount}
+          description="Agenda mendatang"
+          variant="neutral"
+          delay={160}
+          active={activeTab === 'agenda'}
+          onClick={() => { setActiveTab('agenda'); setPage(1) }}
+        />
       </MasterStatsGrid>
 
       <MasterFilterBar
@@ -152,6 +158,13 @@ export function FoundationInformationPage() {
               <option value="berita">Berita ({beritaCount})</option>
               <option value="agenda">Agenda ({agendaCount})</option>
             </MasterFilterSelect>
+            <a
+              href="/dashboard/berita-informasi"
+              className="inline-flex h-12 items-center justify-center gap-2 px-4 rounded-[var(--master-control-radius,14px)] bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-sm transition"
+            >
+              <Megaphone className="h-4 w-4" />
+              <span>Input / Kelola Berita</span>
+            </a>
             <button
               type="button"
               onClick={handleRefresh}
@@ -253,14 +266,6 @@ export function FoundationInformationPage() {
           </div>
         )}
       </MasterDetailModal>
-
-      <FoundationExportModal
-        isOpen={showExport}
-        onClose={() => setShowExport(false)}
-        title="Informasi Sekolah Seluruh Yayasan"
-        rows={exportRows}
-        filename="Informasi_Sekolah_Yayasan"
-      />
     </MasterDataPage>
   )
 }

@@ -243,6 +243,8 @@ export function MasterStatCard({
   variant = 'success',
   delay = 0,
   loading = false,
+  onClick,
+  active = false,
   className = '',
 }) {
   return (
@@ -256,7 +258,8 @@ export function MasterStatCard({
         badgeVariant={badgeVariant}
         colorScheme={statSchemeMap[variant] || 'emerald'}
         loading={loading}
-        className={className}
+        onClick={onClick}
+        className={`${className} ${active ? 'ring-2 ring-emerald-600/80 shadow-md border-emerald-500/50 dark:ring-emerald-400' : ''}`}
       />
     </div>
   )
