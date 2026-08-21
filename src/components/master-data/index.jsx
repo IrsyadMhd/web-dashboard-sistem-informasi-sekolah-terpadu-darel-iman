@@ -308,6 +308,7 @@ export function MasterDataSection({
   countLabel,
   search,
   filters,
+  stackedFilters = false,
   onReset,
   resetLabel = 'Reset',
   resetDisabled = false,
@@ -380,7 +381,7 @@ export function MasterDataSection({
 
   return (
     <section
-      className={`master-data-section ui-enter ${className}`}
+      className={`master-data-section ui-enter space-y-6 ${className}`}
       aria-labelledby={title ? resolvedHeadingId : undefined}
       aria-label={!title ? ariaLabel : undefined}
     >
@@ -401,8 +402,8 @@ export function MasterDataSection({
       )}
 
       {(searchNode || filterNode || (!hasHeading && actions)) && (
-        <div className={`master-data-section__toolbar ${toolbarClassName}`}>
-          <AppToolbar search={searchNode} filters={filterNode} actions={!hasHeading ? actions : null} />
+        <div className={`master-data-section__toolbar ${stackedFilters ? 'master-data-section__toolbar--stacked' : ''} ${toolbarClassName}`}>
+          <AppToolbar search={searchNode} filters={filterNode} actions={!hasHeading ? actions : null} stacked={stackedFilters} />
         </div>
       )}
 
@@ -564,3 +565,5 @@ export function MasterEmptyState({ title = 'Data Tidak Ditemukan', description =
 export function MasterErrorState({ title = 'Data gagal dimuat', description = 'Terjadi kesalahan saat mengambil data.', onRetry }) {
   return <AppErrorState title={title} description={description} onRetry={onRetry} />
 }
+
+export { default as PrintOptionModal } from './PrintOptionModal'

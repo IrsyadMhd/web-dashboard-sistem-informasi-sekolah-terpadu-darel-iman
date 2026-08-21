@@ -5318,6 +5318,48 @@ th {
   gap: 10px;
 }
 
+.master-data-section__toolbar--stacked .app-toolbar,
+.master-data-section__toolbar--stacked .app-toolbar--stacked {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
+.master-data-section__toolbar--stacked .app-toolbar__search {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.master-data-section__toolbar--stacked .app-toolbar__search input {
+  width: 100% !important;
+}
+
+.master-data-section__toolbar--stacked .app-toolbar__filters {
+  width: 100% !important;
+}
+
+.master-data-section__toolbar--stacked .master-data-section__filters {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
+
+.master-data-section__toolbar--stacked .master-data-section__filters > *:not(.master-data-section__reset) {
+  flex: 1 1 150px !important;
+  min-width: 130px !important;
+  max-width: 220px !important;
+}
+
+.master-data-section__toolbar--stacked .master-data-section__reset {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  grid-column: auto !important;
+}
+
+
 .master-data-section__search input {
   min-height: 42px;
   height: 42px;

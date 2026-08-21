@@ -11,6 +11,7 @@ import {
   FileText,
   Upload,
   Plus,
+  Search,
 } from 'lucide-react'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import ActionDropdown from '../components/app/ActionDropdown'
@@ -22,6 +23,8 @@ import { subjectService } from '../services/subjectService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useAuthStore } from '../stores/authStore'
+import { Printer } from 'lucide-react'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterDataPage,
   MasterActionButton,
@@ -33,6 +36,8 @@ import {
   MasterFilterSelect,
   MasterDataTable,
   MasterStatusBadge,
+  SquircleActionButton,
+  PrintOptionModal,
 } from '../components/master-data'
 
 export default function MasterCapaianPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
@@ -65,6 +70,43 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
     total: 0,
     per_page: 15,
   })
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+
+  const handleExportCSV = () => {
+    if (!dataCp || dataCp.length === 0) {
+      alert('Tidak ada data Capaian Pembelajaran untuk diekspor.')
+      return
+    }
+    const headers = ['NO', 'KODE CP', 'NAMA CP', 'FASE & KELAS', 'MATA PELAJARAN', 'STATUS']
+    let csvStr = headers.join(',') + '\n'
+    dataCp.forEach((row, i) => {
+      const line = [
+        i + 1,
+        `"${row.kode_cp || ''}"`,
+        `"${row.nama_cp || ''}"`,
+        `"${row.fase || ''} (${row.kelas_target || ''})"`,
+        `"${row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-'}"`,
+        `"${row.status !== false ? 'Aktif' : 'Nonaktif'}"`,
+      ].join(',')
+      csvStr += line + '\n'
+    })
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `export_capaian_pembelajaran_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const pageActions = (
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Tambah CP" onClick={() => handleOpenModal()} />
+    </div>
+  )
 
   // User Auth & Teacher Scoping
   const user = useAuthStore((state) => state.user)
@@ -443,6 +485,44 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
         className="education-unit-page cp-master-page"
         hideBreadcrumb={embedded || hideBreadcrumb}
       >
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Capaian Pembelajaran (CP)"
+        onPrint={() => {
+          const rowsToPrint = Array.isArray(dataCp) ? dataCp : []
+          printCleanTable({
+            title: 'Laporan Data Capaian Pembelajaran (CP)',
+            subtitle: 'Daftar Capaian Pembelajaran Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE CP', 'NAMA CAPAIAN PEMBELAJARAN', 'FASE / KELAS', 'MATA PELAJARAN', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_cp || '-',
+              row.nama_cp || '-',
+              `${row.fase || '-'} (${row.kelas_target || '-'})`,
+              row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-',
+              row.status !== false ? 'Aktif' : 'Nonaktif',
+            ]),
+          })
+        }}
+        onDownload={() => {
+          const rowsToPrint = Array.isArray(dataCp) ? dataCp : []
+          downloadPdfTable({
+            title: 'Laporan Data Capaian Pembelajaran (CP)',
+            subtitle: 'Daftar Capaian Pembelajaran Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE CP', 'NAMA CAPAIAN PEMBELAJARAN', 'FASE / KELAS', 'MATA PELAJARAN', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_cp || '-',
+              row.nama_cp || '-',
+              `${row.fase || '-'} (${row.kelas_target || '-'})`,
+              row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-',
+              row.status !== false ? 'Aktif' : 'Nonaktif',
+            ]),
+            filename: 'laporan_capaian_pembelajaran.pdf',
+          })
+        }}
+      />
       {/* Hero Banner */}
       {!hidePageHeader && (
         <MasterPageHeader
@@ -450,6 +530,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
           icon={BookOpen}
           title="Master Capaian Pembelajaran (CP)"
           description="Kelola Master Capaian Pembelajaran (CP) berbasis Kurikulum, Unit Pendidikan, dan Mata Pelajaran sebagai fondasi utama penyusunan Tujuan Pembelajaran (TP) & Modul Ajar."
+          actions={pageActions}
         />
       )}
 
@@ -490,107 +571,152 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
         </div>
       )}
 
-      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="cp-table-title">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 dark:border-slate-700">
-        <div>
-          <h2 id="cp-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Capaian Pembelajaran</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data sesuai filter dan kewenangan pengguna.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <MasterActionButton variant="import" icon={Upload} onClick={() => setImportOpen(true)}>Import CSV</MasterActionButton>
-          <MasterActionButton icon={Plus} onClick={() => handleOpenModal()}>Tambah CP Baru</MasterActionButton>
-        </div>
-      </div>
-
-      {/* 2-Row Toolbar: Row 1 = Search, Row 2 = Filters */}
-      <div className="border-b border-slate-200/80 p-4 dark:border-slate-700 bg-slate-50/50 dark:bg-[#161F2E] space-y-3">
-        {/* Row 1: Search Input */}
+      {/* Search & Filter Bar (2-Row Layout) */}
+      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+        {/* Baris 1: Field Pencarian Full-Width */}
         <div className="w-full">
-          <MasterSearchInput
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            placeholder="Cari kode atau nama CP..."
-          />
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari kode CP, nama capaian pembelajaran, atau deskripsi..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
+              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            />
+          </div>
         </div>
 
-        {/* Row 2: Filter Group */}
+        {/* Baris 2: Dropdown Filter & Sortir */}
         <div className="flex flex-wrap items-center gap-2.5 w-full">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">Filter:</span>
-          
-          <MasterFilterSelect
-            className="grow sm:grow-0 min-w-[140px]"
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+            Filter & Sortir:
+          </span>
+
+          <select
             value={selectedUnit}
-            onChange={(e) => { setSelectedUnit(e.target.value); setPage(1) }}
+            onChange={(e) => {
+              setSelectedUnit(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
           >
-            <option value="">Semua Unit</option>
-            {units.map((item) => <option key={item.id} value={item.id}>{item.name || item.code}</option>)}
-          </MasterFilterSelect>
+            <option value="">-- Semua Unit --</option>
+            {units.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name || item.code}
+              </option>
+            ))}
+          </select>
 
-          <MasterFilterSelect
-            className="grow sm:grow-0 min-w-[160px]"
+          <select
             value={selectedTahun}
-            onChange={(e) => { setSelectedTahun(e.target.value); setPage(1) }}
+            onChange={(e) => {
+              setSelectedTahun(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
           >
-            <option value="">Semua Tahun Ajaran</option>
-            {tahunAjarans.map((item) => <option key={item.id} value={item.id}>{item.tahun || item.name}</option>)}
-          </MasterFilterSelect>
+            <option value="">-- Semua Tahun Ajaran --</option>
+            {tahunAjarans.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.tahun || item.name}
+              </option>
+            ))}
+          </select>
 
-          <MasterFilterSelect
-            className="grow sm:grow-0 min-w-[150px]"
+          <select
             value={selectedKurikulum}
-            onChange={(e) => { setSelectedKurikulum(e.target.value); setSelectedSubject(''); setPage(1) }}
+            onChange={(e) => {
+              setSelectedKurikulum(e.target.value)
+              setSelectedSubject('')
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
           >
-            <option value="">Semua Kurikulum</option>
-            {kurikulums.map((item) => <option key={item.id} value={item.id}>{item.nama_kurikulum || item.kode_kurikulum}</option>)}
-          </MasterFilterSelect>
+            <option value="">-- Semua Kurikulum --</option>
+            {kurikulums.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.nama_kurikulum || item.kode_kurikulum}
+              </option>
+            ))}
+          </select>
 
-          <MasterFilterSelect
-            className="grow sm:grow-0 min-w-[170px]"
+          <select
             value={selectedSubject}
-            onChange={(e) => { setSelectedSubject(e.target.value); setPage(1) }}
+            onChange={(e) => {
+              setSelectedSubject(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
           >
-            <option value="">Semua Mata Pelajaran</option>
+            <option value="">-- Semua Mapel --</option>
             {subjects
               .filter((item) => !selectedKurikulum || item.kurikulum_id === selectedKurikulum)
-              .map((item) => <option key={item.id} value={item.id}>{item.nama_mapel || item.name}</option>)}
-          </MasterFilterSelect>
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nama_mapel || item.name}
+                </option>
+              ))}
+          </select>
 
-          <MasterFilterSelect
-            className="grow sm:grow-0 min-w-[135px]"
+          <select
             value={selectedStatus}
-            onChange={(e) => { setSelectedStatus(e.target.value); setPage(1) }}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
           >
-            <option value="">Semua Status</option>
+            <option value="">-- Semua Status --</option>
             <option value="aktif">Aktif</option>
             <option value="tidak_aktif">Nonaktif</option>
-          </MasterFilterSelect>
+          </select>
 
           <button
             type="button"
             onClick={() => {
-              setSearch(''); setSelectedUnit(''); setSelectedTahun(''); setSelectedKurikulum(''); setSelectedSubject(''); setSelectedStatus(''); setPage(1)
+              setSearch('')
+              setSelectedUnit('')
+              setSelectedTahun('')
+              setSelectedKurikulum('')
+              setSelectedSubject('')
+              setSelectedStatus('')
+              setPage(1)
             }}
-            className="inline-flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-[var(--master-control-radius,14px)] border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200 dark:hover:border-rose-800 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
             title="Reset Filter"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="w-4 h-4" />
             <span>Reset</span>
           </button>
         </div>
       </div>
+
+      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="cp-table-title">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+          <div>
+            <h2 id="cp-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Capaian Pembelajaran</h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data sesuai filter dan kewenangan pengguna.</p>
+          </div>
+          {pageActions}
+        </div>
 
       {/* Main Table */}
       <MasterDataTable className="!rounded-none !border-0 !shadow-none">
           <table className="w-full table-fixed text-left text-sm border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
-                <th className="w-[8%] px-3 py-4 text-center">Urutan</th>
+                <th className="w-[8%] px-5 sm:px-6 md:px-8 py-4 text-center">Urutan</th>
                 <th className="w-[14%] px-3 py-4">Kode CP</th>
                 <th className="w-[32%] px-3 py-4">Nama & Deskripsi CP</th>
                 <th className="hidden w-[20%] px-3 py-4 md:table-cell">Kurikulum & Mapel</th>
                 <th className="hidden w-[12%] px-3 py-4 text-center lg:table-cell">Fase / Kelas</th>
                 <th className="hidden w-[10%] px-3 py-4 text-center sm:table-cell">Status</th>
-                <th className="w-[16%] px-3 py-4 text-center">Aksi</th>
+                <th className="w-[16%] px-5 sm:px-6 md:px-8 py-4 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
@@ -610,8 +736,8 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
                 </tr>
               ) : (
                 dataCp.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                    <td className="py-4 px-5 text-center font-bold text-slate-500 dark:text-slate-400">
+                  <tr key={item.id} className="group border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-all duration-200 cursor-pointer">
+                    <td className="py-4 px-5 sm:px-6 md:px-8 text-center font-bold text-slate-500 dark:text-slate-400">
                       #{item.urutan}
                     </td>
 
@@ -631,7 +757,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
                     </td>
 
                     <td className="hidden px-3 py-4 md:table-cell">
-                      <div className="font-semibold text-slate-800 dark:text-slate-200">
+                      <div className="font-semibold text-slate-800 dark:text-slate-100">
                         {item.subject?.nama_mapel || item.subject?.name || '-'}
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -649,7 +775,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
                       <MasterStatusBadge active={item.status} />
                     </td>
 
-                    <td className="py-4 px-5 text-center">
+                    <td className="py-4 px-5 sm:px-6 md:px-8 text-center">
                       <ActionDropdown
                         onEdit={() => handleOpenModal(item)}
                         onDelete={() => handleHapus(item.id, item.kode_cp)}
@@ -661,7 +787,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
             </tbody>
           </table>
         {pagination.last_page > 1 && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500">
+          <div className="px-5 py-4 sm:px-6 md:px-8 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/40 text-xs text-slate-500">
             <div>
               Menampilkan Halaman <span className="font-bold">{pagination.current_page}</span> dari{' '}
               <span className="font-bold">{pagination.last_page}</span> ({pagination.total} data total)

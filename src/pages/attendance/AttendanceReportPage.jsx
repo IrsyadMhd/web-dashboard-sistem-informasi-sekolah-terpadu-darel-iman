@@ -75,14 +75,14 @@ export default function AttendanceReportPage() {
     <div className="space-y-6">
       {/* Header & Breadcrumb */}
       <div>
-        <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi' }, { label: 'Laporan Rombel' }]} />
+        <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi' }, { label: 'Rekap Data' }]} />
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-              Laporan Presensi Rombel
+              Rekap Data Presensi Rombel
             </h1>
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-              Laporan agregat dan evaluasi kehadiran siswa per rombel & unit pendidikan.
+              Laporan agregat dan evaluasi rekap data kehadiran siswa per rombel & unit pendidikan.
             </p>
           </div>
           <Button

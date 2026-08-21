@@ -15,12 +15,16 @@ import {
   X,
   ArrowRightLeft,
   Check,
+  Printer,
+  Building2,
 } from 'lucide-react'
 import { kelasService } from '../services/kelasService'
 import { studentService } from '../services/studentService'
 import { ActionDropdown, AppBadge, PersonIdentityCell, ConfirmDialog } from '../components/app'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import CsvImportModal from '../components/master-data/CsvImportModal'
 import {
   MasterActionButton,
   MasterDataSection,
@@ -32,6 +36,8 @@ import {
   MasterFormModal,
   MasterDetailModal,
   MasterDeleteDialog,
+  SquircleActionButton,
+  PrintOptionModal,
 } from '../components/master-data'
 import { useAuthStore } from '../stores/authStore'
 import {
@@ -544,11 +550,30 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
     setPage(1)
   }
 
+  const [importOpen, setImportOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const handleImportRows = async (rows) => {
+    try {
+      let successCount = 0
+      for (const row of rows) {
+        await kelasService.tambah(row)
+        successCount++
+      }
+      queryClient.invalidateQueries(['master-kelas-list'])
+      Swal.fire('Berhasil', `${successCount} data kelas berhasil diimport.`, 'success')
+      setImportOpen(false)
+    } catch (err) {
+      Swal.fire('Gagal Import', err.response?.data?.message || 'Terjadi kesalahan saat mengimport data kelas.', 'error')
+    }
+  }
+
   const pageActions = (
-    <>
-      <MasterActionButton variant="export" icon={FileSpreadsheet} onClick={handleExportExcel}>Export</MasterActionButton>
-      <MasterActionButton icon={Plus} onClick={openCreateModal}>Tambah Kelas</MasterActionButton>
-    </>
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportExcel} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Tambah Kelas" onClick={openCreateModal} />
+    </div>
   )
 
   const shouldHideBreadcrumb = embedded || hideBreadcrumb
@@ -556,6 +581,50 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
 
   return (
     <PageContainer maxW="7xl">
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Kelas & Rombel"
+        onPrint={() => {
+          const rowsToPrint = Array.isArray(rawList) ? rawList : []
+          printCleanTable({
+            title: 'Laporan Data Kelas & Rombongan Belajar',
+            subtitle: 'Daftar Kelas dan Rombel Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE KELAS', 'NAMA KELAS', 'UNIT PENDIDIKAN', 'TINGKAT', 'WALI KELAS', 'KAPASITAS', 'RUANGAN', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_kelas || row.code || row.kode || '-',
+              row.nama_kelas || row.name || row.nama || '-',
+              row.unit_pendidikan?.name || row.unit_pendidikan?.nama || row.unit_name || row.jenjang || '-',
+              row.tingkat || row.level || '-',
+              row.wali_kelas?.nama_lengkap || row.wali_kelas?.nama_tampil || row.wali_kelas?.name || row.wali_kelas_name || '-',
+              row.kapasitas || '-',
+              row.ruangan || row.room || '-',
+              typeof row.status === 'string' ? row.status : row.status ? 'Aktif' : 'Nonaktif',
+            ]),
+          })
+        }}
+        onDownload={() => {
+          const rowsToPrint = Array.isArray(rawList) ? rawList : []
+          downloadPdfTable({
+            title: 'Laporan Data Kelas & Rombongan Belajar',
+            subtitle: 'Daftar Kelas dan Rombel Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE KELAS', 'NAMA KELAS', 'UNIT PENDIDIKAN', 'TINGKAT', 'WALI KELAS', 'KAPASITAS', 'RUANGAN', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_kelas || row.code || row.kode || '-',
+              row.nama_kelas || row.name || row.nama || '-',
+              row.unit_pendidikan?.name || row.unit_pendidikan?.nama || row.unit_name || row.jenjang || '-',
+              row.tingkat || row.level || '-',
+              row.wali_kelas?.nama_lengkap || row.wali_kelas?.nama_tampil || row.wali_kelas?.name || row.wali_kelas_name || '-',
+              row.kapasitas || '-',
+              row.ruangan || row.room || '-',
+              typeof row.status === 'string' ? row.status : row.status ? 'Aktif' : 'Nonaktif',
+            ]),
+            filename: 'laporan_data_kelas.pdf',
+          })
+        }}
+      />
       {!shouldHideBreadcrumb && <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Data Kelas' }]} />}
       <MasterDataPage className="education-unit-page" hideBreadcrumb>
       {!shouldHideHeader && (
@@ -567,6 +636,21 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
           actions={pageActions}
         />
       )}
+
+      <CsvImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Kelas & Rombel"
+        onImport={handleImportRows}
+        columns={[
+          { key: 'unit_pendidikan_id', required: true, example: 'UUID Unit' },
+          { key: 'nama_kelas', required: true, example: 'VII Al-Farabi' },
+          { key: 'kode_kelas', example: '7A-SMP' },
+          { key: 'tingkat', example: '7' },
+          { key: 'kapasitas', example: '32' },
+          { key: 'ruangan', example: 'Ruang 102' },
+        ]}
+      />
 
       {/* Ringkasan Stats */}
       <MasterStatsGrid className="education-unit-kpis">
@@ -581,6 +665,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
         description="Data kelas sesuai periode, unit, kelas, dan status yang dipilih."
         countLabel={`${Number(paginationInfo.total).toLocaleString('id-ID')} kelas`}
         actions={pageActions}
+        stackedFilters={true}
         search={{
           value: search,
           onValueChange: (value) => { setSearch(value); setPage(1) },
@@ -738,207 +823,280 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
           </table>
       </MasterDataSection>
 
-      {/* Form Modal Wizard */}
+      {/* Form Modal Add / Edit Rombel */}
       <MasterFormModal
         isOpen={isFormModalOpen}
         onClose={closeFormModal}
         icon={School}
         title={isEditMode ? 'Edit Data Rombongan Belajar' : 'Tambah Rombongan Belajar Baru'}
-        description={`Langkah ${currentStep} dari 4: Selesaikan pembuatan data kelas.`}
+        description="Lengkapi unit pendidikan, periode akademik, spesifikasi rombel, serta wali kelas."
+        maxWidth="max-w-2xl"
         footer={
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 1))}
-              disabled={currentStep === 1}
-              className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-700 disabled:opacity-40"
+              onClick={closeFormModal}
+              className="h-11 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              <ChevronLeft className="h-4 w-4" /> Kembali
+              Batal
             </button>
-            {currentStep < 4 ? (
-              <button
-                type="button"
-                onClick={handleNextStep}
-                className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-emerald-800 px-5 text-xs font-semibold text-white hover:bg-emerald-900"
-              >
-                Lanjut <ChevronRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmitForm}
-                disabled={createMutation.isPending || updateMutation.isPending}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-800 px-6 text-xs font-semibold text-white hover:bg-emerald-900 disabled:opacity-50"
-              >
-                <CheckCircle2 className="h-4 w-4" /> {isEditMode ? 'Simpan Perubahan' : 'Simpan Kelas'}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleSubmitForm}
+              disabled={createMutation.isPending || updateMutation.isPending}
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#0E5C44] px-5 text-xs font-bold text-white shadow-md shadow-emerald-900/10 hover:bg-emerald-800 disabled:opacity-50 dark:bg-[#3FBF75] dark:text-slate-900 dark:hover:bg-emerald-400"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              <span>{isEditMode ? 'Simpan Perubahan' : 'Simpan Kelas'}</span>
+            </button>
           </div>
         }
       >
-        <div className="p-6 space-y-5">
-          {/* Stepper Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-            {[1, 2, 3, 4].map((step) => (
-              <div key={step} className="flex items-center gap-2">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${currentStep === step ? 'bg-emerald-800 text-white' : currentStep > step ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'}`}>
-                  {step}
-                </div>
-                <span className={`hidden text-xs font-semibold sm:inline ${currentStep === step ? 'text-slate-900' : 'text-slate-400'}`}>
-                  {step === 1 ? 'Unit & TA' : step === 2 ? 'Semester & Jenjang' : step === 3 ? 'Info Kelas' : 'Wali & Ruangan'}
-                </span>
-              </div>
-            ))}
-          </div>
+        <form onSubmit={handleSubmitForm} className="space-y-5 p-1">
+          {/* GRUP 1: UNIT & PERIODE AKADEMIK */}
+          <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+            <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+              <Building2 className="h-4 w-4" />
+              <span>1. Unit Pendidikan & Periode Akademik</span>
+            </h4>
 
-          {/* Form Step Contents */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Unit Pendidikan *</label>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Unit Pendidikan *
+                </label>
                 <select
+                  required
                   value={formData.unit_pendidikan_id}
                   onChange={(e) => setFormData((prev) => ({ ...prev, unit_pendidikan_id: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  className={`h-11 w-full rounded-xl border bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
+                    formErrors.unit_pendidikan_id ? 'border-rose-500' : 'border-slate-200'
+                  }`}
                 >
                   <option value="">-- Pilih Unit Pendidikan --</option>
-                  {masterUnits.map((u) => (<option key={u.id} value={u.id}>{u.name} ({u.level})</option>))}
+                  {masterUnits.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.level})
+                    </option>
+                  ))}
                 </select>
-                {formErrors.unit_pendidikan_id && <p className="mt-1 text-xs text-rose-600">{formErrors.unit_pendidikan_id[0]}</p>}
+                {formErrors.unit_pendidikan_id && (
+                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                    {formErrors.unit_pendidikan_id[0]}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Tahun Ajaran *</label>
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Tahun Ajaran *
+                </label>
                 <select
+                  required
                   value={formData.tahun_ajaran_id}
                   onChange={(e) => setFormData((prev) => ({ ...prev, tahun_ajaran_id: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  className={`h-11 w-full rounded-xl border bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
+                    formErrors.tahun_ajaran_id ? 'border-rose-500' : 'border-slate-200'
+                  }`}
                 >
                   <option value="">-- Pilih Tahun Ajaran --</option>
-                  {masterTahunAjaran.map((t) => (<option key={t.id} value={t.id}>{t.name} {t.is_active ? '(Aktif)' : ''}</option>))}
+                  {masterTahunAjaran.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} {t.is_active ? '(Aktif)' : ''}
+                    </option>
+                  ))}
                 </select>
-                {formErrors.tahun_ajaran_id && <p className="mt-1 text-xs text-rose-600">{formErrors.tahun_ajaran_id[0]}</p>}
+                {formErrors.tahun_ajaran_id && (
+                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                    {formErrors.tahun_ajaran_id[0]}
+                  </p>
+                )}
               </div>
-            </div>
-          )}
 
-          {currentStep === 2 && (
-            <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Semester *</label>
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Semester *
+                </label>
                 <select
+                  required
                   value={formData.semester_id}
                   onChange={(e) => setFormData((prev) => ({ ...prev, semester_id: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  className={`h-11 w-full rounded-xl border bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
+                    formErrors.semester_id ? 'border-rose-500' : 'border-slate-200'
+                  }`}
                 >
                   <option value="">-- Pilih Semester --</option>
-                  {availableSemestersForm.map((s) => (<option key={s.id} value={s.id}>{s.name} ({s.academic_year_name || 'TA'})</option>))}
+                  {availableSemestersForm.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.academic_year_name || 'TA'})
+                    </option>
+                  ))}
                 </select>
-                {formErrors.semester_id && <p className="mt-1 text-xs text-rose-600">{formErrors.semester_id[0]}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-slate-800">Jenjang *</label>
-                  <select
-                    value={formData.jenjang}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, jenjang: e.target.value }))}
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
-                  >
-                    {masterJenjang.map((j) => (<option key={j} value={j}>{j}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-slate-800">Tingkat Kelas *</label>
-                  <select
-                    value={formData.tingkat}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, tingkat: e.target.value }))}
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
-                  >
-                    {masterTingkat.map((t) => (<option key={t} value={t}>Tingkat {t}</option>))}
-                  </select>
-                </div>
+                {formErrors.semester_id && (
+                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                    {formErrors.semester_id[0]}
+                  </p>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
-          {currentStep === 3 && (
-            <div className="space-y-4">
+          {/* GRUP 2: SPESIFIKASI ROMBONGAN BELAJAR */}
+          <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+            <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+              <School className="h-4 w-4" />
+              <span>2. Informasi Rombongan Belajar</span>
+            </h4>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Nama Kelas / Rombel *</label>
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Nama Kelas / Rombel *
+                </label>
                 <input
                   type="text"
+                  required
                   value={formData.nama_kelas}
                   onChange={(e) => setFormData((prev) => ({ ...prev, nama_kelas: e.target.value }))}
                   placeholder="Contoh: 7-A Tahfizh, Kelas 1 Binar"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  className={`h-11 w-full rounded-xl border bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
+                    formErrors.nama_kelas ? 'border-rose-500' : 'border-slate-200'
+                  }`}
                 />
-                {formErrors.nama_kelas && <p className="mt-1 text-xs text-rose-600">{formErrors.nama_kelas[0]}</p>}
+                {formErrors.nama_kelas && (
+                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                    {formErrors.nama_kelas[0]}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Kode Kelas (Unique) *</label>
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Kode Kelas (Unique) *
+                </label>
                 <input
                   type="text"
+                  required
                   value={formData.kode_kelas}
                   onChange={(e) => setFormData((prev) => ({ ...prev, kode_kelas: e.target.value }))}
                   placeholder="Contoh: KLS-7A-SMP"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
+                    formErrors.kode_kelas ? 'border-rose-500' : 'border-slate-200'
+                  }`}
                 />
-                {formErrors.kode_kelas && <p className="mt-1 text-xs text-rose-600">{formErrors.kode_kelas[0]}</p>}
+                {formErrors.kode_kelas && (
+                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                    {formErrors.kode_kelas[0]}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Kapasitas Maksimal Siswa</label>
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Jenjang *
+                </label>
+                <select
+                  required
+                  value={formData.jenjang}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, jenjang: e.target.value }))}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
+                >
+                  {masterJenjang.map((j) => (
+                    <option key={j} value={j}>
+                      {j}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Tingkat Kelas *
+                </label>
+                <select
+                  required
+                  value={formData.tingkat}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, tingkat: e.target.value }))}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
+                >
+                  {masterTingkat.map((t) => (
+                    <option key={t} value={t}>
+                      Tingkat {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Kapasitas Maksimal Siswa
+                </label>
                 <input
                   type="number"
                   value={formData.kapasitas}
                   onChange={(e) => setFormData((prev) => ({ ...prev, kapasitas: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  placeholder="30"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
                 />
               </div>
             </div>
-          )}
+          </div>
 
-          {currentStep === 4 && (
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Penugasan Wali Kelas</label>
+          {/* GRUP 3: PENUGASAN WALI KELAS & RUANGAN */}
+          <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+            <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+              <Users className="h-4 w-4" />
+              <span>3. Wali Kelas & Lokasi Ruangan</span>
+            </h4>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Penugasan Wali Kelas
+                </label>
                 <select
                   value={formData.wali_kelas_id}
                   onChange={(e) => setFormData((prev) => ({ ...prev, wali_kelas_id: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
                 >
                   <option value="">-- Pilih Wali Kelas (Opsional) --</option>
-                  {filteredEmployeesForm.map((emp) => (<option key={emp.id} value={emp.id}>{emp.nama_tampil || emp.name}</option>))}
+                  {filteredEmployeesForm.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.nama_tampil || emp.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Lokasi Ruangan</label>
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Lokasi Ruangan
+                </label>
                 <input
                   type="text"
                   value={formData.ruangan}
                   onChange={(e) => setFormData((prev) => ({ ...prev, ruangan: e.target.value }))}
                   placeholder="Contoh: Gedung Al-Farabi Lt. 2 (R-204)"
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800">Status Operasional</label>
+                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                  Status Operasional
+                </label>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
                 >
                   <option value="Aktif">Aktif</option>
                   <option value="Tidak Aktif">Tidak Aktif</option>
                 </select>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        </form>
       </MasterFormModal>
 
       {/* Detail Modal */}

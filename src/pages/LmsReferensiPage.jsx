@@ -33,6 +33,15 @@ import Swal from 'sweetalert2'
 import { lmsReferensiService } from '../services/lmsReferensiService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import {
+  MasterDataTable,
+  SquircleActionButton,
+  PrintOptionModal,
+} from '../components/master-data'
+import CsvImportModal from '../components/master-data/CsvImportModal'
+import ActionDropdown from '../components/app/ActionDropdown'
+import { RotateCcw, Printer } from 'lucide-react'
 
 export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataReferensi, setDataReferensi] = useState([])
@@ -73,11 +82,49 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
   // Modal State
   const [modalOpen, setModalOpen] = useState(false)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [previewItem, setPreviewItem] = useState(null)
   const [editingItem, setEditingItem] = useState(null)
   const [formSubmitting, setFormSubmitting] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [selectedReferensiUmumId, setSelectedReferensiUmumId] = useState('')
+
+  const handleExportCSV = () => {
+    const headers = ['NO', 'JUDUL', 'PENULIS', 'PENERBIT', 'TAHUN', 'MODUL AJAR', 'URL/FILE', 'STATUS']
+    const rows = (dataReferensi || []).map((r, i) => [
+      i + 1,
+      `"${(r.judul || '').replace(/"/g, '""')}"`,
+      `"${(r.penulis || '').replace(/"/g, '""')}"`,
+      `"${(r.penerbit || '').replace(/"/g, '""')}"`,
+      r.tahun || '',
+      `"${(r.modul_ajar?.judul_modul || 'Referensi Umum').replace(/"/g, '""')}"`,
+      `"${(r.url || r.file_url || '').replace(/"/g, '""')}"`,
+      r.status === 'aktif' ? 'Aktif' : 'Non-Aktif',
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `export_referensi_pembelajaran_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleImport = async (parsedData) => {
+    setSuccessMsg(`Berhasil mengimpor ${parsedData.length} data referensi pembelajaran.`)
+    fetchDaftarReferensi()
+  }
+
+  const pageActions = (
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Tambah Referensi" onClick={() => handleOpenAddModal()} />
+    </div>
+  )
 
   const [formData, setFormData] = useState({
     modul_ajar_id: '',
@@ -336,11 +383,63 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
   return (
     <PageContainer maxW="7xl">
       {!(embedded || hideBreadcrumb) && (
-        <>
         <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Referensi Pembelajaran' }]} />
-        </>
       )}
-      <div className="space-y-6 p-6 min-h-screen bg-[#F7F9FC] dark:bg-[#0F172A] text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300">
+      <div className="master-data-page space-y-6 pb-12">
+        <PrintOptionModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          title="Referensi Pembelajaran"
+          onPrint={() => {
+            const rowsToPrint = Array.isArray(dataReferensi) ? dataReferensi : []
+            printCleanTable({
+              title: 'Laporan Data Referensi Pembelajaran',
+              subtitle: 'Daftar Referensi Pembelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'JUDUL REFERENSI', 'PENULIS & PENERBIT', 'TAHUN', 'MODUL AJAR TERKAIT', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.judul || '-',
+                `${row.penulis || '-'}${row.penerbit ? ` / ${row.penerbit}` : ''}`,
+                row.tahun || '-',
+                row.modul_ajar?.judul_modul || 'Referensi Umum',
+                row.status === 'aktif' ? 'Aktif' : 'Non-Aktif',
+              ]),
+            })
+          }}
+          onDownload={() => {
+            const rowsToPrint = Array.isArray(dataReferensi) ? dataReferensi : []
+            downloadPdfTable({
+              title: 'Laporan Data Referensi Pembelajaran',
+              subtitle: 'Daftar Referensi Pembelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'JUDUL REFERENSI', 'PENULIS & PENERBIT', 'TAHUN', 'MODUL AJAR TERKAIT', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.judul || '-',
+                `${row.penulis || '-'}${row.penerbit ? ` / ${row.penerbit}` : ''}`,
+                row.tahun || '-',
+                row.modul_ajar?.judul_modul || 'Referensi Umum',
+                row.status === 'aktif' ? 'Aktif' : 'Non-Aktif',
+              ]),
+              filename: 'laporan_referensi_pembelajaran.pdf',
+            })
+          }}
+        />
+
+        <CsvImportModal
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          title="Referensi Pembelajaran"
+          onImport={handleImport}
+          columns={[
+            { key: 'modul_ajar_id' },
+            { key: 'judul', required: true, example: 'Buku Fiqih Islam Terpadu' },
+            { key: 'penulis', example: 'Dr. Ahmad' },
+            { key: 'penerbit', example: 'Penerbit Erlangga' },
+            { key: 'tahun', example: '2024' },
+            { key: 'url', example: 'https://...' },
+            { key: 'status', example: 'aktif' },
+          ]}
+        />
       {/* Header Banner */}
       {!hidePageHeader && (
         <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-8 text-white shadow-xl">
@@ -500,34 +599,12 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
       {/* Tab Navigation Card (below KPI grid) */}
       {tabNav}
 
-      {/* Filter Bar */}
-      <div className="bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-[#0E5C44] dark:text-emerald-400" />
-            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">Filter & Pencarian</h2>
-          </div>
-
-          {(search || selectedModulAjar || selectedStatus) && (
-            <button
-              onClick={() => {
-                setSearch('')
-                setSelectedModulAjar('')
-                setSelectedStatus('')
-                setPage(1)
-              }}
-              className="text-xs text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 self-start md:self-auto"
-            >
-              <X className="w-3.5 h-3.5" />
-              Reset Filter
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+      {/* SEARCH & FILTER BAR (2-Row Layout) */}
+      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+        {/* Baris 1: Field Pencarian Full-Width */}
+        <div className="w-full">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Cari judul, penulis, penerbit, tahun..."
@@ -536,69 +613,92 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                 setSearch(e.target.value)
                 setPage(1)
               }}
-              className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0E5C44] transition-all"
+              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
             />
           </div>
+        </div>
 
-          {/* Filter Modul Ajar */}
-          <div>
-            <select
-              value={selectedModulAjar}
-              onChange={(e) => {
-                setSelectedModulAjar(e.target.value)
-                setPage(1)
-              }}
-              className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0E5C44] transition-all"
-            >
-              <option value="">-- Semua Modul Ajar --</option>
-              <option value="umum">-- Referensi Umum (Tanpa Modul) --</option>
-              {optionsModulAjar.map((modul) => (
-                <option key={modul.id} value={modul.id}>
-                  {modul.kode_modul ? `[${modul.kode_modul}] ` : ''}
-                  {modul.judul_modul}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Baris 2: Dropdown Filter & Sortir */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+            Filter &amp; Sortir:
+          </span>
 
-          {/* Filter Status */}
-          <div>
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value)
-                setPage(1)
-              }}
-              className="w-full px-4 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0E5C44] transition-all"
-            >
-              <option value="">-- Semua Status --</option>
-              <option value="aktif">Aktif</option>
-              <option value="non-aktif">Non-Aktif</option>
-            </select>
-          </div>
+          <select
+            value={selectedModulAjar}
+            onChange={(e) => {
+              setSelectedModulAjar(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Modul Ajar --</option>
+            <option value="umum">-- Referensi Umum (Tanpa Modul) --</option>
+            {optionsModulAjar.map((modul) => (
+              <option key={modul.id} value={modul.id}>
+                {modul.kode_modul ? `[${modul.kode_modul}] ` : ''}
+                {modul.judul_modul}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedStatus}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Status --</option>
+            <option value="aktif">Aktif</option>
+            <option value="non-aktif">Non-Aktif</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('')
+              setSelectedModulAjar('')
+              setSelectedStatus('')
+              setPage(1)
+            }}
+            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            title="Reset Filter"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white dark:bg-[#1B2433] rounded-[18px] border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      {/* DATA TABLE CONTAINER */}
+      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="referensi-table-title">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+          <div>
+            <h2 id="referensi-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Referensi Pembelajaran</h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Daftar buku acuan, jurnal, dan kepustakaan digital terpadu.</p>
+          </div>
+          {pageActions}
+        </div>
+
+        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+          <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                <th className="py-4 px-6">No</th>
-                <th className="py-4 px-6">Judul Referensi</th>
-                <th className="py-4 px-6">Penulis & Penerbit</th>
-                <th className="py-4 px-6">Tahun</th>
-                <th className="py-4 px-6">Modul Ajar Terkait</th>
-                <th className="py-4 px-6">Lampiran & URL</th>
-                <th className="py-4 px-6">Status</th>
-                <th className="py-4 px-6 text-right">Aksi</th>
+              <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
+                <th className="w-[6%] px-5 sm:px-6 md:px-8 py-4 text-center">No</th>
+                <th className="w-[28%] px-3 py-4">Judul Referensi</th>
+                <th className="hidden w-[20%] px-3 py-4 md:table-cell">Penulis &amp; Penerbit</th>
+                <th className="hidden w-[8%] px-3 py-4 text-center sm:table-cell">Tahun</th>
+                <th className="hidden w-[20%] px-3 py-4 lg:table-cell">Modul Ajar Terkait</th>
+                <th className="hidden w-[8%] px-3 py-4 text-center sm:table-cell">Status</th>
+                <th className="w-[10%] px-3 py-4 text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan="7" className="py-12 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <RefreshCw className="w-6 h-6 animate-spin text-[#0E5C44]" />
                       <span>Memuat data Referensi Pembelajaran...</span>
@@ -607,7 +707,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                 </tr>
               ) : dataReferensi.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan="7" className="py-12 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <BookMarked className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                       <span className="font-medium text-slate-600 dark:text-slate-300">Belum ada Referensi Pembelajaran</span>
@@ -621,10 +721,11 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                   return (
                     <tr
                       key={item.id}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors duration-150 group"
+                      onClick={() => handleOpenPreviewModal(item)}
+                      className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                     >
-                      <td className="py-4 px-6 font-medium text-slate-400 text-xs">{number}</td>
-                      <td className="py-4 px-6">
+                      <td className="py-3.5 px-5 sm:px-6 md:px-8 text-center font-medium text-slate-400">{number}</td>
+                      <td className="py-3.5 px-3">
                         <div className="flex items-start gap-3">
                           <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5">
                             <BookOpen className="w-4 h-4" />
@@ -633,10 +734,21 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                             <span className="font-semibold text-slate-900 dark:text-white line-clamp-2">
                               {item.judul}
                             </span>
+                            {item.url && (
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 mt-0.5"
+                              >
+                                <ExternalLink className="w-3 h-3" /> Link Web
+                              </a>
+                            )}
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-slate-600 dark:text-slate-300">
+                      <td className="hidden py-3.5 px-3 text-slate-600 dark:text-slate-300 md:table-cell">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-200 font-medium">
                             <User className="w-3.5 h-3.5 text-slate-400" />
@@ -648,84 +760,32 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-slate-600 dark:text-slate-300">
+                      <td className="hidden py-3.5 px-3 text-slate-600 dark:text-slate-300 sm:table-cell text-center">
                         <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           <Calendar className="w-3 h-3 text-slate-400" />
                           {item.tahun || '-'}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="hidden py-3.5 px-3 lg:table-cell">
                         {item.modul_ajar ? (
                           <div className="space-y-0.5">
                             <span className="inline-block font-medium text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-lg border border-emerald-200/60 dark:border-emerald-800/60 line-clamp-1">
                               {item.modul_ajar.judul_modul}
                             </span>
-                            {item.modul_ajar.kode_modul && (
-                              <p className="text-[11px] text-slate-400 px-1">
-                                Kode: {item.modul_ajar.kode_modul}
-                              </p>
-                            )}
                           </div>
                         ) : (
                           <span className="text-xs text-slate-400 italic">Umum / Tanpa Modul</span>
                         )}
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="flex flex-col gap-1.5">
-                          {item.file_url && (
-                            <a
-                              href={item.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              Unduh File
-                            </a>
-                          )}
-                          {item.url && (
-                            <a
-                              href={item.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline line-clamp-1"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                              Buka Link URL
-                            </a>
-                          )}
-                          {!item.file_url && !item.url && (
-                            <span className="text-xs text-slate-400">-</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-4 px-6">
+                      <td className="hidden py-3.5 px-3 text-center sm:table-cell">
                         {getStatusBadge(item.status)}
                       </td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleOpenPreviewModal(item)}
-                            title="Detail Referensi"
-                            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-[#0E5C44] hover:text-white dark:hover:bg-[#0E5C44] transition-all duration-200"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEditModal(item)}
-                            title="Edit Referensi"
-                            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 transition-all duration-200"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.id, item.judul)}
-                            title="Hapus Referensi"
-                            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-600 hover:text-white dark:hover:bg-rose-600 transition-all duration-200"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <ActionDropdown
+                          onView={() => handleOpenPreviewModal(item)}
+                          onEdit={() => handleOpenEditModal(item)}
+                          onDelete={() => handleDelete(item.id, item.judul)}
+                        />
                       </td>
                     </tr>
                   )
@@ -733,7 +793,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
               )}
             </tbody>
           </table>
-        </div>
+        </MasterDataTable>
 
         {/* Pagination Footer */}
         {pagination.last_page > 1 && (
@@ -762,7 +822,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       {/* KPI DETAIL MODAL */}
       {kpiModalOpen && (

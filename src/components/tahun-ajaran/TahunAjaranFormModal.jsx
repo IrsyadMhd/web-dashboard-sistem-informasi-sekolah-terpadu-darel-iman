@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { FaTimes, FaCheckCircle, FaCalendarAlt, FaArrowRight, FaArrowLeft } from 'react-icons/fa'
+import { CalendarDays, Calendar, CheckCircle2, FileText } from 'lucide-react'
+import { MasterFormModal } from '../master-data'
 
 export default function TahunAjaranFormModal({
   isOpen,
@@ -9,7 +10,6 @@ export default function TahunAjaranFormModal({
   isSubmitting = false,
 }) {
   const isEdit = Boolean(initialData?.id || initialData?.name)
-  const [currentStep, setCurrentStep] = useState(1)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -23,7 +23,6 @@ export default function TahunAjaranFormModal({
 
   useEffect(() => {
     if (isOpen) {
-      setCurrentStep(1)
       if (initialData) {
         setFormData({
           name: initialData.name || '',
@@ -46,351 +45,180 @@ export default function TahunAjaranFormModal({
     }
   }, [initialData, isOpen])
 
-  if (!isOpen) return null
-
-  // Validate step navigation
-  const validateStep = (step) => {
+  const validate = () => {
     const errs = {}
-    if (step === 1) {
-      if (!formData.name || !formData.name.trim()) {
-        errs.name = 'Nama tahun ajaran wajib diisi.'
-      }
-    } else if (step === 2) {
-      if (!formData.start_date) {
-        errs.start_date = 'Tanggal mulai wajib diisi.'
-      }
-      if (!formData.end_date) {
-        errs.end_date = 'Tanggal selesai wajib diisi.'
-      }
-      if (formData.start_date && formData.end_date && formData.start_date >= formData.end_date) {
-        errs.end_date = 'Tanggal selesai harus setelah tanggal mulai.'
-      }
+    if (!formData.name || !formData.name.trim()) {
+      errs.name = 'Nama tahun ajaran wajib diisi.'
+    }
+    if (!formData.start_date) {
+      errs.start_date = 'Tanggal mulai wajib diisi.'
+    }
+    if (!formData.end_date) {
+      errs.end_date = 'Tanggal selesai wajib diisi.'
+    }
+    if (formData.start_date && formData.end_date && formData.start_date >= formData.end_date) {
+      errs.end_date = 'Tanggal selesai harus setelah tanggal mulai.'
     }
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
-  const handleNext = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(prev + 1, 4))
-    }
-  }
-
-  const handlePrev = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1))
-  }
-
-  const handleStepClick = (targetStep) => {
-    if (targetStep < currentStep) {
-      setCurrentStep(targetStep)
-    } else {
-      if (validateStep(currentStep)) {
-        setCurrentStep(targetStep)
-      }
-    }
-  }
-
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!validateStep(1) || !validateStep(2)) {
-      if (!validateStep(1)) setCurrentStep(1)
-      else if (!validateStep(2)) setCurrentStep(2)
-      return
-    }
+    if (!validate()) return
     onSubmit(formData)
   }
 
   return (
-    <div
-      id="tahun-ajaran-form-modal"
-      className="overlay modal overlay-open:opacity-100 overlay-open:duration-300 fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="tahun-ajaran-form-title"
-      tabIndex={-1}
+    <MasterFormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      icon={CalendarDays}
+      title={isEdit ? 'Edit Master Data Tahun Ajaran' : 'Tambah Master Data Tahun Ajaran'}
+      description="Lengkapi nama periode ajaran, tanggal mulai & selesai, serta status keaktifan."
+      maxWidth="max-w-xl"
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-11 rounded-xl border border-slate-200 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            form="tahun-ajaran-form"
+            disabled={isSubmitting}
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#0E5C44] px-5 text-xs font-bold text-white shadow-md shadow-emerald-900/10 hover:bg-emerald-800 disabled:opacity-50 dark:bg-[#3FBF75] dark:text-slate-900 dark:hover:bg-emerald-400"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            <span>{isSubmitting ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Simpan Tahun Ajaran'}</span>
+          </button>
+        </div>
+      }
     >
-      <div className="modal-dialog font-sans w-full max-w-4xl">
-        <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
-          {/* Modal Header Bar */}
-          <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-            <h3 id="tahun-ajaran-form-title" className="modal-title text-base font-bold text-slate-900 dark:text-white">
-              {isEdit ? 'Edit Master Data Tahun Ajaran' : 'Tambah Master Data Tahun Ajaran'}
-            </h3>
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-text btn-circle btn-sm absolute end-3 top-3 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              aria-label="Tutup formulir tahun ajaran"
-              data-overlay="#tahun-ajaran-form-modal"
-            >
-              <FaTimes className="size-4" />
-            </button>
-          </div>
+      <form id="tahun-ajaran-form" onSubmit={handleSubmit} className="space-y-5 p-1">
+        {/* GRUP 1: IDENTITAS PERIODE */}
+        <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+          <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+            <CalendarDays className="h-4 w-4" />
+            <span>1. Identitas Tahun Ajaran</span>
+          </h4>
 
-          {/* Modal Main Body Grid */}
-          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-            <div className="modal-body flex min-h-0 flex-1 flex-col overflow-y-auto p-0">
-            {/* Left Column: Wizard Stepper Vertikal */}
-            <div className="border-r border-slate-100 bg-[#f8fafc] p-7 space-y-7">
-              {[
-                { step: 1, label: 'Identitas & Deskripsi' },
-                { step: 2, label: 'Jadwal & Periode' },
-                { step: 3, label: 'Status & Fitur' },
-                { step: 4, label: 'Konfirmasi' },
-              ].map((s) => (
-                <div
-                  key={s.step}
-                  onClick={() => handleStepClick(s.step)}
-                  className="flex items-center gap-3.5 cursor-pointer group"
-                >
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                      currentStep === s.step
-                        ? 'bg-[#054e3b] text-white shadow-md'
-                        : currentStep > s.step
-                        ? 'bg-[#046c4e] text-white'
-                        : 'bg-slate-200 text-slate-600 group-hover:bg-slate-300'
-                    }`}
-                  >
-                    {s.step}
-                  </div>
-                  <span
-                    className={`text-sm transition-colors ${
-                      currentStep === s.step
-                        ? 'font-extrabold text-[#054e3b]'
-                        : 'font-semibold text-slate-500 group-hover:text-slate-800'
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-              ))}
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+              Nama Tahun Ajaran <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value })
+                if (errors.name) setErrors({ ...errors, name: null })
+              }}
+              placeholder="Contoh: 2025/2026"
+              className={`h-11 w-full rounded-xl border bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
+                errors.name ? 'border-rose-500' : 'border-slate-200'
+              }`}
+            />
+            {errors.name && (
+              <p className="mt-1 text-[11px] font-medium text-rose-500">{errors.name}</p>
+            )}
+          </div>
+        </div>
+
+        {/* GRUP 2: JADWAL & PERIODE */}
+        <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+          <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+            <Calendar className="h-4 w-4" />
+            <span>2. Rentang Kalender Akademik</span>
+          </h4>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                Tanggal Mulai <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.start_date}
+                onChange={(e) => {
+                  setFormData({ ...formData, start_date: e.target.value })
+                  if (errors.start_date) setErrors({ ...errors, start_date: null })
+                }}
+                className={`h-11 w-full rounded-xl border bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
+                  errors.start_date ? 'border-rose-500' : 'border-slate-200'
+                }`}
+              />
+              {errors.start_date && (
+                <p className="mt-1 text-[11px] font-medium text-rose-500">{errors.start_date}</p>
+              )}
             </div>
 
-            {/* Right Main Column / Form Content */}
-            <div className="lg:col-span-3 p-7 overflow-y-auto max-h-[520px]">
-              {/* STEP 1: Identitas & Deskripsi */}
-              {currentStep === 1 && (
-                <div className="space-y-5">
-                  <h3 className="text-base font-extrabold text-[#0f172a] border-b border-slate-100 pb-2.5">
-                    Identitas Tahun Ajaran
-                  </h3>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                      Nama Tahun Ajaran <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => {
-                        setFormData({ ...formData, name: e.target.value })
-                        if (errors.name) setErrors({ ...errors, name: null })
-                      }}
-                      placeholder="Contoh: 2025/2026"
-                      className={`w-full rounded-xl border px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-slate-400 focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white ${
-                        errors.name ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200/90'
-                      }`}
-                    />
-                    {errors.name && (
-                      <p className="mt-1 text-xs text-rose-500 font-semibold">{errors.name}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                      Deskripsi / Tugas Pokok Jabatan & Catatan Periode
-                    </label>
-                    <textarea
-                      rows="4"
-                      value={formData.keterangan}
-                      onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                      placeholder="Penjelasan ringkas peran, wewenang, dan deskripsi pekerjaan..."
-                      className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-slate-400 focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: Jadwal & Periode */}
-              {currentStep === 2 && (
-                <div className="space-y-5">
-                  <h3 className="text-base font-extrabold text-[#0f172a] border-b border-slate-100 pb-2.5">
-                    Jadwal & Periode Kalender
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                        Tanggal Mulai <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.start_date}
-                        onChange={(e) => {
-                          setFormData({ ...formData, start_date: e.target.value })
-                          if (errors.start_date) setErrors({ ...errors, start_date: null })
-                        }}
-                        className={`w-full rounded-xl border px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white ${
-                          errors.start_date ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200/90'
-                        }`}
-                      />
-                      {errors.start_date && (
-                        <p className="mt-1 text-xs text-rose-500 font-semibold">{errors.start_date}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                        Tanggal Selesai <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.end_date}
-                        onChange={(e) => {
-                          setFormData({ ...formData, end_date: e.target.value })
-                          if (errors.end_date) setErrors({ ...errors, end_date: null })
-                        }}
-                        className={`w-full rounded-xl border px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white ${
-                          errors.end_date ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200/90'
-                        }`}
-                      />
-                      {errors.end_date && (
-                        <p className="mt-1 text-xs text-rose-500 font-semibold">{errors.end_date}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-start gap-3">
-                    <FaCalendarAlt className="w-5 h-5 text-[#054e3b] mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-extrabold text-[#054e3b]">Informasi Durasi Periode</h4>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        Periode standar tahun ajaran sekolah berlangsung selama 1 (satu) tahun (12 bulan) dimulai dari bulan Juli hingga bulan Juni tahun berikutnya.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 3: Status & Fitur */}
-              {currentStep === 3 && (
-                <div className="space-y-5">
-                  <h3 className="text-base font-extrabold text-[#0f172a] border-b border-slate-100 pb-2.5">
-                    Status Operasional Periode
-                  </h3>
-
-                  <div className="p-5 rounded-2xl bg-white border border-slate-200/90 flex items-center justify-between shadow-xs">
-                    <div>
-                      <h4 className="text-sm font-extrabold text-[#0f172a]">Jadikan Periode Aktif Utama</h4>
-                      <p className="text-xs text-slate-500 mt-1 max-w-md leading-relaxed">
-                        Mengaktifkan tahun ajaran ini akan secara otomatis menonaktifkan tahun ajaran aktif sebelumnya di seluruh sistem sekolah.
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.is_active}
-                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                        className="sr-only peer"
-                      />
-                      <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#054e3b]"></div>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4: Konfirmasi */}
-              {currentStep === 4 && (
-                <div className="space-y-4">
-                  <h3 className="text-base font-extrabold text-[#0f172a] border-b border-slate-100 pb-2.5">
-                    Konfirmasi Data Tahun Ajaran
-                  </h3>
-
-                  <div className="rounded-2xl border border-slate-200/90 bg-[#f8fafc] p-6 space-y-3.5 text-xs">
-                    <div className="flex justify-between border-b border-slate-200/80 pb-2.5">
-                      <span className="text-slate-500 font-medium">Nama Tahun Ajaran:</span>
-                      <span className="font-black text-slate-900 text-sm">{formData.name || '-'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-slate-200/80 pb-2.5">
-                      <span className="text-slate-500 font-medium">Tanggal Mulai:</span>
-                      <span className="font-bold text-slate-800">{formData.start_date || '-'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-slate-200/80 pb-2.5">
-                      <span className="text-slate-500 font-medium">Tanggal Selesai:</span>
-                      <span className="font-bold text-slate-800">{formData.end_date || '-'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-slate-200/80 pb-2.5">
-                      <span className="text-slate-500 font-medium">Status Aktif Utama:</span>
-                      <span
-                        className={`font-bold px-2.5 py-0.5 rounded-full text-[11px] ${
-                          formData.is_active
-                            ? 'bg-emerald-100 text-[#054e3b]'
-                            : 'bg-slate-200 text-slate-700'
-                        }`}
-                      >
-                        {formData.is_active ? 'Aktif Utama' : 'Tidak Aktif'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between pt-1">
-                      <span className="text-slate-500 font-medium">Deskripsi / Keterangan:</span>
-                      <span className="font-medium text-slate-700 max-w-xs text-right">
-                        {formData.keterangan || '-'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
+                Tanggal Selesai <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.end_date}
+                onChange={(e) => {
+                  setFormData({ ...formData, end_date: e.target.value })
+                  if (errors.end_date) setErrors({ ...errors, end_date: null })
+                }}
+                className={`h-11 w-full rounded-xl border bg-white px-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white ${
+                  errors.end_date ? 'border-rose-500' : 'border-slate-200'
+                }`}
+              />
+              {errors.end_date && (
+                <p className="mt-1 text-[11px] font-medium text-rose-500">{errors.end_date}</p>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Modal Bottom Action Footer */}
-          <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-soft btn-secondary"
-              data-overlay="#tahun-ajaran-form-modal"
-            >
-              Batal
-            </button>
+        {/* GRUP 3: KETERANGAN & CATATAN */}
+        <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+          <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+            <FileText className="h-4 w-4" />
+            <span>3. Catatan & Keterangan Tambahan</span>
+          </h4>
 
-            <div className="flex items-center gap-2.5">
-              {currentStep > 1 && (
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  className="btn btn-soft btn-secondary inline-flex items-center gap-1.5"
-                >
-                  <FaArrowLeft className="size-3" />
-                  <span>Sebelumnya</span>
-                </button>
-              )}
-
-              {currentStep < 4 ? (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="btn btn-primary inline-flex items-center gap-1.5"
-                >
-                  <span>Selanjutnya</span>
-                  <FaArrowRight className="size-3" />
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <FaCheckCircle className="size-4" />
-                  <span>{isSubmitting ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Simpan Tahun Ajaran'}</span>
-                </button>
-              )}
-            </div>
+          <div>
+            <textarea
+              rows={3}
+              value={formData.keterangan}
+              onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
+              placeholder="Catatan khusus atau keterangan periode ajaran ini..."
+              className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
+            />
           </div>
-        </form>
-      </div>
-    </div>
-  </div>
+        </div>
+
+        {/* GRUP 4: STATUS AKTIF */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.is_active}
+              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+              className="h-4 w-4 rounded border-slate-300 accent-[#0E5C44] focus:ring-[#0E5C44]"
+            />
+            <div>
+              <span className="block text-xs font-bold text-slate-900 dark:text-white">
+                Jadikan Periode Aktif Utama
+              </span>
+              <span className="block text-[11px] font-medium text-slate-400">
+                Mengaktifkan periode ini akan menonaktifkan status tahun ajaran aktif sebelumnya di seluruh sistem.
+              </span>
+            </div>
+          </label>
+        </div>
+      </form>
+    </MasterFormModal>
   )
 }

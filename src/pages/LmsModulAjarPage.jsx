@@ -18,16 +18,21 @@ import {
   History,
   Send,
   User,
+  Pencil,
+  Sparkles,
 } from 'lucide-react'
 import { lmsModulAjarService } from '../services/lmsModulAjarService'
 import PageContainer from '../components/app/PageContainer'
-import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import ActionDropdown from '../components/app/ActionDropdown'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterActionButton,
   MasterDataPage,
   MasterPageHeader,
   MasterStatCard,
   MasterStatsGrid,
+  SquircleActionButton,
+  PrintOptionModal,
 } from '../components/master-data'
 
 const FASE_LIST = ['Fase A', 'Fase B', 'Fase C', 'Fase D', 'Fase E', 'Fase F']
@@ -301,9 +306,241 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     })
   }
 
-  const handleExportExcel = () => {
-    window.open(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/lms/modul-ajar/export/excel`, '_blank')
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+
+  const handleExportCSV = () => {
+    const listToExport = items || []
+    if (listToExport.length === 0) {
+      Swal.fire('Info', 'Tidak ada data Modul Ajar untuk diekspor.', 'info')
+      return
+    }
+    const headers = ['NO', 'KODE MODUL', 'NAMA MODUL', 'MATA PELAJARAN', 'JENJANG / KURIKULUM', 'ALOKASI JAM', 'STATUS']
+    let csvStr = headers.join(',') + '\n'
+    listToExport.forEach((row, i) => {
+      const line = [
+        i + 1,
+        `"${row.kode_modul || ''}"`,
+        `"${row.nama_modul || ''}"`,
+        `"${row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-'}"`,
+        `"${row.jenjang || ''} (${row.kurikulum || ''})"`,
+        `"${row.alokasi_jam || 0} JP (${row.jumlah_pertemuan || 0} Pertemuan)"`,
+        `"${row.status || 'Draft'}"`,
+      ].join(',')
+      csvStr += line + '\n'
+    })
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `export_modul_ajar_${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
   }
+
+  const handlePrintSingleModul = (modul) => {
+    if (!modul) return
+
+    let iframe = document.getElementById('simsit-print-iframe')
+    if (iframe) {
+      document.body.removeChild(iframe)
+    }
+
+    iframe = document.createElement('iframe')
+    iframe.id = 'simsit-print-iframe'
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0px'
+    iframe.style.height = '0px'
+    iframe.style.border = 'none'
+    iframe.style.zIndex = '-9999'
+
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentWindow.document
+    doc.open()
+    doc.write(`
+      <!DOCTYPE html>
+      <html lang="id">
+      <head>
+        <meta charset="UTF-8">
+        <title>Modul Ajar - ${modul.judul_modul || 'RPP'}</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 15mm 15mm;
+          }
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-size: 10pt;
+            color: #0f172a;
+            line-height: 1.6;
+            padding: 10px;
+          }
+          .header {
+            border-bottom: 2.5px solid #0e5c44;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+          }
+          .header h1 {
+            font-size: 13pt;
+            font-weight: 800;
+            color: #0e5c44;
+            margin: 0;
+            text-transform: uppercase;
+          }
+          .header h2 {
+            font-size: 12pt;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 4px 0;
+          }
+          .header p {
+            font-size: 9pt;
+            color: #64748b;
+            margin: 0;
+          }
+          .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+          }
+          .info-table td {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            font-size: 9.5pt;
+          }
+          .info-table td.label {
+            background-color: #f1f5f9;
+            font-weight: 700;
+            color: #334155;
+            width: 25%;
+          }
+          .section-title {
+            font-size: 10pt;
+            font-weight: 800;
+            color: #0e5c44;
+            text-transform: uppercase;
+            border-bottom: 1.5px solid #0e5c44;
+            padding-bottom: 4px;
+            margin-top: 16px;
+            margin-bottom: 8px;
+          }
+          .section-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 9.5pt;
+            white-space: pre-line;
+            margin-bottom: 12px;
+          }
+          .grid-3 {
+            display: flex;
+            gap: 10px;
+          }
+          .grid-3 > div {
+            flex: 1;
+          }
+          .footer-sig {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            page-break-inside: avoid;
+          }
+          .sig-box {
+            text-align: center;
+            width: 40%;
+          }
+          .sig-box p { margin: 2px 0; font-size: 9pt; }
+          .sig-space { height: 60px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>PERENCANAAN PELAKSANAAN PEMBELAJARAN (MODUL AJAR)</h1>
+          <h2>${modul.judul_modul || '-'}</h2>
+          <p>Kode: ${modul.kode_modul || '-'} | Versi: ${modul.versi || '1.0'} | Status: ${modul.status || 'Draft'}</p>
+        </div>
+
+        <table class="info-table">
+          <tr>
+            <td class="label">Satuan Pendidikan</td>
+            <td>${modul.unit_pendidikan?.nama || modul.unit_pendidikan?.name || 'Sekolah Terpadu'}</td>
+            <td class="label">Mata Pelajaran</td>
+            <td>${modul.subject?.nama_mapel || modul.subject?.name || '-'}</td>
+          </tr>
+          <tr>
+            <td class="label">Fase / Kelas</td>
+            <td>Fase ${modul.fase || 'A'} (${modul.kelas?.nama_kelas || modul.kelas?.name || '-'})</td>
+            <td class="label">Alokasi Waktu</td>
+            <td>${modul.alokasi_jam || modul.alokasi_waktu_jp || 2} JP</td>
+          </tr>
+          <tr>
+            <td class="label">Guru Pengampu</td>
+            <td>${modul.user?.nama_lengkap || modul.teacher?.nama_lengkap || modul.teacher?.name || modul.guru?.nama_lengkap || '-'}</td>
+            <td class="label">Target Peserta Didik</td>
+            <td>${modul.target_peserta_didik || 'Reguler'}</td>
+          </tr>
+        </table>
+
+        <div class="section-title">A. Tujuan Pembelajaran (TP)</div>
+        <div class="section-box">${modul.tujuan_pembelajaran || 'Belum diisi.'}</div>
+
+        <div class="section-title">B. Profil Pelajar Pancasila & Rahmatan Lil Alamin</div>
+        <div class="section-box">${modul.profil_pelajar_pancasila || '-'}</div>
+
+        <div class="section-title">C. Skenario & Kegiatan Pembelajaran</div>
+        <div class="grid-3">
+          <div class="section-box">
+            <strong>1. Pendahuluan:</strong><br/>
+            ${modul.kegiatan_pendahuluan || '-'}
+          </div>
+          <div class="section-box">
+            <strong>2. Kegiatan Inti:</strong><br/>
+            ${modul.kegiatan_inti || '-'}
+          </div>
+          <div class="section-box">
+            <strong>3. Penutup:</strong><br/>
+            ${modul.kegiatan_penutup || '-'}
+          </div>
+        </div>
+
+        <div class="footer-sig">
+          <div class="sig-box">
+            <p>Mengetahui,</p>
+            <p><strong>Kepala Sekolah</strong></p>
+            <div class="sig-space"></div>
+            <p>_______________________</p>
+          </div>
+          <div class="sig-box">
+            <p>Padang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p><strong>Guru Mata Pelajaran</strong></p>
+            <div class="sig-space"></div>
+            <p><strong>${modul.user?.nama_lengkap || modul.teacher?.nama_lengkap || modul.teacher?.name || modul.guru?.nama_lengkap || 'Guru'}</strong></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `)
+    doc.close()
+
+    setTimeout(() => {
+      iframe.contentWindow.focus()
+      iframe.contentWindow.print()
+    }, 300)
+  }
+
+  const pageActions = (
+    <div className="flex items-center gap-2">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Buat Modul Ajar" onClick={handleOpenAddModal} />
+    </div>
+  )
 
   return (
     <PageContainer maxW="7xl">
@@ -311,114 +548,180 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
         <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Modul Ajar' }]} />
       )}
       <MasterDataPage className="education-unit-page modul-ajar-master-page" hideBreadcrumb={embedded || hideBreadcrumb}>
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Modul Ajar (RPP Digital)"
+        onPrint={() => {
+          const rowsToPrint = Array.isArray(items) ? items : []
+          printCleanTable({
+            title: 'Laporan Data Modul Ajar (RPP Digital)',
+            subtitle: 'Daftar Perencanaan Modul Ajar Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE MODUL', 'NAMA MODUL', 'MATA PELAJARAN', 'JENJANG & KURIKULUM', 'ALOKASI WAKTU', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_modul || '-',
+              row.nama_modul || '-',
+              row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-',
+              `${row.jenjang || '-'} (${row.kurikulum || '-'})`,
+              `${row.alokasi_jam || 0} JP (${row.jumlah_pertemuan || 0} Pertemuan)`,
+              row.status || 'Draft',
+            ]),
+          })
+        }}
+        onDownload={() => {
+          const rowsToPrint = Array.isArray(items) ? items : []
+          downloadPdfTable({
+            title: 'Laporan Data Modul Ajar (RPP Digital)',
+            subtitle: 'Daftar Perencanaan Modul Ajar Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE MODUL', 'NAMA MODUL', 'MATA PELAJARAN', 'JENJANG & KURIKULUM', 'ALOKASI WAKTU', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_modul || '-',
+              row.nama_modul || '-',
+              row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-',
+              `${row.jenjang || '-'} (${row.kurikulum || '-'})`,
+              `${row.alokasi_jam || 0} JP (${row.jumlah_pertemuan || 0} Pertemuan)`,
+              row.status || 'Draft',
+            ]),
+            filename: 'laporan_modul_ajar.pdf',
+          })
+        }}
+      />
       {!hidePageHeader && (
         <MasterPageHeader
           tone="brand"
           icon={BookOpen}
           title="Modul Ajar (RPP Digital)"
           description="Pusat perencanaan aktivitas guru yang terintegrasi dengan Kurikulum, CP, TP, penugasan, evaluasi, dan rapor."
-          actions={
-            <>
-              <MasterActionButton variant="export" icon={Download} onClick={handleExportExcel}>Export CSV</MasterActionButton>
-              <MasterActionButton onClick={handleOpenAddModal}>Buat Modul Ajar</MasterActionButton>
-            </>
-          }
+          actions={pageActions}
         />
       )}
 
       {/* KPI Cards Grid */}
-      <MasterStatsGrid className="education-unit-kpis">
+      <MasterStatsGrid className="education-unit-kpis print:hidden">
         <MasterStatCard icon={BookOpen} label="Total Modul" value={stats.total_modul || 0} description="Terdaftar di sistem" variant="success" />
         <MasterStatCard icon={FileText} label="Draft & Review" value={(stats.total_draft || 0) + (stats.total_review || 0)} description="Dalam penyusunan" variant="warning" />
         <MasterStatCard icon={CheckCircle} label="Dipublikasikan" value={stats.total_published || 0} description="Siap digunakan" variant="info" />
         <MasterStatCard icon={Layers} label="TP Ter-cover" value={stats.total_tp_tercover || 0} description="Terhubung ke modul" variant="neutral" />
       </MasterStatsGrid>
 
+      {/* Search & Filter Bar (2-Row Layout) */}
+      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5 print:hidden">
+        {/* Baris 1: Field Pencarian Full-Width */}
+        <div className="w-full">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari modul, kode modul, atau judul modul ajar..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            />
+          </div>
+        </div>
+
+        {/* Baris 2: Dropdown Filter & Sortir */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+            Filter & Sortir:
+          </span>
+
+          {options.education_units && options.education_units.length > 0 && (
+            <select
+              value={selectedUnitFilter}
+              onChange={(e) => setSelectedUnitFilter(e.target.value)}
+              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            >
+              <option value="">-- Semua Unit --</option>
+              {options.education_units.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name || u.nama}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {options.subjects && options.subjects.length > 0 && (
+            <select
+              value={selectedMapelFilter}
+              onChange={(e) => setSelectedMapelFilter(e.target.value)}
+              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            >
+              <option value="">-- Semua Mapel --</option>
+              {options.subjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nama_mapel || s.name || s.kode_mapel || s.code}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <select
+            value={selectedFaseFilter}
+            onChange={(e) => setSelectedFaseFilter(e.target.value)}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Fase --</option>
+            {FASE_LIST.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedStatusFilter}
+            onChange={(e) => setSelectedStatusFilter(e.target.value)}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Status --</option>
+            {STATUS_LIST.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={denganSampahFilter}
+            onChange={(e) => setDenganSampahFilter(e.target.value)}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">Data Aktif</option>
+            <option value="1">Termasuk Sampah</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('')
+              setSelectedUnitFilter('')
+              setSelectedMapelFilter('')
+              setSelectedFaseFilter('')
+              setSelectedStatusFilter('')
+              setDenganSampahFilter('')
+              refetch()
+            }}
+            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            title="Reset Filter"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
+        </div>
+      </div>
+
       {/* Main Card Data Table */}
       <div className="rounded-[18px] bg-white dark:bg-[#1B2433] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-        {/* Filter Bar */}
-        <div className="p-4 lg:p-6 border-b border-slate-100 dark:border-slate-800 space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari modul, kode, atau judul..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-              />
-            </div>
-
-            {/* Filter Dropdowns */}
-            <div className="flex flex-wrap items-center gap-3">
-              {options.education_units && options.education_units.length > 0 && (
-                <select
-                  value={selectedUnitFilter}
-                  onChange={(e) => setSelectedUnitFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-medium focus:outline-none"
-                >
-                  <option value="">-- Semua Unit --</option>
-                  {options.education_units.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name || u.nama}</option>
-                  ))}
-                </select>
-              )}
-
-              {options.subjects && options.subjects.length > 0 && (
-                <select
-                  value={selectedMapelFilter}
-                  onChange={(e) => setSelectedMapelFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-medium focus:outline-none"
-                >
-                  <option value="">-- Semua Mapel --</option>
-                  {options.subjects.map((s) => (
-                    <option key={s.id} value={s.id}>{s.nama_mapel || s.name || s.kode_mapel || s.code}</option>
-                  ))}
-                </select>
-              )}
-
-              <select
-                value={selectedFaseFilter}
-                onChange={(e) => setSelectedFaseFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-medium focus:outline-none"
-              >
-                <option value="">-- Semua Fase --</option>
-                {FASE_LIST.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-
-              <select
-                value={selectedStatusFilter}
-                onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-medium focus:outline-none"
-              >
-                <option value="">-- Semua Status --</option>
-                {STATUS_LIST.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-
-              <select
-                value={denganSampahFilter}
-                onChange={(e) => setDenganSampahFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-medium focus:outline-none"
-              >
-                <option value="">Data Aktif</option>
-                <option value="1">Termasuk Sampah</option>
-              </select>
-
-              <button
-                onClick={() => refetch()}
-                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw className="h-4 w-4 text-slate-500" />
-              </button>
-            </div>
+        {/* Section Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Data Modul Ajar (RPP Digital)</h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data sesuai alur perencanaan dan kewenangan pengguna.</p>
           </div>
+          {pageActions}
         </div>
 
         {/* Table Content */}
@@ -426,19 +729,18 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
           <table className="w-full table-fixed text-left text-sm">
             <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider">
               <tr>
-                <th className="w-[28%] px-4 py-4">Kode & Judul Modul</th>
-                <th className="w-[22%] px-4 py-4">Mata Pelajaran & Guru</th>
-                <th className="hidden w-[15%] px-4 py-4 md:table-cell">Kelas & Fase</th>
+                <th className="w-[36%] px-5 sm:px-6 md:px-8 py-4">Kode & Judul Modul</th>
+                <th className="w-[24%] px-4 py-4">Mata Pelajaran & Guru</th>
+                <th className="hidden w-[16%] px-4 py-4 md:table-cell">Kelas & Fase</th>
                 <th className="hidden w-[10%] px-4 py-4 text-center lg:table-cell">Alokasi</th>
-                <th className="hidden w-[8%] px-4 py-4 text-center xl:table-cell">Versi</th>
-                <th className="hidden w-[10%] px-4 py-4 text-center sm:table-cell">Status</th>
-                <th className="w-[24%] px-4 py-4 text-right">Aksi</th>
+                <th className="hidden w-[6%] px-4 py-4 text-center xl:table-cell">Versi</th>
+                <th className="w-[10%] px-5 sm:px-6 md:px-8 py-4 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan="6" className="px-6 py-12 text-center text-slate-400">
                     <div className="flex justify-center items-center gap-2">
                       <RefreshCw className="h-5 w-5 animate-spin text-[#0E5C44]" />
                       Memuat data Modul Ajar...
@@ -447,41 +749,56 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                 </tr>
               ) : moduls.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan="6" className="px-6 py-12 text-center text-slate-400">
                     Tidak ada data Modul Ajar ditemukan.
                   </td>
                 </tr>
               ) : (
                 moduls.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="hidden px-4 py-4 md:table-cell">
-                      <div className="font-bold text-slate-900 dark:text-white">{item.judul_modul}</div>
+                  <tr
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedModul(item)
+                      setIsDetailModalOpen(true)
+                    }}
+                    title="Klik untuk membuka Detail Overview & Opsi Aksi Modul"
+                    className="group border-b border-slate-100 dark:border-slate-800/60 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/30 transition-all duration-200 cursor-pointer"
+                  >
+                    <td className="px-5 sm:px-6 md:px-8 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 dark:text-white group-hover:text-[#0E5C44] dark:group-hover:text-[#3FBF75] transition-colors">
+                          {item.judul_modul}
+                        </span>
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md shrink-0">
+                          👁️ Klik untuk Overview & Aksi
+                        </span>
+                      </div>
                       <div className="text-xs text-slate-400 font-mono mt-0.5">{item.kode_modul || 'MA-AUTO'}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="font-medium text-slate-800 dark:text-slate-200">
                         {item.subject?.nama_mapel || item.subject?.name || '-'}
                       </div>
                       <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                         <User className="h-3 w-3" />
-                        {item.guru?.nama_lengkap || item.guru?.nama || item.guru?.name || 'Guru Pengampu'}
+                        {item.user?.nama_lengkap || item.teacher?.nama_lengkap || item.teacher?.name || 'Guru'}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-[#0E5C44] dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/50">
-                        {item.fase}
-                      </span>
-                      <div className="text-xs text-slate-400 mt-1">{item.kelas?.nama_kelas || item.kelas?.name || 'Semua Kelas'}</div>
-                    </td>
-                    <td className="hidden px-4 py-4 text-center font-semibold text-slate-700 dark:text-slate-300 lg:table-cell">
-                      {item.alokasi_waktu_jp || 2} JP
-                    </td>
-                    <td className="hidden px-4 py-4 text-center xl:table-cell">
-                      <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                        v{item.versi || '1.0'}
+                    <td className="hidden px-4 py-4 md:table-cell">
+                      <div className="font-semibold text-slate-700 dark:text-slate-300">
+                        {item.kelas?.nama_kelas || item.school_class?.name || '-'}
+                      </div>
+                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                        Fase {item.fase || 'A'}
                       </span>
                     </td>
-                    <td className="hidden px-4 py-4 text-center sm:table-cell">
+                    <td className="hidden px-4 py-4 text-center font-medium text-slate-600 dark:text-slate-300 lg:table-cell">
+                      {item.alokasi_jam || 2} JP
+                    </td>
+                    <td className="hidden px-4 py-4 text-center font-mono text-xs text-slate-500 xl:table-cell">
+                      v{item.versi || '1.0'}
+                    </td>
+                    <td className="px-5 sm:px-6 md:px-8 py-4 text-center">
                       <span
                         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
                           item.status === 'Publish'
@@ -496,86 +813,6 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            setSelectedModul(item)
-                            setIsDetailModalOpen(true)
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
-                          title="Detail overview"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setSelectedModul(item)
-                            setIsPreviewModalOpen(true)
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950 text-[#0E5C44] dark:text-emerald-400 transition-colors"
-                          title="Cetak/Preview RPP"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setSelectedModul(item)
-                            setIsRevisionModalOpen(true)
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600 transition-colors"
-                          title="Riwayat Revisi"
-                        >
-                          <History className="h-4 w-4" />
-                        </button>
-
-                        <button
-                          onClick={() => duplicateMutation.mutate(item.id)}
-                          className="p-1.5 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-950 text-purple-600 transition-colors"
-                          title="Duplikasi Modul"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-
-                        {item.status !== 'Publish' && (
-                          <button
-                            onClick={() => publishMutation.mutate(item.id)}
-                            className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
-                            title="Publikasikan Modul"
-                          >
-                            <Send className="h-4 w-4" />
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => handleOpenEditModal(item)}
-                          className="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950 text-amber-600 transition-colors"
-                          title="Edit Modul"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-
-                        {item.deleted_at ? (
-                          <button
-                            onClick={() => restoreMutation.mutate(item.id)}
-                            className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors"
-                            title="Pulihkan"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950 text-rose-600 transition-colors"
-                            title="Hapus"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
                   </tr>
                 ))
               )}
@@ -584,7 +821,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
         </div>
 
         {/* Pagination Bar */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="px-5 py-4 sm:px-6 md:px-8 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
             Menampilkan {meta.from || 0} - {meta.to || 0} dari total {meta.total || 0} modul
           </div>
@@ -612,9 +849,9 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
       {/* Modal Add / Edit (Multi-Step Form Wizard) */}
       {isFormModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-4xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-8">
-            <div className="bg-[#0E5C44] px-6 py-4 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md p-4 sm:p-6 flex justify-center items-start sm:items-center">
+          <div className="relative w-full max-w-4xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-auto max-h-[90vh] flex flex-col">
+            <div className="bg-[#0E5C44] px-6 py-4 text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <BookOpen className="h-5 w-5" />
                 {selectedModul ? 'Edit Modul Ajar' : 'Buat Modul Ajar Baru'}
@@ -952,9 +1189,9 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
       {/* Modal Detail Overview */}
       {isDetailModalOpen && selectedModul && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-3xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-8">
-            <div className="bg-[#0E5C44] p-6 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md p-4 sm:p-6 flex justify-center items-start sm:items-center">
+          <div className="relative w-full max-w-3xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-auto max-h-[90vh] flex flex-col">
+            <div className="bg-[#0E5C44] p-6 text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
               <div>
                 <span className="text-xs uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full font-bold">
                   {selectedModul.fase}
@@ -965,6 +1202,82 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
               <button onClick={() => setIsDetailModalOpen(false)} className="text-white hover:opacity-80">
                 <XCircle className="h-6 w-6" />
               </button>
+            </div>
+
+            {/* Action Bar inside Modal Overview */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                Opsi Aksi Modul:
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDetailModalOpen(false)
+                    handleOpenEditModal(selectedModul)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/60 transition cursor-pointer"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Edit Modul
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handlePrintSingleModul(selectedModul)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 text-xs font-bold hover:bg-sky-100 dark:hover:bg-sky-900/60 transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Cetak RPP
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDetailModalOpen(false)
+                    handleDuplicate(selectedModul)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/60 transition cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Duplikasi
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDetailModalOpen(false)
+                    setIsRevisionModalOpen(true)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition cursor-pointer"
+                >
+                  <History className="w-3.5 h-3.5" /> Riwayat
+                </button>
+
+                {selectedModul.status !== 'Publish' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDetailModalOpen(false)
+                      handlePublish(selectedModul.id)
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Publikasi
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDetailModalOpen(false)
+                    handleDelete(selectedModul.id)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/60 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Hapus
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto text-sm">
@@ -1041,9 +1354,9 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
       {/* Modal Riwayat Revisi */}
       {isRevisionModalOpen && selectedModul && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
-            <div className="bg-[#0E5C44] p-5 text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md p-4 sm:p-6 flex justify-center items-start sm:items-center">
+          <div className="relative w-full max-w-2xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-auto max-h-[90vh] flex flex-col">
+            <div className="bg-[#0E5C44] p-5 text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
               <h3 className="font-bold flex items-center gap-2">
                 <History className="h-5 w-5" /> Riwayat Revisi Versi - {selectedModul.kode_modul}
               </h3>
@@ -1076,14 +1389,14 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
       {/* Modal Preview / Cetak Dokumen RPP PDF */}
       {isPreviewModalOpen && selectedModul && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md overflow-y-auto">
-          <div className="w-full max-w-4xl rounded-[18px] bg-white text-slate-900 shadow-2xl overflow-hidden my-8 border">
-            <div className="bg-slate-900 text-white p-4 flex items-center justify-between print:hidden">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md p-4 sm:p-6 flex justify-center items-start sm:items-center">
+          <div className="relative w-full max-w-4xl rounded-[18px] bg-white text-slate-900 shadow-2xl overflow-hidden my-auto max-h-[88vh] flex flex-col border border-slate-200 dark:border-slate-800">
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between shrink-0 sticky top-0 z-10 print:hidden">
               <span className="text-xs font-mono">PREVIEW DOKUMEN CETAK RPP DIGITAL</span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => window.print()}
-                  className="px-4 py-1.5 bg-[#0E5C44] hover:bg-emerald-600 rounded-lg text-xs font-bold flex items-center gap-1.5"
+                  onClick={() => handlePrintSingleModul(selectedModul)}
+                  className="px-4 py-1.5 bg-[#0E5C44] hover:bg-emerald-600 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                 >
                   <Printer className="h-4 w-4" /> Cetak / Download PDF
                 </button>
@@ -1094,7 +1407,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
             </div>
 
             {/* Printable Document Sheet */}
-            <div className="p-8 space-y-6 text-sm font-sans bg-white leading-relaxed">
+            <div className="p-8 space-y-6 text-sm font-sans bg-white leading-relaxed overflow-y-auto grow">
               <div className="text-center border-b-2 border-slate-900 pb-4">
                 <h2 className="text-xl font-extrabold uppercase tracking-wide">PERENCANAAN PELAKSANAAN PEMBELAJARAN (MODUL AJAR)</h2>
                 <h3 className="text-lg font-bold text-[#0E5C44]">{selectedModul.judul_modul}</h3>

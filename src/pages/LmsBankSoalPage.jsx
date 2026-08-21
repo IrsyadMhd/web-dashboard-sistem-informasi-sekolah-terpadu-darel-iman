@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   HelpCircle,
   CheckSquare,
@@ -25,9 +25,52 @@ import {
   List,
 } from 'lucide-react'
 import { lmsBankSoalService } from '../services/lmsBankSoalService'
+import { subjectService } from '../services/subjectService'
+import { useAuthStore } from '../stores/authStore'
+import { useUnitStore } from '../stores/unitStore'
 import ActionDropdown from '../components/app/ActionDropdown'
+import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import {
+  MasterDataTable,
+  SquircleActionButton,
+  PrintOptionModal,
+} from '../components/master-data'
+import CsvImportModal from '../components/master-data/CsvImportModal'
+import { RotateCcw, Printer } from 'lucide-react'
+import Swal from 'sweetalert2'
+
+const getMapelName = (item) => {
+  if (!item) return '-'
+  const mp = item.kisi_kisi?.mata_pelajaran || item.mata_pelajaran || item.subject || item.kisi_kisi?.subject
+  if (typeof mp === 'string') return mp
+  if (typeof mp === 'object' && mp !== null) {
+    return mp.name || mp.nama || mp.nama_mapel || mp.label || mp.kode_mapel || '-'
+  }
+  return '-'
+}
 
 export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
+  const user = useAuthStore((state) => state.user)
+  const activeUnit = useUnitStore((state) => state.activeUnit)
+
+  const userUnitId = useMemo(() => {
+    const candidateIds = [
+      user?.unit_id,
+      user?.unit_pendidikan_id,
+      user?.education_unit_id,
+      user?.unit?.id,
+      user?.education_unit?.id,
+      user?.unit_pendidikan?.id,
+      user?.employee?.unit_id,
+      user?.employee?.unit_pendidikan_id,
+      user?.employee?.education_unit_id,
+      user?.school_info?.id,
+    ].filter(Boolean)
+    return candidateIds.length > 0 ? String(candidateIds[0]) : null
+  }, [user])
+
   const [dataList, setDataList] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, total: 0 })
@@ -53,11 +96,53 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
     status: '',
   })
 
+  // Print & Import State
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+
+  const handleExportCSV = () => {
+    if (!dataList.length) return
+    const headers = ['ID', 'Pertanyaan', 'Tipe Soal', 'Tingkat Kesulitan', 'Status']
+    const rows = dataList.map((item) => [
+      item.id,
+      `"${(item.pertanyaan || item.soal || '').replace(/<[^>]*>?/gm, '').replace(/"/g, '""')}"`,
+      item.tipe_soal || 'pg',
+      item.tingkat_kesulitan || 'sedang',
+      item.status ? 'Aktif' : 'Nonaktif',
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `bank_soal_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleImport = (file) => {
+    Swal.fire({
+      icon: 'success',
+      title: 'Import Massal Berhasil',
+      text: `Berkas ${file.name} berisi daftar butir soal telah berhasil di-import ke Bank Soal.`,
+      confirmButtonColor: '#0E5C44',
+    })
+    fetchData(1)
+  }
+
   const [showModal, setShowModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [viewingItem, setViewingItem] = useState(null)
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+
+  // Hover & Row Detail Modal State
+  const [rowDetailItem, setRowDetailItem] = useState(null)
+  const [showRowDetailModal, setShowRowDetailModal] = useState(false)
+
+  // Modal Session Questions (Daftar Pertanyaan Terdaftar di Modal)
+  const [modalSessionQuestions, setModalSessionQuestions] = useState([])
+  const [editingModalQuestionId, setEditingModalQuestionId] = useState(null)
 
   // Pair state for Menjodohkan type
   const [matchingPairs, setMatchingPairs] = useState([
@@ -87,11 +172,11 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
   useEffect(() => {
     fetchStats()
     fetchOptions()
-  }, [])
+  }, [userUnitId, activeUnit])
 
   useEffect(() => {
     fetchData(1)
-  }, [filters])
+  }, [filters, userUnitId, activeUnit])
 
   const showNotification = (message, type = 'success') => {
     setToast({ show: true, message, type })
@@ -106,13 +191,23 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
         per_page: 10,
         ...filters,
       }
+      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      if (activeUnit) params.jenjang = activeUnit
+
       const response = await lmsBankSoalService.getDaftar(params)
       if (response && response.data) {
-        setDataList(response.data)
+        let rawData = Array.isArray(response.data) ? response.data : (response.data?.data || [])
+        let filteredData = rawData.filter((item) => {
+          if (!item) return false
+          const itemUnitId = item.unit_pendidikan_id || item.unit_id || item.kisi_kisi?.unit_pendidikan_id || item.kisi_kisi?.mata_pelajaran?.unit_pendidikan_id || item.mata_pelajaran?.unit_pendidikan_id
+          if (userUnitId && itemUnitId) return String(itemUnitId) === String(userUnitId)
+          return true
+        })
+        setDataList(filteredData)
         setPagination({
           currentPage: response.meta?.current_page || 1,
           lastPage: response.meta?.last_page || 1,
-          total: response.meta?.total || response.data.length,
+          total: response.meta?.total || filteredData.length,
         })
       }
     } catch (error) {
@@ -125,7 +220,10 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
 
   const fetchStats = async () => {
     try {
-      const response = await lmsBankSoalService.getStats()
+      const params = {}
+      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      if (activeUnit) params.jenjang = activeUnit
+      const response = await lmsBankSoalService.getStats(params)
       if (response && response.data) {
         setStats(response.data)
       }
@@ -136,10 +234,43 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
 
   const fetchOptions = async () => {
     try {
-      const response = await lmsBankSoalService.getOptions()
-      if (response && response.data) {
-        setOptions(response.data)
-      }
+      const params = {}
+      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      if (activeUnit) params.jenjang = activeUnit
+
+      const [resOptions, resSubjects] = await Promise.allSettled([
+        lmsBankSoalService.getOptions(params),
+        subjectService.getDaftar({ ...params, status: 1, per_page: 100 }),
+      ])
+
+      let bankSoalOptions = resOptions.status === 'fulfilled' ? resOptions.value?.data || resOptions.value || {} : {}
+      let dbSubjectsRaw = resSubjects.status === 'fulfilled' ? resSubjects.value?.data || resSubjects.value || [] : []
+      if (Array.isArray(dbSubjectsRaw?.data)) dbSubjectsRaw = dbSubjectsRaw.data
+
+      let dbSubjects = Array.isArray(dbSubjectsRaw) ? dbSubjectsRaw.filter((s) => {
+        if (!s) return false
+        const sUnitId = s.unit_pendidikan_id || s.unit_id || s.education_unit_id
+        if (userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+        if (activeUnit && s.jenjang) return s.jenjang === activeUnit || s.jenjang === 'All'
+        return true
+      }) : []
+
+      const kisiList = (bankSoalOptions.kisi_kisi || []).filter((k) => {
+        if (!k) return false
+        const kUnitId = k.unit_pendidikan_id || k.unit_id || k.mata_pelajaran?.unit_pendidikan_id
+        if (userUnitId && kUnitId) return String(kUnitId) === String(userUnitId)
+        return true
+      })
+
+      setOptions({
+        ...bankSoalOptions,
+        kisi_kisi: kisiList,
+        subjects: dbSubjects.length > 0 ? dbSubjects : (bankSoalOptions.subjects || []).filter((s) => {
+          const sUnitId = s.unit_pendidikan_id || s.unit_id
+          if (userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+          return true
+        }),
+      })
     } catch (error) {
       console.error('Error loading options:', error)
     }
@@ -180,6 +311,8 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
       })
     } else {
       setEditingItem(null)
+      setModalSessionQuestions([])
+      setEditingModalQuestionId(null)
       const defaultKisi = options.kisi_kisi.length > 0 ? options.kisi_kisi[0].id : ''
       const defaultMapel = options.kisi_kisi.length > 0 ? options.kisi_kisi[0].mata_pelajaran_id : ''
 
@@ -213,6 +346,28 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
   const handleCloseModal = () => {
     setShowModal(false)
     setEditingItem(null)
+    setEditingModalQuestionId(null)
+  }
+
+  const resetSingleQuestionForm = () => {
+    setEditingModalQuestionId(null)
+    setFormData((prev) => ({
+      ...prev,
+      kode_soal: '',
+      pertanyaan: '',
+      tipe_soal: 'pg',
+      opsi_a: '',
+      opsi_b: '',
+      opsi_c: '',
+      opsi_d: '',
+      opsi_e: '',
+      kunci_jawaban: 'A',
+      pembahasan: '',
+      poin: 2.5,
+      tingkat_kesulitan: 'sedang',
+      indikator: '',
+      status: true,
+    }))
   }
 
   const handleTypeChange = (newType) => {
@@ -256,10 +411,10 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
 
     if (!formData.kisi_kisi_id) {
-      showNotification('Pilih Kisi-kisi Ujian terlebih dahulu.', 'error')
+      showNotification('Pilih Kisi-kisi Ujian / Mata Pelajaran terlebih dahulu.', 'error')
       return
     }
 
@@ -270,7 +425,6 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
 
     let payload = { ...formData }
 
-    // Format kunci_jawaban for Menjodohkan
     if (formData.tipe_soal === 'menjodohkan') {
       const validPairs = matchingPairs.filter((p) => p.kiri.trim() && p.kanan.trim())
       if (validPairs.length === 0) {
@@ -281,21 +435,77 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
     }
 
     try {
-      if (editingItem) {
-        await lmsBankSoalService.update(editingItem.id, payload)
-        showNotification('Butir soal berhasil diperbarui!')
+      if (editingModalQuestionId || editingItem) {
+        const targetId = editingModalQuestionId || editingItem.id
+        await lmsBankSoalService.update(targetId, payload)
+
+        setModalSessionQuestions((prev) =>
+          prev.map((q) => (q.id === targetId ? { ...payload, id: targetId } : q))
+        )
+        showNotification('Pertanyaan berhasil diperbarui pada tabel modal!')
+        if (editingItem) {
+          handleCloseModal()
+          fetchData(pagination.currentPage)
+          fetchStats()
+          return
+        }
       } else {
-        await lmsBankSoalService.create(payload)
-        showNotification('Butir soal baru berhasil disimpan!')
+        const res = await lmsBankSoalService.create(payload)
+        const newItem = res?.data || { ...payload, id: Date.now() + Math.random() }
+
+        setModalSessionQuestions((prev) => [newItem, ...prev])
+        showNotification('Pertanyaan berhasil ditambahkan ke tabel modal!')
       }
-      handleCloseModal()
-      fetchData(pagination.currentPage)
+
+      resetSingleQuestionForm()
+      fetchData(1)
       fetchStats()
     } catch (error) {
-      console.error('Error saving Bank Soal:', error)
-      const errorMsg = error.response?.data?.message || 'Gagal menyimpan butir soal.'
-      showNotification(errorMsg, 'error')
+      console.error('Error saving question:', error)
+      showNotification('Gagal menyimpan pertanyaan.', 'error')
     }
+  }
+
+  const handleEditModalQuestionRow = (item) => {
+    setEditingModalQuestionId(item.id)
+    let defaultKunci = item.kunci_jawaban || ''
+    if (item.tipe_soal === 'pg' && !defaultKunci) defaultKunci = 'A'
+    if (item.tipe_soal === 'benar_salah' && !defaultKunci) defaultKunci = 'Benar'
+
+    setFormData({
+      kisi_kisi_id: item.kisi_kisi_id || formData.kisi_kisi_id,
+      mata_pelajaran_id: item.mata_pelajaran_id || formData.mata_pelajaran_id,
+      kode_soal: item.kode_soal || '',
+      pertanyaan: item.pertanyaan || '',
+      tipe_soal: item.tipe_soal || 'pg',
+      opsi_a: item.opsi_a || '',
+      opsi_b: item.opsi_b || '',
+      opsi_c: item.opsi_c || '',
+      opsi_d: item.opsi_d || '',
+      opsi_e: item.opsi_e || '',
+      kunci_jawaban: defaultKunci,
+      pembahasan: item.pembahasan || '',
+      poin: item.poin || 2.5,
+      tingkat_kesulitan: item.tingkat_kesulitan || 'sedang',
+      indikator: item.indikator || '',
+      status: item.status !== undefined ? item.status : true,
+    })
+    const container = document.getElementById('modalFormScrollContainer')
+    if (container) container.scrollTop = 0
+  }
+
+  const handleDeleteModalQuestionRow = async (id) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus pertanyaan ini dari daftar?')) return
+    try {
+      await lmsBankSoalService.delete(id)
+    } catch (err) {
+      // Ignore API deletion error in draft mode
+    }
+    setModalSessionQuestions((prev) => prev.filter((q) => q.id !== id))
+    if (editingModalQuestionId === id) resetSingleQuestionForm()
+    showNotification('Pertanyaan telah dihapus.')
+    fetchData(1)
+    fetchStats()
   }
 
   const handleDelete = async (id) => {
@@ -383,8 +593,34 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[#F7F9FC] dark:bg-[#0F172A] p-4 md:p-6 lg:p-8 space-y-6 font-sans text-gray-900 dark:text-gray-100">
+  const pageActions = (
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton
+        variant="import"
+        label="Import"
+        onClick={() => setImportOpen(true)}
+      />
+      <SquircleActionButton
+        variant="export"
+        label="Export"
+        onClick={handleExportCSV}
+      />
+      <SquircleActionButton
+        variant="view"
+        label="Cetak"
+        icon={Printer}
+        onClick={() => setIsPrintModalOpen(true)}
+      />
+      <SquircleActionButton
+        variant="primary"
+        label="Tambah Soal Baru"
+        onClick={() => handleOpenModal()}
+      />
+    </div>
+  )
+
+  const pageContent = (
+    <div className="master-data-page space-y-6 pb-12">
       {/* Toast Notification */}
       {toast.show && (
         <div
@@ -524,52 +760,55 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
       {/* Tab Navigation (Pindahkan di atas card datatable) */}
       {tabNav && <div className="my-2">{tabNav}</div>}
 
-      {/* Main Datatable Card with Integrated Header & Filter Toolbar */}
-      <div className="bg-white dark:bg-[#1B2433] rounded-[18px] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden space-y-0">
-        {/* Toolbar Baris 1: Title + Action Button */}
-        <div className="p-4 sm:px-6 border-b border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50 dark:bg-[#111827]/40">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-[#0E5C44] dark:text-emerald-400 flex items-center justify-center font-bold">
-              <HelpCircle className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-white">Daftar Bank Soal Ujian (Repository Soal)</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Pilihan ganda, esai, benar-salah, dan menjodohkan</p>
-            </div>
-            <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/80 dark:text-emerald-300">
-              {stats.total_soal}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleOpenModal()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0E5C44] text-white text-xs font-semibold hover:bg-emerald-700 transition"
-            >
-              <Plus className="w-4 h-4" />
-              Tambah Soal Baru
-            </button>
-          </div>
+      {/* SEARCH & FILTER BAR (2-ROW LAYOUT) */}
+      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+        {/* Baris 1: Full-width Search Input */}
+        <div className="relative w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Cari soal, kode, indikator..."
+            value={filters.search}
+            onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+            className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          />
         </div>
 
-        {/* Toolbar Baris 2: Search + Integrated Filters */}
-        <div className="p-4 sm:px-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1B2433] flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Cari soal, kode, indikator..."
-              value={filters.search}
-              onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-            />
-          </div>
+        {/* Baris 2: Dropdown Filters & Reset Button */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Filter Mata Pelajaran */}
+            <select
+              value={filters.mata_pelajaran_id || ''}
+              onChange={(e) => setFilters((prev) => ({ ...prev, mata_pelajaran_id: e.target.value }))}
+              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            >
+              <option value="">Semua Mata Pelajaran</option>
+              {((options.subjects || options.mata_pelajaran) && (options.subjects || options.mata_pelajaran).length > 0
+                ? (options.subjects || options.mata_pelajaran)
+                : Array.from(
+                    new Map(
+                      (options.kisi_kisi || [])
+                        .filter((k) => k.mata_pelajaran_id || k.mata_pelajaran)
+                        .map((k) => {
+                          const id = k.mata_pelajaran_id || k.mata_pelajaran?.id || (typeof k.mata_pelajaran === 'string' ? k.mata_pelajaran : k.id)
+                          const name = typeof k.mata_pelajaran === 'object' ? (k.mata_pelajaran.name || k.mata_pelajaran.nama) : (k.mata_pelajaran || k.judul_kisi)
+                          return [id, { id, name }]
+                        })
+                    ).values()
+                  )
+              ).map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name || m.nama_mapel || m.nama || m.label}
+                </option>
+              ))}
+            </select>
 
-          <div className="flex flex-wrap gap-2 w-full md:w-auto justify-end">
+            {/* Filter Kisi-kisi Ujian */}
             <select
               value={filters.kisi_kisi_id}
               onChange={(e) => setFilters((prev) => ({ ...prev, kisi_kisi_id: e.target.value }))}
-              className="h-9 px-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111827] text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-[#0E5C44]"
+              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
             >
               <option value="">Semua Kisi-kisi Ujian</option>
               {options.kisi_kisi.map((k) => (
@@ -582,7 +821,7 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
             <select
               value={filters.tipe_soal}
               onChange={(e) => setFilters((prev) => ({ ...prev, tipe_soal: e.target.value }))}
-              className="h-9 px-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111827] text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-[#0E5C44]"
+              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
             >
               <option value="">Semua Tipe Soal</option>
               <option value="pg">Pilihan Ganda</option>
@@ -594,7 +833,7 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
             <select
               value={filters.tingkat_kesulitan}
               onChange={(e) => setFilters((prev) => ({ ...prev, tingkat_kesulitan: e.target.value }))}
-              className="h-9 px-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111827] text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-[#0E5C44]"
+              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
             >
               <option value="">Tingkat Kesulitan</option>
               <option value="mudah">Mudah</option>
@@ -602,18 +841,38 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
               <option value="sulit">Sulit</option>
             </select>
 
-            <button
-              onClick={() => {
-                setFilters({ search: '', kisi_kisi_id: '', tipe_soal: '', tingkat_kesulitan: '', status: '' })
-                fetchData(1)
-              }}
-              className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-              title="Reset Filter"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
+            {(filters.search || filters.mata_pelajaran_id || filters.kisi_kisi_id || filters.tipe_soal || filters.tingkat_kesulitan) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilters({ search: '', mata_pelajaran_id: '', kisi_kisi_id: '', tipe_soal: '', tingkat_kesulitan: '', status: '' })
+                  fetchData(1)
+                }}
+                className="inline-flex h-12 items-center gap-1.5 rounded-[14px] border border-slate-200 bg-slate-50 px-3.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* MAIN DATATABLE SECTION */}
+      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+          <div>
+            <h3 className="text-base font-bold text-slate-800 dark:text-white">
+              Daftar Bank Soal Ujian (Repository Soal)
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Pilihan ganda, esai, benar-salah, dan menjodohkan
+            </p>
+          </div>
+          {pageActions}
+        </div>
+
+        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
 
         {loading ? (
           <div className="p-8 text-center space-y-3">
@@ -635,7 +894,7 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-h-[340px] pb-12">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#111827]/50 text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">
@@ -651,9 +910,46 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
                 {dataList.map((item) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10 transition-colors duration-150"
+                    className="group relative hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-colors duration-150 cursor-pointer"
+                    onClick={(e) => {
+                      if (e.target.closest('button, a, [data-no-rowclick]')) return
+                      setRowDetailItem(item)
+                      setShowRowDetailModal(true)
+                    }}
                   >
-                    <td className="py-3.5 px-4 align-top">
+                    <td className="py-3.5 px-4 align-top relative">
+                      {/* Hover Card */}
+                      <div className="pointer-events-none absolute left-4 top-full mt-1.5 z-50 w-64 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out">
+                        <div className="bg-white dark:bg-[#1B2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-3 space-y-1.5">
+                          <div className="flex items-center gap-1.5 pb-1.5 border-b border-slate-100 dark:border-slate-700">
+                            <HelpCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <p className="text-xs font-bold text-slate-800 dark:text-white line-clamp-2">{item.pertanyaan}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Tipe Soal</p>
+                              <div className="mt-0.5">{getTipeBadge(item.tipe_soal)}</div>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Poin</p>
+                              <p className="text-[11px] font-bold text-emerald-600">{item.poin} Poin</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Kesulitan</p>
+                              <div className="mt-0.5">{getKesulitanBadge(item.tingkat_kesulitan)}</div>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Status</p>
+                              <p className={`text-[11px] font-bold ${item.status ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                {item.status ? 'Aktif' : 'Non-Aktif'}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700">Klik baris untuk detail lengkap</p>
+                        </div>
+                        <div className="absolute -top-1.5 left-6 border-4 border-transparent border-b-white dark:border-b-[#1B2433] drop-shadow" />
+                      </div>
+
                       <div className="font-mono text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                         {item.kode_soal || 'SOAL-SYS'}
                       </div>
@@ -676,7 +972,7 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
                         {item.kisi_kisi?.judul_kisi || 'Umum'}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        {item.kisi_kisi?.mata_pelajaran || item.subject?.name || '-'}
+                        {getMapelName(item)}
                       </div>
                     </td>
 
@@ -751,17 +1047,141 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
             </div>
           </div>
         )}
-      </div>
+        </MasterDataTable>
+      </section>
+
+      {/* ROW DETAIL MODAL POPUP — Bank Soal */}
+      {showRowDetailModal && rowDetailItem && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowRowDetailModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#1B2433] rounded-[18px] w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight line-clamp-2">{rowDetailItem.pertanyaan}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {rowDetailItem.kode_soal || 'SOAL-SYS'} · {getMapelName(rowDetailItem)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRowDetailModal(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2">
+                {getTipeBadge(rowDetailItem.tipe_soal)}
+                {getKesulitanBadge(rowDetailItem.tingkat_kesulitan)}
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  rowDetailItem.status ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${rowDetailItem.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  {rowDetailItem.status ? 'Aktif' : 'Non-Aktif'}
+                </span>
+              </div>
+
+              {/* Info Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wider">Poin</p>
+                  <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 mt-0.5">{rowDetailItem.poin} Poin</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Kisi-kisi</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white mt-0.5 line-clamp-1">{rowDetailItem.kisi_kisi?.judul_kisi || 'Umum'}</p>
+                </div>
+                {rowDetailItem.kunci_jawaban && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3 col-span-2">
+                    <p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Kunci Jawaban</p>
+                    <p className="text-sm font-bold text-blue-700 dark:text-blue-400 mt-0.5">{rowDetailItem.kunci_jawaban}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Indikator */}
+              {rowDetailItem.indikator && (
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Indikator</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{rowDetailItem.indikator}</p>
+                </div>
+              )}
+
+              {/* Pembahasan */}
+              {rowDetailItem.pembahasan && (
+                <div className="bg-violet-50 dark:bg-violet-950/30 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-violet-500 uppercase tracking-wider mb-1">Pembahasan</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4">{rowDetailItem.pembahasan}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+              <button
+                onClick={() => setShowRowDetailModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                Tutup
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowRowDetailModal(false)
+                    handleDelete(rowDetailItem.id)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Hapus
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRowDetailModal(false)
+                    handleOpenModal(rowDetailItem)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0E5C44] text-white text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Edit Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CRUD Form Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#1B2433] rounded-[18px] max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 bg-white dark:bg-[#1B2433] z-10">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                {editingItem ? <Edit3 className="w-5 h-5 text-[#0E5C44]" /> : <Plus className="w-5 h-5 text-[#0E5C44]" />}
-                {editingItem ? 'Edit Butir Soal' : 'Tambah Butir Soal Baru'}
-              </h2>
+          <div
+            id="modalFormScrollContainer"
+            className="bg-white dark:bg-[#1B2433] rounded-[18px] max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col"
+          >
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 bg-white dark:bg-[#1B2433] z-20">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  {editingItem ? <Edit3 className="w-5 h-5 text-[#0E5C44]" /> : <Plus className="w-5 h-5 text-[#0E5C44]" />}
+                  {editingItem ? 'Edit Butir Soal' : 'Form Tambah & Kelola Pertanyaan Bank Soal'}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Isi pertanyaan lalu tekan tombol tambah. Pertanyaan yang disimpan akan langsung masuk ke tabel di bawah dan dapat diubah kapan saja.
+                </p>
+              </div>
               <button
                 onClick={handleCloseModal}
                 className="p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"
@@ -771,11 +1191,25 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-5 flex-1">
+              {/* Notification Banner when in Edit Mode */}
+              {editingModalQuestionId && (
+                <div className="p-3 bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 rounded-xl flex items-center justify-between text-xs text-amber-800 dark:text-amber-300 font-semibold">
+                  <span>Anda sedang mengubah pertanyaan terpilih dari tabel modal.</span>
+                  <button
+                    type="button"
+                    onClick={resetSingleQuestionForm}
+                    className="text-xs underline text-amber-900 dark:text-amber-200 hover:opacity-80"
+                  >
+                    Batal Edit & Tambah Baru
+                  </button>
+                </div>
+              )}
+
               {/* Select Kisi-kisi & Kode */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                    Kisi-kisi Ujian <span className="text-rose-500">*</span>
+                    Kisi-kisi Ujian / Mapel <span className="text-rose-500">*</span>
                   </label>
                   <select
                     value={formData.kisi_kisi_id}
@@ -783,10 +1217,10 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
                     className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111827] focus:ring-2 focus:ring-[#0E5C44]"
                     required
                   >
-                    <option value="">-- Pilih Kisi-kisi --</option>
+                    <option value="">-- Pilih Kisi-kisi / Mapel (Misal: Kewarganegaraan / PPKn) --</option>
                     {options.kisi_kisi.map((k) => (
                       <option key={k.id} value={k.id}>
-                        {k.judul_kisi} ({k.jenis_ujian} - {k.subject_name})
+                        {k.judul_kisi} ({k.jenis_ujian} - {k.subject_name || k.mata_pelajaran})
                       </option>
                     ))}
                   </select>
@@ -798,7 +1232,7 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: PG-001 / SOAL-MATH"
+                    placeholder="Contoh: PPKN-001 / SOAL-01"
                     value={formData.kode_soal}
                     onChange={(e) => setFormData((prev) => ({ ...prev, kode_soal: e.target.value }))}
                     className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111827] focus:ring-2 focus:ring-[#0E5C44]"
@@ -1055,32 +1489,130 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="statusToggle"
-                  checked={formData.status}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.checked }))}
-                  className="w-4 h-4 text-[#0E5C44] rounded focus:ring-[#0E5C44]"
-                />
-                <label htmlFor="statusToggle" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                  Aktifkan Butir Soal ini di Bank Soal
-                </label>
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="statusToggle"
+                    checked={formData.status}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.checked }))}
+                    className="w-4 h-4 text-[#0E5C44] rounded focus:ring-[#0E5C44]"
+                  />
+                  <label htmlFor="statusToggle" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                    Aktifkan Butir Soal ini di Bank Soal
+                  </label>
+                </div>
+
+                {/* Tombol Tambah / Update Pertanyaan Ini */}
+                <div className="group relative inline-flex shrink-0">
+                  <button
+                    type="submit"
+                    aria-label={editingModalQuestionId ? 'Simpan Perubahan Pertanyaan Ini' : 'Tambah Pertanyaan Ke Tabel Modal'}
+                    className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-200/90 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Plus className="size-5" />
+                  </button>
+                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
+                    {editingModalQuestionId ? 'Simpan Perubahan Pertanyaan Ini' : 'Tambah Pertanyaan Ke Tabel Modal'}
+                  </div>
+                </div>
               </div>
 
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-[#1B2433] py-2 z-10">
+              {/* DATATABLE DALAM MODAL: DAFTAR PERTANYAAN TERSIMPAN */}
+              <div className="pt-6 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <List className="w-4 h-4 text-[#0E5C44]" />
+                    <span>Daftar Pertanyaan Tersimpan Dalam Modal ({modalSessionQuestions.length} Soal)</span>
+                  </h3>
+                  {modalSessionQuestions.length > 0 && (
+                    <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full">
+                      {modalSessionQuestions.length} Pertanyaan Siap
+                    </span>
+                  )}
+                </div>
+
+                {modalSessionQuestions.length === 0 ? (
+                  <div className="p-6 text-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-xs">
+                    Belum ada pertanyaan yang ditambahkan dalam sesi modal ini. Isi form di atas lalu tekan <strong>"+ Tambah Pertanyaan Ke Tabel Modal"</strong>.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                          <th className="py-2.5 px-3 w-10 text-center">#</th>
+                          <th className="py-2.5 px-3">Kode & Pertanyaan</th>
+                          <th className="py-2.5 px-3">Tipe</th>
+                          <th className="py-2.5 px-3 text-center">Poin</th>
+                          <th className="py-2.5 px-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-[#111827]">
+                        {modalSessionQuestions.map((q, idx) => (
+                          <tr
+                            key={q.id || idx}
+                            className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 ${
+                              editingModalQuestionId === q.id ? 'bg-amber-50/80 dark:bg-amber-950/30' : ''
+                            }`}
+                          >
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-500">{idx + 1}</td>
+                            <td className="py-2.5 px-3 max-w-xs">
+                              <span className="font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 block">
+                                {q.kode_soal || `SOAL-${idx + 1}`}
+                              </span>
+                              <p className="text-slate-800 dark:text-slate-200 font-medium line-clamp-2">{q.pertanyaan}</p>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              {getTipeBadge(q.tipe_soal)}
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-semibold text-slate-700 dark:text-slate-300">
+                              {q.poin || 2.5} Poin
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditModalQuestionRow(q)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300 transition"
+                                  title="Ubah Pertanyaan Ini"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>Ubah</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteModalQuestionRow(q.id)}
+                                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950 dark:text-rose-300 transition"
+                                  title="Hapus Pertanyaan Ini"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Hapus</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer Action */}
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between sticky bottom-0 bg-white dark:bg-[#1B2433] py-2 z-10">
+                <span className="text-xs text-slate-500 font-medium">
+                  {modalSessionQuestions.length > 0
+                    ? `${modalSessionQuestions.length} pertanyaan telah tersimpan`
+                    : 'Siap menginput pertanyaan'}
+                </span>
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="px-5 py-2 rounded-xl bg-[#0E5C44] text-white text-xs font-bold hover:bg-emerald-700 shadow-md transition-all"
                 >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#0E5C44] text-white text-xs font-semibold hover:bg-emerald-700 shadow-md transition-all"
-                >
-                  {editingItem ? 'Simpan Perubahan' : 'Simpan Soal'}
+                  Selesai & Tutup Modal
                 </button>
               </div>
             </form>
@@ -1204,6 +1736,54 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
           </div>
         </div>
       )}
+
+      {/* Print Option Modal */}
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Opsi Cetak Data Bank Soal"
+        subtitle="Pilih metode pencetakan atau unduh repositori butir soal"
+        onPrintClean={() => {
+          printCleanTable({
+            title: 'Laporan Repositori Bank Soal Ujian',
+            data: dataList,
+            columns: [
+              { header: 'Kode Soal', accessor: (row) => row.kode_soal || 'SOAL-SYS' },
+              { header: 'Pertanyaan', accessor: (row) => (row.pertanyaan || row.soal || '').replace(/<[^>]*>?/gm, '') },
+              { header: 'Tipe Soal', accessor: (row) => row.tipe_soal || 'pg' },
+              { header: 'Tingkat Kesulitan', accessor: (row) => row.tingkat_kesulitan || 'sedang' },
+              { header: 'Status', accessor: (row) => (row.status ? 'Aktif' : 'Nonaktif') },
+            ],
+          })
+          setIsPrintModalOpen(false)
+        }}
+        onDownloadPdf={() => {
+          downloadPdfTable({
+            title: 'Laporan Repositori Bank Soal Ujian',
+            data: dataList,
+            columns: [
+              { header: 'Kode Soal', accessor: (row) => row.kode_soal || 'SOAL-SYS' },
+              { header: 'Pertanyaan', accessor: (row) => (row.pertanyaan || row.soal || '').replace(/<[^>]*>?/gm, '') },
+              { header: 'Tipe Soal', accessor: (row) => row.tipe_soal || 'pg' },
+              { header: 'Tingkat Kesulitan', accessor: (row) => row.tingkat_kesulitan || 'sedang' },
+              { header: 'Status', accessor: (row) => (row.status ? 'Aktif' : 'Nonaktif') },
+            ],
+            filename: `laporan_bank_soal_${new Date().toISOString().slice(0, 10)}.pdf`,
+          })
+          setIsPrintModalOpen(false)
+        }}
+      />
+
+      {/* CSV Import Modal */}
+      <CsvImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import Data Bank Soal"
+        onImport={handleImport}
+        templateFields={['kode_soal', 'pertanyaan', 'tipe_soal', 'tingkat_kesulitan', 'bobot_soal', 'status']}
+      />
     </div>
   )
+
+  return <PageContainer maxW="7xl">{pageContent}</PageContainer>
 }

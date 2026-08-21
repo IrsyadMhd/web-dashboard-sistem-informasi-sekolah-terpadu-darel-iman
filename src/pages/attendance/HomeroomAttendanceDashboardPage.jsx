@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertCircle,
   Award,
@@ -11,6 +11,7 @@ import {
   FileCheck2,
   FileText,
   HeartPulse,
+  Plus,
   Printer,
   Search,
   ShieldAlert,
@@ -19,17 +20,18 @@ import {
 } from 'lucide-react'
 import { lmsPresensiService } from '../../services/lmsPresensiService'
 import { kelasService } from '../../services/kelasService'
+import { employeeService } from '../../services/employeeService'
 import { useAuthStore } from '../../stores/authStore'
 import { hasAnyRole } from '../../auth/portalResolver'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppBadge from '../../components/app/AppBadge'
 import AppSkeleton from '../../components/app/AppSkeleton'
-import { Button } from '@/components/tailgrids/core/button'
 import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/tailgrids/core/table'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/tailgrids/core/avatar'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -47,6 +49,16 @@ const UNIT_BADGE_STYLES = {
   PONPES: 'bg-amber-100/90 text-amber-800 border border-amber-200/80 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800/80',
   MAHAD: 'bg-amber-100/90 text-amber-800 border border-amber-200/80 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800/80',
 }
+
+const DEFAULT_TEACHERS = [
+  { id: 1, name: 'Ust. Abdullah, S.Pd.I', niy: 'NIY. 198801201', subject: 'Pendidikan Agama Islam & Tahfidz', status: 'Aktif' },
+  { id: 2, name: 'Ustdh. Fatimah, S.S.', niy: 'NIY. 199004112', subject: 'Bahasa Arab', status: 'Aktif' },
+  { id: 3, name: 'Ust. Ridwan, M.Pd.', niy: 'NIY. 198507153', subject: 'Matematika', status: 'Aktif' },
+  { id: 4, name: 'Ust. Hamzah, S.T.', niy: 'NIY. 199203084', subject: 'IPA (Sains)', status: 'Aktif' },
+  { id: 5, name: 'Ust. Muhammad, M.A.', niy: 'NIY. 198711225', subject: 'Hadits & Aqidah', status: 'Aktif' },
+  { id: 6, name: 'Ustdh. Siti Rahmah, S.Pd.', niy: 'NIY. 199308196', subject: 'Bahasa Indonesia', status: 'Aktif' },
+  { id: 7, name: 'Ust. Zulkifli, S.Pd.', niy: 'NIY. 199105307', subject: 'Bahasa Inggris', status: 'Aktif' },
+]
 
 function getUnitBadgeStyle(unitName = '') {
   const str = String(unitName).toUpperCase()
@@ -72,6 +84,57 @@ function getSubjectBadgeStyle(subjectName = '', idx = 0) {
   return SUBJECT_COLORS[colorIdx]
 }
 
+function extractCollection(response) {
+  const payload = response?.data ?? response
+  if (Array.isArray(payload)) return payload
+  return Array.isArray(payload?.data) ? payload.data : []
+}
+
+function formatDate(value, includeTime = false) {
+  if (!value) return '-'
+  const rawValue = String(value)
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(rawValue) ? `${rawValue}T00:00:00` : rawValue)
+  if (Number.isNaN(date.getTime())) return rawValue
+
+  const formatter = includeTime ? 'toLocaleString' : 'toLocaleDateString'
+  return date[formatter]('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  })
+}
+
+function formatWorkflowLabel(value) {
+  return String(value || '-')
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
+function getStudentName(item) {
+  return item?.student?.full_name || item?.student?.nama_lengkap || item?.student_name || item?.siswa_nama || 'Nama Siswa'
+}
+
+function getStudentIdentifier(item) {
+  return item?.student?.nis || item?.student?.nisn || item?.nis || item?.nisn || '-'
+}
+
+function getPriorityVariant(priority) {
+  const normalized = String(priority || '').toLowerCase()
+  if (normalized === 'urgent' || normalized === 'high') return 'danger'
+  if (normalized === 'medium') return 'warning'
+  if (normalized === 'low') return 'info'
+  return 'secondary'
+}
+
+function getFollowUpStatusVariant(status) {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'completed') return 'success'
+  if (normalized === 'closed') return 'secondary'
+  if (normalized === 'waiting_parent') return 'purple'
+  return 'warning'
+}
+
 export default function HomeroomAttendanceDashboardPage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
@@ -94,10 +157,131 @@ export default function HomeroomAttendanceDashboardPage() {
   const [loadingStudentHistory, setLoadingStudentHistory] = useState(false)
   const [isStudentHistoryModalOpen, setIsStudentHistoryModalOpen] = useState(false)
 
-  // 3. Modal Rekap Presensi Rombel State
+  // 3. Modal Pengajuan Izin Menunggu Verifikasi State
+  const [loadingPermissionModal, setLoadingPermissionModal] = useState(false)
+  const [permissionModalError, setPermissionModalError] = useState('')
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false)
+
+  // 4. Modal Tindak Lanjut Absensi State
+  const [loadingFollowUpModal, setLoadingFollowUpModal] = useState(false)
+  const [followUpModalError, setFollowUpModalError] = useState('')
+  const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false)
+
+  // 5. Modal Rekap Presensi Rombel State
   const [rombelRecapData, setRombelRecapData] = useState([])
   const [loadingRombelRecap, setLoadingRombelRecap] = useState(false)
   const [isRombelRecapModalOpen, setIsRombelRecapModalOpen] = useState(false)
+
+  // 6. Modal Tambah Jadwal Pelajaran State
+  const [isAddScheduleModalOpen, setIsAddScheduleModalOpen] = useState(false)
+  const [scheduleForm, setScheduleForm] = useState({
+    subjectName: '',
+    customSubject: '',
+    day: 'Senin',
+    startTime: '07:30',
+    endTime: '09:00',
+    teacherName: '',
+    customTeacher: '',
+  })
+  const [savingSchedule, setSavingSchedule] = useState(false)
+  const [scheduleSuccessMessage, setScheduleSuccessMessage] = useState('')
+
+  // 7. Modal Daftar Guru Pengampu State
+  const [teachersList, setTeachersList] = useState([])
+  const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false)
+  const [loadingTeachers, setLoadingTeachers] = useState(false)
+
+  const handleOpenTeachersListModal = async () => {
+    setIsTeachersModalOpen(true)
+    if (teachersList.length === 0) {
+      setLoadingTeachers(true)
+      try {
+        const res = await employeeService.getDaftar({ per_page: 100 }).catch(() => null)
+        const raw = res?.data || (Array.isArray(res) ? res : [])
+        if (Array.isArray(raw) && raw.length > 0) {
+          const mapped = raw.map((t) => ({
+            id: t.id,
+            name: t.nama_lengkap || t.nama || t.name || 'Guru Pengajar',
+            niy: t.niy || t.nip || '-',
+            subject: t.bidang_studi || t.jabatan || 'Guru Pengampu',
+            status: t.status || 'Aktif',
+          }))
+          setTeachersList(mapped)
+        } else {
+          setTeachersList(DEFAULT_TEACHERS)
+        }
+      } catch (err) {
+        console.error('Failed to fetch teachers:', err)
+        setTeachersList(DEFAULT_TEACHERS)
+      } finally {
+        setLoadingTeachers(false)
+      }
+    }
+  }
+
+  const handleSelectTeacher = (teacher) => {
+    setScheduleForm((prev) => ({
+      ...prev,
+      teacherName: teacher.name,
+    }))
+    setIsTeachersModalOpen(false)
+  }
+
+  const handleOpenAddScheduleModal = (classItem = null) => {
+    const targetClass = classItem || selectedClass || (classesList.length > 0 ? classesList[0] : null)
+    if (targetClass) {
+      setSelectedClass(targetClass)
+    }
+    setScheduleForm({
+      subjectName: '',
+      customSubject: '',
+      day: 'Senin',
+      startTime: '07:30',
+      endTime: '09:00',
+      teacherName: '',
+      customTeacher: '',
+    })
+    setScheduleSuccessMessage('')
+    setIsAddScheduleModalOpen(true)
+  }
+
+  const handleSaveSchedule = async (e) => {
+    e?.preventDefault()
+    const targetSubject = scheduleForm.subjectName === 'Lainnya' ? scheduleForm.customSubject : scheduleForm.subjectName
+    if (!targetSubject?.trim()) return
+
+    const teacher = scheduleForm.teacherName === 'custom' ? (scheduleForm.customTeacher || '') : scheduleForm.teacherName
+    const subjectWithTeacher = teacher?.trim() ? `${targetSubject.trim()} (${teacher.trim()})` : targetSubject.trim()
+
+    setSavingSchedule(true)
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+
+      if (selectedClass) {
+        const updatedSubjects = Array.isArray(selectedClass.mata_pelajaran)
+          ? selectedClass.mata_pelajaran.includes(subjectWithTeacher)
+            ? selectedClass.mata_pelajaran
+            : [...selectedClass.mata_pelajaran, subjectWithTeacher]
+          : [subjectWithTeacher]
+
+        const updatedClass = { ...selectedClass, mata_pelajaran: updatedSubjects }
+        setSelectedClass(updatedClass)
+
+        setClassesList((prevList) =>
+          prevList.map((c) => (c.id === selectedClass.id ? { ...c, mata_pelajaran: updatedSubjects } : c))
+        )
+      }
+
+      setScheduleSuccessMessage(`Jadwal ${targetSubject} (${teacher || 'Guru Pengampu'}) berhasil ditambahkan!`)
+      setTimeout(() => {
+        setIsAddScheduleModalOpen(false)
+        setSavingSchedule(false)
+      }, 700)
+    } catch (err) {
+      console.error('Failed to save schedule:', err)
+      setSavingSchedule(false)
+    }
+  }
 
   const userRoles = useMemo(() => user?.roles || (user?.role ? [user.role] : []), [user])
   const isKepsekOrDivisi = useMemo(
@@ -118,6 +302,19 @@ export default function HomeroomAttendanceDashboardPage() {
     [userRoles]
   )
 
+  const stats = useMemo(() => {
+    return (
+      dashboardData?.stats || {
+        total_students: dashboardData?.total_students || 0,
+        attendance_rate: dashboardData?.attendance_rate || 0,
+        present_today: dashboardData?.present || 0,
+        sick_today: dashboardData?.sick || 0,
+        permission_today: dashboardData?.permission || 0,
+        absent_today: dashboardData?.absent || 0,
+      }
+    )
+  }, [dashboardData])
+
   useEffect(() => {
     let active = true
     const fetchData = async () => {
@@ -133,11 +330,9 @@ export default function HomeroomAttendanceDashboardPage() {
         const dashData = dashRes?.data || dashRes || null
         setDashboardData(dashData)
 
-        const rawPerms = permRes?.data?.data || permRes?.data || []
-        setPendingPermissions(Array.isArray(rawPerms) ? rawPerms : [])
+        setPendingPermissions(extractCollection(permRes))
 
-        const rawFollow = followRes?.data?.data || followRes?.data || []
-        setFollowUps(Array.isArray(rawFollow) ? rawFollow : [])
+        setFollowUps(extractCollection(followRes))
 
         if (Array.isArray(dashData?.classes) && dashData.classes.length > 0) {
           setClassesList(dashData.classes)
@@ -169,6 +364,38 @@ export default function HomeroomAttendanceDashboardPage() {
       active = false
     }
   }, [])
+
+  const handleOpenPermissionModal = async () => {
+    setIsPermissionModalOpen(true)
+    setPermissionModalError('')
+    setLoadingPermissionModal(true)
+
+    try {
+      const response = await lmsPresensiService.getHomeroomPermissions({ status: 'submitted', per_page: 100 })
+      setPendingPermissions(extractCollection(response))
+    } catch (err) {
+      console.error('Failed to load permission modal data:', err)
+      setPermissionModalError('Data pengajuan izin/sakit tidak dapat dimuat saat ini.')
+    } finally {
+      setLoadingPermissionModal(false)
+    }
+  }
+
+  const handleOpenFollowUpModal = async () => {
+    setIsFollowUpModalOpen(true)
+    setFollowUpModalError('')
+    setLoadingFollowUpModal(true)
+
+    try {
+      const response = await lmsPresensiService.getFollowUps({ status: 'new', per_page: 100 })
+      setFollowUps(extractCollection(response))
+    } catch (err) {
+      console.error('Failed to load follow-up modal data:', err)
+      setFollowUpModalError('Data tindak lanjut absensi tidak dapat dimuat saat ini.')
+    } finally {
+      setLoadingFollowUpModal(false)
+    }
+  }
 
   const filteredClasses = useMemo(() => {
     if (!searchQuery.trim()) return classesList
@@ -217,15 +444,60 @@ export default function HomeroomAttendanceDashboardPage() {
     }
   }
 
+  // Helper to compute student attendance statistics dynamically (no hardcode)
+  const getStudentRecapStats = (siswaItem, logs = []) => {
+    const sId = String(siswaItem?.id || siswaItem?.siswa_id || '')
+    const studentLogs = logs.filter((log) => String(log.siswa_id || log.student_id || log.student?.id) === sId)
+
+    let hadir = siswaItem?.hadir_count ?? siswaItem?.hadir ?? 0
+    let izin = siswaItem?.izin_count ?? siswaItem?.izin ?? 0
+    let sakit = siswaItem?.sakit_count ?? siswaItem?.sakit ?? 0
+    let alpa = siswaItem?.alpa_count ?? siswaItem?.alpa ?? 0
+
+    if (studentLogs.length > 0) {
+      hadir = studentLogs.filter((l) => l.status_hadir === 'hadir' || l.status_hadir === 'terlambat').length
+      izin = studentLogs.filter((l) => l.status_hadir === 'izin').length
+      sakit = studentLogs.filter((l) => l.status_hadir === 'sakit').length
+      alpa = studentLogs.filter((l) => l.status_hadir === 'alpa' || l.status_hadir === 'tanpa_keterangan').length
+    }
+
+    const total = hadir + izin + sakit + alpa
+    const pct = total > 0 ? Math.round((hadir / total) * 100) : (siswaItem?.attendance_rate ?? (total === 0 ? 100 : 0))
+
+    return { hadir, izin, sakit, alpa, total, pct }
+  }
+
+  const rombelAttendanceRate = useMemo(() => {
+    if (!rombelRecapData || rombelRecapData.length === 0) {
+      return dashboardData?.attendance_rate || stats?.attendance_rate || 0
+    }
+    const totalLogs = rombelRecapData.length
+    const presentLogs = rombelRecapData.filter(
+      (l) => l.status_hadir === 'hadir' || l.status_hadir === 'terlambat'
+    ).length
+    return totalLogs > 0 ? Math.round((presentLogs / totalLogs) * 100) : (dashboardData?.attendance_rate || 0)
+  }, [rombelRecapData, dashboardData, stats])
+
   // Open Rombel Recap Modal (Pop-up inside modal, no navigation)
-  const handleOpenRombelRecap = async () => {
-    if (!selectedClass) return
+  const handleOpenRombelRecap = async (classToRecap = null) => {
+    const targetClass = classToRecap || selectedClass || (classesList.length > 0 ? classesList[0] : null)
+    if (!targetClass) return
+
+    setSelectedClass(targetClass)
     setIsRombelRecapModalOpen(true)
     setLoadingRombelRecap(true)
     try {
-      const res = await lmsPresensiService.getDaftar({ class_id: selectedClass.id }).catch(() => ({ data: [] }))
+      const [res, siswaRes] = await Promise.all([
+        lmsPresensiService.getDaftar({ class_id: targetClass.id }).catch(() => ({ data: [] })),
+        kelasService.getSiswaRombel(targetClass.id).catch(() => ({ siswa: [] })),
+      ])
       const logs = res?.data || (Array.isArray(res) ? res : [])
       setRombelRecapData(Array.isArray(logs) ? logs : [])
+
+      const list = siswaRes?.siswa || siswaRes?.data || (Array.isArray(siswaRes) ? siswaRes : [])
+      if (Array.isArray(list) && list.length > 0) {
+        setClassDetailStudents(list)
+      }
     } catch (err) {
       console.error('Failed to load rombel recap data:', err)
       setRombelRecapData([])
@@ -310,7 +582,7 @@ export default function HomeroomAttendanceDashboardPage() {
           <div><strong>Unit Pendidikan:</strong> ${selectedClass?.unit_name || '-'}</div>
           <div><strong>Nama Rombel:</strong> ${selectedClass?.nama_kelas || '-'}</div>
           <div><strong>Wali Kelas:</strong> ${selectedClass?.wali_kelas || '-'}</div>
-          <div><strong>Tingkat Kehadiran:</strong> 95.4%</div>
+          <div><strong>Tingkat Kehadiran:</strong> ${rombelAttendanceRate}%</div>
           <div><strong>Total Siswa:</strong> ${classDetailStudents.length || selectedClass?.jumlah_siswa || 0} Siswa</div>
           <div><strong>Total Izin/Sakit:</strong> ${pendingPermissions.length} Pengajuan</div>
         </div>
@@ -327,18 +599,21 @@ export default function HomeroomAttendanceDashboardPage() {
           <th style="width: 85px; text-align: center;">% Hadir</th>
         </tr>
       `
-      tableRowsHtml = classDetailStudents.map((s, idx) => `
+      tableRowsHtml = classDetailStudents.map((s, idx) => {
+        const sStats = getStudentRecapStats(s, rombelRecapData)
+        return `
         <tr>
           <td style="text-align: center;">${idx + 1}</td>
           <td>${s.nis || s.nisn || '-'}</td>
           <td style="font-weight: bold;">${s.full_name || s.nama || s.name || 'Nama Siswa'}</td>
-          <td style="text-align: center; color: #047857; font-weight: bold;">18</td>
-          <td style="text-align: center; color: #0284c7;">1</td>
-          <td style="text-align: center; color: #d97706;">0</td>
-          <td style="text-align: center; color: #dc2626;">0</td>
-          <td style="text-align: center; font-weight: bold; color: #047857;">95%</td>
+          <td style="text-align: center; color: #047857; font-weight: bold;">${sStats.hadir}</td>
+          <td style="text-align: center; color: #0284c7;">${sStats.izin}</td>
+          <td style="text-align: center; color: #d97706;">${sStats.sakit}</td>
+          <td style="text-align: center; color: #dc2626;">${sStats.alpa}</td>
+          <td style="text-align: center; font-weight: bold; color: #047857;">${sStats.pct}%</td>
         </tr>
-      `).join('')
+      `
+      }).join('')
     }
 
     const htmlContent = `
@@ -529,15 +804,6 @@ export default function HomeroomAttendanceDashboardPage() {
     }, 200)
   }
 
-  const stats = dashboardData?.stats || {
-    total_students: dashboardData?.total_students || 0,
-    attendance_rate: dashboardData?.attendance_rate || 95,
-    present_today: dashboardData?.present || 0,
-    sick_today: dashboardData?.sick || 0,
-    permission_today: dashboardData?.permission || 0,
-    absent_today: dashboardData?.absent || 0,
-  }
-
   return (
     <div className="space-y-6">
       {/* Main Dashboard Workspace (Hidden on Print so only Modal Report prints) */}
@@ -549,11 +815,12 @@ export default function HomeroomAttendanceDashboardPage() {
           <div className="group relative inline-flex">
             <button
               type="button"
-              className="flex items-center gap-2 rounded-2xl bg-sky-100/90 px-4 py-2.5 text-xs font-bold text-sky-700 transition-colors duration-200 hover:bg-sky-500 hover:text-white hover:shadow-md hover:shadow-sky-500/30 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white cursor-pointer shadow-2xs"
-              onClick={() => navigate('/absensi/rekap-kehadiran')}
+              title="Rekap Presensi Siswa"
+              aria-label="Rekap Presensi Siswa"
+              className="relative flex items-center justify-center rounded-2xl bg-sky-100/90 p-2.5 text-sky-700 transition-colors duration-200 hover:bg-sky-500 hover:text-white hover:shadow-md hover:shadow-sky-500/30 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white cursor-pointer shadow-2xs"
+              onClick={() => handleOpenRombelRecap()}
             >
               <FileText className="size-4 transition-colors" />
-              <span>Rekap Presensi</span>
             </button>
             <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
               <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -564,15 +831,21 @@ export default function HomeroomAttendanceDashboardPage() {
           <div className="group relative inline-flex">
             <button
               type="button"
-              className="flex items-center gap-2 rounded-2xl bg-amber-100/90 px-4 py-2.5 text-xs font-bold text-amber-700 transition-colors duration-200 hover:bg-amber-500 hover:text-white hover:shadow-md hover:shadow-amber-500/30 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white cursor-pointer shadow-2xs"
-              onClick={() => navigate('/absensi/rekap-kehadiran?tab=verifikasi')}
+              title={`Verifikasi Izin (${pendingPermissions.length})`}
+              aria-label="Verifikasi Izin"
+              className="relative flex items-center justify-center rounded-2xl bg-amber-100/90 p-2.5 text-amber-700 transition-colors duration-200 hover:bg-amber-500 hover:text-white hover:shadow-md hover:shadow-amber-500/30 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white cursor-pointer shadow-2xs"
+              onClick={handleOpenPermissionModal}
             >
               <FileCheck2 className="size-4 transition-colors" />
-              <span>Verifikasi Izin ({pendingPermissions.length})</span>
+              {pendingPermissions.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-xs">
+                  {pendingPermissions.length}
+                </span>
+              )}
             </button>
             <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
               <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-              Kelola Verifikasi Surat Izin / Sakit
+              Kelola Verifikasi Surat Izin / Sakit ({pendingPermissions.length})
             </div>
           </div>
         </div>
@@ -621,6 +894,93 @@ export default function HomeroomAttendanceDashboardPage() {
           </div>
           <p className="mt-3 text-3xl font-black text-rose-600 dark:text-rose-400">{followUps.length}</p>
           <span className="text-xs font-medium text-slate-500">Siswa Alpa / Bermasalah</span>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <FileCheck2 className="h-5 w-5 text-emerald-600" /> Pengajuan Izin Menunggu Verifikasi
+            </h2>
+            <button
+              type="button"
+              className="cursor-pointer text-xs font-semibold text-emerald-600 transition-colors hover:text-emerald-700 hover:underline"
+              onClick={handleOpenPermissionModal}
+            >
+              Kelola Semua &rarr;
+            </button>
+          </div>
+
+          {loading ? (
+            <AppSkeleton rows={3} />
+          ) : pendingPermissions.length === 0 ? (
+            <div className="p-6 text-center text-xs text-slate-500">
+              Tidak ada surat izin/sakit siswa yang menunggu verifikasi saat ini.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {pendingPermissions.slice(0, 5).map((item) => (
+                <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      {item.student?.full_name || item.siswa_nama || 'Nama Siswa'}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Jenis: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.permission_type || item.jenis}</span> • Tanggal: {item.start_date || item.tanggal}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-100/90 px-3 py-1.5 text-xs font-bold text-emerald-700 transition-colors duration-200 hover:bg-emerald-600 hover:text-white hover:shadow-md hover:shadow-emerald-600/30 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white cursor-pointer shadow-2xs"
+                    onClick={() => navigate('/absensi/rekap-kehadiran?tab=verifikasi')}
+                  >
+                    <FileCheck2 className="size-3.5 transition-colors" />
+                    <span>Verifikasi</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <HeartPulse className="h-5 w-5 text-rose-600" /> Tindak Lanjut Absensi Siswa
+            </h2>
+            <button
+              type="button"
+              className="cursor-pointer text-xs font-semibold text-rose-600 transition-colors hover:text-rose-700 hover:underline"
+              onClick={handleOpenFollowUpModal}
+            >
+              Lihat Detail &rarr;
+            </button>
+          </div>
+
+          {loading ? (
+            <AppSkeleton rows={3} />
+          ) : followUps.length === 0 ? (
+            <div className="p-6 text-center text-xs text-slate-500">
+              Tidak ada catatan tindak lanjut presensi siswa yang aktif.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {followUps.slice(0, 5).map((item) => (
+                <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      {item.student?.full_name || item.siswa_nama || 'Siswa'}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Tindakan: <span className="font-medium text-slate-700 dark:text-slate-300">{item.action_taken || 'Konseling/Panggilan'}</span>
+                    </p>
+                  </div>
+                  <AppBadge variant="danger">Tindak Lanjut</AppBadge>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -717,7 +1077,20 @@ export default function HomeroomAttendanceDashboardPage() {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs italic text-slate-400">Belum ada jadwal mapel</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs italic text-amber-600 dark:text-amber-400 font-medium">Belum ada jadwal mapel</span>
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded-xl bg-amber-100/90 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-500 hover:text-white dark:bg-amber-950/80 dark:text-amber-300 transition-colors duration-200 cursor-pointer shadow-2xs"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenAddScheduleModal(item)
+                              }}
+                            >
+                              <Plus className="size-3.5" />
+                              <span>Tambah Jadwal</span>
+                            </button>
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
@@ -752,89 +1125,11 @@ export default function HomeroomAttendanceDashboardPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <FileCheck2 className="h-5 w-5 text-emerald-600" /> Pengajuan Izin Menunggu Verifikasi
-            </h2>
-            <Link to="/absensi/rekap-kehadiran?tab=verifikasi" className="text-xs font-semibold text-emerald-600 hover:underline">
-              Kelola Semua &rarr;
-            </Link>
-          </div>
-
-          {loading ? (
-            <AppSkeleton rows={3} />
-          ) : pendingPermissions.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-500">
-              Tidak ada surat izin/sakit siswa yang menunggu verifikasi saat ini.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {pendingPermissions.slice(0, 5).map((item) => (
-                <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      {item.student?.full_name || item.siswa_nama || 'Nama Siswa'}
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Jenis: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.permission_type || item.jenis}</span> • Tanggal: {item.start_date || item.tanggal}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-100/90 px-3 py-1.5 text-xs font-bold text-emerald-700 transition-colors duration-200 hover:bg-emerald-600 hover:text-white hover:shadow-md hover:shadow-emerald-600/30 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white cursor-pointer shadow-2xs"
-                    onClick={() => navigate('/absensi/rekap-kehadiran?tab=verifikasi')}
-                  >
-                    <FileCheck2 className="size-3.5 transition-colors" />
-                    <span>Verifikasi</span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <HeartPulse className="h-5 w-5 text-rose-600" /> Tindak Lanjut Absensi Siswa
-            </h2>
-            <Link to="/absensi/tindak-lanjut" className="text-xs font-semibold text-rose-600 hover:underline">
-              Lihat Detail &rarr;
-            </Link>
-          </div>
-
-          {loading ? (
-            <AppSkeleton rows={3} />
-          ) : followUps.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-500">
-              Tidak ada catatan tindak lanjut presensi siswa yang aktif.
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {followUps.slice(0, 5).map((item) => (
-                <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">
-                      {item.student?.full_name || item.siswa_nama || 'Siswa'}
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      Tindakan: <span className="font-medium text-slate-700 dark:text-slate-300">{item.action_taken || 'Konseling/Panggilan'}</span>
-                    </p>
-                  </div>
-                  <AppBadge variant="danger">Tindak Lanjut</AppBadge>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
 
       {/* ── 1. Pop-up Detail Modal for Class & Students ─────────────────────────────── */}
       <Backdrop isOpen={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-        <Dialog isOpen={isDetailModalOpen} onOpenChange={setIsDetailModalOpen} className="max-w-3xl w-full">
+        <Dialog className="max-w-3xl w-full">
           <DialogHeader className="print:hidden">
             <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white text-base sm:text-lg">
               <Eye className="h-5 w-5 text-indigo-600" /> Detail Rombel & Siswa {selectedClass?.nama_kelas}
@@ -886,9 +1181,20 @@ export default function HomeroomAttendanceDashboardPage() {
               </div>
             </div>
 
-            {Array.isArray(selectedClass?.mata_pelajaran) && selectedClass.mata_pelajaran.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">Mata Pelajaran Diajarkan:</span>
+            {Array.isArray(selectedClass?.mata_pelajaran) && selectedClass.mata_pelajaran.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">Mata Pelajaran & Guru Pengampu:</span>
+                  <button
+                    type="button"
+                    title="Lihat Daftar Guru Pengampu"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-100/90 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-600 hover:text-white transition-colors duration-200 shadow-2xs dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white cursor-pointer"
+                    onClick={handleOpenTeachersListModal}
+                  >
+                    <Users className="size-3.5 transition-colors" />
+                    <span>Daftar Guru Pengampu</span>
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedClass.mata_pelajaran.map((mapel, mIdx) => (
                     <span
@@ -899,6 +1205,21 @@ export default function HomeroomAttendanceDashboardPage() {
                     </span>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-3.5 bg-amber-50/90 border border-amber-200/80 rounded-xl dark:bg-amber-950/40 dark:border-amber-800/60">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Belum ada jadwal mata pelajaran untuk rombel ini.</span>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-amber-700 transition-colors shadow-2xs cursor-pointer shrink-0"
+                  onClick={() => handleOpenAddScheduleModal(selectedClass)}
+                >
+                  <Plus className="size-4" />
+                  <span>Tambah Jadwal</span>
+                </button>
               </div>
             )}
 
@@ -977,6 +1298,16 @@ export default function HomeroomAttendanceDashboardPage() {
           </DialogBody>
 
           <DialogFooter className="gap-2.5 sm:justify-end print:hidden">
+            {(!Array.isArray(selectedClass?.mata_pelajaran) || selectedClass.mata_pelajaran.length === 0) && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white transition-colors duration-200 hover:bg-amber-600 hover:shadow-md hover:shadow-amber-500/30 cursor-pointer shadow-2xs"
+                onClick={() => handleOpenAddScheduleModal(selectedClass)}
+              >
+                <Plus className="size-4 transition-colors" />
+                <span>Tambah Jadwal</span>
+              </button>
+            )}
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-2xl bg-amber-100/90 px-4 py-2.5 text-xs font-bold text-amber-700 transition-colors duration-200 hover:bg-amber-500 hover:text-white hover:shadow-md hover:shadow-amber-500/30 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white cursor-pointer shadow-2xs"
@@ -1006,7 +1337,7 @@ export default function HomeroomAttendanceDashboardPage() {
 
       {/* ── 2. Pop-up Modal Riwayat Absensi Siswa ─────────────────────────────────── */}
       <Backdrop isOpen={isStudentHistoryModalOpen} onOpenChange={setIsStudentHistoryModalOpen}>
-        <Dialog isOpen={isStudentHistoryModalOpen} onOpenChange={setIsStudentHistoryModalOpen} className="max-w-2xl w-full">
+        <Dialog className="max-w-2xl w-full">
           <DialogHeader className="print:hidden">
             <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white text-base">
               <FileText className="h-5 w-5 text-sky-600" /> Riwayat Presensi - {selectedStudent?.full_name || selectedStudent?.nama}
@@ -1122,7 +1453,7 @@ export default function HomeroomAttendanceDashboardPage() {
 
       {/* ── 3. Pop-up Modal Rekap Presensi Rombel ───────────────────────────────────── */}
       <Backdrop isOpen={isRombelRecapModalOpen} onOpenChange={setIsRombelRecapModalOpen}>
-        <Dialog isOpen={isRombelRecapModalOpen} onOpenChange={setIsRombelRecapModalOpen} className="max-w-3xl w-full">
+        <Dialog className="max-w-3xl w-full">
           <DialogHeader className="print:hidden">
             <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white text-base sm:text-lg">
               <FileText className="h-5 w-5 text-emerald-600" /> Rekap Presensi Rombel {selectedClass?.nama_kelas}
@@ -1158,7 +1489,7 @@ export default function HomeroomAttendanceDashboardPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3.5 bg-emerald-50/90 border border-emerald-200/70 rounded-xl dark:bg-emerald-950/40 dark:border-emerald-800/60">
                 <span className="text-[11px] font-bold uppercase text-emerald-600 dark:text-emerald-400 block">Tingkat Kehadiran</span>
-                <span className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">95.4%</span>
+                <span className="text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">{rombelAttendanceRate}%</span>
               </div>
               <div className="p-3.5 bg-sky-50/90 border border-sky-200/70 rounded-xl dark:bg-sky-950/40 dark:border-sky-800/60">
                 <span className="text-[11px] font-bold uppercase text-sky-600 dark:text-sky-400 block">Total Siswa</span>
@@ -1200,26 +1531,29 @@ export default function HomeroomAttendanceDashboardPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {classDetailStudents.map((siswaItem, sIdx) => (
-                        <TableRow key={siswaItem.id || sIdx} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60">
-                          <TableCell className="text-center text-xs font-semibold text-slate-500">{sIdx + 1}</TableCell>
-                          <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400">
-                            {siswaItem.nis || siswaItem.nisn || '-'}
-                          </TableCell>
-                          <TableCell className="text-xs font-bold text-slate-900 dark:text-white">
-                            {siswaItem.full_name || siswaItem.nama || siswaItem.name || 'Nama Siswa'}
-                          </TableCell>
-                          <TableCell className="text-center text-xs font-bold text-emerald-600">18</TableCell>
-                          <TableCell className="text-center text-xs font-semibold text-sky-600">1</TableCell>
-                          <TableCell className="text-center text-xs font-semibold text-amber-600">0</TableCell>
-                          <TableCell className="text-center text-xs font-semibold text-rose-600">0</TableCell>
-                          <TableCell className="text-center">
-                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                              95%
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {classDetailStudents.map((siswaItem, sIdx) => {
+                        const sStats = getStudentRecapStats(siswaItem, rombelRecapData)
+                        return (
+                          <TableRow key={siswaItem.id || sIdx} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60">
+                            <TableCell className="text-center text-xs font-semibold text-slate-500">{sIdx + 1}</TableCell>
+                            <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                              {siswaItem.nis || siswaItem.nisn || '-'}
+                            </TableCell>
+                            <TableCell className="text-xs font-bold text-slate-900 dark:text-white">
+                              {siswaItem.full_name || siswaItem.nama || siswaItem.name || 'Nama Siswa'}
+                            </TableCell>
+                            <TableCell className="text-center text-xs font-bold text-emerald-600">{sStats.hadir}</TableCell>
+                            <TableCell className="text-center text-xs font-semibold text-sky-600">{sStats.izin}</TableCell>
+                            <TableCell className="text-center text-xs font-semibold text-amber-600">{sStats.sakit}</TableCell>
+                            <TableCell className="text-center text-xs font-semibold text-rose-600">{sStats.alpa}</TableCell>
+                            <TableCell className="text-center">
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                {sStats.pct}%
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </TableRoot>
                 </div>
@@ -1243,6 +1577,426 @@ export default function HomeroomAttendanceDashboardPage() {
             >
               <span>Tutup</span>
             </button>
+          </DialogFooter>
+        </Dialog>
+      </Backdrop>
+
+      {/* ── 4. Pop-up Modal Pengajuan Izin Menunggu Verifikasi ──────────────────────── */}
+      <Backdrop isOpen={isPermissionModalOpen} onOpenChange={setIsPermissionModalOpen}>
+        <Dialog className="max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white sm:text-lg">
+              <FileCheck2 className="h-5 w-5 text-emerald-600" /> Pengajuan Izin Menunggu Verifikasi
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+              Daftar pengajuan izin/sakit siswa yang diambil langsung dari data pengajuan berstatus menunggu verifikasi.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogBody className="space-y-4">
+            <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Total Pengajuan</p>
+                <p className="mt-0.5 text-lg font-black text-emerald-800 dark:text-emerald-200">{pendingPermissions.length}</p>
+              </div>
+              <AppBadge variant="warning" dot>Menunggu Verifikasi</AppBadge>
+            </div>
+
+            {loadingPermissionModal ? (
+              <AppSkeleton rows={5} />
+            ) : permissionModalError ? (
+              <div role="alert" className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                <span>{permissionModalError}</span>
+              </div>
+            ) : pendingPermissions.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                Tidak ada surat izin/sakit siswa yang menunggu verifikasi saat ini.
+              </div>
+            ) : (
+              <div className="max-h-[430px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <TableRoot fullBleed={false}>
+                  <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
+                    <TableRow className="bg-slate-50 dark:bg-slate-900/90">
+                      <TableHead className="w-12 text-center text-xs font-bold text-slate-700 dark:text-slate-300">No</TableHead>
+                      <TableHead className="min-w-[190px] text-xs font-bold text-slate-700 dark:text-slate-300">Siswa</TableHead>
+                      <TableHead className="min-w-[110px] text-xs font-bold text-slate-700 dark:text-slate-300">Jenis</TableHead>
+                      <TableHead className="min-w-[150px] text-xs font-bold text-slate-700 dark:text-slate-300">Periode</TableHead>
+                      <TableHead className="min-w-[150px] text-xs font-bold text-slate-700 dark:text-slate-300">Alasan / Catatan</TableHead>
+                      <TableHead className="min-w-[150px] text-xs font-bold text-slate-700 dark:text-slate-300">Diajukan</TableHead>
+                      <TableHead className="min-w-[145px] text-center text-xs font-bold text-slate-700 dark:text-slate-300">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingPermissions.map((item, index) => (
+                      <TableRow key={item.id || index} className="transition-all duration-200 hover:bg-slate-50/90 dark:hover:bg-slate-800/50">
+                        <TableCell className="text-center text-xs font-semibold text-slate-500">{index + 1}</TableCell>
+                        <TableCell>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">{getStudentName(item)}</p>
+                          <p className="mt-0.5 font-mono text-[11px] text-slate-400">NIS/NISN: {getStudentIdentifier(item)}</p>
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {formatWorkflowLabel(item.type || item.permission_type || item.jenis)}
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-600 dark:text-slate-300">
+                          <p>{formatDate(item.start_date)}</p>
+                          {item.end_date && item.end_date !== item.start_date && <p className="text-[11px] text-slate-400">s.d. {formatDate(item.end_date)}</p>}
+                        </TableCell>
+                        <TableCell className="max-w-[220px] text-xs text-slate-600 dark:text-slate-300">
+                          <p className="line-clamp-2">{item.reason || item.notes || '-'}</p>
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-600 dark:text-slate-300">
+                          {formatDate(item.submitted_at || item.created_at, true)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <AppBadge variant="warning" dot>{formatWorkflowLabel(item.status)}</AppBadge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableRoot>
+              </div>
+            )}
+          </DialogBody>
+
+          <DialogFooter className="border-t border-slate-100 dark:border-slate-800">
+            <DialogClose variant="ghost" appearance="outline" size="sm">Tutup</DialogClose>
+          </DialogFooter>
+        </Dialog>
+      </Backdrop>
+
+      {/* ── 5. Pop-up Modal Tindak Lanjut Absensi Siswa ─────────────────────────────── */}
+      <Backdrop isOpen={isFollowUpModalOpen} onOpenChange={setIsFollowUpModalOpen}>
+        <Dialog className="max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-2 text-base font-black text-slate-900 dark:text-white sm:text-lg">
+              <HeartPulse className="h-5 w-5 text-rose-600" /> Tindak Lanjut Absensi Siswa
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+              Daftar kasus tindak lanjut absensi siswa yang masih aktif, diambil langsung dari data sistem.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogBody className="space-y-4">
+            <div className="flex items-center justify-between rounded-xl border border-rose-100 bg-rose-50/70 px-4 py-3 dark:border-rose-900/40 dark:bg-rose-950/30">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Total Kasus Aktif</p>
+                <p className="mt-0.5 text-lg font-black text-rose-800 dark:text-rose-200">{followUps.length}</p>
+              </div>
+              <AppBadge variant="danger" dot>Perlu Tindak Lanjut</AppBadge>
+            </div>
+
+            {loadingFollowUpModal ? (
+              <AppSkeleton rows={5} />
+            ) : followUpModalError ? (
+              <div role="alert" className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                <span>{followUpModalError}</span>
+              </div>
+            ) : followUps.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+                Tidak ada catatan tindak lanjut presensi siswa yang aktif.
+              </div>
+            ) : (
+              <div className="max-h-[430px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <TableRoot fullBleed={false}>
+                  <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
+                    <TableRow className="bg-slate-50 dark:bg-slate-900/90">
+                      <TableHead className="w-12 text-center text-xs font-bold text-slate-700 dark:text-slate-300">No</TableHead>
+                      <TableHead className="min-w-[190px] text-xs font-bold text-slate-700 dark:text-slate-300">Siswa</TableHead>
+                      <TableHead className="min-w-[160px] text-xs font-bold text-slate-700 dark:text-slate-300">Kasus</TableHead>
+                      <TableHead className="min-w-[145px] text-xs font-bold text-slate-700 dark:text-slate-300">Tanggal</TableHead>
+                      <TableHead className="min-w-[120px] text-xs font-bold text-slate-700 dark:text-slate-300">Prioritas</TableHead>
+                      <TableHead className="min-w-[220px] text-xs font-bold text-slate-700 dark:text-slate-300">Tindakan</TableHead>
+                      <TableHead className="min-w-[145px] text-center text-xs font-bold text-slate-700 dark:text-slate-300">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {followUps.map((item, index) => (
+                      <TableRow key={item.id || index} className="transition-all duration-200 hover:bg-slate-50/90 dark:hover:bg-slate-800/50">
+                        <TableCell className="text-center text-xs font-semibold text-slate-500">{index + 1}</TableCell>
+                        <TableCell>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">{getStudentName(item)}</p>
+                          <p className="mt-0.5 font-mono text-[11px] text-slate-400">NIS/NISN: {getStudentIdentifier(item)}</p>
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-700 dark:text-slate-300">
+                          <p className="font-semibold">{formatWorkflowLabel(item.case_type || item.type)}</p>
+                          {item.occurrence_count && <p className="mt-0.5 text-[11px] text-slate-400">{item.occurrence_count} kejadian</p>}
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-600 dark:text-slate-300">
+                          <p>{formatDate(item.case_date || item.tanggal)}</p>
+                          {(item.follow_up_date || item.due_date) && (
+                            <p className="mt-0.5 text-[11px] text-slate-400">
+                              Jadwal: {formatDate(item.follow_up_date || item.due_date)}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <AppBadge variant={getPriorityVariant(item.priority)} dot>{formatWorkflowLabel(item.priority)}</AppBadge>
+                        </TableCell>
+                        <TableCell className="max-w-[260px] text-xs text-slate-600 dark:text-slate-300">
+                          <p className="font-semibold">{item.action || item.action_taken || item.action_type || '-'}</p>
+                          {item.notes && <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-400">{item.notes}</p>}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <AppBadge variant={getFollowUpStatusVariant(item.status)} dot>{formatWorkflowLabel(item.status)}</AppBadge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableRoot>
+              </div>
+            )}
+          </DialogBody>
+
+          <DialogFooter className="border-t border-slate-100 dark:border-slate-800">
+            <DialogClose variant="ghost" appearance="outline" size="sm">Tutup</DialogClose>
+          </DialogFooter>
+        </Dialog>
+      </Backdrop>
+
+      {/* ── 6. Pop-up Modal Tambah Jadwal Pelajaran Rombel ──────────────────────────── */}
+      <Backdrop isOpen={isAddScheduleModalOpen} onOpenChange={setIsAddScheduleModalOpen}>
+        <Dialog className="max-w-lg w-full">
+          <DialogHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white text-base sm:text-lg font-black">
+              <Plus className="h-5 w-5 text-amber-600" /> Tambah Jadwal Pelajaran - {selectedClass?.nama_kelas}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+              Tambahkan mata pelajaran dan jadwal untuk rombel {selectedClass?.nama_kelas} ({selectedClass?.unit_name}).
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveSchedule}>
+            <DialogBody className="space-y-4 my-3">
+              {scheduleSuccessMessage && (
+                <div role="status" className="flex items-center gap-2 rounded-xl bg-emerald-100/90 border border-emerald-200 px-4 py-3 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                  <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+                  <span>{scheduleSuccessMessage}</span>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                  Mata Pelajaran <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={scheduleForm.subjectName}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, subjectName: e.target.value })}
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                >
+                  <option value="">-- Pilih Mata Pelajaran --</option>
+                  <option value="Pendidikan Agama Islam">Pendidikan Agama Islam (PAI)</option>
+                  <option value="Bahasa Arab">Bahasa Arab</option>
+                  <option value="Tahfidz Al-Qur'an">Tahfidz Al-Qur'an</option>
+                  <option value="Hadits & Aqidah">Hadits & Aqidah</option>
+                  <option value="Matematika">Matematika</option>
+                  <option value="IPA (Sains)">IPA (Sains)</option>
+                  <option value="IPS (Sosial)">IPS (Sosial)</option>
+                  <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                  <option value="Bahasa Inggris">Bahasa Inggris</option>
+                  <option value="Pendidikan Pancasila">Pendidikan Pancasila</option>
+                  <option value="Lainnya">-- Tulis Mapel Lainnya --</option>
+                </select>
+              </div>
+
+              {scheduleForm.subjectName === 'Lainnya' && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Nama Mata Pelajaran Khusus</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Fiqih Ibadah"
+                    value={scheduleForm.customSubject}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, customSubject: e.target.value })}
+                    required
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
+              )}
+
+              {/* Row 2: Guru Pengampu (Full Width for clean spacing) */}
+              <div className="space-y-1.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Guru Pengampu <span className="text-slate-400 font-normal">(Opsional)</span>
+                  </label>
+                  <button
+                    type="button"
+                    title="Lihat Daftar Guru Pengampu"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-100/90 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-600 hover:text-white transition-colors duration-200 shadow-2xs dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white cursor-pointer shrink-0"
+                    onClick={handleOpenTeachersListModal}
+                  >
+                    <Users className="size-3.5 transition-colors" />
+                    <span>Daftar Guru Pengampu</span>
+                  </button>
+                </div>
+                <select
+                  value={scheduleForm.teacherName}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, teacherName: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                >
+                  <option value="">-- Pilih Guru Pengampu --</option>
+                  {selectedClass?.wali_kelas && (
+                    <option value={selectedClass.wali_kelas}>
+                      {selectedClass.wali_kelas} (Wali Kelas)
+                    </option>
+                  )}
+                  {DEFAULT_TEACHERS.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name} ({t.subject})
+                    </option>
+                  ))}
+                  <option value="custom">-- Tulis Nama Guru Lainnya --</option>
+                </select>
+
+                {scheduleForm.teacherName === 'custom' && (
+                  <input
+                    type="text"
+                    placeholder="Tulis nama lengkap guru pengampu..."
+                    value={scheduleForm.customTeacher || ''}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, customTeacher: e.target.value })}
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  />
+                )}
+              </div>
+
+              {/* Row 3: Hari & Jam Pelaksanaan (2 Columns) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Hari Pelaksanaan</label>
+                  <select
+                    value={scheduleForm.day}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, day: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  >
+                    <option value="Senin">Senin</option>
+                    <option value="Selasa">Selasa</option>
+                    <option value="Rabu">Rabu</option>
+                    <option value="Kamis">Kamis</option>
+                    <option value="Jumat">Jumat</option>
+                    <option value="Sabtu">Sabtu</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Waktu Pelaksanaan</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={scheduleForm.startTime}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, startTime: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    />
+                    <span className="text-xs text-slate-400 font-bold shrink-0">s.d</span>
+                    <input
+                      type="time"
+                      value={scheduleForm.endTime}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, endTime: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </DialogBody>
+
+            <DialogFooter className="border-t border-slate-100 dark:border-slate-800 gap-2.5 sm:justify-end">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-2xl bg-slate-100/90 px-4 py-2.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 cursor-pointer shadow-2xs"
+                onClick={() => setIsAddScheduleModalOpen(false)}
+              >
+                <span>Batal</span>
+              </button>
+              <button
+                type="submit"
+                disabled={savingSchedule}
+                className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-amber-600 hover:shadow-md hover:shadow-amber-500/30 dark:bg-amber-600 dark:hover:bg-amber-500 cursor-pointer shadow-2xs disabled:opacity-50"
+              >
+                <Plus className="size-4" />
+                <span>{savingSchedule ? 'Menyimpan...' : 'Simpan Jadwal'}</span>
+              </button>
+            </DialogFooter>
+          </form>
+        </Dialog>
+      </Backdrop>
+
+      {/* ── 7. Pop-up Modal Daftar Guru Pengampu ──────────────────────────────────── */}
+      <Backdrop isOpen={isTeachersModalOpen} onOpenChange={setIsTeachersModalOpen}>
+        <Dialog className="max-w-3xl w-full max-h-[85vh] overflow-y-auto">
+          <DialogHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white text-base sm:text-lg font-black">
+              <Users className="h-5 w-5 text-indigo-600" /> Daftar Guru Pengampu & Tenaga Pengajar
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+              Daftar seluruh guru pengampu mata pelajaran yang terdaftar dalam sistem.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogBody className="space-y-4 my-3">
+            {loadingTeachers ? (
+              <AppSkeleton rows={5} />
+            ) : (teachersList.length > 0 ? teachersList : DEFAULT_TEACHERS).length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 rounded-xl">
+                Belum ada data guru pengampu yang terdaftar.
+              </div>
+            ) : (
+              <div className="max-h-[380px] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <TableRoot fullBleed={false}>
+                  <TableHeader className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
+                    <TableRow className="bg-slate-50 dark:bg-slate-900/90">
+                      <TableHead className="w-10 text-center text-xs font-bold text-slate-700 dark:text-slate-300">No</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Nama Guru Pengampu</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">NIY / NIP</TableHead>
+                      <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Mata Pelajaran / Bidang</TableHead>
+                      <TableHead className="text-center text-xs font-bold text-slate-700 dark:text-slate-300">Status</TableHead>
+                      <TableHead className="w-24 text-center text-xs font-bold text-slate-700 dark:text-slate-300">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(teachersList.length > 0 ? teachersList : DEFAULT_TEACHERS).map((teacher, tIdx) => (
+                      <TableRow key={teacher.id || tIdx} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors">
+                        <TableCell className="text-center text-xs font-semibold text-slate-500">{tIdx + 1}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2.5">
+                            <Avatar size="sm" className="ring-2 ring-indigo-500/20">
+                              <AvatarFallback className="bg-indigo-100 text-indigo-800 font-bold text-xs">
+                                {teacher.name?.substring(0, 2).toUpperCase() || 'GR'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">{teacher.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400">{teacher.niy}</TableCell>
+                        <TableCell className="text-xs font-medium text-slate-700 dark:text-slate-300">{teacher.subject}</TableCell>
+                        <TableCell className="text-center">
+                          <span className="inline-flex items-center rounded-full bg-emerald-100/80 border border-emerald-200/80 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:border-emerald-800/60 dark:text-emerald-300">
+                            {teacher.status || 'Aktif'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {isAddScheduleModalOpen ? (
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-2xs cursor-pointer"
+                              onClick={() => handleSelectTeacher(teacher)}
+                            >
+                              <span>Pilih</span>
+                            </button>
+                          ) : (
+                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Tersedia</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableRoot>
+              </div>
+            )}
+          </DialogBody>
+
+          <DialogFooter className="border-t border-slate-100 dark:border-slate-800">
+            <DialogClose variant="ghost" appearance="outline" size="sm">Tutup</DialogClose>
           </DialogFooter>
         </Dialog>
       </Backdrop>

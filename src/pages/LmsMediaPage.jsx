@@ -32,6 +32,15 @@ import {
 import { lmsMediaService } from '../services/lmsMediaService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import {
+  MasterDataTable,
+  SquircleActionButton,
+  PrintOptionModal,
+} from '../components/master-data'
+import CsvImportModal from '../components/master-data/CsvImportModal'
+import ActionDropdown from '../components/app/ActionDropdown'
+import { RotateCcw, Printer } from 'lucide-react'
 
 export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataMedia, setDataMedia] = useState([])
@@ -84,10 +93,47 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
   // Modal State
   const [modalOpen, setModalOpen] = useState(false)
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [previewItem, setPreviewItem] = useState(null)
   const [editingItem, setEditingItem] = useState(null)
   const [formSubmitting, setFormSubmitting] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
+
+  const handleExportCSV = () => {
+    const headers = ['NO', 'NAMA MEDIA', 'TIPE', 'MATERI', 'URL/BERKAS', 'DESKRIPSI', 'URUTAN']
+    const rows = (dataMedia || []).map((m, i) => [
+      i + 1,
+      `"${(m.nama_file || '').replace(/"/g, '""')}"`,
+      m.tipe_file || '',
+      `"${(m.materi?.judul || '').replace(/"/g, '""')}"`,
+      `"${(m.url_eksternal || m.file_url || '').replace(/"/g, '""')}"`,
+      `"${(m.deskripsi || '').replace(/"/g, '""')}"`,
+      m.urutan || 1,
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `export_media_pembelajaran_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleImport = async (parsedData) => {
+    setSuccessMsg(`Berhasil mengimpor ${parsedData.length} data media pembelajaran.`)
+    fetchDaftarMedia()
+  }
+
+  const pageActions = (
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Tambah Media" onClick={() => handleOpenCreateModal()} />
+    </div>
+  )
 
   const [formData, setFormData] = useState({
     materi_id: '',
@@ -349,7 +395,64 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-[1600px] mx-auto min-h-screen bg-[#F7F9FC] dark:bg-[#0F172A] text-slate-800 dark:text-slate-100 font-sans transition-colors duration-300">
+    <PageContainer maxW="7xl">
+      {!(embedded || hideBreadcrumb) && (
+        <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Media Pembelajaran' }]} />
+      )}
+      <div className="master-data-page space-y-6 pb-12">
+        <PrintOptionModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          title="Media Pembelajaran"
+          onPrint={() => {
+            const rowsToPrint = Array.isArray(dataMedia) ? dataMedia : []
+            printCleanTable({
+              title: 'Laporan Data Media Pembelajaran',
+              subtitle: 'Daftar Media Pembelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'URUTAN', 'NAMA MEDIA', 'TIPE', 'MATERI PEMBELAJARAN', 'TAUTAN / BERKAS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                `#${row.urutan || 1}`,
+                row.nama_file || '-',
+                row.tipe_file || '-',
+                row.materi?.judul || '-',
+                row.url_eksternal || row.file_url || '-',
+              ]),
+            })
+          }}
+          onDownload={() => {
+            const rowsToPrint = Array.isArray(dataMedia) ? dataMedia : []
+            downloadPdfTable({
+              title: 'Laporan Data Media Pembelajaran',
+              subtitle: 'Daftar Media Pembelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'URUTAN', 'NAMA MEDIA', 'TIPE', 'MATERI PEMBELAJARAN', 'TAUTAN / BERKAS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                `#${row.urutan || 1}`,
+                row.nama_file || '-',
+                row.tipe_file || '-',
+                row.materi?.judul || '-',
+                row.url_eksternal || row.file_url || '-',
+              ]),
+              filename: 'laporan_media_pembelajaran.pdf',
+            })
+          }}
+        />
+
+        <CsvImportModal
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          title="Media Pembelajaran"
+          onImport={handleImport}
+          columns={[
+            { key: 'materi_id' },
+            { key: 'nama_file', required: true, example: 'Video Tajwid Dasar' },
+            { key: 'tipe_file', example: 'video' },
+            { key: 'url_eksternal', example: 'https://youtube.com/...' },
+            { key: 'deskripsi', example: 'Panduan tayangan...' },
+            { key: 'urutan', example: '1' },
+          ]}
+        />
       {/* Hero Banner */}
       {!hidePageHeader && (
         <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 sm:p-8 text-white shadow-xl shadow-[#0E5C44]/15">
@@ -497,88 +600,110 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
       {/* Tab Navigation Card (below KPI grid) */}
       {tabNav}
 
-      {/* Filter Bar & Controls */}
-      <div className="p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          {/* Search Box */}
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+      {/* SEARCH & FILTER BAR (2-Row Layout) */}
+      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+        {/* Baris 1: Field Pencarian Full-Width */}
+        <div className="w-full">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari nama media/deskripsi..."
+              placeholder="Cari nama media, deskripsi, atau materi..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-[12px] bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-            />
-          </div>
-
-          {/* Filter Selects */}
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-              <select
-                value={selectedMateri}
-                onChange={(e) => {
-                  setSelectedMateri(e.target.value)
-                  setPage(1)
-                }}
-                className="px-3 py-2.5 rounded-[12px] bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-              >
-                <option value="">Semua Materi Pembelajaran</option>
-                {optionsMateri.map((mat) => (
-                  <option key={mat.id} value={mat.id}>
-                    {mat.judul} ({mat.modul_ajar?.judul_modul || 'Modul'})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <select
-              value={selectedTipe}
               onChange={(e) => {
-                setSelectedTipe(e.target.value)
+                setSearch(e.target.value)
                 setPage(1)
               }}
-              className="px-3 py-2.5 rounded-[12px] bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-            >
-              <option value="">Semua Tipe Media</option>
-              {tipeOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.nama}
-                </option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => fetchDaftarMedia()}
-              className="p-2.5 rounded-[12px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Refresh Data"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            />
           </div>
+        </div>
+
+        {/* Baris 2: Dropdown Filter & Sortir */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+            Filter &amp; Sortir:
+          </span>
+
+          <select
+            value={selectedMateri}
+            onChange={(e) => {
+              setSelectedMateri(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Materi Pembelajaran --</option>
+            {optionsMateri.map((mat) => (
+              <option key={mat.id} value={mat.id}>
+                {mat.judul} ({mat.modul_ajar?.judul_modul || 'Modul'})
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedTipe}
+            onChange={(e) => {
+              setSelectedTipe(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Tipe Media --</option>
+            {tipeOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.nama}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('')
+              setSelectedMateri('')
+              setSelectedTipe('')
+              setPage(1)
+            }}
+            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            title="Reset Filter"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold">
-              <tr>
-                <th className="px-6 py-4 w-12 text-center">Urutan</th>
-                <th className="px-6 py-4">Nama Media / Lampiran</th>
-                <th className="px-6 py-4">Tipe Media</th>
-                <th className="px-6 py-4">Materi Pembelajaran</th>
-                <th className="px-6 py-4">Ukuran / Durasi</th>
-                <th className="px-6 py-4">Deskripsi</th>
-                <th className="px-6 py-4 text-center">Aksi</th>
+      {/* DATA TABLE CONTAINER */}
+      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="media-table-title">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+          <div>
+            <h2 id="media-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Media Pembelajaran</h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Daftar berkas dan sumber media pembelajaran terpadu.</p>
+          </div>
+          {pageActions}
+        </div>
+
+        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
+                <th className="w-[6%] px-5 sm:px-6 md:px-8 py-4 text-center">No</th>
+                <th className="w-[8%] px-3 py-4 text-center">Urutan</th>
+                <th className="w-[30%] px-3 py-4">Nama Media / Lampiran</th>
+                <th className="hidden w-[14%] px-3 py-4 text-center sm:table-cell">Tipe Media</th>
+                <th className="hidden w-[22%] px-3 py-4 md:table-cell">Materi Pembelajaran</th>
+                <th className="hidden w-[12%] px-3 py-4 lg:table-cell">Ukuran / Durasi</th>
+                <th className="w-[12%] px-3 py-4 text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {loading ? (
                 Array.from({ length: 5 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">
+                    <td className="px-6 py-4 text-center">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-6 mx-auto" />
+                    </td>
                     <td className="px-6 py-4 text-center">
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-6 mx-auto" />
                     </td>
@@ -593,9 +718,6 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                     </td>
                     <td className="px-6 py-4">
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20" />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-40" />
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded-lg w-20 mx-auto" />
@@ -613,17 +735,23 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                   </td>
                 </tr>
               ) : (
-                dataMedia.map((item) => (
+                dataMedia.map((item, idx) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group"
+                    onClick={() => handleOpenPreview(item)}
+                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                   >
-                    <td className="px-6 py-4 text-center font-bold text-slate-400 group-hover:text-[#0E5C44]">
-                      #{item.urutan || 1}
+                    <td className="py-3.5 px-5 sm:px-6 md:px-8 text-center font-medium text-slate-400">
+                      {(pagination.current_page - 1) * pagination.per_page + idx + 1}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="py-3.5 px-3 text-center">
+                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
+                        #{item.urutan || 1}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">
+                        <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50 shrink-0">
                           {item.tipe_file === 'pdf' && <FileText className="w-5 h-5 text-red-500" />}
                           {item.tipe_file === 'video' && <Video className="w-5 h-5 text-blue-500" />}
                           {item.tipe_file === 'audio' && <Music className="w-5 h-5 text-purple-500" />}
@@ -639,6 +767,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                               href={item.url_eksternal}
                               target="_blank"
                               rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 mt-0.5"
                             >
                               <ExternalLink className="w-3 h-3" /> Link Eksternal
@@ -647,8 +776,8 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">{getTipeBadge(item.tipe_file)}</td>
-                    <td className="px-6 py-4">
+                    <td className="hidden py-3.5 px-3 text-center sm:table-cell">{getTipeBadge(item.tipe_file)}</td>
+                    <td className="hidden py-3.5 px-3 md:table-cell">
                       <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                         <BookOpen className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span className="font-medium line-clamp-1">
@@ -656,7 +785,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <td className="hidden py-3.5 px-3 text-xs font-medium text-slate-500 dark:text-slate-400 lg:table-cell">
                       {item.ukuran_formatted ? (
                         <span className="block">{item.ukuran_formatted}</span>
                       ) : null}
@@ -667,40 +796,19 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                       ) : null}
                       {!item.ukuran_formatted && !item.durasi_formatted && '-'}
                     </td>
-                    <td className="px-6 py-4 text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate">
-                      {item.deskripsi || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => handleOpenPreview(item)}
-                          className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition-colors"
-                          title="Pratinjau Media"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditModal(item)}
-                          className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors"
-                          title="Edit Media"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteItem(item)}
-                          className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors"
-                          title="Hapus Media"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                    <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <ActionDropdown
+                        onView={() => handleOpenPreview(item)}
+                        onEdit={() => handleOpenEditModal(item)}
+                        onDelete={() => handleDeleteItem(item)}
+                      />
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
-        </div>
+        </MasterDataTable>
 
         {/* Pagination Footer */}
         <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
@@ -728,7 +836,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* KPI DETAIL MODAL */}
       {kpiModalOpen && (
@@ -1111,6 +1219,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageContainer>
   )
 }

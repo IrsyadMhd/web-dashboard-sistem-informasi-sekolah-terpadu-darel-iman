@@ -138,7 +138,6 @@ const CONTAINERS = {
     title: 'Pembelajaran',
     description: 'Akses konten pembelajaran, aktivitas, dan diskusi dari satu ruang kerja.',
     hideHeaderCard: true,
-    tabsBelowKpi: true,
     tabs: [
       {
         key: 'materi',

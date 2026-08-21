@@ -389,6 +389,7 @@ export const router = createBrowserRouter([
             { path: 'pengajuan-izin/:id/edit', element: <Navigate to="/portal-siswa" replace /> },
           ] },
           { path: 'laporan', element: <BungkusLazy><AttendanceReportPage /></BungkusLazy> },
+          { path: 'rekap-data', element: <BungkusLazy><AttendanceReportPage /></BungkusLazy> },
           // Fail closed for unknown attendance URLs. Rendering the generic
           // workspace here made a direct typo/forged child path appear valid.
           {

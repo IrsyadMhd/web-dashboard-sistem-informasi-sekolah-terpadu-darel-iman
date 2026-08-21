@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   FileText,
   BookOpen,
@@ -22,7 +22,20 @@ import {
   PieChart,
 } from 'lucide-react'
 import { lmsKisiKisiService } from '../services/lmsKisiKisiService'
+import { subjectService } from '../services/subjectService'
+import { useAuthStore } from '../stores/authStore'
+import { useUnitStore } from '../stores/unitStore'
 import ActionDropdown from '../components/app/ActionDropdown'
+import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import {
+  MasterDataTable,
+  SquircleActionButton,
+  PrintOptionModal,
+} from '../components/master-data'
+import CsvImportModal from '../components/master-data/CsvImportModal'
+import { RotateCcw, Printer } from 'lucide-react'
 
 const normalizeArray = (value) => {
   if (Array.isArray(value)) return value
@@ -39,6 +52,25 @@ const getSubjectLabel = (subject) =>
   'Mata Pelajaran'
 
 export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
+  const user = useAuthStore((state) => state.user)
+  const activeUnit = useUnitStore((state) => state.activeUnit)
+
+  const userUnitId = useMemo(() => {
+    const candidateIds = [
+      user?.unit_id,
+      user?.unit_pendidikan_id,
+      user?.education_unit_id,
+      user?.unit?.id,
+      user?.education_unit?.id,
+      user?.unit_pendidikan?.id,
+      user?.employee?.unit_id,
+      user?.employee?.unit_pendidikan_id,
+      user?.employee?.education_unit_id,
+      user?.school_info?.id,
+    ].filter(Boolean)
+    return candidateIds.length > 0 ? String(candidateIds[0]) : null
+  }, [user])
+
   const [dataList, setDataList] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, total: 0 })
@@ -64,11 +96,44 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
     status: '',
   })
 
+  // Print & Import State
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+
+  const handleExportCSV = () => {
+    if (!dataList.length) return
+    const headers = ['ID', 'Judul Kisi-kisi', 'Mapel', 'Jenis Ujian', 'Jumlah Soal', 'Status']
+    const rows = dataList.map((item) => [
+      item.id,
+      `"${(item.judul_kisi || '').replace(/"/g, '""')}"`,
+      `"${(item.mata_pelajaran?.name || '').replace(/"/g, '""')}"`,
+      item.jenis_ujian || '-',
+      item.jumlah_soal || 0,
+      item.status ? 'Aktif' : 'Nonaktif',
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `kisi_kisi_ujian_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleImport = (file) => {
+    alert(`File ${file.name} berhasil diproses.`)
+  }
+
   const [showModal, setShowModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [viewingItem, setViewingItem] = useState(null)
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+
+  // Hover & Row Detail Modal State
+  const [rowDetailItem, setRowDetailItem] = useState(null)
+  const [showRowDetailModal, setShowRowDetailModal] = useState(false)
 
   const [formData, setFormData] = useState({
     judul_kisi: '',
@@ -92,11 +157,11 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
   useEffect(() => {
     fetchStats()
     fetchOptions()
-  }, [])
+  }, [userUnitId, activeUnit])
 
   useEffect(() => {
     fetchData(1)
-  }, [filters])
+  }, [filters, userUnitId, activeUnit])
 
   const showNotification = (message, type = 'success') => {
     setToast({ show: true, message, type })
@@ -111,13 +176,23 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
         per_page: 10,
         ...filters,
       }
+      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      if (activeUnit) params.jenjang = activeUnit
+
       const response = await lmsKisiKisiService.getDaftar(params)
       if (response && response.data) {
-        setDataList(response.data)
+        let rawData = Array.isArray(response.data) ? response.data : (response.data?.data || [])
+        let filteredData = rawData.filter((item) => {
+          if (!item) return false
+          const itemUnitId = item.unit_pendidikan_id || item.unit_id || item.mata_pelajaran?.unit_pendidikan_id
+          if (userUnitId && itemUnitId) return String(itemUnitId) === String(userUnitId)
+          return true
+        })
+        setDataList(filteredData)
         setPagination({
           currentPage: response.meta?.current_page || 1,
           lastPage: response.meta?.last_page || 1,
-          total: response.meta?.total || response.data.length,
+          total: response.meta?.total || filteredData.length,
         })
       }
     } catch (error) {
@@ -130,7 +205,10 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
 
   const fetchStats = async () => {
     try {
-      const response = await lmsKisiKisiService.getStats()
+      const params = {}
+      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      if (activeUnit) params.jenjang = activeUnit
+      const response = await lmsKisiKisiService.getStats(params)
       if (response && response.data) {
         setStats(response.data)
       }
@@ -143,21 +221,43 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
     setLoadingOptions(true)
     try {
       const params = {}
+      if (userUnitId) params.unit_pendidikan_id = userUnitId
+      if (activeUnit) params.jenjang = activeUnit
       if (mapelId) params.mata_pelajaran_id = mapelId
       if (cpId) params.cp_id = cpId
 
-      const response = await lmsKisiKisiService.getOptions(params)
+      const [resOptions, resSubjects] = await Promise.allSettled([
+        lmsKisiKisiService.getOptions(params),
+        subjectService.getDaftar({ ...params, status: 1, per_page: 100 }),
+      ])
+
+      const response = resOptions.status === 'fulfilled' ? resOptions.value : {}
       const resData =
         response?.data?.data ??
         response?.data ??
         response ??
         {}
 
-      const subjects = normalizeArray(
+      let dbSubjectsRaw = resSubjects.status === 'fulfilled' ? resSubjects.value?.data || resSubjects.value || [] : []
+      if (Array.isArray(dbSubjectsRaw?.data)) dbSubjectsRaw = dbSubjectsRaw.data
+
+      let dbSubjects = Array.isArray(dbSubjectsRaw) ? dbSubjectsRaw.filter((s) => {
+        if (!s) return false
+        const sUnitId = s.unit_pendidikan_id || s.unit_id || s.education_unit_id
+        if (userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+        if (activeUnit && s.jenjang) return s.jenjang === activeUnit || s.jenjang === 'All'
+        return true
+      }) : []
+
+      const subjects = dbSubjects.length > 0 ? dbSubjects : normalizeArray(
         resData.subjects ??
         resData.mata_pelajaran ??
         resData.mata_pelajarans
-      )
+      ).filter((s) => {
+        const sUnitId = s.unit_pendidikan_id || s.unit_id
+        if (userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
+        return true
+      })
 
       const cpOptions = normalizeArray(
         resData.capaian_pembelajaran ??
@@ -391,8 +491,34 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
     }
   }
 
-  return (
-    <div className="space-y-6 pb-12 font-sans">
+  const pageActions = (
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton
+        variant="import"
+        label="Import"
+        onClick={() => setImportOpen(true)}
+      />
+      <SquircleActionButton
+        variant="export"
+        label="Export"
+        onClick={handleExportCSV}
+      />
+      <SquircleActionButton
+        variant="view"
+        label="Cetak"
+        icon={Printer}
+        onClick={() => setIsPrintModalOpen(true)}
+      />
+      <SquircleActionButton
+        variant="primary"
+        label="Buat Kisi-kisi Baru"
+        onClick={() => handleOpenModal()}
+      />
+    </div>
+  )
+
+  const pageContent = (
+    <div className="master-data-page space-y-6 pb-12 font-sans">
       {/* Toast Notification */}
       {toast.show && (
         <div
@@ -509,52 +635,27 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
       {/* Tab Navigation (Pindahkan di atas card datatable) */}
       {tabNav && <div className="my-2">{tabNav}</div>}
 
-      {/* Main Datatable Card with Integrated Header & Filter Toolbar */}
-      <div className="bg-white dark:bg-slate-800 rounded-[18px] border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden space-y-0">
-        {/* Toolbar Baris 1: Title + Action Button */}
-        <div className="p-4 sm:px-6 border-b border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50 dark:bg-slate-900/40">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-[#0E5C44] dark:text-emerald-400 flex items-center justify-center font-bold">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-white">Daftar Kisi-kisi Ujian (Exam Blueprint)</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Cetak biru penyelarasan CP/TP dan bobot soal</p>
-            </div>
-            <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/80 dark:text-emerald-300">
-              {stats.total}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleOpenModal()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0E5C44] text-white text-xs font-semibold hover:bg-[#1E8E5A] transition-colors dark:bg-emerald-600"
-            >
-              <Plus className="w-4 h-4" />
-              Buat Kisi-kisi Baru
-            </button>
-          </div>
+      {/* SEARCH & FILTER BAR (2-ROW LAYOUT) */}
+      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+        {/* Baris 1: Full-width Search Input */}
+        <div className="relative w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Cari judul kisi-kisi, KD, level kognitif..."
+            value={filters.search}
+            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          />
         </div>
 
-        {/* Toolbar Baris 2: Search + Integrated Filters */}
-        <div className="p-4 sm:px-6 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Cari judul kisi / KD / level..."
-              value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-              className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0E5C44] transition-all"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+        {/* Baris 2: Dropdown Filters & Reset Button */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
             <select
               value={filters.mata_pelajaran_id}
               onChange={(e) => setFilters({ ...filters, mata_pelajaran_id: e.target.value })}
-              className="h-9 px-3 py-1.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
             >
               <option value="">Semua Mata Pelajaran</option>
               {options.subjects.map((sub) => (
@@ -567,7 +668,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
             <select
               value={filters.jenis_ujian}
               onChange={(e) => setFilters({ ...filters, jenis_ujian: e.target.value })}
-              className="h-9 px-3 py-1.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
             >
               <option value="">Semua Jenis Ujian</option>
               {options.jenis_ujian_options.map((j) => (
@@ -577,20 +678,40 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
               ))}
             </select>
 
-            <button
-              onClick={() => {
-                setFilters({ search: '', mata_pelajaran_id: '', jenis_ujian: '', status: '' })
-                fetchData(1)
-              }}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-100 transition"
-              title="Reset Filter"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
+            {(filters.search || filters.mata_pelajaran_id || filters.jenis_ujian) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilters({ search: '', mata_pelajaran_id: '', jenis_ujian: '', status: '' })
+                  fetchData(1)
+                }}
+                className="inline-flex h-12 items-center gap-1.5 rounded-[14px] border border-slate-200 bg-slate-50 px-3.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        <div className="overflow-x-auto">
+      {/* MAIN DATATABLE SECTION */}
+      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+          <div>
+            <h3 className="text-base font-bold text-slate-800 dark:text-white">
+              Daftar Kisi-kisi Ujian (Exam Blueprint)
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Cetak biru penyelarasan CP/TP dan bobot soal
+            </p>
+          </div>
+          {pageActions}
+        </div>
+
+        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+
+        <div className="overflow-x-auto min-h-[340px] pb-12">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 dark:bg-slate-900 text-gray-600 dark:text-gray-300 font-semibold border-b border-gray-100 dark:border-slate-700 text-xs">
               <tr>
@@ -620,8 +741,48 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
                 </tr>
               ) : (
                 dataList.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/60 dark:hover:bg-slate-700/50 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr
+                    key={item.id}
+                    className="group relative hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                    onClick={(e) => {
+                      if (e.target.closest('button, a, [data-no-rowclick]')) return
+                      setRowDetailItem(item)
+                      setShowRowDetailModal(true)
+                    }}
+                  >
+                    <td className="px-6 py-4 relative">
+                      {/* Hover Card */}
+                      <div className="pointer-events-none absolute left-4 top-full mt-1.5 z-50 w-64 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out">
+                        <div className="bg-white dark:bg-[#1B2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-3 space-y-1.5">
+                          <div className="flex items-center gap-1.5 pb-1.5 border-b border-slate-100 dark:border-slate-700">
+                            <HelpCircle className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                            <p className="text-xs font-bold text-slate-800 dark:text-white line-clamp-2">{item.judul_kisi}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Mapel</p>
+                              <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 line-clamp-1">{item.mata_pelajaran?.name || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Jenis Ujian</p>
+                              <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">{item.jenis_ujian || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Jml Soal</p>
+                              <p className="text-[11px] font-bold text-violet-600">{item.jumlah_soal} Soal</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Status</p>
+                              <p className={`text-[11px] font-bold ${item.status ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                {item.status ? 'Aktif' : 'Nonaktif'}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700">Klik baris untuk detail lengkap</p>
+                        </div>
+                        <div className="absolute -top-1.5 left-6 border-4 border-transparent border-b-white dark:border-b-[#1B2433] drop-shadow" />
+                      </div>
+
                       <div className="font-semibold text-slate-800 dark:text-white">{item.judul_kisi}</div>
                       <div className="text-xs text-[#0E5C44] dark:text-emerald-400 font-medium mt-0.5">
                         {item.mata_pelajaran?.name || 'Mata Pelajaran N/A'}
@@ -717,7 +878,117 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
             </button>
           </div>
         </div>
-      </div>
+        </MasterDataTable>
+      </section>
+
+      {/* ROW DETAIL MODAL POPUP — Kisi-kisi */}
+      {showRowDetailModal && rowDetailItem && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowRowDetailModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-[#1B2433] rounded-[18px] w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-950/60 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 mt-0.5">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">{rowDetailItem.judul_kisi}</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {rowDetailItem.mata_pelajaran?.name || '-'} · {rowDetailItem.jenis_ujian || '-'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRowDetailModal(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2">
+                <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full border ${getJenisBadgeColor(rowDetailItem.jenis_ujian)}`}>
+                  {rowDetailItem.jenis_ujian}
+                </span>
+                {rowDetailItem.status ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Aktif
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Nonaktif
+                  </span>
+                )}
+              </div>
+
+              {/* Info Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-purple-50 dark:bg-purple-950/30 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Jumlah Soal</p>
+                  <p className="text-sm font-bold text-purple-700 dark:text-purple-400 mt-0.5">{rowDetailItem.jumlah_soal} Soal</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Waktu</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white mt-0.5">{rowDetailItem.alokasi_waktu_menit} Menit</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 col-span-2">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Level Kognitif</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white mt-0.5">{rowDetailItem.level_kognitif || '-'}</p>
+                </div>
+              </div>
+
+              {/* KD */}
+              {rowDetailItem.kompetensi_dasar && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wider mb-1">Kompetensi Dasar</p>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4">{rowDetailItem.kompetensi_dasar}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+              <button
+                onClick={() => setShowRowDetailModal(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                Tutup
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowRowDetailModal(false)
+                    handleDelete(rowDetailItem.id)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Hapus
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRowDetailModal(false)
+                    handleOpenModal(rowDetailItem)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0E5C44] text-white text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Edit Data
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Form Create/Edit */}
       {showModal && (
@@ -1008,6 +1279,54 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
           </div>
         </div>
       )}
+
+      {/* Print Option Modal */}
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Opsi Cetak Data Kisi-kisi Ujian"
+        subtitle="Pilih metode pencetakan atau unduh cetak biru kisi-kisi"
+        onPrintClean={() => {
+          printCleanTable({
+            title: 'Laporan Kisi-kisi Ujian (Exam Blueprint)',
+            data: dataList,
+            columns: [
+              { header: 'Judul Kisi-kisi', accessor: (row) => row.judul_kisi || '-' },
+              { header: 'Mata Pelajaran', accessor: (row) => getSubjectLabel(row.mata_pelajaran) },
+              { header: 'Jenis Ujian', accessor: (row) => row.jenis_ujian || '-' },
+              { header: 'Jumlah Soal', accessor: (row) => row.jumlah_soal || 0 },
+              { header: 'Status', accessor: (row) => (row.status ? 'Aktif' : 'Nonaktif') },
+            ],
+          })
+          setIsPrintModalOpen(false)
+        }}
+        onDownloadPdf={() => {
+          downloadPdfTable({
+            title: 'Laporan Kisi-kisi Ujian (Exam Blueprint)',
+            data: dataList,
+            columns: [
+              { header: 'Judul Kisi-kisi', accessor: (row) => row.judul_kisi || '-' },
+              { header: 'Mata Pelajaran', accessor: (row) => getSubjectLabel(row.mata_pelajaran) },
+              { header: 'Jenis Ujian', accessor: (row) => row.jenis_ujian || '-' },
+              { header: 'Jumlah Soal', accessor: (row) => row.jumlah_soal || 0 },
+              { header: 'Status', accessor: (row) => (row.status ? 'Aktif' : 'Nonaktif') },
+            ],
+            filename: `laporan_kisi_kisi_ujian_${new Date().toISOString().slice(0, 10)}.pdf`,
+          })
+          setIsPrintModalOpen(false)
+        }}
+      />
+
+      {/* CSV Import Modal */}
+      <CsvImportModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import Data Kisi-kisi Ujian"
+        onImport={handleImport}
+        templateFields={['judul_kisi', 'mata_pelajaran_id', 'jenis_ujian', 'jumlah_soal', 'alokasi_waktu_menit', 'status']}
+      />
     </div>
   )
+
+  return <PageContainer maxW="7xl">{pageContent}</PageContainer>
 }

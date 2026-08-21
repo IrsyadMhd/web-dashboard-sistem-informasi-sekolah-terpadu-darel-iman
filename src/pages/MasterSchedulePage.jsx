@@ -22,10 +22,14 @@ import {
   Trash2,
   Sparkles,
   Calendar,
+  Printer,
+  X,
 } from 'lucide-react'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { scheduleService } from '../services/scheduleService'
 import { educationUnitService } from '../services/educationUnitService'
+import { tahunAjaranService } from '../services/tahunAjaranService'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   ActionDropdown,
   AppBadge,
@@ -43,6 +47,8 @@ import {
   MasterStatCard,
   MasterFilterSelect,
   MasterFormModal,
+  SquircleActionButton,
+  PrintOptionModal,
 } from '../components/master-data'
 
 const DAYS_MAP = [
@@ -104,6 +110,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   // Modals & Drawers
   const [modal, setModal] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [printTeacherFilter, setPrintTeacherFilter] = useState('')
   const [detailDrawerItem, setDetailDrawerItem] = useState(null)
   const [editing, setEditing] = useState(null)
 
@@ -125,6 +133,24 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     queryFn: () => educationUnitService.getAll(),
   })
   const unitsList = unitsResponse.data || []
+
+  // Fetch Fallback Academic Years if needed
+  const { data: tahunAjaranFallback = [] } = useQuery({
+    queryKey: ['academic-years-dropdown-fallback'],
+    queryFn: tahunAjaranService.getDropdown,
+  })
+
+  // Derived Tahun Ajaran Options
+  const tahunAjaranList = useMemo(() => {
+    const fromOpts =
+      options.tahun_ajaran ||
+      options.tahunAjaran ||
+      options.academic_years ||
+      options.academic_year
+    if (Array.isArray(fromOpts) && fromOpts.length > 0) return fromOpts
+    if (Array.isArray(tahunAjaranFallback) && tahunAjaranFallback.length > 0) return tahunAjaranFallback
+    return []
+  }, [options, tahunAjaranFallback])
 
   // Derived unit options combining options.kelas, options.guru & unitsList
   const unitOptions = useMemo(() => {
@@ -174,37 +200,70 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const meta = response.meta || {}
   const stats = response.statistik || {}
 
+  // Guru Picker Modal State
+  const [guruPickerOpen, setGuruPickerOpen] = useState(false)
+  const [guruSearchText, setGuruSearchText] = useState('')
+
   // Filtered Dependent Options for Form
   const filteredSemesters = useMemo(() => {
-    if (!form.academic_year_id) return options.semester || []
-    return (options.semester || []).filter(
+    const list = options.semester || []
+    if (!form.academic_year_id) return list
+    const filtered = list.filter(
       (s) => s.academic_year_id === form.academic_year_id
     )
+    return filtered.length > 0 ? filtered : list
   }, [options.semester, form.academic_year_id])
 
   const filteredKelas = useMemo(() => {
-    return (options.kelas || []).filter((k) => {
+    const list = options.kelas || []
+    if (list.length === 0) return []
+    const filtered = list.filter((k) => {
       const matchUnit = !form.unit_pendidikan_id || k.unit_pendidikan_id === form.unit_pendidikan_id
       const matchYear = !form.academic_year_id || k.tahun_ajaran_id === form.academic_year_id
       const matchSemester = !form.semester_id || k.semester_id === form.semester_id
       return matchUnit && matchYear && matchSemester
     })
+    if (filtered.length > 0) return filtered
+
+    // Fallback: match unit & year if semester is empty
+    const matchUnitYear = list.filter((k) => {
+      const matchUnit = !form.unit_pendidikan_id || k.unit_pendidikan_id === form.unit_pendidikan_id
+      const matchYear = !form.academic_year_id || k.tahun_ajaran_id === form.academic_year_id
+      return matchUnit && matchYear
+    })
+    if (matchUnitYear.length > 0) return matchUnitYear
+
+    // Fallback: match unit only
+    const matchUnitOnly = list.filter((k) => !form.unit_pendidikan_id || k.unit_pendidikan_id === form.unit_pendidikan_id)
+    if (matchUnitOnly.length > 0) return matchUnitOnly
+
+    return list
   }, [options.kelas, form.unit_pendidikan_id, form.academic_year_id, form.semester_id])
 
   const filteredGuru = useMemo(() => {
-    return (options.guru || []).filter((g) => {
-      return !form.unit_pendidikan_id || g.unit_id === form.unit_pendidikan_id
-    })
+    const list = options.guru || []
+    if (!form.unit_pendidikan_id) return list
+    const filtered = list.filter((g) => g.unit_id === form.unit_pendidikan_id)
+    return filtered.length > 0 ? filtered : list
   }, [options.guru, form.unit_pendidikan_id])
 
+  const filteredGuruInPicker = useMemo(() => {
+    const list = filteredGuru
+    if (!guruSearchText.trim()) return list
+    const q = guruSearchText.toLowerCase()
+    return list.filter(
+      (g) =>
+        g.nama_lengkap?.toLowerCase().includes(q) ||
+        g.niy?.toLowerCase().includes(q) ||
+        g.nik?.toLowerCase().includes(q)
+    )
+  }, [filteredGuru, guruSearchText])
+
   const filteredSubjects = useMemo(() => {
-    return (options.mata_pelajaran || []).filter((m) => {
-      return (
-        !form.unit_pendidikan_id ||
-        !m.unit_pendidikan_id ||
-        m.unit_pendidikan_id === form.unit_pendidikan_id
-      )
-    })
+    const list = options.mata_pelajaran || []
+    if (!form.unit_pendidikan_id) return list
+    const filtered = list.filter((m) => !m.unit_pendidikan_id || m.unit_pendidikan_id === form.unit_pendidikan_id)
+    return filtered.length > 0 ? filtered : list
   }, [options.mata_pelajaran, form.unit_pendidikan_id])
 
   // Save Mutation
@@ -249,8 +308,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
   // Open Form Handlers
   const openAdd = () => {
-    const activeYear = (options.tahun_ajaran || []).find((item) => item.is_active)
-    const yearId = activeYear?.id || options.tahun_ajaran?.[0]?.id || ''
+    const activeYear = (tahunAjaranList || []).find((item) => item.is_active)
+    const yearId = activeYear?.id || tahunAjaranList?.[0]?.id || ''
     const activeSemester = (options.semester || []).find(
       (item) => item.is_active && item.academic_year_id === yearId
     )
@@ -471,16 +530,53 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     })
   }
 
+  // CSV Export handler
+  const handleExportCSV = async () => {
+    try {
+      if (!items || items.length === 0) {
+        Swal.fire('Info', 'Tidak ada data jadwal untuk diekspor.', 'info')
+        return
+      }
+      const headers = ['NO', 'GURU', 'MATA PELAJARAN', 'KELAS', 'HARI', 'JAM MULAI', 'JAM SELESAI', 'STATUS']
+      let csvStr = headers.join(',') + '\n'
+      items.forEach((row, i) => {
+        const line = [
+          i + 1,
+          `"${row.employee?.nama_lengkap || row.guru_name || ''}"`,
+          `"${row.subject?.nama_mapel || row.mapel_name || ''}"`,
+          `"${row.kelas?.nama_kelas || row.kelas_name || ''}"`,
+          `"${row.day_name || row.day_of_week || ''}"`,
+          `"${row.time_start || ''}"`,
+          `"${row.time_end || ''}"`,
+          `"${row.is_active ? 'Aktif' : 'Nonaktif'}"`,
+        ].join(',')
+        csvStr += line + '\n'
+      })
+      const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', `export_jadwal_${new Date().toISOString().slice(0, 10)}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch {
+      Swal.fire('Error', 'Gagal mengunduh data ekspor.', 'error')
+    }
+  }
+
   // Weekly Grid Schedule Data Grouping
   const weeklyGridData = useMemo(() => {
     return items.filter((item) => (item.day_of_week ?? 1) === Number(selectedWeeklyDay))
   }, [items, selectedWeeklyDay])
 
   const pageActions = (
-    <>
-      <MasterActionButton variant="import" icon={Upload} onClick={() => setImportOpen(true)}>Import CSV</MasterActionButton>
-      <MasterActionButton onClick={openAdd}>Tambah Jadwal Pelajaran</MasterActionButton>
-    </>
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Tambah Jadwal" onClick={openAdd} />
+    </div>
   )
 
   const shouldHideHeader = embedded || hidePageHeader
@@ -490,6 +586,79 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       className="schedule-master-page space-y-6"
       hideBreadcrumb={embedded || hideBreadcrumb}
     >
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Jadwal Pelajaran"
+        teachersList={options.guru || []}
+        selectedTeacherId={printTeacherFilter}
+        onTeacherChange={(id) => setPrintTeacherFilter(id)}
+        onPrint={() => {
+          const allRows = Array.isArray(items) ? items : []
+          const printTeacher = (options.guru || []).find((g) => g.id === printTeacherFilter)
+          const rowsToPrint = printTeacherFilter
+            ? allRows.filter(
+                (r) =>
+                  r.employee_id === printTeacherFilter ||
+                  r.employee?.id === printTeacherFilter ||
+                  r.teacher_id === printTeacherFilter
+              )
+            : allRows
+
+          printCleanTable({
+            title: printTeacher
+              ? `Laporan Jadwal Pelajaran - ${printTeacher.nama_lengkap}`
+              : 'Laporan Data Jadwal Pelajaran',
+            subtitle: printTeacher
+              ? `Jadwal Mengajar Guru: ${printTeacher.nama_lengkap}${printTeacher.niy ? ` (NIY ${printTeacher.niy})` : ''}`
+              : 'Daftar Sesi Pelajaran & Jam Mengajar Sekolah Islam Terpadu',
+            headers: ['NO', 'HARI & JAM', 'MATA PELAJARAN', 'KELAS & UNIT', 'GURU PENGAMPUL', 'PERIODE AKADEMIK', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              `${row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || 'Senin'} (${formatTime(row.time_start)} - ${formatTime(row.time_end)})`,
+              `${subjectName(row.subject) || row.subject_name || '-'}${row.subject?.kode_mapel || row.subject?.code ? ` [${row.subject.kode_mapel || row.subject.code}]` : ''}`,
+              `${row.kelas?.nama_kelas || row.school_class?.name || row.kelas_name || '-'}${row.kelas?.unit_pendidikan?.name || row.unit_name ? ` (${row.kelas?.unit_pendidikan?.name || row.unit_name})` : ''}`,
+              `${row.employee?.nama_lengkap || row.teacher?.name || row.guru_name || '-'}${row.employee?.niy ? ` (NIY ${row.employee.niy})` : ''}`,
+              `${row.academic_year?.name || row.tahun_ajaran_name || '-'}${row.semester?.name ? ` - ${row.semester.name}` : ''}`,
+              row.is_active ? 'Aktif' : 'Nonaktif',
+            ]),
+          })
+        }}
+        onDownload={() => {
+          const allRows = Array.isArray(items) ? items : []
+          const printTeacher = (options.guru || []).find((g) => g.id === printTeacherFilter)
+          const rowsToPrint = printTeacherFilter
+            ? allRows.filter(
+                (r) =>
+                  r.employee_id === printTeacherFilter ||
+                  r.employee?.id === printTeacherFilter ||
+                  r.teacher_id === printTeacherFilter
+              )
+            : allRows
+
+          downloadPdfTable({
+            title: printTeacher
+              ? `Laporan Jadwal Pelajaran - ${printTeacher.nama_lengkap}`
+              : 'Laporan Data Jadwal Pelajaran',
+            subtitle: printTeacher
+              ? `Jadwal Mengajar Guru: ${printTeacher.nama_lengkap}${printTeacher.niy ? ` (NIY ${printTeacher.niy})` : ''}`
+              : 'Daftar Sesi Pelajaran & Jam Mengajar Sekolah Islam Terpadu',
+            headers: ['NO', 'HARI & JAM', 'MATA PELAJARAN', 'KELAS & UNIT', 'GURU PENGAMPUL', 'PERIODE AKADEMIK', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              `${row.nama_hari || DAYS_MAP.find((d) => d.id === row.day_of_week)?.name || 'Senin'} (${formatTime(row.time_start)} - ${formatTime(row.time_end)})`,
+              `${subjectName(row.subject) || row.subject_name || '-'}${row.subject?.kode_mapel || row.subject?.code ? ` [${row.subject.kode_mapel || row.subject.code}]` : ''}`,
+              `${row.kelas?.nama_kelas || row.school_class?.name || row.kelas_name || '-'}${row.kelas?.unit_pendidikan?.name || row.unit_name ? ` (${row.kelas?.unit_pendidikan?.name || row.unit_name})` : ''}`,
+              `${row.employee?.nama_lengkap || row.teacher?.name || row.guru_name || '-'}${row.employee?.niy ? ` (NIY ${row.employee.niy})` : ''}`,
+              `${row.academic_year?.name || row.tahun_ajaran_name || '-'}${row.semester?.name ? ` - ${row.semester.name}` : ''}`,
+              row.is_active ? 'Aktif' : 'Nonaktif',
+            ]),
+            filename: printTeacher
+              ? `jadwal_mengajar_${printTeacher.nama_lengkap.toLowerCase().replace(/[^a-z0-9]/g, '_')}.pdf`
+              : 'laporan_jadwal_pelajaran.pdf',
+          })
+        }}
+      />
       {/* Header Banner */}
       {!shouldHideHeader && (
         <MasterPageHeader
@@ -754,7 +923,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
                     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-slate-800">
                       <span className="text-[11px] font-semibold text-slate-400">
-                        {item.academic_year?.name || '2025/2026'}
+                        {item.academic_year?.name || item.tahun_ajaran_name || '-'}
                       </span>
                       <span className="text-[11px] font-bold text-[#0E5C44] group-hover:underline dark:text-[#3FBF75]">
                         Detail →
@@ -790,7 +959,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   {items.map((item) => (
                     <tr
                       key={item.id}
-                      className="transition hover:bg-emerald-50/40 dark:hover:bg-slate-800/60"
+                      className="group border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-all duration-200 cursor-pointer"
                     >
                       <td className="p-4 font-bold text-slate-900 dark:text-white">
                         <div>{item.nama_hari || DAYS_MAP.find((d) => d.id === item.day_of_week)?.name}</div>
@@ -1127,9 +1296,9 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   }`}
                 >
                   <option value="">Pilih Tahun Ajaran</option>
-                  {(options.tahun_ajaran || []).map((item) => (
+                  {(tahunAjaranList || []).map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.name} {item.is_active ? '(Aktif)' : ''}
+                      {item.name || item.tahun_ajaran || item.nama} {item.is_active ? '(Aktif)' : ''}
                     </option>
                   ))}
                 </select>
@@ -1216,9 +1385,19 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
               {/* Guru Pengampu */}
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Guru Pengampu *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                    Guru Pengampu *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setGuruPickerOpen(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0E5C44] hover:text-emerald-700 dark:text-[#3FBF75] hover:underline"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Cari & Pilih Guru
+                  </button>
+                </div>
                 <select
                   required
                   value={form.employee_id}
@@ -1386,6 +1565,96 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
           </div>
         </form>
       </MasterFormModal>
+
+      {/* Modal Interactive Picker Guru Pengampu */}
+      {guruPickerOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl dark:border dark:border-slate-800 dark:bg-[#111827]">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Pilih Guru Pengampu</h3>
+                  <p className="text-xs text-slate-500">Cari & pilih guru pengajar jadwal ini</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGuruPickerOpen(false)}
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body Search */}
+            <div className="p-6 space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={guruSearchText}
+                  onChange={(e) => setGuruSearchText(e.target.value)}
+                  placeholder="Cari nama guru atau NIY..."
+                  className="h-11 w-full rounded-xl border border-slate-200 pl-10 pr-4 text-xs font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* Guru List Scroll */}
+              <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                {filteredGuruInPicker.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-500">
+                    Tidak ada data guru ditemukan untuk kata kunci "{guruSearchText}"
+                  </div>
+                ) : (
+                  filteredGuruInPicker.map((guru) => {
+                    const isSelected = form.employee_id === guru.id
+                    return (
+                      <div
+                        key={guru.id}
+                        onClick={() => {
+                          handleFormChange('employee_id', guru.id)
+                          setGuruPickerOpen(false)
+                        }}
+                        className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
+                            : 'border-slate-100 hover:border-emerald-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-2xl bg-emerald-100 font-bold text-emerald-800 flex items-center justify-center text-sm shadow-sm">
+                            {guru.nama_lengkap?.charAt(0) || 'G'}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white">{guru.nama_lengkap}</p>
+                            <p className="text-[11px] text-slate-500">
+                              {guru.niy ? `NIY: ${guru.niy}` : 'Guru Active'}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                            isSelected
+                              ? 'bg-[#0E5C44] text-white'
+                              : 'bg-slate-100 text-slate-700 hover:bg-[#0E5C44] hover:text-white dark:bg-slate-800 dark:text-slate-200'
+                          }`}
+                        >
+                          {isSelected ? 'Terpilih' : 'Pilih Guru'}
+                        </button>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </MasterDataPage>
   )
 }

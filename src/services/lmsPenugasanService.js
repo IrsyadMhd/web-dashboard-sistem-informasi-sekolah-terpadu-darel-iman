@@ -6,6 +6,11 @@ export const lmsPenugasanService = {
     return response.data
   },
 
+  getPenugasan: async (params = {}) => {
+    const response = await api.get('/lms/penugasan', { params })
+    return response.data
+  },
+
   getById: async (id) => {
     const response = await api.get(`/lms/penugasan/${id}`)
     return response.data

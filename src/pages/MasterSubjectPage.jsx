@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Swal from 'sweetalert2'
 import {
@@ -19,13 +19,17 @@ import {
   Target,
   ChartNoAxesColumn,
   CircleX,
+  Printer,
 } from 'lucide-react'
+import { printCleanTable } from '../utils/printHelper'
 import { subjectService } from '../services/subjectService'
 import { masterKurikulumService } from '../services/masterKurikulumService'
 import { educationUnitService } from '../services/educationUnitService'
 import { ActionDropdown, AppBadge, AppButton, AppModal } from '../components/app'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useAuthStore } from '../stores/authStore'
+import { isGlobalAccessManager } from '../auth/portalResolver'
 import {
   MasterActionButton,
   MasterDataSection,
@@ -34,12 +38,14 @@ import {
   MasterPageHeader,
   MasterStatCard,
   MasterStatsGrid,
+  SquircleActionButton,
+  PrintOptionModal,
 } from '../components/master-data'
 
 const KELOMPOK_LIST = ['Kelompok A', 'Kelompok B', 'Kekhasan SIT', 'Muatan Lokal', 'Al-Qur\'an/Tahfizh']
 const KATEGORI_LIST = ['Wajib', 'Pilihan', 'Tahfizh/Diniyah', 'Ekstrakurikuler', 'Vokasi']
 
-export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = false }) {
+export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
   const queryClient = useQueryClient()
 
   // Filter States
@@ -63,6 +69,7 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selectedForDetail, setSelectedForDetail] = useState(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [importFile, setImportFile] = useState(null)
   const [isStatisticsModalOpen, setIsStatisticsModalOpen] = useState(false)
 
@@ -89,7 +96,107 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
     deskripsi: '',
   })
 
+  // User Auth & Role Scoping
+  const user = useAuthStore((state) => state.user)
+  const userRoles = useMemo(() => {
+    if (!user) return []
+    const rawRoles = user.roles || (user.role ? [user.role] : []) || user.role_names || []
+    const list = Array.isArray(rawRoles) ? rawRoles : [rawRoles]
+    return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
+  }, [user])
+
+  const canViewAllUnits = useMemo(() => {
+    if (!user || userRoles.length === 0) return false
+    return isGlobalAccessManager(userRoles)
+  }, [user, userRoles])
+
   // Queries
+  const { data: unitDropdown = [] } = useQuery({
+    queryKey: ['education-units-dropdown-options'],
+    queryFn: async () => {
+      const res = await educationUnitService.getDaftar()
+      return res.data || []
+    },
+  })
+
+  const userUnitId = useMemo(() => {
+    const candidateIds = [
+      user?.unit_id,
+      user?.unit_pendidikan_id,
+      user?.education_unit_id,
+      user?.unit?.id,
+      user?.education_unit?.id,
+      user?.unit_pendidikan?.id,
+      user?.employee?.unit_id,
+      user?.employee?.unit_pendidikan_id,
+      user?.employee?.education_unit_id,
+      user?.employee?.unit?.id,
+      user?.employee?.education_unit?.id,
+      user?.school_info?.id,
+    ].filter(Boolean)
+
+    return candidateIds.length > 0 ? String(candidateIds[0]) : null
+  }, [user])
+
+  const userUnitName = useMemo(() => {
+    const candidateNames = [
+      typeof user?.education_unit === 'string' ? user.education_unit : null,
+      typeof user?.unit === 'string' ? user.unit : null,
+      user?.unit_name,
+      user?.education_unit_name,
+      user?.unit_pendidikan_name,
+      user?.unit?.name || user?.unit?.nama,
+      user?.education_unit?.name || user?.education_unit?.nama,
+      user?.employee?.unit?.name || user?.employee?.education_unit?.name,
+      user?.school_info?.nama || user?.school_info?.name,
+    ]
+      .filter(Boolean)
+      .map((s) => String(s).toLowerCase().trim())
+
+    return candidateNames.length > 0 ? candidateNames[0] : ''
+  }, [user])
+
+  const availableUnitOptions = useMemo(() => {
+    const allUnits = unitDropdown || []
+    if (canViewAllUnits) {
+      return allUnits
+    }
+
+    if (userUnitId) {
+      const filtered = allUnits.filter((u) => String(u.id) === String(userUnitId))
+      if (filtered.length > 0) return filtered
+    }
+
+    if (userUnitName) {
+      const matched = allUnits.filter((u) => {
+        const uName = String(u.name || u.nama || '').toLowerCase().trim()
+        const uCode = String(u.code || u.kode || '').toLowerCase().trim()
+        return (
+          uName === userUnitName ||
+          uCode === userUnitName ||
+          userUnitName.includes(uName) ||
+          uName.includes(userUnitName)
+        )
+      })
+      if (matched.length > 0) return matched
+    }
+
+    return allUnits.length > 0 ? [allUnits[0]] : []
+  }, [unitDropdown, canViewAllUnits, userUnitId, userUnitName])
+
+  const effectiveUserUnitId = useMemo(() => {
+    if (canViewAllUnits) return ''
+    if (userUnitId) return String(userUnitId)
+    if (availableUnitOptions.length > 0) return String(availableUnitOptions[0].id)
+    return ''
+  }, [canViewAllUnits, userUnitId, availableUnitOptions])
+
+  useEffect(() => {
+    if (!canViewAllUnits && effectiveUserUnitId && selectedUnitFilter !== effectiveUserUnitId) {
+      setSelectedUnitFilter(effectiveUserUnitId)
+    }
+  }, [canViewAllUnits, effectiveUserUnitId, selectedUnitFilter])
+
   const { data: responseData = {}, isLoading, isError, refetch } = useQuery({
     queryKey: [
       'master-subjects-list',
@@ -103,13 +210,16 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
       selectedJenjangFilter,
       selectedStatusFilter,
       denganSampahFilter,
+      canViewAllUnits,
+      effectiveUserUnitId,
     ],
-    queryFn: () =>
-      subjectService.getDaftar({
+    queryFn: () => {
+      const targetUnitId = !canViewAllUnits ? (effectiveUserUnitId || selectedUnitFilter) : selectedUnitFilter
+      return subjectService.getDaftar({
         page,
         per_page: perPage,
         search,
-        unit_pendidikan_id: selectedUnitFilter,
+        unit_pendidikan_id: targetUnitId || undefined,
         kurikulum_id: selectedKurikulumFilter,
         kelompok_mapel: selectedKelompokFilter,
         kategori: selectedKategoriFilter,
@@ -118,7 +228,8 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
         dengan_sampah: denganSampahFilter,
         order_by: 'created_at',
         order_dir: 'desc',
-      }),
+      })
+    },
   })
 
   const { data: kurikulumDropdown = [] } = useQuery({
@@ -126,14 +237,6 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
     queryFn: async () => {
       const res = await masterKurikulumService.getDropdown()
       return Array.isArray(res) ? res : (res?.data || [])
-    },
-  })
-
-  const { data: unitDropdown = [] } = useQuery({
-    queryKey: ['education-units-dropdown-options'],
-    queryFn: async () => {
-      const res = await educationUnitService.getDaftar()
-      return res.data || []
     },
   })
 
@@ -212,7 +315,7 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
 
   const resetFilters = () => {
     setSearch('')
-    setSelectedUnitFilter('')
+    setSelectedUnitFilter(canViewAllUnits ? '' : effectiveUserUnitId)
     setSelectedKurikulumFilter('')
     setSelectedKelompokFilter('')
     setSelectedKategoriFilter('')
@@ -374,19 +477,64 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
   }
 
   const pageActions = (
-    <>
-      <MasterActionButton variant="import" icon={Upload} onClick={() => setIsImportModalOpen(true)}>Impor</MasterActionButton>
-      <MasterActionButton variant="export" icon={FileSpreadsheet} onClick={handleExportExcel}>Excel</MasterActionButton>
-      <MasterActionButton variant="export" icon={FileText} onClick={handleExportPdf}>PDF</MasterActionButton>
-      <MasterActionButton variant="import" icon={ChartNoAxesColumn} onClick={() => setIsStatisticsModalOpen(true)}>Statistik</MasterActionButton>
-      <MasterActionButton onClick={handleOpenFormTambah}>Tambah Mata Pelajaran</MasterActionButton>
-    </>
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setIsImportModalOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportExcel} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Tambah Mata Pelajaran" onClick={handleOpenFormTambah} />
+    </div>
   )
 
   const shouldHideHeader = embedded || hidePageHeader
 
   return (
     <PageContainer maxW="7xl">
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Mata Pelajaran"
+        onPrint={() => {
+          const rowsToPrint = Array.isArray(items) ? items : []
+          printCleanTable({
+            title: 'Laporan Master Data Mata Pelajaran',
+            subtitle: 'Daftar Mata Pelajaran Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE MAPEL', 'NAMA MATA PELAJARAN', 'NAMA SINGKAT', 'KELOMPOK', 'KATEGORI', 'JENJANG', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_mapel || row.code || '-',
+              row.nama_mapel || row.name || row.nama || '-',
+              row.nama_singkat || row.short_name || '-',
+              row.kelompok_mapel || row.kelompok || '-',
+              row.kategori || row.category || '-',
+              row.jenjang || row.unit_pendidikan?.name || '-',
+              typeof row.status === 'string' ? row.status : row.status ? 'Aktif' : 'Nonaktif',
+            ]),
+          })
+        }}
+        onDownload={() => {
+          if (handleExportPdf) {
+            handleExportPdf()
+          } else {
+            const rowsToPrint = Array.isArray(items) ? items : []
+            downloadPdfTable({
+              title: 'Laporan Master Data Mata Pelajaran',
+              subtitle: 'Daftar Mata Pelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'KODE MAPEL', 'NAMA MATA PELAJARAN', 'NAMA SINGKAT', 'KELOMPOK', 'KATEGORI', 'JENJANG', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.kode_mapel || row.code || '-',
+                row.nama_mapel || row.name || row.nama || '-',
+                row.nama_singkat || row.short_name || '-',
+                row.kelompok_mapel || row.kelompok || '-',
+                row.kategori || row.category || '-',
+                row.jenjang || row.unit_pendidikan?.name || '-',
+                typeof row.status === 'string' ? row.status : row.status ? 'Aktif' : 'Nonaktif',
+              ]),
+              filename: 'laporan_master_mata_pelajaran.pdf',
+            })
+          }
+        }}
+      />
       {!(embedded || hideBreadcrumb) && (
         <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Mata Pelajaran' }]} />
       )}
@@ -417,6 +565,7 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
         description="Data mata pelajaran sesuai filter dan kewenangan pengguna."
         countLabel={`${Number(meta.total ?? stats.total ?? 0).toLocaleString('id-ID')} mapel`}
         actions={pageActions}
+        stackedFilters={true}
         search={{
           value: search,
           onValueChange: (value) => { setSearch(value); setPage(1) },
@@ -434,10 +583,11 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
                 if (!matchingKurikulum.some((item) => item.id === selectedKurikulumFilter)) setSelectedKurikulumFilter('')
                 setPage(1)
               }}
+              disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
               aria-label="Filter unit pendidikan"
             >
-              <option value="">Semua Unit</option>
-              {unitDropdown.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+              {canViewAllUnits && <option value="">Semua Unit</option>}
+              {availableUnitOptions.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
             </MasterFilterSelect>
             <MasterFilterSelect value={selectedKurikulumFilter} onChange={(event) => { setSelectedKurikulumFilter(event.target.value); setPage(1) }} aria-label="Filter kurikulum">
               <option value="">Semua Kurikulum</option>
@@ -467,7 +617,7 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
           </>
         )}
         onReset={resetFilters}
-        resetDisabled={!search && !selectedUnitFilter && !selectedKurikulumFilter && !selectedKelompokFilter && !selectedKategoriFilter && !selectedJenjangFilter && !selectedStatusFilter && !denganSampahFilter}
+        resetDisabled={!search && selectedUnitFilter === (canViewAllUnits ? '' : effectiveUserUnitId) && !selectedKurikulumFilter && !selectedKelompokFilter && !selectedKategoriFilter && !selectedJenjangFilter && !selectedStatusFilter && !denganSampahFilter}
         actions={selectedIds.length > 0 ? (
           <>
             <AppBadge variant="info">{selectedIds.length} dipilih</AppBadge>
@@ -495,7 +645,7 @@ export default function MasterSubjectPage({ embedded = false, hideBreadcrumb = f
               Hapus
             </AppButton>
           </>
-        ) : null}
+        ) : pageActions}
         isLoading={isLoading}
         isError={isError}
         onRetry={refetch}

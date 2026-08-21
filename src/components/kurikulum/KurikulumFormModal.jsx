@@ -11,6 +11,8 @@ export default function KurikulumFormModal({
   onSubmit,
   initialData = null,
   isSubmitting = false,
+  availableUnitOptions = [],
+  canViewAllUnits = true,
 }) {
   const [formData, setFormData] = useState({
     kode_kurikulum: '',
@@ -30,6 +32,26 @@ export default function KurikulumFormModal({
   const [tahunAjarans, setTahunAjarans] = useState([])
   const [semesters, setSemesters] = useState([])
   const [errors, setErrors] = useState({})
+
+  const displayUnits = (availableUnitOptions && availableUnitOptions.length > 0) ? availableUnitOptions : units
+
+  const selectedUnitObj = React.useMemo(() => {
+    if (!formData.unit_pendidikan_id) return null
+    return displayUnits.find((u) => String(u.id) === String(formData.unit_pendidikan_id)) || null
+  }, [formData.unit_pendidikan_id, displayUnits])
+
+  const detectedJenjang = React.useMemo(() => {
+    if (!selectedUnitObj) return ''
+    return getJenjangFromUnit(selectedUnitObj)
+  }, [selectedUnitObj])
+
+  const availableJenjangModalOptions = React.useMemo(() => {
+    if (detectedJenjang) {
+      const matched = JENJANG_OPTIONS.filter((j) => j.toLowerCase() === detectedJenjang.toLowerCase())
+      if (matched.length > 0) return matched
+    }
+    return JENJANG_OPTIONS
+  }, [detectedJenjang])
 
   // Fetch Dropdown options for Units & Tahun Ajaran when modal opens
   useEffect(() => {
@@ -59,7 +81,7 @@ export default function KurikulumFormModal({
         kode_kurikulum: `KUR-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
         nama_kurikulum: '',
         jenis_kurikulum: 'SIT',
-        unit_pendidikan_id: units[0]?.id || '',
+        unit_pendidikan_id: displayUnits[0]?.id || '',
         jenjang: 'SD',
         tahun_ajaran_id: tahunAjarans[0]?.id || '',
         semester_id: '',
@@ -70,7 +92,7 @@ export default function KurikulumFormModal({
       })
     }
     setErrors({})
-  }, [initialData, isOpen, units, tahunAjarans])
+  }, [initialData, isOpen, displayUnits, tahunAjarans])
 
   const fetchOptions = async () => {
     try {
@@ -84,8 +106,9 @@ export default function KurikulumFormModal({
       const tahunList = resTahun.data?.data || []
       setTahunAjarans(tahunList)
 
-      if (!initialData && unitList.length > 0) {
-        setFormData((prev) => ({ ...prev, unit_pendidikan_id: prev.unit_pendidikan_id || unitList[0].id }))
+      const targetUnits = (availableUnitOptions && availableUnitOptions.length > 0) ? availableUnitOptions : unitList
+      if (!initialData && targetUnits.length > 0) {
+        setFormData((prev) => ({ ...prev, unit_pendidikan_id: prev.unit_pendidikan_id || targetUnits[0].id }))
       }
       if (!initialData && tahunList.length > 0) {
         setFormData((prev) => ({ ...prev, tahun_ajaran_id: prev.tahun_ajaran_id || tahunList[0].id }))
@@ -95,14 +118,44 @@ export default function KurikulumFormModal({
     }
   }
 
+function getJenjangFromUnit(unit) {
+  if (!unit) return ''
+  const str = `${unit.code || ''} ${unit.level || ''} ${unit.name || ''} ${unit.nama || ''} ${unit.tingkat || ''}`.toUpperCase()
+
+  if (str.includes('TAUD') || str.includes('PAUD')) return 'PAUD'
+  if (str.includes('TK')) return 'TK'
+  if (str.includes('MIT') || str.includes(' MI ') || str.endsWith(' MI') || str.startsWith('MI ')) return 'MI'
+  if (str.includes('SD')) return 'SD'
+  if (str.includes('MTS')) return 'MTs'
+  if (str.includes('SMP')) return 'SMP'
+  if (str.includes('MA') && !str.includes('SMA') && !str.includes('MAHAD')) return 'MA'
+  if (str.includes('SMA')) return 'SMA'
+  if (str.includes('PESANTREN') || str.includes('PONPES') || str.includes('MAHAD')) return 'Pesantren'
+
+  return ''
+}
+
   if (!isOpen) return null
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }))
+    const val = type === 'checkbox' ? checked : value
+
+    setFormData((prev) => {
+      const next = { ...prev, [name]: val }
+      if (name === 'unit_pendidikan_id' && val) {
+        const selectedUnit = displayUnits.find((u) => String(u.id) === String(val))
+        const matchedJenjang = getJenjangFromUnit(selectedUnit)
+        if (matchedJenjang && JENJANG_OPTIONS.includes(matchedJenjang)) {
+          next.jenjang = matchedJenjang
+        }
+        if (selectedUnit && (selectedUnit.code || selectedUnit.name || '').toUpperCase().includes('PONPES')) {
+          next.jenis_kurikulum = 'Pesantren'
+        }
+      }
+      return next
+    })
+
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }))
     }
@@ -232,9 +285,10 @@ export default function KurikulumFormModal({
                 name="jenjang"
                 value={formData.jenjang}
                 onChange={handleChange}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                disabled={availableJenjangModalOptions.length <= 1}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all disabled:opacity-75 disabled:cursor-not-allowed"
               >
-                {JENJANG_OPTIONS.map((j) => (
+                {availableJenjangModalOptions.map((j) => (
                   <option key={j} value={j}>
                     {j}
                   </option>
@@ -273,14 +327,15 @@ export default function KurikulumFormModal({
                 name="unit_pendidikan_id"
                 value={formData.unit_pendidikan_id}
                 onChange={handleChange}
+                disabled={!canViewAllUnits && displayUnits.length <= 1}
                 className={`w-full px-3.5 py-2.5 rounded-xl border ${
                   errors.unit_pendidikan_id ? 'border-rose-400 bg-rose-50/30' : 'border-slate-200 bg-slate-50/50'
                 } font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all`}
               >
-                <option value="">-- Pilih Unit Pendidikan --</option>
-                {units.map((u) => (
+                {canViewAllUnits && <option value="">-- Pilih Unit Pendidikan --</option>}
+                {displayUnits.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name} ({u.code})
+                    {u.name || u.nama} ({u.code || u.kode})
                   </option>
                 ))}
               </select>

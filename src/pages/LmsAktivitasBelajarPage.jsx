@@ -28,6 +28,15 @@ import Swal from 'sweetalert2'
 import { lmsAktivitasBelajarService } from '../services/lmsAktivitasBelajarService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import {
+  MasterDataTable,
+  SquircleActionButton,
+  PrintOptionModal,
+} from '../components/master-data'
+import CsvImportModal from '../components/master-data/CsvImportModal'
+import ActionDropdown from '../components/app/ActionDropdown'
+import { RotateCcw, Printer } from 'lucide-react'
 
 export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataAktivitas, setDataAktivitas] = useState([])
@@ -80,9 +89,45 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
   // Modal Form State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [selectedDetail, setSelectedDetail] = useState(null)
   const [editId, setEditId] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
+
+  const handleExportCSV = () => {
+    const headers = ['NO', 'JUDUL AKTIVITAS', 'JENIS', 'MODUL AJAR', 'DURASI', 'STATUS']
+    const rows = (dataAktivitas || []).map((a, i) => [
+      i + 1,
+      `"${(a.judul_aktivitas || a.nama_aktivitas || '').replace(/"/g, '""')}"`,
+      a.jenis_aktivitas || a.jenis || '',
+      `"${(a.modul_ajar?.judul_modul || '').replace(/"/g, '""')}"`,
+      a.durasi_menit ? `${a.durasi_menit} Menit` : '',
+      a.status === 'aktif' ? 'Aktif' : 'Draft',
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `export_aktivitas_belajar_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleImport = async (parsedData) => {
+    setSuccessMsg(`Berhasil mengimpor ${parsedData.length} data aktivitas belajar.`)
+    fetchDaftarAktivitas()
+  }
+
+  const pageActions = (
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Tambah Aktivitas" onClick={() => handleOpenCreateModal()} />
+    </div>
+  )
 
   const [formData, setFormData] = useState({
     modul_ajar_id: '',
@@ -318,7 +363,64 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
   }
 
   return (
-    <div className="space-y-6 pb-12 transition-all duration-300">
+    <PageContainer maxW="7xl">
+      {!(embedded || hideBreadcrumb) && (
+        <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Aktivitas Belajar' }]} />
+      )}
+      <div className="master-data-page space-y-6 pb-12">
+        <PrintOptionModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          title="Aktivitas Belajar"
+          onPrint={() => {
+            const rowsToPrint = Array.isArray(dataAktivitas) ? dataAktivitas : []
+            printCleanTable({
+              title: 'Laporan Data Aktivitas Belajar',
+              subtitle: 'Daftar Aktivitas Belajar Sekolah Islam Terpadu',
+              headers: ['NO', 'JUDUL AKTIVITAS', 'JENIS', 'MODUL AJAR', 'DURASI', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.judul_aktivitas || row.nama_aktivitas || '-',
+                row.jenis_aktivitas || row.jenis || '-',
+                row.modul_ajar?.judul_modul || '-',
+                row.durasi_menit ? `${row.durasi_menit} Menit` : '-',
+                row.status === 'aktif' ? 'Aktif' : 'Draft',
+              ]),
+            })
+          }}
+          onDownload={() => {
+            const rowsToPrint = Array.isArray(dataAktivitas) ? dataAktivitas : []
+            downloadPdfTable({
+              title: 'Laporan Data Aktivitas Belajar',
+              subtitle: 'Daftar Aktivitas Belajar Sekolah Islam Terpadu',
+              headers: ['NO', 'JUDUL AKTIVITAS', 'JENIS', 'MODUL AJAR', 'DURASI', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.judul_aktivitas || row.nama_aktivitas || '-',
+                row.jenis_aktivitas || row.jenis || '-',
+                row.modul_ajar?.judul_modul || '-',
+                row.durasi_menit ? `${row.durasi_menit} Menit` : '-',
+                row.status === 'aktif' ? 'Aktif' : 'Draft',
+              ]),
+              filename: 'laporan_aktivitas_belajar.pdf',
+            })
+          }}
+        />
+
+        <CsvImportModal
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          title="Aktivitas Belajar"
+          onImport={handleImport}
+          columns={[
+            { key: 'modul_ajar_id' },
+            { key: 'nama_aktivitas', required: true, example: 'Diskusi Kelompok Fiqih' },
+            { key: 'jenis_aktivitas', example: 'Inti' },
+            { key: 'durasi_menit', example: '30' },
+            { key: 'deskripsi', example: 'Petunjuk aktivitas...' },
+            { key: 'status', example: 'aktif' },
+          ]}
+        />
       {/* Top Banner / Hero Header */}
       {!hidePageHeader && (
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 sm:p-8 text-white shadow-xl">
@@ -432,223 +534,206 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
       {/* Tab Navigation Card (below KPI grid) */}
       {tabNav}
 
-      {/* Main Table Card Container */}
-      <div className="rounded-2xl bg-white dark:bg-[#1B2433] border border-gray-100 dark:border-gray-800 shadow-xl/5 overflow-hidden">
-        {/* Filters Header Bar */}
-        <div className="p-5 border-b border-gray-100 dark:border-gray-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          {/* Search Bar */}
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+      {/* SEARCH & FILTER BAR (2-Row Layout) */}
+      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+        {/* Baris 1: Field Pencarian Full-Width */}
+        <div className="w-full">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari aktivitas, instruksi, jenis..."
+              placeholder="Cari nama aktivitas, instruksi, atau modul..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value)
                 setPage(1)
               }}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44] transition-all"
+              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
             />
-          </div>
-
-          {/* Select Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Modul Ajar Filter */}
-            <div className="relative">
-              <select
-                value={selectedModulAjar}
-                onChange={(e) => {
-                  setSelectedModulAjar(e.target.value)
-                  setPage(1)
-                }}
-                className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-800 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
-              >
-                <option value="">Semua Modul Ajar</option>
-                {optionsModulAjar.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.judul_modul}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Jenis Aktivitas Filter */}
-            <div className="relative">
-              <select
-                value={selectedJenis}
-                onChange={(e) => {
-                  setSelectedJenis(e.target.value)
-                  setPage(1)
-                }}
-                className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-800 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
-              >
-                <option value="">Semua Jenis</option>
-                {optionsJenis.map((j) => (
-                  <option key={j} value={j}>
-                    {j}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div className="relative">
-              <select
-                value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value)
-                  setPage(1)
-                }}
-                className="pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-800 dark:text-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
-              >
-                <option value="">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="draft">Draft</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
-
-            {/* Refresh Button */}
-            <button
-              onClick={() => {
-                fetchData()
-                fetchStats()
-              }}
-              title="Refresh Data"
-              className="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
-            <thead className="bg-gray-50/70 dark:bg-gray-950/40 text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
-              <tr>
-                <th className="py-3.5 px-4 text-center w-16">No / Urut</th>
-                <th className="py-3.5 px-4">Nama Aktivitas Belajar</th>
-                <th className="py-3.5 px-4">Jenis Kegiatan</th>
-                <th className="py-3.5 px-4">Modul Ajar</th>
-                <th className="py-3.5 px-4 text-center">Waktu</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
-                <th className="py-3.5 px-4 text-right pr-6">Aksi</th>
+        {/* Baris 2: Dropdown Filter & Sortir */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+            Filter &amp; Sortir:
+          </span>
+
+          <select
+            value={selectedModulAjar}
+            onChange={(e) => {
+              setSelectedModulAjar(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Modul Ajar --</option>
+            {optionsModulAjar.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.judul_modul}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedJenis}
+            onChange={(e) => {
+              setSelectedJenis(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Jenis --</option>
+            {optionsJenis.map((j) => (
+              <option key={j} value={j}>
+                {j}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedStatus}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Status --</option>
+            <option value="aktif">Aktif</option>
+            <option value="draft">Draft</option>
+            <option value="nonaktif">Nonaktif</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('')
+              setSelectedModulAjar('')
+              setSelectedJenis('')
+              setSelectedStatus('')
+              setPage(1)
+            }}
+            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            title="Reset Filter"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
+        </div>
+      </div>
+
+      {/* DATA TABLE CONTAINER */}
+      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="aktivitas-table-title">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+          <div>
+            <h2 id="aktivitas-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Aktivitas Belajar</h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Daftar alur skenario kegiatan kelas terpadu per modul ajar.</p>
+          </div>
+          {pageActions}
+        </div>
+
+        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
+                <th className="w-[6%] px-5 sm:px-6 md:px-8 py-4 text-center">No</th>
+                <th className="w-[8%] px-3 py-4 text-center">Urutan</th>
+                <th className="w-[28%] px-3 py-4">Nama Aktivitas Belajar</th>
+                <th className="hidden w-[14%] px-3 py-4 text-center sm:table-cell">Jenis Kegiatan</th>
+                <th className="hidden w-[22%] px-3 py-4 md:table-cell">Modul Ajar</th>
+                <th className="hidden w-[10%] px-3 py-4 text-center lg:table-cell">Durasi</th>
+                <th className="hidden w-[10%] px-3 py-4 text-center sm:table-cell">Status</th>
+                <th className="w-[12%] px-3 py-4 text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-gray-400">
+                  <td colSpan="8" className="py-12 text-center text-slate-400">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#0E5C44]" />
                     <p className="text-sm">Memuat data aktivitas belajar...</p>
                   </td>
                 </tr>
               ) : dataAktivitas.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-gray-400">
-                    <Activity className="w-10 h-10 mx-auto mb-2 opacity-40 text-gray-400" />
-                    <p className="text-base font-semibold text-gray-600 dark:text-gray-300">Tidak ada data aktivitas</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Coba ubah kata kunci pencarian atau tambah data baru.</p>
+                  <td colSpan="8" className="py-12 text-center text-slate-400">
+                    <Activity className="w-10 h-10 mx-auto mb-2 opacity-40 text-slate-400" />
+                    <p className="text-base font-semibold text-slate-600 dark:text-slate-300">Tidak ada data aktivitas</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Coba ubah kata kunci pencarian atau tambah data baru.</p>
                   </td>
                 </tr>
               ) : (
                 dataAktivitas.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors">
-                    {/* Urutan */}
-                    <td className="py-3.5 px-4 text-center font-bold text-gray-700 dark:text-gray-300">
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-xs">
-                        {item.urutan || (page - 1) * pagination.per_page + idx + 1}
+                  <tr
+                    key={item.id}
+                    onClick={() => handleOpenDetail(item)}
+                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  >
+                    <td className="py-3.5 px-5 sm:px-6 md:px-8 text-center font-medium text-slate-400">
+                      {(pagination.current_page - 1) * pagination.per_page + idx + 1}
+                    </td>
+                    <td className="py-3.5 px-3 text-center">
+                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300">
+                        #{item.urutan || idx + 1}
                       </span>
                     </td>
-
-                    {/* Nama Aktivitas & Preview Instruksi */}
-                    <td className="py-3.5 px-4 max-w-xs">
-                      <div className="font-semibold text-gray-900 dark:text-white line-clamp-1">{item.nama_aktivitas}</div>
-                      {item.instruksi ? (
-                        <div className="text-xs text-gray-400 line-clamp-1 mt-0.5">{item.instruksi}</div>
-                      ) : (
-                        <div className="text-xs text-gray-400 italic mt-0.5">Tanpa instruksi khusus</div>
-                      )}
+                    <td className="py-3.5 px-3">
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-white line-clamp-1">{item.nama_aktivitas}</p>
+                        {item.instruksi ? (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5 font-medium">{item.instruksi}</p>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic mt-0.5">Tanpa instruksi khusus</p>
+                        )}
+                      </div>
                     </td>
-
-                    {/* Jenis Badge */}
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getJenisBadgeColor(item.jenis_aktivitas)}`}>
+                    <td className="hidden py-3.5 px-3 text-center sm:table-cell">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${getJenisBadgeColor(item.jenis_aktivitas)}`}>
                         {item.jenis_aktivitas}
                       </span>
                     </td>
-
-                    {/* Modul Ajar */}
-                    <td className="py-3.5 px-4">
+                    <td className="hidden py-3.5 px-3 md:table-cell">
                       {item.modul_ajar ? (
                         <div>
-                          <div className="text-xs font-medium text-gray-800 dark:text-gray-200 line-clamp-1">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 line-clamp-1">
                             {item.modul_ajar.judul_modul}
-                          </div>
-                          <div className="text-[11px] text-gray-400 font-mono">{item.modul_ajar.kode_modul}</div>
+                          </p>
+                          <p className="text-[11px] text-slate-400 font-mono">{item.modul_ajar.kode_modul}</p>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400 italic">-</span>
+                        <span className="text-xs text-slate-400 italic">-</span>
                       )}
                     </td>
-
-                    {/* Waktu */}
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-lg">
-                        <Clock className="w-3.5 h-3.5 text-[#0E5C44]" /> {item.waktu} menit
+                    <td className="hidden py-3.5 px-3 text-center lg:table-cell">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+                        <Clock className="w-3.5 h-3.5 text-[#0E5C44]" /> {item.waktu || item.durasi_menit || 0} mnt
                       </span>
                     </td>
-
-                    {/* Status */}
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="hidden py-3.5 px-3 text-center sm:table-cell">
                       {item.status === 'aktif' ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                           <Check className="w-3 h-3" /> Aktif
                         </span>
-                      ) : item.status === 'draft' ? (
+                      ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
                           Draft
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-                          <Ban className="w-3 h-3" /> Nonaktif
-                        </span>
                       )}
                     </td>
-
-                    {/* Action Buttons */}
-                    <td className="py-3.5 px-4 text-right pr-6">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleOpenDetail(item)}
-                          title="Lihat Detail"
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-[#0E5C44] hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditModal(item)}
-                          title="Edit Aktivitas"
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition-colors"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id, item.nama_aktivitas)}
-                          title="Hapus"
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                    <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <ActionDropdown
+                        onView={() => handleOpenDetail(item)}
+                        onEdit={() => handleOpenEditModal(item)}
+                        onDelete={() => handleDelete(item.id, item.nama_aktivitas)}
+                      />
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
-        </div>
+        </MasterDataTable>
 
         {/* Pagination Footer */}
         {pagination.last_page > 1 && (
@@ -677,7 +762,7 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       {/* KPI DETAIL MODAL */}
       {kpiModalOpen && (
@@ -1001,6 +1086,7 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageContainer>
   )
 }

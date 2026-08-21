@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import Swal from 'sweetalert2'
 import {
   Archive,
   CalendarDays,
@@ -7,6 +8,7 @@ import {
   FileSpreadsheet,
   FileText,
   Plus,
+  Printer,
   Star,
   Upload,
   X,
@@ -19,6 +21,7 @@ import TahunAjaranImportModal from '../components/tahun-ajaran/TahunAjaranImport
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ConfirmDialog from '../components/app/ConfirmDialog'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterActionButton,
   MasterDataPage,
@@ -29,6 +32,7 @@ import {
   MasterStatCard,
   MasterStatsGrid,
   SquircleActionButton,
+  PrintOptionModal,
 } from '../components/master-data'
 
 export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader = false, hideBreadcrumb = false }) {
@@ -41,6 +45,7 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
   const [selectedForDetail, setSelectedForDetail] = useState(null)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [pendingSavePayload, setPendingSavePayload] = useState(null)
@@ -60,7 +65,7 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
       order_dir: 'desc',
     }),
   })
-  const listData = query.data?.data || []
+  const listData = Array.isArray(query.data) ? query.data : (query.data?.data || [])
   const meta = query.data?.meta || {}
   const stats = query.data?.statistik || {}
 
@@ -171,6 +176,7 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
     <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
       <SquircleActionButton variant="import" label="Import Data" onClick={() => setIsImportModalOpen(true)} />
       <SquircleActionButton variant="export" label="Export Data" onClick={() => setShowExportModal(true)} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
       <SquircleActionButton variant="primary" label="Tambah Tahun Ajaran" onClick={openAdd} />
     </div>
   )
@@ -180,6 +186,44 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
 
   return (
     <PageContainer maxW="7xl">
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Tahun Ajaran"
+        onPrint={() => {
+          const rowsToPrint = Array.isArray(listData) ? listData : []
+          printCleanTable({
+            title: 'Laporan Data Tahun Ajaran',
+            subtitle: 'Daftar Tahun Ajaran Sekolah Islam Terpadu',
+            headers: ['NO', 'NAMA TAHUN AJARAN', 'KODE', 'RENTANG TANGGAL', 'KETERANGAN', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.name || row.nama || '-',
+              row.code || row.kode || '-',
+              `${row.start_date || row.tanggal_mulai || '-'} s/d ${row.end_date || row.tanggal_selesai || '-'}`,
+              row.keterangan || row.description || '-',
+              row.deleted_at ? 'Terhapus' : row.is_active ? 'Aktif Utama' : 'Nonaktif',
+            ]),
+          })
+        }}
+        onDownload={() => {
+          const rowsToPrint = Array.isArray(listData) ? listData : []
+          downloadPdfTable({
+            title: 'Laporan Data Tahun Ajaran',
+            subtitle: 'Daftar Tahun Ajaran Sekolah Islam Terpadu',
+            headers: ['NO', 'NAMA TAHUN AJARAN', 'KODE', 'RENTANG TANGGAL', 'KETERANGAN', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.name || row.nama || '-',
+              row.code || row.kode || '-',
+              `${row.start_date || row.tanggal_mulai || '-'} s/d ${row.end_date || row.tanggal_selesai || '-'}`,
+              row.keterangan || row.description || '-',
+              row.deleted_at ? 'Terhapus' : row.is_active ? 'Aktif Utama' : 'Nonaktif',
+            ]),
+            filename: 'laporan_tahun_ajaran.pdf',
+          })
+        }}
+      />
       {!shouldHideBreadcrumb && <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Tahun Ajaran' }]} />}
       <MasterDataPage className="education-unit-page academic-year-page" hideBreadcrumb>
       {!shouldHideHeader && (

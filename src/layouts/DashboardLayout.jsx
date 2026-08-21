@@ -382,7 +382,7 @@ export default function DashboardLayout() {
     ...((hasFullMenuAccess || isTataUsaha || hasRole('Wali Kelas', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan')) && (isTataUsaha || hasRole('Wali Kelas', 'Tata Usaha', 'TU', 'tata_usaha', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan') || can('attendance.homeroom.dashboard', 'homeroom_attendance.dashboard', 'homeroom_attendance.view', 'attendance.view', 'kehadiran.siswa.monitoring')) ? [
       { to: '/absensi/dashboard-wali-kelas', label: 'Dashboard Wali Kelas' },
       { to: '/absensi/rekap-kehadiran', label: 'Manajemen Kehadiran Siswa' },
-      { to: '/absensi/laporan', label: 'Laporan Rombel' },
+      { to: '/absensi/rekap-data', label: 'Rekap Data' },
     ] : []),
     // Submenu presensi guru telah dikonsolidasikan ke dalam Portal Guru -> Workspace Pembelajaran Guru
     ...((hasFullMenuAccess || isStudentRole(roles)) && can('attendance.student.view_own', 'student_attendance.view_own') ? [

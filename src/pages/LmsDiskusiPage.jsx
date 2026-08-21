@@ -27,6 +27,17 @@ import {
 import Swal from 'sweetalert2'
 import { lmsDiskusiService } from '../services/lmsDiskusiService'
 import { lmsModulAjarService } from '../services/lmsModulAjarService'
+import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import {
+  MasterDataTable,
+  SquircleActionButton,
+  PrintOptionModal,
+} from '../components/master-data'
+import CsvImportModal from '../components/master-data/CsvImportModal'
+import ActionDropdown from '../components/app/ActionDropdown'
+import { RotateCcw, Printer, Eye } from 'lucide-react'
 
 export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataDiskusi, setDataDiskusi] = useState([])
@@ -75,8 +86,44 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
   // Modal Form State (Create / Edit Diskusi)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [editId, setEditId] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
+
+  const handleExportCSV = () => {
+    const headers = ['NO', 'JUDUL DISKUSI', 'KATEGORI', 'MODUL AJAR', 'KOMENTAR', 'STATUS']
+    const rows = (dataDiskusi || []).map((d, i) => [
+      i + 1,
+      `"${(d.judul_diskusi || d.judul || '').replace(/"/g, '""')}"`,
+      d.kategori || 'Umum',
+      `"${(d.modul_ajar?.judul_modul || '').replace(/"/g, '""')}"`,
+      d.total_komentar || d.komentar_count || 0,
+      d.status === 'tertutup' || d.is_closed ? 'Tertutup' : 'Aktif',
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `export_forum_diskusi_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleImport = async (parsedData) => {
+    setSuccessMsg(`Berhasil mengimpor ${parsedData.length} topik diskusi.`)
+    fetchData()
+  }
+
+  const pageActions = (
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Buat Diskusi" onClick={() => handleOpenCreateModal()} />
+    </div>
+  )
 
   const [formData, setFormData] = useState({
     modul_ajar_id: '',
@@ -441,10 +488,66 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F9FC] dark:bg-[#0F172A] p-4 md:p-8 font-sans text-slate-800 dark:text-slate-100 transition-colors duration-300">
+    <PageContainer maxW="7xl">
+      {!(embedded || hideBreadcrumb) && (
+        <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Forum Diskusi Kelas' }]} />
+      )}
+      <div className="master-data-page space-y-6 pb-12">
+        <PrintOptionModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          title="Forum Diskusi Kelas"
+          onPrint={() => {
+            const rowsToPrint = Array.isArray(dataDiskusi) ? dataDiskusi : []
+            printCleanTable({
+              title: 'Laporan Data Forum Diskusi Kelas',
+              subtitle: 'Daftar Forum Diskusi Pembelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'TOPIS / JUDUL DISKUSI', 'KATEGORI', 'MODUL AJAR TERKAIT', 'KOMENTAR', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.judul_diskusi || row.judul || '-',
+                row.kategori || 'Umum',
+                row.modul_ajar?.judul_modul || '-',
+                row.total_komentar || row.komentar_count || 0,
+                row.status === 'tertutup' || row.is_closed ? 'Tertutup' : 'Aktif',
+              ]),
+            })
+          }}
+          onDownload={() => {
+            const rowsToPrint = Array.isArray(dataDiskusi) ? dataDiskusi : []
+            downloadPdfTable({
+              title: 'Laporan Data Forum Diskusi Kelas',
+              subtitle: 'Daftar Forum Diskusi Pembelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'TOPIS / JUDUL DISKUSI', 'KATEGORI', 'MODUL AJAR TERKAIT', 'KOMENTAR', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.judul_diskusi || row.judul || '-',
+                row.kategori || 'Umum',
+                row.modul_ajar?.judul_modul || '-',
+                row.total_komentar || row.komentar_count || 0,
+                row.status === 'tertutup' || row.is_closed ? 'Tertutup' : 'Aktif',
+              ]),
+              filename: 'laporan_forum_diskusi_kelas.pdf',
+            })
+          }}
+        />
+
+        <CsvImportModal
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          title="Forum Diskusi Kelas"
+          onImport={handleImport}
+          columns={[
+            { key: 'modul_ajar_id' },
+            { key: 'judul_diskusi', required: true, example: 'Diskusi Pemahaman Hukum Fiqih' },
+            { key: 'kategori', example: 'Tanya Jawab' },
+            { key: 'deskripsi', example: 'Topik diskusi kelas...' },
+            { key: 'status', example: 'aktif' },
+          ]}
+        />
       {/* Header Banner */}
       {!hidePageHeader && (
-        <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 md:p-8 text-white shadow-xl mb-8">
+        <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 md:p-8 text-white shadow-xl">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 text-emerald-200 text-sm font-semibold tracking-wide uppercase mb-1">
@@ -471,7 +574,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
       {/* Notifications Alert */}
       {successMsg && (
-        <div className="mb-6 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 flex items-center justify-between shadow-sm animate-fadeIn">
+        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 flex items-center justify-between shadow-sm animate-fadeIn">
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             <span className="text-sm font-medium">{successMsg}</span>
@@ -483,7 +586,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
       )}
 
       {errorMsg && (
-        <div className="mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 flex items-center justify-between shadow-sm animate-fadeIn">
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 flex items-center justify-between shadow-sm animate-fadeIn">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
             <span className="text-sm font-medium">{errorMsg}</span>
@@ -495,7 +598,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div
           onClick={() => handleOpenKpiModal('total')}
           className="group bg-white dark:bg-[#1B2433] p-5 rounded-[18px] border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all duration-300"
@@ -590,11 +693,12 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
       {/* Tab Navigation Card (below KPI grid) */}
       {tabNav}
 
-      {/* Filter & Search Bar */}
-      <div className="bg-white dark:bg-[#1B2433] p-5 rounded-[18px] border border-slate-200/80 dark:border-slate-800 shadow-sm mb-6">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      {/* SEARCH & FILTER BAR (2-Row Layout) */}
+      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+        {/* Baris 1: Field Pencarian Full-Width */}
+        <div className="w-full">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Cari judul diskusi, deskripsi, atau kategori..."
@@ -603,124 +707,134 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                 setSearch(e.target.value)
                 setPage(1)
               }}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44] transition-all"
+              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
             />
           </div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-              <SlidersHorizontal className="w-4 h-4 text-slate-400" />
-              <select
-                value={selectedModulAjar}
-                onChange={(e) => {
-                  setSelectedModulAjar(e.target.value)
-                  setPage(1)
-                }}
-                className="bg-transparent text-xs md:text-sm font-medium focus:outline-none text-slate-700 dark:text-slate-200"
-              >
-                <option value="">Semua Modul Ajar</option>
-                {optionsModulAjar.map((opt) => (
-                  <option key={opt.value || opt.id} value={opt.value || opt.id}>
-                    {opt.label || opt.judul_modul || opt.judul}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {/* Baris 2: Dropdown Filter & Sortir */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+            Filter &amp; Sortir:
+          </span>
 
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-              <Tag className="w-4 h-4 text-slate-400" />
-              <select
-                value={selectedKategori}
-                onChange={(e) => {
-                  setSelectedKategori(e.target.value)
-                  setPage(1)
-                }}
-                className="bg-transparent text-xs md:text-sm font-medium focus:outline-none text-slate-700 dark:text-slate-200"
-              >
-                <option value="">Semua Kategori</option>
-                {optionsKategori.map((kat) => (
-                  <option key={kat} value={kat}>
-                    {kat}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <select
+            value={selectedModulAjar}
+            onChange={(e) => {
+              setSelectedModulAjar(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Modul Ajar --</option>
+            {optionsModulAjar.map((opt) => (
+              <option key={opt.value || opt.id} value={opt.value || opt.id}>
+                {opt.label || opt.judul_modul || opt.judul}
+              </option>
+            ))}
+          </select>
 
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-              <select
-                value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value)
-                  setPage(1)
-                }}
-                className="bg-transparent text-xs md:text-sm font-medium focus:outline-none text-slate-700 dark:text-slate-200"
-              >
-                <option value="">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="draft">Draft</option>
-                <option value="nonaktif">Nonaktif</option>
-              </select>
-            </div>
+          <select
+            value={selectedKategori}
+            onChange={(e) => {
+              setSelectedKategori(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Kategori --</option>
+            {optionsKategori.map((kat) => (
+              <option key={kat} value={kat}>
+                {kat}
+              </option>
+            ))}
+          </select>
 
-            <button
-              onClick={() => {
-                setSearch('')
-                setSelectedModulAjar('')
-                setSelectedKategori('')
-                setSelectedStatus('')
-                setPage(1)
-              }}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all"
-              title="Reset Filter"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
+          <select
+            value={selectedStatus}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value)
+              setPage(1)
+            }}
+            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+          >
+            <option value="">-- Semua Status --</option>
+            <option value="aktif">Aktif</option>
+            <option value="draft">Draft</option>
+            <option value="nonaktif">Nonaktif</option>
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('')
+              setSelectedModulAjar('')
+              setSelectedKategori('')
+              setSelectedStatus('')
+              setPage(1)
+            }}
+            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            title="Reset Filter"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Reset</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Content Table / List */}
-      <div className="bg-white dark:bg-[#1B2433] rounded-[18px] border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden mb-6">
-        {loading ? (
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#0E5C44] mb-3" />
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Memuat data diskusi kelas...
-            </p>
+      {/* DATA TABLE CONTAINER */}
+      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="diskusi-table-title">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+          <div>
+            <h2 id="diskusi-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Forum Diskusi Kelas</h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Daftar topik kolaborasi dan tanya jawab interaktif per modul ajar.</p>
           </div>
-        ) : dataDiskusi.length === 0 ? (
-          <div className="p-12 text-center">
-            <MessageSquare className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-            <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200">
-              Belum Ada Diskusi
-            </h4>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
-              Belum ada forum diskusi yang ditambahkan untuk kriteria filter ini. Silakan buat diskusi kelas baru.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-              <thead className="bg-slate-50/80 dark:bg-slate-900/60 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+          {pageActions}
+        </div>
+
+        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
+                <th className="w-[32%] px-5 sm:px-6 md:px-8 py-4">Topik &amp; Modul Ajar</th>
+                <th className="hidden w-[16%] px-3 py-4 text-center sm:table-cell">Kategori</th>
+                <th className="hidden w-[18%] px-3 py-4 text-center md:table-cell">Status &amp; Akses</th>
+                <th className="hidden w-[14%] px-3 py-4 text-center sm:table-cell">Komentar</th>
+                <th className="w-[12%] px-3 py-4 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+              {loading ? (
                 <tr>
-                  <th className="py-4 px-6 font-semibold">Diskusi & Modul Ajar</th>
-                  <th className="py-4 px-6 font-semibold">Kategori</th>
-                  <th className="py-4 px-6 font-semibold">Status & Akses</th>
-                  <th className="py-4 px-6 font-semibold text-center">Komentar</th>
-                  <th className="py-4 px-6 font-semibold text-right">Aksi</th>
+                  <td colSpan="5" className="py-12 text-center text-slate-400">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#0E5C44]" />
+                    <p className="text-sm">Memuat data diskusi kelas...</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {dataDiskusi.map((item) => (
+              ) : dataDiskusi.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-12 text-center text-slate-400">
+                    <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-40 text-slate-400" />
+                    <p className="text-base font-semibold text-slate-600 dark:text-slate-300">Belum ada diskusi kelas</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Silakan buat topik diskusi baru untuk siswa.</p>
+                  </td>
+                </tr>
+              ) : (
+                dataDiskusi.map((item) => (
                   <tr
                     key={item.id}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                    onClick={() => handleOpenThread(item.id)}
+                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                   >
-                    <td className="py-4 px-6">
+                    <td className="py-3.5 px-5 sm:px-6 md:px-8">
                       <div className="flex items-start gap-3">
                         <button
-                          onClick={() => handleTogglePin(item.id)}
-                          className={`mt-1 p-1 rounded-lg transition-colors ${
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleTogglePin(item.id)
+                          }}
+                          className={`mt-0.5 p-1 rounded-lg transition-colors ${
                             item.is_pinned
                               ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/40'
                               : 'text-slate-300 hover:text-slate-500 dark:text-slate-600'
@@ -731,11 +845,8 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                         </button>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4
-                              onClick={() => handleOpenThread(item.id)}
-                              className="font-bold text-slate-900 dark:text-white hover:text-[#0E5C44] cursor-pointer transition-colors"
-                            >
-                              {item.judul}
+                            <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">
+                              {item.judul_diskusi || item.judul}
                             </h4>
                             {item.is_closed && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
@@ -745,26 +856,28 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                           </div>
                           {item.modul_ajar ? (
                             <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mt-0.5 flex items-center gap-1">
-                              <BookOpen className="w-3 h-3 inline" /> {item.modul_ajar.judul}
+                              <BookOpen className="w-3 h-3 inline" /> {item.modul_ajar.judul_modul || item.modul_ajar.judul}
                             </p>
                           ) : (
                             <p className="text-xs text-slate-400 mt-0.5">Umum (Tanpa Modul)</p>
                           )}
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 max-w-xl">
-                            {item.deskripsi || 'Tidak ada deskripsi'}
-                          </p>
+                          {item.deskripsi && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 max-w-xl">
+                              {item.deskripsi}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-                        <Tag className="w-3 h-3" /> {item.kategori}
+                    <td className="hidden py-3.5 px-3 text-center sm:table-cell">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                        <Tag className="w-3 h-3" /> {item.kategori || 'Umum'}
                       </span>
                     </td>
 
-                    <td className="py-4 px-6">
-                      <div className="space-y-1">
+                    <td className="hidden py-3.5 px-3 text-center md:table-cell">
+                      <div className="space-y-0.5">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
                             item.status === 'aktif'
@@ -777,58 +890,40 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
                           {item.status === 'aktif' ? 'Aktif' : item.status === 'draft' ? 'Draft' : 'Nonaktif'}
                         </span>
                         {item.created_at_formatted && (
-                          <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
                             <Clock className="w-3 h-3" /> {item.created_at_formatted}
                           </p>
                         )}
                       </div>
                     </td>
 
-                    <td className="py-4 px-6 text-center">
+                    <td className="hidden py-3.5 px-3 text-center sm:table-cell">
                       <button
-                        onClick={() => handleOpenThread(item.id)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenThread(item.id)
+                        }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-200 hover:text-[#0E5C44] dark:hover:text-emerald-400 text-xs font-bold transition-all"
                       >
                         <MessageCircle className="w-4 h-4" />
-                        <span>{item.jumlah_komentar} Komentar</span>
+                        <span>{item.total_komentar || item.jumlah_komentar || 0} Komentar</span>
                       </button>
                     </td>
 
-                    <td className="py-4 px-6 text-right space-x-1">
-                      <button
-                        onClick={() => handleToggleClose(item.id)}
-                        className={`p-2 rounded-xl border transition-all ${
-                          item.is_closed
-                            ? 'border-amber-200 dark:border-amber-800 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                        title={item.is_closed ? 'Buka Kunci Diskusi' : 'Kunci / Tutup Diskusi'}
-                      >
-                        {item.is_closed ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                      </button>
-
-                      <button
-                        onClick={() => handleOpenEditModal(item)}
-                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                        title="Edit Diskusi"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(item.id, item.judul)}
-                        className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950 transition-all"
-                        title="Hapus Diskusi"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <ActionDropdown
+                        onView={() => handleOpenThread(item.id)}
+                        onEdit={() => handleOpenEditModal(item)}
+                        onDelete={() => handleDelete(item.id, item.judul_diskusi || item.judul)}
+                      />
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </MasterDataTable>
 
         {/* Pagination Footer */}
         {pagination.last_page > 1 && (
@@ -855,7 +950,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       {/* KPI DETAIL MODAL */}
       {kpiModalOpen && (
@@ -1316,6 +1411,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageContainer>
   )
 }

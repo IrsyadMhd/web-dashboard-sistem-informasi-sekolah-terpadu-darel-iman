@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Swal from 'sweetalert2'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -23,13 +23,16 @@ import {
   Check,
   BookOpenCheck,
   Building2,
+  Printer,
 } from 'lucide-react'
 import { modulSemesterService } from '../services/modulSemesterService'
-import CsvImportModal from '../components/master-data/CsvImportModal'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { ActionDropdown, AppBadge, AppDrawer, AppModal, PersonIdentityCell } from '../components/app'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import CsvImportModal from '../components/master-data/CsvImportModal'
 import { useAuthStore } from '../stores/authStore'
+import { isGlobalAccessManager } from '../auth/portalResolver'
 import {
   MasterActionButton,
   MasterDataSection,
@@ -38,6 +41,8 @@ import {
   MasterStatsGrid,
   MasterStatCard,
   MasterFilterSelect,
+  SquircleActionButton,
+  PrintOptionModal,
 } from '../components/master-data'
 
 const UNIT_BADGES = {
@@ -145,11 +150,12 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
   const [filterGuru, setFilterGuru] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [page, setPage] = useState(1)
-  const [perPage] = useState(15)
+  const [perPage, setPerPage] = useState(15)
 
   // Form Modal & Drawer
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [activeTab, setActiveTab] = useState('umum') // 'umum' | 'pembelajaran' | 'target' | 'materi' | 'bobot'
   const [formData, setFormData] = useState(initialFormState())
@@ -208,41 +214,103 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
   // User Auth & Role Scoping
   const user = useAuthStore((state) => state.user)
   const userRoles = useMemo(() => {
-    if (!user?.roles) return []
-    return user.roles.map((r) => (typeof r === 'string' ? r : r.name || r.role_name || ''))
+    if (!user) return []
+    const rawRoles = user.roles || (user.role ? [user.role] : []) || user.role_names || []
+    const list = Array.isArray(rawRoles) ? rawRoles : [rawRoles]
+    return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
   }, [user])
+
+  // Broad access check: Superadmin, Admin, Pengurus Yayasan see all units.
+  // Kepala Sekolah, Guru, TU, etc. are restricted to their own unit.
+  const canViewAllUnits = useMemo(() => {
+    if (!user || userRoles.length === 0) return false
+    return isGlobalAccessManager(userRoles)
+  }, [user, userRoles])
 
   const userUnitId = useMemo(() => {
-    return (
-      user?.unit_id ||
-      user?.unit_pendidikan_id ||
-      user?.education_unit_id ||
-      user?.unit?.id ||
-      user?.school_info?.id ||
-      null
-    )
+    const candidateIds = [
+      user?.unit_id,
+      user?.unit_pendidikan_id,
+      user?.education_unit_id,
+      user?.unit?.id,
+      user?.education_unit?.id,
+      user?.unit_pendidikan?.id,
+      user?.employee?.unit_id,
+      user?.employee?.unit_pendidikan_id,
+      user?.employee?.education_unit_id,
+      user?.employee?.unit?.id,
+      user?.employee?.education_unit?.id,
+      user?.school_info?.id,
+    ].filter(Boolean)
+
+    return candidateIds.length > 0 ? String(candidateIds[0]) : null
   }, [user])
 
-  const isScopedUnitRole = useMemo(() => {
-    const scopedRoles = [
-      'Kepala Sekolah',
-      'kepala_sekolah',
-      'KepalaSekolah',
-      'Divisi Pendidikan',
-      'divisi_pendidikan',
-      'DivisiPendidikan',
-      'TU Unit',
-      'tu_unit',
-      'TuUnit',
-      'TU',
-      'Tata Usaha',
-      'Staff TU',
-      'Kepala Sekolah / Madrasah',
+  const userUnitName = useMemo(() => {
+    const candidateNames = [
+      typeof user?.education_unit === 'string' ? user.education_unit : null,
+      typeof user?.unit === 'string' ? user.unit : null,
+      user?.unit_name,
+      user?.education_unit_name,
+      user?.unit_pendidikan_name,
+      user?.unit?.name || user?.unit?.nama,
+      user?.education_unit?.name || user?.education_unit?.nama,
+      user?.employee?.unit?.name || user?.employee?.education_unit?.name,
+      user?.school_info?.nama || user?.school_info?.name,
     ]
-    return userRoles.some(
-      (r) => scopedRoles.includes(r) || scopedRoles.some((sr) => r.toLowerCase().includes(sr.toLowerCase()))
-    )
-  }, [userRoles])
+      .filter(Boolean)
+      .map((s) => String(s).toLowerCase().trim())
+
+    return candidateNames.length > 0 ? candidateNames[0] : ''
+  }, [user])
+
+  const availableUnitOptions = useMemo(() => {
+    const allUnits = options.unit_pendidikan || []
+    if (canViewAllUnits) {
+      return allUnits
+    }
+
+    // 1. Match by candidate unit ID
+    if (userUnitId) {
+      const filtered = allUnits.filter((u) => String(u.id) === String(userUnitId))
+      if (filtered.length > 0) return filtered
+    }
+
+    // 2. Match by candidate unit name/code
+    if (userUnitName) {
+      const matched = allUnits.filter((u) => {
+        const uName = String(u.name || u.nama || '').toLowerCase().trim()
+        const uCode = String(u.code || u.kode || '').toLowerCase().trim()
+        return (
+          uName === userUnitName ||
+          uCode === userUnitName ||
+          userUnitName.includes(uName) ||
+          uName.includes(userUnitName)
+        )
+      })
+      if (matched.length > 0) return matched
+    }
+
+    // Fallback: Return first unit or empty array, NEVER all units for restricted roles
+    return allUnits.length > 0 ? [allUnits[0]] : []
+  }, [options.unit_pendidikan, canViewAllUnits, userUnitId, userUnitName])
+
+  const effectiveUserUnitId = useMemo(() => {
+    if (canViewAllUnits) return ''
+    if (userUnitId) return String(userUnitId)
+    if (availableUnitOptions.length > 0) return String(availableUnitOptions[0].id)
+    return ''
+  }, [canViewAllUnits, userUnitId, availableUnitOptions])
+
+  useEffect(() => {
+    if (!canViewAllUnits && effectiveUserUnitId && filterUnit !== effectiveUserUnitId) {
+      setFilterUnit(effectiveUserUnitId)
+    }
+  }, [canViewAllUnits, effectiveUserUnitId, filterUnit])
+
+  const isScopedUnitRole = useMemo(() => {
+    return !canViewAllUnits
+  }, [canViewAllUnits])
 
   // Search & Filter state for Kelas, Mapel & Guru Modal
   const [kelasSearch, setKelasSearch] = useState('')
@@ -702,20 +770,22 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
   const resetFilters = () => {
     setSearch('')
     setFilterTahun('')
-    setFilterUnit('')
+    setFilterUnit(canViewAllUnits ? '' : effectiveUserUnitId)
     setFilterSemester('')
     setFilterKelas('')
     setFilterGuru('')
     setFilterStatus('')
+    setPerPage(15)
     setPage(1)
   }
 
   const pageActions = (
-    <>
-      <MasterActionButton variant="import" icon={Upload} onClick={() => setImportOpen(true)}>Import CSV</MasterActionButton>
-      <MasterActionButton variant="export" icon={FileSpreadsheet} onClick={handleExportCSV}>Export CSV</MasterActionButton>
-      <MasterActionButton icon={Plus} onClick={handleOpenTambahModal}>Tambah Modul</MasterActionButton>
-    </>
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
+      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
+      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
+      <SquircleActionButton variant="primary" label="Tambah Modul Semester" onClick={handleOpenTambahModal} />
+    </div>
   )
 
   const shouldHideBreadcrumb = embedded || hideBreadcrumb
@@ -723,6 +793,50 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
   return (
     <PageContainer maxW="7xl">
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title="Modul Semester"
+        onPrint={() => {
+          const rowsToPrint = Array.isArray(modulList) ? modulList : []
+          printCleanTable({
+            title: 'Laporan Data Modul Semester',
+            subtitle: 'Daftar Pembelajaran Modul Semester Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE MODUL', 'NAMA MODUL', 'UNIT PENDIDIKAN', 'TAHUN AJARAN', 'KELAS', 'MATA PELAJARAN', 'GURU', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_modul || row.code || '-',
+              row.nama_modul || row.name || row.nama || '-',
+              row.unit_pendidikan?.name || row.unit_pendidikan?.nama || row.jenjang || '-',
+              row.tahun_ajaran?.name || row.tahun_ajaran?.nama || row.tahun_ajaran_name || '-',
+              row.kelas?.nama_kelas || row.kelas?.name || row.kelas_name || '-',
+              row.mata_pelajaran?.name || row.mata_pelajaran?.nama_mapel || row.mapel_name || '-',
+              row.guru?.nama_lengkap || row.guru?.name || row.guru_name || '-',
+              row.status || 'Aktif',
+            ]),
+          })
+        }}
+        onDownload={() => {
+          const rowsToPrint = Array.isArray(modulList) ? modulList : []
+          downloadPdfTable({
+            title: 'Laporan Data Modul Semester',
+            subtitle: 'Daftar Pembelajaran Modul Semester Sekolah Islam Terpadu',
+            headers: ['NO', 'KODE MODUL', 'NAMA MODUL', 'UNIT PENDIDIKAN', 'TAHUN AJARAN', 'KELAS', 'MATA PELAJARAN', 'GURU', 'STATUS'],
+            rows: rowsToPrint.map((row, i) => [
+              i + 1,
+              row.kode_modul || row.code || '-',
+              row.nama_modul || row.name || row.nama || '-',
+              row.unit_pendidikan?.name || row.unit_pendidikan?.nama || row.jenjang || '-',
+              row.tahun_ajaran?.name || row.tahun_ajaran?.nama || row.tahun_ajaran_name || '-',
+              row.kelas?.nama_kelas || row.kelas?.name || row.kelas_name || '-',
+              row.mata_pelajaran?.name || row.mata_pelajaran?.nama_mapel || row.mapel_name || '-',
+              row.guru?.nama_lengkap || row.guru?.name || row.guru_name || '-',
+              row.status || 'Aktif',
+            ]),
+            filename: 'laporan_modul_semester.pdf',
+          })
+        }}
+      />
       {!shouldHideBreadcrumb && <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Modul Semester' }]} />}
       <MasterDataPage className="education-unit-page" hideBreadcrumb>
       {!shouldHideHeader && (
@@ -752,6 +866,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
         description="Modul sesuai periode, unit, kelas, guru, dan status yang dipilih."
         countLabel={`${Number(meta.total ?? 0).toLocaleString('id-ID')} modul`}
         actions={pageActions}
+        stackedFilters={true}
         search={{
           value: search,
           onValueChange: (value) => { setSearch(value); setPage(1) },
@@ -782,9 +897,10 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                 setFilterGuru('')
                 setPage(1)
               }}
+              disabled={!canViewAllUnits && availableUnitOptions.length <= 1}
             >
-              <option value="">Semua Unit</option>
-              {(options.unit_pendidikan || []).map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
+              {canViewAllUnits && <option value="">Semua Unit</option>}
+              {(availableUnitOptions || []).map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
             </MasterFilterSelect>
             <MasterFilterSelect aria-label="Filter semester" value={filterSemester} onChange={(event) => { setFilterSemester(event.target.value); setPage(1) }}>
               <option value="">Semua Semester</option>
@@ -811,10 +927,25 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
               <option value="Nonaktif">Nonaktif</option>
               <option value="Arsip">Arsip</option>
             </MasterFilterSelect>
+            <MasterFilterSelect
+              aria-label="Tampilkan per halaman"
+              value={perPage}
+              onChange={(event) => {
+                setPerPage(Number(event.target.value))
+                setPage(1)
+              }}
+            >
+              <option value={5}>5 per hal</option>
+              <option value={10}>10 per hal</option>
+              <option value={15}>15 per hal</option>
+              <option value={25}>25 per hal</option>
+              <option value={50}>50 per hal</option>
+              <option value={100}>100 per hal</option>
+            </MasterFilterSelect>
           </>
         )}
         onReset={resetFilters}
-        resetDisabled={!search && !filterTahun && !filterUnit && !filterSemester && !filterKelas && !filterGuru && !filterStatus}
+        resetDisabled={!search && !filterTahun && filterUnit === (canViewAllUnits ? '' : effectiveUserUnitId) && !filterSemester && !filterKelas && !filterGuru && !filterStatus && perPage === 15}
         isLoading={isLoading}
         isError={isError}
         onRetry={refetch}
@@ -998,7 +1129,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                         className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
                       >
                         <option value="">-- Pilih Unit Pendidikan --</option>
-                        {options.unit_pendidikan?.map((u) => (
+                        {availableUnitOptions?.map((u) => (
                           <option key={u.id} value={u.id}>
                             {u.name} ({u.code})
                           </option>
