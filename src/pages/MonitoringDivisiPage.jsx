@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Layers,
   Plus,
@@ -56,6 +57,63 @@ const STATUS_MAP = {
   tercapai: { label: 'Tercapai', color: 'success' },
   terlambat: { label: 'Terlambat', color: 'warning' },
   belum_tercapai: { label: 'Belum Tercapai', color: 'error' },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+    rose: {
+      card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
+      title: 'text-rose-700 dark:text-rose-400',
+      icon: 'text-rose-500',
+      val: 'text-rose-600 dark:text-rose-300',
+      sub: 'text-rose-600/70 dark:text-rose-400/70',
+    },
+  }
+
+  const t = tones[tone] || tones.emerald
+
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-pointer group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.button>
+  )
 }
 
 // Rich SIT Dataset Fallback for School Management System
@@ -893,9 +951,22 @@ export default function MonitoringDivisiPage() {
     </div>
   )
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
   return (
     <PageContainer maxW="7xl">
-      <div className="space-y-6 print:space-y-1 pb-12 print:pb-0 ui-enter">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 print:space-y-1 pb-12 print:pb-0">
         {/* Breadcrumb Navigation */}
         <div className="print:hidden">
           <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Monitoring Divisi' }]} />
@@ -1017,50 +1088,36 @@ export default function MonitoringDivisiPage() {
           </button>
         </div>
 
-        {/* KPI Stats Grid */}
-        <div className="print:hidden">
-          <MasterStatsGrid cols={4}>
-            <MasterStatCard
-              label="Total Laporan Monitoring"
-              value={totalCount}
-              description="Catatan pengawasan aktif"
-              badge="Supervisi"
-              badgeVariant="emerald"
-              icon={Layers}
-              variant="emerald"
-              className="ui-card transition-all duration-300 hover:scale-[1.02]"
-            />
-            <MasterStatCard
-              label="Capaian Rata-Rata"
-              value={`${avgCapaian}%`}
-              description="Persentase ketercapaian"
-              badge="Akumulasi Target"
-              badgeVariant="info"
-              icon={TrendingUp}
-              variant="blue"
-              className="ui-card transition-all duration-300 hover:scale-[1.02]"
-            />
-            <MasterStatCard
-              label="Target Sesuai / Tercapai"
-              value={tercapaiCount}
-              description="Indikator tuntas SOP"
-              badge="Tercapai"
-              badgeVariant="success"
-              icon={CheckCircle2}
-              variant="green"
-              className="ui-card transition-all duration-300 hover:scale-[1.02]"
-            />
-            <MasterStatCard
-              label="Perlu Perhatian / Tindak Lanjut"
-              value={perluPerhatianCount}
-              description="Terlambat / belum tuntas"
-              badge="Evaluasi Pimpinan"
-              badgeVariant="danger"
-              icon={AlertTriangle}
-              variant="rose"
-              className="ui-card transition-all duration-300 hover:scale-[1.02]"
-            />
-          </MasterStatsGrid>
+        {/* KPI Stats Grid Complying with TAILGRIDS_CARD_COMPONENT */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+          <KpiTintedCard
+            label="Total Laporan Monitoring"
+            value={totalCount}
+            subtext="Supervisi aktif SIT"
+            icon={Layers}
+            tone="emerald"
+          />
+          <KpiTintedCard
+            label="Capaian Rata-Rata"
+            value={`${avgCapaian}%`}
+            subtext="Akumulasi target"
+            icon={TrendingUp}
+            tone="blue"
+          />
+          <KpiTintedCard
+            label="Target Sesuai / Tercapai"
+            value={tercapaiCount}
+            subtext="Indikator tuntas SOP"
+            icon={CheckCircle2}
+            tone="amber"
+          />
+          <KpiTintedCard
+            label="Perlu Perhatian / Tindak Lanjut"
+            value={perluPerhatianCount}
+            subtext="Evaluasi pimpinan"
+            icon={AlertTriangle}
+            tone="rose"
+          />
         </div>
 
         {/* AppDataTable complying with TailGrids Benchmark */}
@@ -1159,7 +1216,7 @@ export default function MonitoringDivisiPage() {
             </AlertDialog>
           </Backdrop>
         </OverlayWrapper>
-      </div>
+      </motion.div>
     </PageContainer>
   )
 }

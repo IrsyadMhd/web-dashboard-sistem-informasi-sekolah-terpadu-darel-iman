@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import PersonAvatar from '../components/ui/PersonAvatar'
 import {
   ClipboardList,
@@ -45,6 +46,88 @@ import {
 } from '../components/master-data'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { RotateCcw, Printer } from 'lucide-react'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+    teal: {
+      card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
+      title: 'text-teal-700 dark:text-teal-400',
+      icon: 'text-teal-500',
+      val: 'text-teal-600 dark:text-teal-300',
+      sub: 'text-teal-600/70 dark:text-teal-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
   const user = useAuthStore((state) => state.user)
@@ -488,33 +571,33 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
   )
 
   const pageContent = (
-    <div className="master-data-page space-y-6 pb-12">
-      {/* Top Banner / Header (Hidden when embedded) */}
+    <div className="education-unit-page lms-penugasan-page space-y-6">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
+      {/* HEADER BANNER */}
       {!embedded && !hidePageHeader && (
-        <div className="bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] rounded-[18px] p-6 text-white shadow-xl relative overflow-hidden">
-          <div className="absolute -right-6 -bottom-6 opacity-15 text-white">
-            <ClipboardList size={180} />
-          </div>
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <motion.div variants={itemVariants}>
+        <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 sm:p-8 text-white shadow-xl">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-emerald-200 text-sm font-medium mb-1">
-                <BookOpen size={16} />
-                <span>Pelaksanaan Pembelajaran & Assessments</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 mb-3">
+                <Sparkles className="w-3.5 h-3.5" /> LMS — Manajemen Penugasan Siswa
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Penugasan & Proyek Siswa</h1>
-              <p className="text-emerald-100 text-sm max-w-xl mt-1">
-                Kelola tugas mandiri, proyek kelompok, kuis formatif, serta penilaian hasil pengumpulan tugas siswa secara terpadu.
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Penugasan &amp; Asesmen</h1>
+              <p className="text-white/80 text-sm mt-1 max-w-xl">
+                Kelola instruksi tugas, deadline, lampiran berkas, dan evaluasi hasil kerja siswa terhubung dengan Modul Ajar.
               </p>
             </div>
-            <button
-              onClick={handleOpenCreateModal}
-              className="flex items-center gap-2 bg-white text-[#0E5C44] hover:bg-emerald-50 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 transform hover:scale-[1.03] active:scale-95 shadow-md"
-            >
-              <Plus size={18} />
-              <span>Buat Penugasan Baru</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleOpenCreateModal}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-[#0E5C44] font-bold text-sm shadow-lg hover:bg-emerald-50 hover:scale-[1.03] active:scale-95 transition-all duration-200"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" /> Buat Tugas Baru
+              </button>
+            </div>
           </div>
         </div>
+        </motion.div>
       )}
 
       {/* Alert Notifications */}
@@ -542,116 +625,70 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
         </div>
       )}
 
-      {/* KPI Cards / Statistics (Interactive Click Filters) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div
+      {/* KPI STATS CARDS */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <KpiTintedCard
+          icon={ClipboardList}
+          label="Total Penugasan"
+          value={stats.total}
+          subtext="Tercatat di sistem"
+          tone="emerald"
           onClick={() => {
             setSelectedStatus('')
             setPage(1)
           }}
-          className={`bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] ${
-            selectedStatus === ''
-              ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
-              : 'border-slate-200/80 dark:border-slate-800 shadow-sm'
-          }`}
-          title="Klik untuk melihat semua penugasan"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Penugasan</span>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center text-[#0E5C44] dark:text-emerald-400">
-              <ClipboardList size={20} />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{stats.total}</p>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">Tercatat di sistem</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Globe}
+          label="Dipublikasikan"
+          value={stats.published}
+          subtext="Dapat diakses siswa"
+          tone="blue"
           onClick={() => {
             setSelectedStatus('dipublikasikan')
             setPage(1)
           }}
-          className={`bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] ${
-            selectedStatus === 'dipublikasikan'
-              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md'
-              : 'border-slate-200/80 dark:border-slate-800 shadow-sm'
-          }`}
-          title="Klik untuk memfilter status Dipublikasikan"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Dipublikasikan</span>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
-              <Globe size={20} />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{stats.published}</p>
-          <span className="text-[11px] text-blue-600 dark:text-blue-400 mt-1 block">Dapat diakses siswa</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Lock}
+          label="Draft"
+          value={stats.draft}
+          subtext="Belum dipublish"
+          tone="amber"
           onClick={() => {
             setSelectedStatus('draft')
             setPage(1)
           }}
-          className={`bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] ${
-            selectedStatus === 'draft'
-              ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-md'
-              : 'border-slate-200/80 dark:border-slate-800 shadow-sm'
-          }`}
-          title="Klik untuk memfilter status Draft"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Draft</span>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
-              <Lock size={20} />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{stats.draft}</p>
-          <span className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 block">Belum dipublish</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Users}
+          label="Pengumpulan Siswa"
+          value={stats.total_pengumpulan}
+          subtext="Submission terkirim"
+          tone="purple"
           onClick={() => {
             setSelectedStatus('dipublikasikan')
             setPage(1)
           }}
-          className="bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:border-purple-300 transition-all duration-200 cursor-pointer active:scale-[0.98]"
-          title="Klik untuk memfilter tugas dengan submission siswa"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Pengumpulan Siswa</span>
-            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 dark:text-purple-400">
-              <Users size={20} />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{stats.total_pengumpulan}</p>
-          <span className="text-[11px] text-purple-600 dark:text-purple-400 mt-1 block">Submission terkirim</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Award}
+          label="Tugas Dinilai"
+          value={stats.total_dinilai}
+          subtext="Sudah diberi nilai"
+          tone="teal"
           onClick={() => {
             setSelectedStatus('dipublikasikan')
             setPage(1)
           }}
-          className="bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:border-teal-300 transition-all duration-200 cursor-pointer active:scale-[0.98]"
-          title="Klik untuk memfilter tugas yang telah dinilai"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tugas Dinilai</span>
-            <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
-              <Award size={20} />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-slate-800 dark:text-white mt-2">{stats.total_dinilai}</p>
-          <span className="text-[11px] text-teal-600 dark:text-teal-400 mt-1 block">Sudah diberi nilai</span>
-        </div>
-      </div>
+        />
+      </motion.div>
 
       {/* Tab Navigation (Pindahkan di atas card datatable) */}
       {tabNav && <div className="my-2">{tabNav}</div>}
 
       {/* SEARCH & FILTER BAR (2-ROW LAYOUT) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
         {/* Baris 1: Full-width Search Input */}
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -753,9 +790,10 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* MAIN DATATABLE SECTION */}
+      <motion.div variants={itemVariants}>
       <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-700">
           <div>
@@ -986,6 +1024,7 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
           )}
         </MasterDataTable>
       </section>
+      </motion.div>
 
       {/* CREATE / EDIT MODAL */}
       {isModalOpen && (
@@ -1664,6 +1703,7 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
         onImport={handleImport}
         templateFields={['judul', 'deskripsi', 'tipe', 'jenis_tugas', 'deadline', 'status']}
       />
+      </motion.div>
     </div>
   )
 

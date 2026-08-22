@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import AppBreadcrumb from '../app/AppBreadcrumb'
 
 export default function AcademicModuleContainer({ title, description, tabs, hideHeader = false, tabsBelowKpi = false, breadcrumbItems = [], children }) {
@@ -58,13 +59,28 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
 
   const tabNavElement = renderNav()
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+  }
+
   return (
-    <section className="space-y-6">
+    <motion.section initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {breadcrumbItems && breadcrumbItems.length > 0 && (
-        <AppBreadcrumb items={breadcrumbItems} />
+        <motion.div variants={itemVariants}>
+          <AppBreadcrumb items={breadcrumbItems} />
+        </motion.div>
       )}
       {!hideHeader && (
-        <header className="overflow-hidden rounded-[22px] bg-gradient-to-br from-[#0E5C44] via-[#167856] to-[#1E8E5A] p-6 text-white shadow-xl md:p-8">
+        <motion.header variants={itemVariants} className="overflow-hidden rounded-[22px] bg-gradient-to-br from-[#0E5C44] via-[#167856] to-[#1E8E5A] p-6 text-white shadow-xl md:p-8">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center rounded-full bg-emerald-400/20 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-emerald-100 backdrop-blur-md border border-emerald-400/30">
               Akademik &amp; LMS
@@ -72,16 +88,16 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
           </div>
           <h1 className="mt-3 text-2xl font-black md:text-3xl tracking-tight text-white">{title}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-emerald-50/90">{description}</p>
-        </header>
+        </motion.header>
       )}
 
-      {!tabsBelowKpi && tabNavElement}
+      {!tabsBelowKpi && <motion.div variants={itemVariants}>{tabNavElement}</motion.div>}
 
-      <div className="academic-module-content">
+      <motion.div variants={itemVariants} className="academic-module-content">
         {tabsBelowKpi && React.isValidElement(children)
           ? React.cloneElement(children, { tabNav: tabNavElement })
           : children}
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   )
 }

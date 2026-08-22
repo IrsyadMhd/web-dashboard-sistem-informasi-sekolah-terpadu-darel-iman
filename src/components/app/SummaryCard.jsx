@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import AppBadge from './AppBadge'
@@ -38,7 +39,10 @@ export default function SummaryCard({
   const isClickable = typeof onClick === 'function'
 
   return (
-    <div
+    <motion.div
+      whileHover={{ scale: 1.03, y: -3 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={onClick}
       role={isClickable ? 'button' : undefined}
       tabIndex={isClickable ? 0 : undefined}
@@ -53,8 +57,8 @@ export default function SummaryCard({
           : undefined
       }
       className={cn(
-        'summary-card flex items-start gap-3.5 rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E5C44]/30 dark:border-slate-800 dark:bg-[#1B2433]',
-        isClickable && 'cursor-pointer hover:-translate-y-0.5 hover:border-[#3FBF75]/40 hover:shadow-md dark:hover:border-[#3FBF75]/30',
+        'summary-card group flex items-start gap-3.5 rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E5C44]/30 dark:border-slate-800 dark:bg-[#1B2433]',
+        isClickable && 'cursor-pointer hover:border-[#3FBF75]/40 hover:shadow-md dark:hover:border-[#3FBF75]/30',
         className
       )}
     >
@@ -85,6 +89,6 @@ export default function SummaryCard({
         )}
       </div>
       {isClickable && <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 dark:text-slate-600" />}
-    </div>
+    </motion.div>
   )
 }

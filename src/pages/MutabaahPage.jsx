@@ -12,7 +12,22 @@ import MutabaahEnterprisePage from './MutabaahEnterprisePage'
 import MutabaahDailySpreadsheet from './MutabaahDailySpreadsheet'
 import MutabaahAnalyticsPage from './MutabaahAnalyticsPage'
 import MutabaahFamilyPortal from './MutabaahFamilyPortal'
-import { JadwalSholatWidget } from '../components/JadwalSholatWidget'
+import { Button } from '@/components/tailgrids/core/button'
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/tailgrids/core/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+import {
+  MasterDataPage,
+  MasterStatCard,
+  MasterStatsGrid,
+} from '../components/master-data'
 import './MutabaahPage.css'
 
 const statusMeta = {
@@ -67,8 +82,8 @@ export default function MutabaahPage() {
 
   if (roles.includes('Orang Tua')) return <MutabaahFamilyPortal mode="parent" />
   if (roles.includes('Siswa')) return <MutabaahFamilyPortal mode="student" />
-  if (!view || view === 'dashboard' || view === 'rekap') return <MutabaahAnalyticsPage view={view || 'dashboard'} />
-  if (view === 'evaluasi' || view === 'parents') return <MutabaahOverviewPage view={view} />
+  if (!view || view === 'dashboard' || view === 'rekap' || view === 'evaluasi') return <MutabaahAnalyticsPage view={view || 'dashboard'} />
+  if (view === 'parents') return <MutabaahFamilyPortal mode="parent" />
   if (enterpriseResource) return <MutabaahEnterprisePage resource={enterpriseResource} />
   if (params.get('tab') === 'agenda') return <MutabaahEnterprisePage resource="agendas" />
   if (view === 'input') return <MutabaahDailySpreadsheet />
@@ -423,286 +438,288 @@ function MutabaahOverviewPage({ view }) {
 
   if (view === 'evaluasi') {
     return (
-      <div className="mutabaah-overview">
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <span>Mutaba’ah Yaumiyyah</span>
-            <h1>{content[0]}</h1>
-            <p>{content[1]}</p>
-            <small>Dashboard › Mutaba’ah › {content[0]}</small>
-          </div>
-          <button
-            onClick={() => setTargetModal({ mode: 'create' })}
-            style={{
-              padding: '0.6rem 1.25rem',
-              background: '#0E5C44',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-          >
-            <Plus size={18} /> Tambah Target Mutaba’ah
-          </button>
-        </header>
+      <MasterDataPage className="education-unit-page mutabaah-page" hideBreadcrumb>
+        {/* 📊 KPI CARDS GRID */}
+        <MasterStatsGrid>
+          <MasterStatCard icon={BookHeart} label="Target Aktif" value={kpis?.total_students ? `${kpis.total_students} Siswa` : '100%'} description="Dipantau Periode Ini" variant="info" delay={40} />
+          <MasterStatCard icon={Check} label="Realisasi Baik" value={`${statusDist[0]?.percentage ?? 78}%`} description="Capaian Target Pembiasaan" variant="success" delay={80} />
+          <MasterStatCard icon={ListChecks} label="Verifikasi Musyrif" value={kpis?.finalized ?? 0} description="Laporan Difinalisasi" variant="success" delay={120} />
+          <MasterStatCard icon={Clock3} label="Perlu Evaluasi" value={kpis?.not_filled ?? 0} description="Perlu Tindak Lanjut" variant="danger" delay={160} />
+        </MasterStatsGrid>
 
-        <div className="overview-kpis">
-          <section>
-            <BookHeart />
-            <span>Target Aktif</span>
-            <b>{kpis?.total_students ? `${kpis.total_students} Siswa` : '100%'}</b>
-            <small>Dipantau Periode Ini</small>
-          </section>
-          <section>
-            <Check />
-            <span>Realisasi Baik</span>
-            <b>{statusDist[0]?.percentage ?? 78}%</b>
-            <small>Capaian Target Pembiasaan</small>
-          </section>
-          <section>
-            <ListChecks />
-            <span>Verifikasi Musyrif</span>
-            <b>{kpis?.finalized ?? 0}</b>
-            <small>Laporan Difinalisasi</small>
-          </section>
-          <section>
-            <Clock3 />
-            <span>Perlu Evaluasi</span>
-            <b>{kpis?.not_filled ?? 0}</b>
-            <small>Perlu Tindak Lanjut</small>
-          </section>
-        </div>
-
-        <div className="overview-panels" style={{ gridTemplateColumns: '1fr', marginTop: '1.5rem' }}>
-          <section style={{ background: '#ffffff', padding: '1.5rem', borderRadius: '18px', boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h2>Evaluasi Capaian Pembiasaan Siswa</h2>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <input
-                  type="text"
-                  placeholder="Cari siswa atau kelas..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ padding: '0.5rem 1rem', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '0.875rem' }}
-                />
-              </div>
+        {/* 🟢 MAIN TABLE & FILTER CARD (Target & Evaluasi) */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
+          {/* Header Baris 1: Title & Action Button */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Evaluasi Capaian Pembiasaan Siswa</h3>
+              <p className="text-xs text-slate-400">Monitoring pencapaian target dan evaluasi pembiasaan ibadah santri per periode</p>
             </div>
 
-            {loading ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#64748B' }}>
-                <Loader2 className="animate-spin" style={{ display: 'inline', marginRight: '0.5rem' }} /> Memuat data target & evaluasi...
-              </div>
-            ) : filteredRecap.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#94A3B8' }}>
-                Belum ada data evaluasi target pada periode ini.
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead>
-                    <tr style={{ background: '#F8FAFC', textAlign: 'left', borderBottom: '2px solid #E2E8F0' }}>
-                      <th style={{ padding: '0.75rem 1rem' }}>Siswa</th>
-                      <th style={{ padding: '0.75rem 1rem' }}>Kelas</th>
-                      <th style={{ padding: '0.75rem 1rem' }}>Baik</th>
-                      <th style={{ padding: '0.75rem 1rem' }}>Kurang</th>
-                      <th style={{ padding: '0.75rem 1rem' }}>Belum</th>
-                      <th style={{ padding: '0.75rem 1rem' }}>Progress</th>
-                      <th style={{ padding: '0.75rem 1rem' }}>Status Target</th>
-                      <th style={{ padding: '0.75rem 1rem' }}>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRecap.slice(0, 15).map((row, idx) => {
-                      const prog = row.progress ?? row.percentage ?? 80
-                      const isAchieved = prog >= 75
-                      return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                          <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#0F172A' }}>{row.full_name || row.nama_siswa || `Siswa ${idx + 1}`}</td>
-                          <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>{row.class_name || row.kelas || '-'}</td>
-                          <td style={{ padding: '0.75rem 1rem', color: '#16A34A', fontWeight: 600 }}>{row.baik ?? 5}</td>
-                          <td style={{ padding: '0.75rem 1rem', color: '#CA8A04' }}>{row.kurang ?? 1}</td>
-                          <td style={{ padding: '0.75rem 1rem', color: '#DC2626' }}>{row.belum ?? 0}</td>
-                          <td style={{ padding: '0.75rem 1rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <div style={{ flex: 1, background: '#E2E8F0', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: `${Math.min(100, prog)}%`, background: isAchieved ? '#0E5C44' : '#EAB308', height: '100%' }} />
-                              </div>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155' }}>{prog}%</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '0.75rem 1rem' }}>
-                            <span style={{
-                              padding: '0.25rem 0.6rem',
-                              borderRadius: '12px',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              background: isAchieved ? '#DCFCE7' : '#FEF9C3',
-                              color: isAchieved ? '#166534' : '#854D0E',
-                            }}>
-                              {isAchieved ? 'Tercapai' : 'Perlu Bimbingan'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '0.75rem 1rem' }}>
-                            <div style={{ display: 'flex', gap: '0.4rem' }}>
-                              <button
-                                onClick={() => setSelectedItem(row)}
-                                style={{ padding: '0.35rem 0.6rem', background: '#F1F5F9', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: '#0E5C44' }}
-                              >
-                                Detail
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setTargetForm({
-                                    name: `Target ${row.full_name || row.nama_siswa}`,
-                                    target_value: 85,
-                                    unit_id: row.unit_id || '',
-                                    education_level: 'SMA',
-                                    status: 'active',
-                                    description: `Evaluasi target untuk ${row.full_name || row.nama_siswa}`,
-                                  })
-                                  setTargetModal({ mode: 'edit', row })
-                                }}
-                                style={{ padding: '0.35rem 0.6rem', background: '#FEF9C3', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: '#854D0E' }}
-                              >
-                                Edit Target
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </div>
-
-        {targetModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
-            <form onSubmit={handleSaveTarget} style={{ background: '#ffffff', padding: '2rem', borderRadius: '18px', maxWidth: '520px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                <h3 style={{ margin: 0, color: '#0E5C44' }}>{targetModal.mode === 'edit' ? 'Edit Target Mutaba’ah' : 'Tambah Target Mutaba’ah Baru'}</h3>
-                <button type="button" onClick={() => setTargetModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X /></button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.875rem', fontWeight: 600 }}>
-                  Nama Target Mutaba’ah *
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Target Shalat Berjamaah 100%"
-                    value={targetForm.name}
-                    onChange={(e) => setTargetForm({ ...targetForm, name: e.target.value })}
-                    style={{ padding: '0.55rem 0.85rem', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.875rem' }}
-                  />
-                </label>
-
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.875rem', fontWeight: 600 }}>
-                  Unit Pendidikan
-                  <select
-                    value={targetForm.unit_id}
-                    onChange={(e) => setTargetForm({ ...targetForm, unit_id: e.target.value })}
-                    style={{ padding: '0.55rem 0.85rem', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.875rem' }}
-                  >
-                    <option value="">Pilih Unit Pendidikan</option>
-                    {options.units?.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                </label>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Jenjang
-                    <input
-                      type="text"
-                      value={targetForm.education_level}
-                      onChange={(e) => setTargetForm({ ...targetForm, education_level: e.target.value })}
-                      style={{ padding: '0.55rem 0.85rem', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.875rem' }}
-                    />
-                  </label>
-
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Nilai Target %
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={targetForm.target_value}
-                      onChange={(e) => setTargetForm({ ...targetForm, target_value: Number(e.target.value) })}
-                      style={{ padding: '0.55rem 0.85rem', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.875rem' }}
-                    />
-                  </label>
-                </div>
-
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.875rem', fontWeight: 600 }}>
-                  Status Target
-                  <select
-                    value={targetForm.status}
-                    onChange={(e) => setTargetForm({ ...targetForm, status: e.target.value })}
-                    style={{ padding: '0.55rem 0.85rem', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.875rem' }}
-                  >
-                    <option value="active">Aktif</option>
-                    <option value="inactive">Nonaktif</option>
-                  </select>
-                </label>
-
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.875rem', fontWeight: 600 }}>
-                  Keterangan & Indikator Target
-                  <textarea
-                    rows={3}
-                    placeholder="Catatan mengenai target dan indikator pembiasaan..."
-                    value={targetForm.description}
-                    onChange={(e) => setTargetForm({ ...targetForm, description: e.target.value })}
-                    style={{ padding: '0.55rem 0.85rem', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.875rem' }}
-                  />
-                </label>
-              </div>
-
-              <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+            <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-visible py-1">
+              <div className="group relative inline-flex">
                 <button
                   type="button"
-                  onClick={() => setTargetModal(null)}
-                  style={{ padding: '0.5rem 1.25rem', background: '#F1F5F9', color: '#475569', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}
+                  aria-label="Tambah Target Mutaba'ah"
+                  className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-emerald-600/30 cursor-pointer shadow-2xs"
+                  onClick={() => setTargetModal({ mode: 'create' })}
                 >
-                  Batal
+                  <Plus className="size-5 transition-colors" />
                 </button>
-                <button
-                  type="submit"
-                  disabled={savingTarget}
-                  style={{ padding: '0.5rem 1.25rem', background: '#0E5C44', color: '#ffffff', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                  {savingTarget && <Loader2 className="animate-spin" size={16} />} Simpan Target
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {selectedItem && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
-            <div style={{ background: '#ffffff', padding: '2rem', borderRadius: '18px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, color: '#0E5C44' }}>Detail Evaluasi Siswa</h3>
-                <button onClick={() => setSelectedItem(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X /></button>
-              </div>
-              <p><b>Nama:</b> {selectedItem.full_name || selectedItem.nama_siswa}</p>
-              <p><b>Kelas:</b> {selectedItem.class_name || selectedItem.kelas || '-'}</p>
-              <p><b>Capaian Baik:</b> {selectedItem.baik ?? 5} Indikator</p>
-              <p><b>Kurang:</b> {selectedItem.kurang ?? 1} Indikator</p>
-              <p><b>Persentase:</b> {selectedItem.progress ?? selectedItem.percentage ?? 80}%</p>
-              <p><b>Status Target:</b> {((selectedItem.progress ?? 80) >= 75) ? 'Tercapai' : 'Perlu Tingkat Pembiasaan'}</p>
-              <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
-                <button onClick={() => setSelectedItem(null)} style={{ padding: '0.5rem 1.25rem', background: '#0E5C44', color: '#fff', border: 'none', borderRadius: '10px', cursor: 'pointer' }}>Tutup</button>
+                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
+                  Tambah Target Mutaba'ah
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Filter Baris 2: Search Input */}
+          <div className="py-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="w-full max-w-xs">
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Pencarian</label>
+              <input
+                type="text"
+                placeholder="Cari siswa atau kelas..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+            </div>
+          </div>
+
+          {/* Datatable Content */}
+          {loading ? (
+            <div className="py-8 text-center text-xs font-bold text-slate-400">
+              <Loader2 className="animate-spin inline-block mr-2 h-4 w-4" /> Memuat data target & evaluasi...
+            </div>
+          ) : filteredRecap.length === 0 ? (
+            <div className="py-8 text-center text-xs font-bold text-slate-400">
+              Belum ada data evaluasi target pada periode ini.
+            </div>
+          ) : (
+            <div className="overflow-x-auto mt-4">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/80 font-bold text-slate-500 uppercase tracking-wider dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
+                    <th className="px-3 py-3">Siswa</th>
+                    <th className="px-3 py-3">Kelas</th>
+                    <th className="px-3 py-3">Baik</th>
+                    <th className="px-3 py-3">Kurang</th>
+                    <th className="px-3 py-3">Belum</th>
+                    <th className="px-3 py-3">Progress</th>
+                    <th className="px-3 py-3">Status Target</th>
+                    <th className="px-3 py-3 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredRecap.slice(0, 15).map((row, idx) => {
+                    const prog = row.progress ?? row.percentage ?? 80
+                    const isAchieved = prog >= 75
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition">
+                        <td className="px-3 py-3 font-bold text-slate-900 dark:text-white">{row.full_name || row.nama_siswa || `Siswa ${idx + 1}`}</td>
+                        <td className="px-3 py-3 font-semibold text-slate-600 dark:text-slate-400">{row.class_name || row.kelas || '-'}</td>
+                        <td className="px-3 py-3 font-bold text-emerald-600">{row.baik ?? 5}</td>
+                        <td className="px-3 py-3 font-bold text-amber-600">{row.kurang ?? 1}</td>
+                        <td className="px-3 py-3 font-bold text-rose-600">{row.belum ?? 0}</td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-24 rounded-full bg-slate-100 dark:bg-slate-700">
+                              <div className={`h-2 rounded-full ${isAchieved ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${Math.min(100, prog)}%` }} />
+                            </div>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{prog}%</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                            isAchieved ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          }`}>
+                            {isAchieved ? 'Tercapai' : 'Perlu Bimbingan'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => setSelectedItem(row)}
+                              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            >
+                              Detail
+                            </button>
+                            <button
+                              onClick={() => {
+                                setTargetForm({
+                                  name: `Target ${row.full_name || row.nama_siswa}`,
+                                  target_value: 85,
+                                  unit_id: row.unit_id || '',
+                                  education_level: 'SMA',
+                                  status: 'active',
+                                  description: `Evaluasi target untuk ${row.full_name || row.nama_siswa}`,
+                                })
+                                setTargetModal({ mode: 'edit', row })
+                              }}
+                              className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+                            >
+                              Edit Target
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* 🟢 TAILGRIDS DIALOG: MODAL TAMBAH & EDIT TARGET MUTABA'AH */}
+        <OverlayWrapper>
+          <Backdrop isOpen={Boolean(targetModal)} onOpenChange={() => setTargetModal(null)} isDismissable={true}>
+            <Dialog className="max-w-md rounded-2xl bg-white p-6 dark:bg-[#1B2433] shadow-2xl">
+              <DialogHeader className="border-b border-slate-100 pb-3 dark:border-slate-800">
+                <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
+                  {targetModal?.mode === 'edit' ? 'Edit Target Mutaba’ah' : 'Tambah Target Mutaba’ah Baru'}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-400">
+                  Atur indikator dan nilai target pencapaian mutabaah santri
+                </DialogDescription>
+                <DialogClose onClick={() => setTargetModal(null)} />
+              </DialogHeader>
+
+              <form onSubmit={handleSaveTarget}>
+                <DialogBody className="space-y-4 py-4 text-xs">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Nama Target Mutaba’ah *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: Target Shalat Berjamaah 100%"
+                      value={targetForm.name}
+                      onChange={(e) => setTargetForm({ ...targetForm, name: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Unit Pendidikan
+                    </label>
+                    <select
+                      value={targetForm.unit_id}
+                      onChange={(e) => setTargetForm({ ...targetForm, unit_id: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="">Pilih Unit Pendidikan</option>
+                      {options.units?.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Jenjang
+                      </label>
+                      <input
+                        type="text"
+                        value={targetForm.education_level}
+                        onChange={(e) => setTargetForm({ ...targetForm, education_level: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Nilai Target %
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={targetForm.target_value}
+                        onChange={(e) => setTargetForm({ ...targetForm, target_value: Number(e.target.value) })}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Status Target
+                    </label>
+                    <select
+                      value={targetForm.status}
+                      onChange={(e) => setTargetForm({ ...targetForm, status: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="active">Aktif</option>
+                      <option value="inactive">Nonaktif</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Keterangan & Indikator Target
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Catatan mengenai target dan indikator pembiasaan..."
+                      value={targetForm.description}
+                      onChange={(e) => setTargetForm({ ...targetForm, description: e.target.value })}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                    />
+                  </div>
+                </DialogBody>
+
+                <DialogFooter className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                  <Button appearance="outline" size="sm" type="button" onClick={() => setTargetModal(null)}>
+                    Batal
+                  </Button>
+                  <Button variant="primary" size="sm" type="submit" disabled={savingTarget}>
+                    {savingTarget && <Loader2 className="animate-spin mr-1 h-3.5 w-3.5" />} Simpan Target
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Dialog>
+          </Backdrop>
+        </OverlayWrapper>
+
+        {/* 🟢 TAILGRIDS DIALOG: MODAL LIHAT DETAIL EVALUASI SISWA */}
+        <OverlayWrapper>
+          <Backdrop isOpen={Boolean(selectedItem)} onOpenChange={() => setSelectedItem(null)} isDismissable={true}>
+            <Dialog className="max-w-md rounded-2xl bg-white p-6 dark:bg-[#1B2433] shadow-2xl">
+              <DialogHeader className="border-b border-slate-100 pb-3 dark:border-slate-800">
+                <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
+                  Detail Evaluasi Siswa
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-400">
+                  Informasi capaian indikator dan evaluasi target mutabaah
+                </DialogDescription>
+                <DialogClose onClick={() => setSelectedItem(null)} />
+              </DialogHeader>
+
+              <DialogBody className="space-y-3 py-4 text-xs">
+                <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
+                  <p><span className="text-slate-400">Nama Siswa:</span> <strong className="text-slate-800 dark:text-slate-200">{selectedItem?.full_name || selectedItem?.nama_siswa}</strong></p>
+                  <p><span className="text-slate-400">Kelas:</span> <strong className="text-slate-800 dark:text-slate-200">{selectedItem?.class_name || selectedItem?.kelas || '-'}</strong></p>
+                  <p><span className="text-slate-400">Capaian Baik:</span> <strong className="text-emerald-600">{selectedItem?.baik ?? 5} Indikator</strong></p>
+                  <p><span className="text-slate-400">Kurang:</span> <strong className="text-amber-600">{selectedItem?.kurang ?? 1} Indikator</strong></p>
+                  <p><span className="text-slate-400">Persentase:</span> <strong className="text-slate-800 dark:text-slate-200">{selectedItem?.progress ?? selectedItem?.percentage ?? 80}%</strong></p>
+                  <p><span className="text-slate-400">Status Target:</span> <strong className="text-emerald-600">{((selectedItem?.progress ?? 80) >= 75) ? 'Tercapai' : 'Perlu Tingkat Pembiasaan'}</strong></p>
+                </div>
+              </DialogBody>
+
+              <DialogFooter className="flex justify-end border-t border-slate-100 pt-3 dark:border-slate-800">
+                <Button appearance="outline" size="sm" onClick={() => setSelectedItem(null)}>
+                  Tutup
+                </Button>
+              </DialogFooter>
+            </Dialog>
+          </Backdrop>
+        </OverlayWrapper>
+      </MasterDataPage>
     )
   }
 

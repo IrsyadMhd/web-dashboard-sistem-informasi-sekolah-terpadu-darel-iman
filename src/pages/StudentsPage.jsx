@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -29,6 +30,7 @@ import StudentFormModal from '../components/siswa/StudentFormModal'
 import StudentLeaderAnalyticsSection from '../components/siswa/StudentLeaderAnalyticsSection'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { Button } from '../components/tailgrids/core/button'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
 import { useDaftarKelas } from '../hooks/useReferenceData'
 import { useAksiSiswa, useDaftarSiswa } from '../hooks/useStudents'
@@ -89,6 +91,67 @@ const initialForm = () => ({
   beasiswa: 'Tidak Ada',
   catatan: '',
 })
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', active, onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      activeCard: 'ring-2 ring-emerald-500 shadow-md',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      activeCard: 'ring-2 ring-blue-500 shadow-md',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    rose: {
+      card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
+      activeCard: 'ring-2 ring-rose-500 shadow-md',
+      title: 'text-rose-700 dark:text-rose-400',
+      icon: 'text-rose-500',
+      val: 'text-rose-600 dark:text-rose-300',
+      sub: 'text-rose-600/70 dark:text-rose-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      activeCard: 'ring-2 ring-amber-500 shadow-md',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+  }
+
+  const t = tones[tone] || tones.emerald
+
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} ${active ? t.activeCard : ''} p-5 shadow-xs transition-all hover:shadow-md cursor-pointer group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.button>
+  )
+}
 
 export default function StudentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -916,69 +979,80 @@ export default function StudentsPage() {
     return <AppBadge variant="danger" dot>Nonaktif</AppBadge>
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
   return (
     <PageContainer maxW="7xl" className="space-y-6 pb-12">
-      <MasterDataPage hideBreadcrumb className="education-unit-page student-master-page">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants}>
+        <MasterDataPage hideBreadcrumb className="education-unit-page student-master-page">
 
-        {/* Quick Summary Cards */}
-        <MasterStatsGrid className="education-unit-kpis">
-          <MasterStatCard
-            loading={isSummaryLoading}
+        {/* Breadcrumb Navigation (Identik dengan Halaman Employees) */}
+        <div className="print:hidden">
+          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Data Siswa' }]} />
+        </div>
+
+        {/* Quick Summary Cards (TAILGRIDS_CARD_COMPONENT) */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+          <KpiTintedCard
             icon={FaUserGraduate}
             label="Total Siswa"
             value={studentStats.total_siswa ?? 0}
-            description="Terdaftar di sistem"
-            variant="success"
-            delay={40}
+            subtext="Terdaftar di sistem"
+            tone="emerald"
             onClick={() => {
               setStatCardModal({ isOpen: true, title: 'Detail Data: Total Siswa', filterType: 'all' })
               setStatModalSearch('')
             }}
             active={statCardModal.isOpen && statCardModal.filterType === 'all'}
           />
-          <MasterStatCard
+          <KpiTintedCard
             icon={FaMale}
             label="Siswa Laki-laki"
-            loading={isSummaryLoading}
             value={genderStats.laki_laki ?? 0}
-            description="Berdasarkan data siswa"
-            variant="info"
-            delay={80}
+            subtext="Berdasarkan data siswa"
+            tone="blue"
             onClick={() => {
               setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Laki-laki', filterType: 'male' })
               setStatModalSearch('')
             }}
             active={statCardModal.isOpen && statCardModal.filterType === 'male'}
           />
-          <MasterStatCard
+          <KpiTintedCard
             icon={FaFemale}
             label="Siswa Perempuan"
-            loading={isSummaryLoading}
             value={genderStats.perempuan ?? 0}
-            description="Berdasarkan data siswa"
-            variant="danger"
-            delay={120}
+            subtext="Berdasarkan data siswa"
+            tone="rose"
             onClick={() => {
               setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Perempuan', filterType: 'female' })
               setStatModalSearch('')
             }}
             active={statCardModal.isOpen && statCardModal.filterType === 'female'}
           />
-          <MasterStatCard
+          <KpiTintedCard
             icon={FaCheckCircle}
             label="Status Aktif"
-            loading={isSummaryLoading}
             value={studentStats.siswa_aktif ?? 0}
-            description="Berstatus aktif"
-            variant="warning"
-            delay={160}
+            subtext="Berstatus aktif"
+            tone="amber"
             onClick={() => {
               setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Status Aktif', filterType: 'aktif' })
               setStatModalSearch('')
             }}
             active={statCardModal.isOpen && statCardModal.filterType === 'aktif'}
           />
-        </MasterStatsGrid>
+        </div>
 
         {/* Analytics & Achievement Showcase Section for Kepala Sekolah & Divisi Pendidikan */}
         {isLeaderRole && (
@@ -1728,7 +1802,8 @@ export default function StudentsPage() {
             </Dialog>
           </OverlayWrapper>
         )}
-      </MasterDataPage>
+        </MasterDataPage>
+      </motion.div>
     </PageContainer>
   )
 }

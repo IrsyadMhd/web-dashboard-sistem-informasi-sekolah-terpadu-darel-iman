@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { printEmployeeIdCard } from '../services/idCardPrintService.jsx'
 import EmployeeIdCard from '../components/card-print/EmployeeIdCard'
 import ActionDropdown from '../components/app/ActionDropdown'
@@ -274,6 +275,63 @@ function makePayload(form, assignmentOnly = false) {
       attendances: form.attendances || [],
     },
   }
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+  }
+
+  const t = tones[tone] || tones.emerald
+
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-pointer group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.button>
+  )
 }
 
 export default function EmployeesPage() {
@@ -1651,58 +1709,61 @@ export default function EmployeesPage() {
 
 
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
   return (
     <PageContainer maxW="7xl">
-      <div className="space-y-6 print:space-y-1 pb-12 print:pb-0 ui-enter">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 print:space-y-1 pb-12 print:pb-0">
         {/* 1. Breadcrumb Navigation */}
         <div className="print:hidden">
           <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Data Pegawai' }]} />
         </div>
 
         {/* 2. Summary Stats Cards */}
-        <div className="print:hidden">
-          <MasterStatsGrid cols={4}>
-            <MasterStatCard
-              label="Total Pegawai ERP"
-              value={items.length}
-              description="Seluruh direktori pegawai"
-              badge="SDM"
-              badgeVariant="emerald"
-              icon={UsersRound}
-              variant="emerald"
-              onClick={() => setStatCardModal({ isOpen: true, type: 'total', title: 'Detail Data: Total Pegawai ERP', badge: 'SDM' })}
-            />
-            <MasterStatCard
-              label="Tenaga Pendidik / Guru"
-              value={items.filter((i) => i.jabatan_name?.toLowerCase().includes('guru') || i.jabatan_name?.toLowerCase().includes('kepala')).length}
-              description="Guru & Pengajar aktif"
-              badge="Pendidik"
-              badgeVariant="info"
-              icon={Award}
-              variant="blue"
-              onClick={() => setStatCardModal({ isOpen: true, type: 'pendidik', title: 'Detail Data: Tenaga Pendidik / Guru', badge: 'Pendidik' })}
-            />
-            <MasterStatCard
-              label="Staf TU & Operator"
-              value={items.filter((i) => !i.jabatan_name?.toLowerCase().includes('guru')).length}
-              description="Administrasi & Teknis"
-              badge="Tendik"
-              badgeVariant="purple"
-              icon={Building2}
-              variant="purple"
-              onClick={() => setStatCardModal({ isOpen: true, type: 'tendik', title: 'Detail Data: Staf TU & Operator', badge: 'Tendik' })}
-            />
-            <MasterStatCard
-              label="Status Aktif"
-              value={items.filter((i) => i.status === 'Aktif').length}
-              description="Aktif Bekerja"
-              badge="Aktif"
-              badgeVariant="success"
-              icon={CheckCircle2}
-              variant="green"
-              onClick={() => setStatCardModal({ isOpen: true, type: 'aktif', title: 'Detail Data: Pegawai Status Aktif', badge: 'Aktif' })}
-            />
-          </MasterStatsGrid>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+          <KpiTintedCard
+            label="Total Pegawai ERP"
+            value={items.length}
+            subtext="Seluruh direktori pegawai"
+            icon={UsersRound}
+            tone="emerald"
+            onClick={() => setStatCardModal({ isOpen: true, type: 'total', title: 'Detail Data: Total Pegawai ERP', badge: 'SDM' })}
+          />
+          <KpiTintedCard
+            label="Tenaga Pendidik / Guru"
+            value={items.filter((i) => i.jabatan_name?.toLowerCase().includes('guru') || i.jabatan_name?.toLowerCase().includes('kepala')).length}
+            subtext="Guru & Pengajar aktif"
+            icon={Award}
+            tone="blue"
+            onClick={() => setStatCardModal({ isOpen: true, type: 'pendidik', title: 'Detail Data: Tenaga Pendidik / Guru', badge: 'Pendidik' })}
+          />
+          <KpiTintedCard
+            label="Staf TU & Operator"
+            value={items.filter((i) => !i.jabatan_name?.toLowerCase().includes('guru')).length}
+            subtext="Administrasi & Teknis"
+            icon={Building2}
+            tone="purple"
+            onClick={() => setStatCardModal({ isOpen: true, type: 'tendik', title: 'Detail Data: Staf TU & Operator', badge: 'Tendik' })}
+          />
+          <KpiTintedCard
+            label="Status Aktif"
+            value={items.filter((i) => i.status === 'Aktif').length}
+            subtext="Aktif Bekerja"
+            icon={CheckCircle2}
+            tone="amber"
+            onClick={() => setStatCardModal({ isOpen: true, type: 'aktif', title: 'Detail Data: Pegawai Status Aktif', badge: 'Aktif' })}
+          />
         </div>
 
         {/* 3. SECTION CARD KPI PEGAWAI & GURU (REAL DATABASE DATA) */}
@@ -2035,7 +2096,7 @@ export default function EmployeesPage() {
             </div>
           }
         />
-      </div>
+      </motion.div>
 
       {/* EXPORT DATA MODAL (.csv, .xls, .xlsx) */}
       {showExportModal && (

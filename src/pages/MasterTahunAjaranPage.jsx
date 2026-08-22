@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Swal from 'sweetalert2'
 import {
@@ -34,6 +35,52 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-default group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader = false, hideBreadcrumb = false }) {
   const queryClient = useQueryClient()
@@ -236,11 +283,11 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
         />
       )}
 
-      <MasterStatsGrid className="education-unit-kpis">
-        <MasterStatCard icon={CalendarDays} label="Total Periode" value={statsValue(total)} description="Tersimpan di sistem" variant="success" delay={40} loading={query.isLoading} />
-        <MasterStatCard icon={Star} label="Periode Aktif" value={statsValue(activeCount)} description="Ditandai sebagai periode utama" variant="info" delay={80} loading={query.isLoading} />
-        <MasterStatCard icon={Archive} label="Tidak Aktif" value={statsValue(inactiveCount)} description="Periode lampau atau mendatang" variant="warning" delay={120} loading={query.isLoading} />
-      </MasterStatsGrid>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-2">
+        <KpiTintedCard icon={CalendarDays} label="Total Periode" value={statsValue(total)} subtext="Tersimpan di sistem" tone="emerald" />
+        <KpiTintedCard icon={Star} label="Periode Aktif" value={statsValue(activeCount)} subtext="Ditandai sebagai periode utama" tone="blue" />
+        <KpiTintedCard icon={Archive} label="Tidak Aktif" value={statsValue(inactiveCount)} subtext="Periode lampau atau mendatang" tone="amber" />
+      </div>
 
       <MasterDataSection
         title="Daftar Tahun Ajaran"

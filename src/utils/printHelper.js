@@ -2,10 +2,19 @@
  * Print Clean Datatable Utility
  * Prints a clean datatable without opening a new tab or window.
  * Uses a hidden iframe within the current document context.
+ * Supports both { headers, rows } and { columns, data } prop formats.
  */
-export function printCleanTable({ title, subtitle = '', headers = [], rows = [] }) {
-  const headerHtml = headers.map((h) => `<th>${h}</th>`).join('')
-  const rowsHtml = rows
+export function printCleanTable({ title, subtitle = '', headers = [], rows = [], columns = [], data = [] }) {
+  const actualHeaders = headers.length > 0
+    ? headers
+    : columns.map((c) => c.label || c.key || '')
+
+  const actualRows = rows.length > 0
+    ? rows
+    : data.map((item) => columns.map((c) => item[c.key]))
+
+  const headerHtml = actualHeaders.map((h) => `<th>${h}</th>`).join('')
+  const rowsHtml = actualRows
     .map(
       (r) =>
         `<tr>${r
@@ -149,7 +158,7 @@ export function printCleanTable({ title, subtitle = '', headers = [], rows = [] 
         </div>
         <div class="print-meta">
           <div>Tanggal Cetak: ${currentDate}</div>
-          <div>Total Record: ${rows.length} Data</div>
+          <div>Total Record: ${actualRows.length} Data</div>
         </div>
       </div>
 
@@ -158,7 +167,7 @@ export function printCleanTable({ title, subtitle = '', headers = [], rows = [] 
           <tr>${headerHtml}</tr>
         </thead>
         <tbody>
-          ${rowsHtml || '<tr><td colspan="' + headers.length + '" style="text-align:center;">Tidak ada data.</td></tr>'}
+          ${rowsHtml || '<tr><td colspan="' + actualHeaders.length + '" style="text-align:center;">Tidak ada data.</td></tr>'}
         </tbody>
       </table>
 
@@ -180,13 +189,16 @@ export function printCleanTable({ title, subtitle = '', headers = [], rows = [] 
 /**
  * Export PDF Datatable Utility
  * Triggers PDF export / save dialog for datatable.
+ * Supports both { headers, rows } and { columns, data } prop formats.
  */
-export function downloadPdfTable({ title, subtitle = '', headers = [], rows = [], filename }) {
+export function downloadPdfTable({ title, subtitle = '', headers = [], rows = [], columns = [], data = [], filename }) {
   const safeFilename = filename || `Laporan_${title.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`
   printCleanTable({
     title,
     subtitle: subtitle ? `${subtitle} (Berkas PDF)` : 'Berkas PDF Laporan Resmi',
     headers,
     rows,
+    columns,
+    data,
   })
 }

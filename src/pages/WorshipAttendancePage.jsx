@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Moon,
   Sun,
@@ -472,12 +473,102 @@ export default function WorshipAttendancePage() {
   const pctTidakHadir = ((countTidakHadir / totalSantriCount) * 100).toFixed(1)
   const pctHaid = ((countHaid / totalSantriCount) * 100).toFixed(1)
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
+  function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+    const tones = {
+      blue: {
+        card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+        title: 'text-blue-700 dark:text-blue-400',
+        icon: 'text-blue-500',
+        val: 'text-blue-600 dark:text-blue-300',
+        sub: 'text-blue-600/70 dark:text-blue-400/70',
+      },
+      emerald: {
+        card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+        title: 'text-emerald-700 dark:text-emerald-400',
+        icon: 'text-emerald-500',
+        val: 'text-emerald-600 dark:text-emerald-300',
+        sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+      },
+      sky: {
+        card: 'border-sky-100 bg-sky-50/50 hover:border-sky-200 dark:border-sky-950/50 dark:bg-sky-950/20',
+        title: 'text-sky-700 dark:text-sky-400',
+        icon: 'text-sky-500',
+        val: 'text-sky-600 dark:text-sky-300',
+        sub: 'text-sky-600/70 dark:text-sky-400/70',
+      },
+      amber: {
+        card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+        title: 'text-amber-700 dark:text-amber-400',
+        icon: 'text-amber-500',
+        val: 'text-amber-600 dark:text-amber-300',
+        sub: 'text-amber-600/70 dark:text-amber-400/70',
+      },
+      rose: {
+        card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
+        title: 'text-rose-700 dark:text-rose-400',
+        icon: 'text-rose-500',
+        val: 'text-rose-600 dark:text-rose-300',
+        sub: 'text-rose-600/70 dark:text-rose-400/70',
+      },
+      purple: {
+        card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+        title: 'text-purple-700 dark:text-purple-400',
+        icon: 'text-purple-500',
+        val: 'text-purple-600 dark:text-purple-300',
+        sub: 'text-purple-600/70 dark:text-purple-400/70',
+      },
+      teal: {
+        card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
+        title: 'text-teal-700 dark:text-teal-400',
+        icon: 'text-teal-500',
+        val: 'text-teal-600 dark:text-teal-300',
+        sub: 'text-teal-600/70 dark:text-teal-400/70',
+      },
+    }
+    const t = tones[tone] || tones.emerald
+    return (
+      <motion.div
+        variants={itemVariants}
+        whileHover={{ scale: 1.04, y: -2 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        onClick={onClick}
+        className={`text-left rounded-2xl border ${t.card} p-3.5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group min-w-0`}
+      >
+        <div className="flex items-center justify-between gap-1 min-w-0">
+          <p className={`text-[11px] font-semibold ${t.title} truncate`}>{label}</p>
+          <Icon className={`h-4 w-4 shrink-0 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+        </div>
+        <p className={`mt-1.5 text-xl font-black ${t.val}`}>{value ?? 0}</p>
+        {subtext && (
+          <p className={`mt-0.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+            {subtext}
+          </p>
+        )}
+      </motion.div>
+    )
+  }
+
   return (
     <MasterDataPage className="education-unit-page academic-year-page" hideBreadcrumb>
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
 
       {/* ── HERO CARD HEADER (Matching Student Worship Page Layout & Style) ── */}
-      <div className="mb-4 rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#111827]">
+      <motion.div variants={itemVariants} className="mb-4 rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#111827]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3.5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
@@ -530,7 +621,7 @@ export default function WorshipAttendancePage() {
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* ── SCOPED ALERT NOTICE UNTUK KEPALA SEKOLAH REGULER (NON-PESANTREN) ── */}
       {!isPesantrenUnit && userRole !== 'Superadmin' && userRole !== 'Pengurus Yayasan' && (
@@ -599,91 +690,57 @@ export default function WorshipAttendancePage() {
       {activeTab === 'sessions' && (
         <>
           {/* ── KPI CARDS ROW (Exact match with TailGrids reference) ──────────── */}
-          <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-            {/* KPI 1: Total Santri */}
-            <article className="flex items-center gap-3 rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
-                <Users className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-400">Total Santri</p>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{totalSantriCount}</p>
-                <p className="text-[10px] text-slate-400">Periode aktif</p>
-              </div>
-            </article>
-
-            {/* KPI 2: Hadir Berjamaah */}
-            <article className="flex items-center gap-3 rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-400">Hadir Berjamaah</p>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{countBerjamaah}</p>
-                <p className="text-[10px] font-bold text-emerald-600">{pctBerjamaah}%</p>
-              </div>
-            </article>
-
-            {/* KPI 3: Munfarid */}
-            <article className="flex items-center gap-3 rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400">
-                <User className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-400">Munfarid</p>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{countMunfarid}</p>
-                <p className="text-[10px] font-bold text-sky-600">{pctMunfarid}%</p>
-              </div>
-            </article>
-
-            {/* KPI 4: Terlambat */}
-            <article className="flex items-center gap-3 rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
-                <Clock className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-400">Terlambat</p>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{countTerlambat}</p>
-                <p className="text-[10px] font-bold text-amber-600">{pctTerlambat}%</p>
-              </div>
-            </article>
-
-            {/* KPI 5: Tidak Hadir */}
-            <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400">
-                <XCircle className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-400">Tidak Hadir</p>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{countTidakHadir}</p>
-                <p className="text-[10px] font-bold text-rose-600">{pctTidakHadir}%</p>
-              </div>
-            </article>
-
-            {/* KPI 6: Haid / Uzur */}
-            <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400">
-                <Heart className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-400">Haid / Uzur</p>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{countHaid}</p>
-                <p className="text-[10px] font-bold text-purple-600">{pctHaid}%</p>
-              </div>
-            </article>
-
-            {/* KPI 7: Belum Verifikasi */}
-            <article className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-yellow-50 text-yellow-600 dark:bg-yellow-950 dark:text-yellow-400">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-400">Belum Verifikasi</p>
-                <p className="text-lg font-black text-slate-900 dark:text-white">{countBelumVerifikasi}</p>
-                <p className="text-[10px] font-bold text-yellow-600">6.3%</p>
-              </div>
-            </article>
-          </section>
+          <motion.section variants={itemVariants} className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            <KpiTintedCard
+              icon={Users}
+              label="Total Santri"
+              value={totalSantriCount}
+              subtext="Periode aktif"
+              tone="blue"
+            />
+            <KpiTintedCard
+              icon={CheckCircle2}
+              label="Hadir Berjamaah"
+              value={countBerjamaah}
+              subtext={`${pctBerjamaah}%`}
+              tone="emerald"
+            />
+            <KpiTintedCard
+              icon={User}
+              label="Munfarid"
+              value={countMunfarid}
+              subtext={`${pctMunfarid}%`}
+              tone="sky"
+            />
+            <KpiTintedCard
+              icon={Clock}
+              label="Terlambat"
+              value={countTerlambat}
+              subtext={`${pctTerlambat}%`}
+              tone="amber"
+            />
+            <KpiTintedCard
+              icon={XCircle}
+              label="Tidak Hadir"
+              value={countTidakHadir}
+              subtext={`${pctTidakHadir}%`}
+              tone="rose"
+            />
+            <KpiTintedCard
+              icon={Heart}
+              label="Haid / Uzur"
+              value={countHaid}
+              subtext={`${pctHaid}%`}
+              tone="purple"
+            />
+            <KpiTintedCard
+              icon={ShieldCheck}
+              label="Belum Verifikasi"
+              value={countBelumVerifikasi}
+              subtext="6.3%"
+              tone="teal"
+            />
+          </motion.section>
 
           {/* ── 3-COLUMN DASHBOARD LAYOUT ───────────────────────────────────── */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
@@ -1656,6 +1713,7 @@ export default function WorshipAttendancePage() {
         </>
       )}
 
+      </motion.div>
     </MasterDataPage>
   )
 }

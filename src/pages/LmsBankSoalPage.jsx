@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   HelpCircle,
   CheckSquare,
@@ -40,6 +41,81 @@ import {
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { RotateCcw, Printer } from 'lucide-react'
 import Swal from 'sweetalert2'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 const getMapelName = (item) => {
   if (!item) return '-'
@@ -620,7 +696,8 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
   )
 
   const pageContent = (
-    <div className="master-data-page space-y-6 pb-12">
+    <div className="education-unit-page lms-bank-soal-page space-y-6">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Toast Notification */}
       {toast.show && (
         <div
@@ -635,8 +712,9 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
 
       {/* Hero Banner Header (Hidden when embedded) */}
       {!embedded && !hidePageHeader && (
-        <div className="bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] rounded-[18px] p-6 text-white shadow-xl relative overflow-hidden">
-          <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 opacity-15 pointer-events-none">
+        <motion.div variants={itemVariants}>
+        <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 sm:p-8 text-white shadow-xl">
+          <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
             <HelpCircle className="w-72 h-72 text-white" />
           </div>
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -657,111 +735,58 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
             </button>
           </div>
         </div>
+        </motion.div>
       )}
 
       {/* KPI Stats Cards (Interactive Click Filters) */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div
+      <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <KpiTintedCard
+          icon={Layers}
+          label="Total Soal"
+          value={stats.total_soal}
+          subtext={`${stats.total_aktif} Status Aktif`}
+          tone="emerald"
           onClick={() => setFilters((prev) => ({ ...prev, tipe_soal: '' }))}
-          className={`bg-white dark:bg-[#1B2433] p-4 rounded-[18px] border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] ${
-            filters.tipe_soal === ''
-              ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
-              : 'border-gray-100 dark:border-gray-800 shadow-sm'
-          }`}
-          title="Klik untuk melihat semua soal"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Total Soal</span>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#0E5C44] dark:text-emerald-400">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl md:text-2xl font-bold mt-2 text-gray-900 dark:text-white">{stats.total_soal}</div>
-          <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 block">{stats.total_aktif} Status Aktif</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={CheckSquare}
+          label="Pilihan Ganda"
+          value={stats.total_pg}
+          subtext="Tipe PG"
+          tone="emerald"
           onClick={() => setFilters((prev) => ({ ...prev, tipe_soal: 'pg' }))}
-          className={`bg-white dark:bg-[#1B2433] p-4 rounded-[18px] border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] ${
-            filters.tipe_soal === 'pg'
-              ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
-              : 'border-gray-100 dark:border-gray-800 shadow-sm'
-          }`}
-          title="Klik untuk memfilter soal Pilihan Ganda (PG)"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Pilihan Ganda</span>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
-              <CheckSquare className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl md:text-2xl font-bold mt-2 text-emerald-700 dark:text-emerald-400">{stats.total_pg}</div>
-          <span className="text-[11px] text-gray-400 mt-1 block">Tipe PG</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={FileText}
+          label="Essay / Esai"
+          value={stats.total_esai}
+          subtext="Uraian / Manual"
+          tone="purple"
           onClick={() => setFilters((prev) => ({ ...prev, tipe_soal: 'esai' }))}
-          className={`bg-white dark:bg-[#1B2433] p-4 rounded-[18px] border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] ${
-            filters.tipe_soal === 'esai'
-              ? 'border-purple-500 ring-2 ring-purple-500/20 shadow-md'
-              : 'border-gray-100 dark:border-gray-800 shadow-sm'
-          }`}
-          title="Klik untuk memfilter soal Esai / Essay"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Essay / Esai</span>
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
-              <FileText className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl md:text-2xl font-bold mt-2 text-purple-700 dark:text-purple-400">{stats.total_esai}</div>
-          <span className="text-[11px] text-gray-400 mt-1 block">Uraian / Manual</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={ToggleLeft}
+          label="Benar / Salah"
+          value={stats.total_benar_salah}
+          subtext="Tipe B/S"
+          tone="blue"
           onClick={() => setFilters((prev) => ({ ...prev, tipe_soal: 'benar_salah' }))}
-          className={`bg-white dark:bg-[#1B2433] p-4 rounded-[18px] border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] ${
-            filters.tipe_soal === 'benar_salah'
-              ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md'
-              : 'border-gray-100 dark:border-gray-800 shadow-sm'
-          }`}
-          title="Klik untuk memfilter soal Benar / Salah"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Benar / Salah</span>
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-              <ToggleLeft className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl md:text-2xl font-bold mt-2 text-blue-700 dark:text-blue-400">{stats.total_benar_salah}</div>
-          <span className="text-[11px] text-gray-400 mt-1 block">Tipe B/S</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={GitCommit}
+          label="Menjodohkan"
+          value={stats.total_menjodohkan}
+          subtext="Matching Pairs"
+          tone="amber"
           onClick={() => setFilters((prev) => ({ ...prev, tipe_soal: 'menjodohkan' }))}
-          className={`bg-white dark:bg-[#1B2433] p-4 rounded-[18px] border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] col-span-2 md:col-span-1 ${
-            filters.tipe_soal === 'menjodohkan'
-              ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-md'
-              : 'border-gray-100 dark:border-gray-800 shadow-sm'
-          }`}
-          title="Klik untuk memfilter soal Menjodohkan"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Menjodohkan</span>
-            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
-              <GitCommit className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl md:text-2xl font-bold mt-2 text-amber-700 dark:text-amber-400">{stats.total_menjodohkan}</div>
-          <span className="text-[11px] text-gray-400 mt-1 block">Matching Pairs</span>
-        </div>
-      </div>
+        />
+      </motion.div>
 
       {/* Tab Navigation (Pindahkan di atas card datatable) */}
       {tabNav && <div className="my-2">{tabNav}</div>}
 
       {/* SEARCH & FILTER BAR (2-ROW LAYOUT) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
         {/* Baris 1: Full-width Search Input */}
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -856,9 +881,10 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* MAIN DATATABLE SECTION */}
+      <motion.div variants={itemVariants}>
       <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-700">
           <div>
@@ -1049,6 +1075,7 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
         )}
         </MasterDataTable>
       </section>
+      </motion.div>
 
       {/* ROW DETAIL MODAL POPUP — Bank Soal */}
       {showRowDetailModal && rowDetailItem && (
@@ -1782,6 +1809,7 @@ export default function LmsBankSoalPage({ embedded, hidePageHeader, tabNav }) {
         onImport={handleImport}
         templateFields={['kode_soal', 'pertanyaan', 'tipe_soal', 'tingkat_kesulitan', 'bobot_soal', 'status']}
       />
+      </motion.div>
     </div>
   )
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Megaphone,
   Plus,
@@ -18,6 +19,8 @@ import {
 import { Download1, Upload1, ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
+import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { educationUnitService } from '../services/educationUnitService'
 import { dashboardPemantauanService } from '../services/dashboardPemantauanService'
@@ -53,6 +56,63 @@ import {
 import { MasterStatsGrid, MasterStatCard } from '../components/master-data'
 
 const STORAGE_KEY = 'school_news_announcements_db'
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+  }
+
+  const t = tones[tone] || tones.emerald
+
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-pointer group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.button>
+  )
+}
 
 const FALLBACK_UNITS = [
   { id: 'all', name: 'Seluruh Unit (Yayasan)', code: 'YAYASAN' },
@@ -512,52 +572,61 @@ export default function NewsManagementPage() {
     setDeletingItem(null)
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
   return (
-    <div className="news-management-page space-y-6 pb-12 px-4 sm:px-6 md:px-8 py-6 font-sans">
-      {/* 0. BREADCRUMB */}
-      <Breadcrumbs
-        dividerType="chevron"
-        items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Manajemen Data', href: '/dashboard' },
-          { label: 'Berita & Pengumuman' },
-        ]}
-      />
+    <PageContainer maxW="7xl">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
+        {/* 0. BREADCRUMB NAV (Kanonikal AppBreadcrumb) */}
+        <motion.div variants={itemVariants} className="print:hidden">
+          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Berita & Pengumuman' }]} />
+        </motion.div>
 
-      {/* KPI STATS CARDS */}
-      <MasterStatsGrid columns={4}>
-        <MasterStatCard
-          icon={Megaphone}
-          label="Total Berita"
-          value={stats.total}
-          description="Total publikasi di database"
-          variant="info"
-        />
-        <MasterStatCard
-          icon={CheckCircle2}
-          label="Dipublikasikan"
-          value={stats.published}
-          description="Aktif di portal ortu & siswa"
-          variant="success"
-        />
-        <MasterStatCard
-          icon={AlertCircle}
-          label="Draf Internal"
-          value={stats.draft}
-          description="Belum dipublikasikan"
-          variant="warning"
-        />
-        <MasterStatCard
-          icon={Globe}
-          label="Lintas Unit"
-          value={stats.globalUnit}
-          description="Target seluruh yayasan"
-          variant="neutral"
-        />
-      </MasterStatsGrid>
+        {/* KPI STATS CARDS (TAILGRIDS_CARD_COMPONENT) */}
+        <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+          <KpiTintedCard
+            icon={Megaphone}
+            label="Total Berita"
+            value={stats.total}
+            subtext="Total publikasi di database"
+            tone="emerald"
+          />
+          <KpiTintedCard
+            icon={CheckCircle2}
+            label="Dipublikasikan"
+            value={stats.published}
+            subtext="Aktif di portal ortu & siswa"
+            tone="blue"
+          />
+          <KpiTintedCard
+            icon={AlertCircle}
+            label="Draf Internal"
+            value={stats.draft}
+            subtext="Belum dipublikasikan"
+            tone="amber"
+          />
+          <KpiTintedCard
+            icon={Globe}
+            label="Lintas Unit"
+            value={stats.globalUnit}
+            subtext="Target seluruh yayasan"
+            tone="purple"
+          />
+        </motion.div>
 
-      {/* 1. SINGLE UNIFIED DATATABLE CARD CONTAINER (FILTER BAR & DATATABLE DIGABUNGKAN) */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+        {/* 1. SINGLE UNIFIED DATATABLE CARD CONTAINER (FILTER BAR & DATATABLE DIGABUNGKAN) */}
+        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
         {/* BARIS 1: HEADER CARD TITLE + SOFT PASTEL SQUIRCLE ACTION BUTTONS */}
         <div className="flex flex-col gap-4 border-b border-slate-100 p-6 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
@@ -830,7 +899,7 @@ export default function NewsManagementPage() {
             />
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* MODAL FORM TAMBAH / EDIT BERITA */}
       <Dialog isOpen={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -1048,25 +1117,28 @@ export default function NewsManagementPage() {
       </Dialog>
 
       {/* MODAL KONFIRMASI HAPUS (ALERT DIALOG TAILGRIDS) */}
-      <AlertDialog isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogHeader>
-          <DialogTitle>Hapus Berita Ini dari Database?</DialogTitle>
-          <DialogDescription>
-            Apakah Anda yakin ingin menghapus berita "{deletingItem?.judul}" dari database? Berita yang dihapus tidak akan tampil lagi di portal orang tua dan siswa.
-          </DialogDescription>
-        </DialogHeader>
+      <AnimatePresence>
+        <AlertDialog isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <DialogHeader>
+            <DialogTitle>Hapus Berita Ini dari Database?</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus berita "{deletingItem?.judul}" dari database? Berita yang dihapus tidak akan tampil lagi di portal orang tua dan siswa.
+            </DialogDescription>
+          </DialogHeader>
 
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="ghost" size="sm">
-              Batal
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm">
+                Batal
+              </Button>
+            </DialogClose>
+            <Button variant="danger" size="sm" onClick={handleDeleteConfirm}>
+              Hapus Permanen dari Database
             </Button>
-          </DialogClose>
-          <Button variant="danger" size="sm" onClick={handleDeleteConfirm}>
-            Hapus Permanen dari Database
-          </Button>
-        </DialogFooter>
-      </AlertDialog>
-    </div>
+          </DialogFooter>
+        </AlertDialog>
+      </AnimatePresence>
+      </motion.div>
+    </PageContainer>
   )
 }

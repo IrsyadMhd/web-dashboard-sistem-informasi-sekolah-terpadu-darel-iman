@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen,
   RefreshCw,
@@ -39,6 +40,73 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-default group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function MasterCapaianPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
   const [dataCp, setDataCp] = useState([])
@@ -485,6 +553,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
         className="education-unit-page cp-master-page"
         hideBreadcrumb={embedded || hideBreadcrumb}
       >
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       <PrintOptionModal
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
@@ -525,6 +594,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
       />
       {/* Hero Banner */}
       {!hidePageHeader && (
+        <motion.div variants={itemVariants}>
         <MasterPageHeader
           tone="brand"
           icon={BookOpen}
@@ -532,6 +602,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
           description="Kelola Master Capaian Pembelajaran (CP) berbasis Kurikulum, Unit Pendidikan, dan Mata Pelajaran sebagai fondasi utama penyusunan Tujuan Pembelajaran (TP) & Modul Ajar."
           actions={pageActions}
         />
+        </motion.div>
       )}
 
       <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} title="Capaian Pembelajaran" onImport={handleImport} columns={[
@@ -540,11 +611,11 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
       ]} />
 
       {/* Stats Cards */}
-      <MasterStatsGrid className="education-unit-kpis">
-        <MasterStatCard icon={BookOpen} label="TOTAL CAPAIAN PEMBELAJARAN" value={stats.total_cp ?? 0} description="Terdaftar di sistem" variant="success" loading={loading} />
-        <MasterStatCard icon={CheckCircle} label="CP STATUS AKTIF" value={stats.total_cp_aktif ?? 0} description="Siap digunakan" variant="info" loading={loading} />
-        <MasterStatCard icon={AlertCircle} label="CP NONAKTIF" value={stats.total_cp_nonaktif ?? 0} description="Arsip / Nonaktif" variant="warning" loading={loading} />
-      </MasterStatsGrid>
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <KpiTintedCard icon={BookOpen} label="Total Capaian Pembelajaran" value={stats.total_cp ?? 0} subtext="Terdaftar di sistem" tone="emerald" />
+        <KpiTintedCard icon={CheckCircle} label="CP Status Aktif" value={stats.total_cp_aktif ?? 0} subtext="Siap digunakan" tone="blue" />
+        <KpiTintedCard icon={AlertCircle} label="CP Nonaktif" value={stats.total_cp_nonaktif ?? 0} subtext="Arsip / Nonaktif" tone="amber" />
+      </motion.div>
 
       {/* Notifications */}
       {successMsg && (
@@ -572,7 +643,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
       )}
 
       {/* Search & Filter Bar (2-Row Layout) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
         {/* Baris 1: Field Pencarian Full-Width */}
         <div className="w-full">
           <div className="relative w-full">
@@ -694,8 +765,9 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
             <span>Reset</span>
           </button>
         </div>
-      </div>
+      </motion.div>
 
+      <motion.div variants={itemVariants}>
       <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="cp-table-title">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
           <div>
@@ -812,6 +884,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
         )}
       </MasterDataTable>
       </section>
+      </motion.div>
 
       {/* Modal Form */}
       {modalOpen && (
@@ -1028,6 +1101,7 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
           </div>
         </div>
       )}
+    </motion.div>
     </MasterDataPage>
     </PageContainer>
   )

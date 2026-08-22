@@ -21,7 +21,7 @@ export const mutabaahService = {
   dashboardAnalytics: (params = {}) => api.get('/mutabaah/analytics/dashboard', { params }).then((r) => r.data.data),
   recapAnalytics: (params = {}) => api.get('/mutabaah/analytics/recap', { params }).then((r) => r.data.data),
   recapExport: (format, params = {}) => api.get('/mutabaah/analytics/recap/export', { params: { ...params, format }, responseType: 'blob' }),
-  parentChildren: () => api.get('/parent/mutabaah/children').then((r) => r.data.data),
+  parentChildren: (params = {}) => api.get('/parent/mutabaah/children', { params }).then((r) => r.data.data),
   parentMutabaah: (studentId, params = {}) => api.get(`/parent/mutabaah/${studentId}`, { params }).then((r) => r.data.data),
   parentHistory: (studentId, params = {}) => api.get(`/parent/mutabaah/${studentId}/history`, { params }).then((r) => r.data.data),
   parentSignature: (dailyHeaderId, payload) => api.post(`/parent/mutabaah/${dailyHeaderId}/signature`, payload).then((r) => r.data),

@@ -1,4 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/tailgrids/core/card'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/tailgrids/core/dialog'
+import { Backdrop } from '@/components/tailgrids/core/overlay'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
+import { Button } from '@/components/tailgrids/core/button'
+import { printCleanTable, downloadPdfTable } from '@/utils/printHelper'
 import {
   Moon,
   Sun,
@@ -9,6 +17,7 @@ import {
   Filter,
   Users,
   ShieldCheck,
+  ShieldAlert,
   Calendar,
   Sparkles,
   Lock,
@@ -29,6 +38,7 @@ import {
   ChevronDown,
   CheckCircle,
   Download,
+  Printer,
   Upload,
   FileSpreadsheet,
   FileText,
@@ -57,6 +67,7 @@ import {
   Volume2,
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
+import { SquircleActionButton, PrintOptionModal } from '@/components/master-data'
 
 // Helper Toast Notifications
 function useToast() {
@@ -210,6 +221,18 @@ export default function StudentWorshipAttendancePage() {
   const [filterUnit, setFilterUnit] = useState(isSuperOrYayasan ? 'ALL' : userUnitName)
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [perPage, setPerPage] = useState(10)
+
+  // Modal Data Siswa Presensi Shalat
+  const [isAttendingModalOpen, setIsAttendingModalOpen] = useState(false)
+  const [modalStatusFilter, setModalStatusFilter] = useState('hadir')
+  const [modalSearchQuery, setModalSearchQuery] = useState('')
+  const [isPrintTableModalOpen, setIsPrintTableModalOpen] = useState(false)
+
+  const handleOpenAttendingModal = (status = 'hadir') => {
+    setModalStatusFilter(status)
+    setModalSearchQuery('')
+    setIsAttendingModalOpen(true)
+  }
 
   // Scanning & Camera State
   const [scanInput, setScanInput] = useState('')
@@ -451,6 +474,151 @@ export default function StudentWorshipAttendancePage() {
     setShowEditSessionModal(false)
   }
 
+  const formatStatusLabel = (st) => {
+    if (st === 'hadir') return 'Hadir Berjamaah'
+    if (st === 'masbuk') return 'Masbuk / Terlambat'
+    if (st === 'uzur') return 'Uzur / Sakit'
+    if (st === 'izin') return 'Izin'
+    if (st === 'alpa') return 'Alpa'
+    if (st === 'belum_verifikasi') return 'Belum Verifikasi'
+    return 'Semua Status'
+  }
+
+  const filteredModalStudents = students.filter((st) => {
+    const matchesSearch =
+      modalSearchQuery === '' ||
+      st.name.toLowerCase().includes(modalSearchQuery.toLowerCase()) ||
+      st.nisn.includes(modalSearchQuery) ||
+      st.class_name.toLowerCase().includes(modalSearchQuery.toLowerCase())
+
+    let matchesStatus = true
+    if (modalStatusFilter === 'hadir') matchesStatus = st.status === 'hadir'
+    else if (modalStatusFilter === 'masbuk') matchesStatus = st.status === 'masbuk'
+    else if (modalStatusFilter === 'uzur') matchesStatus = st.status === 'uzur'
+    else if (modalStatusFilter === 'izin') matchesStatus = st.status === 'izin' || st.status === 'alpa'
+    else if (modalStatusFilter === 'belum_verifikasi') matchesStatus = st.status === 'belum_verifikasi'
+
+    return matchesSearch && matchesStatus
+  })
+
+  const handlePrintModalTable = () => {
+    const columns = [
+      { key: 'no', label: 'No' },
+      { key: 'nisn', label: 'NISN' },
+      { key: 'name', label: 'Nama Siswa' },
+      { key: 'class_name', label: 'Kelas' },
+      { key: 'status_label', label: 'Status Presensi Shalat' },
+      { key: 'time', label: 'Waktu Presensi' },
+      { key: 'method', label: 'Metode' },
+    ]
+
+    const data = filteredModalStudents.map((st, idx) => ({
+      no: idx + 1,
+      nisn: st.nisn,
+      name: st.name,
+      class_name: st.class_name,
+      status_label: formatStatusLabel(st.status),
+      time: st.time || '-',
+      method: st.method || '-',
+    }))
+
+    printCleanTable({
+      title: `DATA KEHADIRAN SISWA: ${selectedSession?.template.nama}`,
+      subtitle: `Sesi: ${selectedSession?.template.nama} | Unit: ${userUnitName} | Filter: ${formatStatusLabel(modalStatusFilter)}`,
+      columns,
+      data,
+    })
+  }
+
+  const handleDownloadPdfModalTable = () => {
+    const columns = [
+      { key: 'no', label: 'No' },
+      { key: 'nisn', label: 'NISN' },
+      { key: 'name', label: 'Nama Siswa' },
+      { key: 'class_name', label: 'Kelas' },
+      { key: 'status_label', label: 'Status Presensi Shalat' },
+      { key: 'time', label: 'Waktu Presensi' },
+      { key: 'method', label: 'Metode' },
+    ]
+
+    const data = filteredModalStudents.map((st, idx) => ({
+      no: idx + 1,
+      nisn: st.nisn,
+      name: st.name,
+      class_name: st.class_name,
+      status_label: formatStatusLabel(st.status),
+      time: st.time || '-',
+      method: st.method || '-',
+    }))
+
+    downloadPdfTable({
+      filename: `Presensi_Sholat_${selectedSession?.template.code || 'LIST'}_${date}.pdf`,
+      title: `DATA KEHADIRAN SISWA: ${selectedSession?.template.nama}`,
+      subtitle: `Sesi: ${selectedSession?.template.nama} | Unit: ${userUnitName} | Filter: ${formatStatusLabel(modalStatusFilter)}`,
+      columns,
+      data,
+    })
+  }
+
+  const handlePrintCleanTableMain = () => {
+    const columns = [
+      { key: 'no', label: 'No' },
+      { key: 'nisn', label: 'NISN' },
+      { key: 'name', label: 'Nama Siswa' },
+      { key: 'class_name', label: 'Kelas' },
+      { key: 'status_label', label: 'Status Presensi Shalat' },
+      { key: 'time', label: 'Waktu Presensi' },
+      { key: 'method', label: 'Metode' },
+    ]
+
+    const data = filteredStudents.map((st, idx) => ({
+      no: idx + 1,
+      nisn: st.nisn,
+      name: st.name,
+      class_name: st.class_name,
+      status_label: formatStatusLabel(st.status),
+      time: st.time || '-',
+      method: st.method || '-',
+    }))
+
+    printCleanTable({
+      title: `DATA KEHADIRAN SISWA: ${selectedSession?.template.nama}`,
+      subtitle: `Sesi: ${selectedSession?.template.nama} | Unit: ${userUnitName} | Jam: ${selectedSession?.scheduled_start_at} - ${selectedSession?.scheduled_end_at} WIB | Lokasi: ${selectedSession?.location_name}`,
+      columns,
+      data,
+    })
+  }
+
+  const handleDownloadPdfTableMain = () => {
+    const columns = [
+      { key: 'no', label: 'No' },
+      { key: 'nisn', label: 'NISN' },
+      { key: 'name', label: 'Nama Siswa' },
+      { key: 'class_name', label: 'Kelas' },
+      { key: 'status_label', label: 'Status Presensi Shalat' },
+      { key: 'time', label: 'Waktu Presensi' },
+      { key: 'method', label: 'Metode' },
+    ]
+
+    const data = filteredStudents.map((st, idx) => ({
+      no: idx + 1,
+      nisn: st.nisn,
+      name: st.name,
+      class_name: st.class_name,
+      status_label: formatStatusLabel(st.status),
+      time: st.time || '-',
+      method: st.method || '-',
+    }))
+
+    downloadPdfTable({
+      filename: `Rekap_Presensi_Sholat_${selectedSession?.template.code || 'ROSTER'}_${date}.pdf`,
+      title: `DATA KEHADIRAN SISWA: ${selectedSession?.template.nama}`,
+      subtitle: `Sesi: ${selectedSession?.template.nama} | Unit: ${userUnitName} | Jam: ${selectedSession?.scheduled_start_at} - ${selectedSession?.scheduled_end_at} WIB | Lokasi: ${selectedSession?.location_name}`,
+      columns,
+      data,
+    })
+  }
+
   // ── SAVE SINGLE STUDENT VERIFICATION MODAL ────────────────────────────────
   const handleSaveVerify = () => {
     if (!selectedStudentForVerify) return
@@ -512,8 +680,90 @@ export default function StudentWorshipAttendancePage() {
     })
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
+  function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+    const tones = {
+      sky: {
+        card: 'border-sky-100 bg-sky-50/50 hover:border-sky-200 dark:border-sky-950/50 dark:bg-sky-950/20',
+        title: 'text-sky-700 dark:text-sky-400',
+        icon: 'text-sky-500',
+        val: 'text-sky-600 dark:text-sky-300',
+        sub: 'text-sky-600/70 dark:text-sky-400/70',
+      },
+      emerald: {
+        card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+        title: 'text-emerald-700 dark:text-emerald-400',
+        icon: 'text-emerald-500',
+        val: 'text-emerald-600 dark:text-emerald-300',
+        sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+      },
+      amber: {
+        card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+        title: 'text-amber-700 dark:text-amber-400',
+        icon: 'text-amber-500',
+        val: 'text-amber-600 dark:text-amber-300',
+        sub: 'text-amber-600/70 dark:text-amber-400/70',
+      },
+      purple: {
+        card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+        title: 'text-purple-700 dark:text-purple-400',
+        icon: 'text-purple-500',
+        val: 'text-purple-600 dark:text-purple-300',
+        sub: 'text-purple-600/70 dark:text-purple-400/70',
+      },
+      rose: {
+        card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
+        title: 'text-rose-700 dark:text-rose-400',
+        icon: 'text-rose-500',
+        val: 'text-rose-600 dark:text-rose-300',
+        sub: 'text-rose-600/70 dark:text-rose-400/70',
+      },
+      slate: {
+        card: 'border-slate-100 bg-slate-50/50 hover:border-slate-200 dark:border-slate-800 dark:bg-slate-800/20',
+        title: 'text-slate-700 dark:text-slate-400',
+        icon: 'text-slate-500',
+        val: 'text-slate-600 dark:text-slate-300',
+        sub: 'text-slate-600/70 dark:text-slate-400/70',
+      },
+    }
+    const t = tones[tone] || tones.emerald
+
+    return (
+      <Card
+        onClick={onClick}
+        className={`text-left rounded-2xl border ${t.card} p-3.5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group min-w-0 flex flex-col gap-1`}
+      >
+        <CardHeader className="p-0 flex flex-row items-center justify-between gap-1 min-w-0">
+          <CardDescription className={`text-[11px] font-bold ${t.title} truncate`}>{label}</CardDescription>
+          <Icon className={`h-4 w-4 shrink-0 ${t.icon} opacity-60 group-hover:opacity-100 transition-opacity`} />
+        </CardHeader>
+        <CardContent className="p-0">
+          <CardTitle className={`mt-1.5 text-xl font-black ${t.val}`}>{value ?? 0}</CardTitle>
+          {subtext && (
+            <p className={`mt-0.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+              {subtext}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-12 dark:bg-[#0B0F17] text-slate-800 dark:text-slate-100 px-4 sm:px-6 md:px-8">
+    <div className="space-y-5">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-5">
       
       {/* ── TOAST NOTIFICATIONS ──────────────────────────────────────────── */}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
@@ -542,281 +792,393 @@ export default function StudentWorshipAttendancePage() {
       </div>
 
       {/* ── TOP SECTION CONTAINER (HEADER HERO & CARDS LANDING AREA) ──────── */}
-      <header className="pt-5 pb-2 space-y-4">
+      <motion.header variants={itemVariants} className="space-y-5">
         
-        {/* HERO CARD HEADER WITH DYNAMICALLY RESOLVED USER UNIT NAME */}
-        <div className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#111827]">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/20">
-                <School className="h-6 w-6" />
+        {/* HERO CARD HEADER WITH DYNAMICALLY RESOLVED USER UNIT NAME (STRICT 1 SINGLE ROW) */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs dark:border-slate-800 dark:bg-[#111827]">
+          <div className="flex items-center justify-between gap-3 flex-nowrap">
+            {/* Left Title & Unit Info */}
+            <div className="flex items-center gap-3 min-w-0 shrink">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white shadow-xs">
+                <School className="h-5.5 w-5.5" />
               </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 truncate">
+                  <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">
                     Presensi & Absensi Ibadah Siswa
                   </h1>
-                  <span className="rounded-full bg-sky-100 px-3 py-0.5 text-xs font-bold text-sky-700 dark:bg-sky-950/80 dark:text-sky-300">
+                  <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-700 dark:bg-sky-950/80 dark:text-sky-300">
                     {userUnitName}
                   </span>
                 </div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="hidden md:block truncate text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Pencatatan & Verifikasi Ibadah Harian Siswa (Shalat Dhuha, Zhuhur & Ashar Berjamaah di {userUnitName})
                 </p>
               </div>
             </div>
 
-            {/* Live Clock & Date Controls */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            {/* Right Controls: Live Clock + Field Tanggal + Squircle Action Button (SINGLE ROW) */}
+            <div className="flex items-center gap-2 shrink-0 flex-nowrap">
               
               {/* Real-Time Live Clock Badge */}
-              <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/40">
+              <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/40">
                 <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 leading-none">
                     {formattedDayName}, {formattedFullDate}
                   </p>
-                  <p className="text-xs font-black font-mono text-emerald-900 dark:text-emerald-200">
+                  <p className="text-xs font-black font-mono text-emerald-900 dark:text-emerald-200 leading-tight mt-0.5">
                     {formattedLiveClock} WIB
                   </p>
                 </div>
               </div>
 
-              {/* Date Picker Input */}
+              {/* Date Picker Input (Field Tanggal) */}
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
               />
 
-              <button
+              {/* Squircle Action Button Icon-Only with Floating Tooltip on Hover */}
+              <SquircleActionButton
+                variant="primary"
+                icon={Plus}
+                label="Tambah Jadwal Ibadah"
                 onClick={() => setShowTemplateModal(true)}
-                className="group flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-all hover:bg-emerald-700 hover:scale-105 active:scale-95"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Tambah Jadwal Ibadah</span>
-              </button>
+              />
             </div>
           </div>
         </div>
 
         {/* CARD 1: KPI STATS METRIC CARDS GRID */}
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-            <p className="text-[11px] font-semibold text-slate-400">Total Wajib Ibadah</p>
-            <p className="text-lg font-black text-slate-900 dark:text-white mt-1">{totalStudents} Siswa</p>
-            <p className="text-[10px] text-sky-600 font-bold mt-0.5">{userUnitName}</p>
-          </div>
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-            <p className="text-[11px] font-semibold text-slate-400">Hadir Berjamaah</p>
-            <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1">{countHadir} Siswa</p>
-            <p className="text-[10px] font-bold text-emerald-600 mt-0.5">{pctHadir}% Presensi</p>
-          </div>
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-            <p className="text-[11px] font-semibold text-slate-400">Masbuk / Terlambat</p>
-            <p className="text-lg font-black text-amber-600 dark:text-amber-400 mt-1">{countMasbuk} Siswa</p>
-            <p className="text-[10px] font-bold text-amber-600 mt-0.5">Dicatat Guru</p>
-          </div>
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-            <p className="text-[11px] font-semibold text-slate-400">Uzur / Sakit</p>
-            <p className="text-lg font-black text-purple-600 dark:text-purple-400 mt-1">{countUzur} Siswa</p>
-            <p className="text-[10px] font-bold text-purple-600 mt-0.5">Halangan Syar'i</p>
-          </div>
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-            <p className="text-[11px] font-semibold text-slate-400">Izin / Alpa</p>
-            <p className="text-lg font-black text-rose-600 dark:text-rose-400 mt-1">{countIzin + countAlpa} Siswa</p>
-            <p className="text-[10px] font-bold text-rose-600 mt-0.5">Tercatat di BK/UKS</p>
-          </div>
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] dark:border-slate-800 dark:bg-[#1B2433]">
-            <p className="text-[11px] font-semibold text-slate-400">Belum Verifikasi</p>
-            <p className="text-lg font-black text-slate-700 dark:text-slate-300 mt-1">{countBelum} Siswa</p>
-            <p className="text-[10px] font-bold text-slate-400 mt-0.5">Menunggu Input</p>
-          </div>
+          <KpiTintedCard
+            icon={Users}
+            label="Total Wajib Ibadah"
+            value={`${totalStudents} Siswa`}
+            subtext={userUnitName}
+            tone="sky"
+            onClick={() => handleOpenAttendingModal('ALL')}
+          />
+          <KpiTintedCard
+            icon={CheckCircle2}
+            label="Hadir Berjamaah"
+            value={`${countHadir} Siswa`}
+            subtext={`${pctHadir}% Presensi`}
+            tone="emerald"
+            onClick={() => handleOpenAttendingModal('hadir')}
+          />
+          <KpiTintedCard
+            icon={Clock}
+            label="Masbuk / Terlambat"
+            value={`${countMasbuk} Siswa`}
+            subtext="Dicatat Guru"
+            tone="amber"
+            onClick={() => handleOpenAttendingModal('masbuk')}
+          />
+          <KpiTintedCard
+            icon={Heart}
+            label="Uzur / Sakit"
+            value={`${countUzur} Siswa`}
+            subtext="Halangan Syar'i"
+            tone="purple"
+            onClick={() => handleOpenAttendingModal('uzur')}
+          />
+          <KpiTintedCard
+            icon={ShieldAlert}
+            label="Izin / Alpa"
+            value={`${countIzin + countAlpa} Siswa`}
+            subtext="Tercatat di BK/UKS"
+            tone="rose"
+            onClick={() => handleOpenAttendingModal('izin')}
+          />
+          <KpiTintedCard
+            icon={ShieldCheck}
+            label="Belum Verifikasi"
+            value={`${countBelum} Siswa`}
+            subtext="Menunggu Input"
+            tone="slate"
+            onClick={() => handleOpenAttendingModal('belum_verifikasi')}
+          />
         </section>
 
-        {/* CARD 2: METODE PRESENSI SISWA SELECTOR CARD */}
-        <div className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#111827]">
+        {/* CARD 2: METODE PRESENSI SISWA SELECTOR CARD WITH FRAMER MOTION ANIMATIONS */}
+        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-[#111827]">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Pilih Metode Presensi Siswa
-              </h3>
-              <p className="text-[11px] text-slate-400">Pilih metode input presensi yang digunakan oleh Guru / Wali Kelas</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Pilih Metode Presensi Siswa
+                </h3>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                  Interactive Mode
+                </span>
+              </div>
+              <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                Pilih metode input presensi yang digunakan oleh Guru / Wali Kelas
+              </p>
             </div>
 
-            {/* Method Switcher Buttons */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl dark:bg-slate-800">
-              <button
-                onClick={() => setWorshipMethod('MANUAL')}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                  worshipMethod === 'MANUAL'
-                    ? 'bg-white text-sky-700 shadow dark:bg-slate-700 dark:text-sky-300'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <UserCheck className="h-4 w-4" />
-                Manual Checklist
-              </button>
-              <button
-                onClick={() => setWorshipMethod('QRCODE')}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                  worshipMethod === 'QRCODE'
-                    ? 'bg-white text-indigo-700 shadow dark:bg-slate-700 dark:text-indigo-300'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <QrCode className="h-4 w-4" />
-                Scan QR Code Kartu
-              </button>
-              <button
-                onClick={() => setWorshipMethod('RFID')}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
-                  worshipMethod === 'RFID'
-                    ? 'bg-white text-emerald-700 shadow dark:bg-slate-700 dark:text-emerald-300'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Radio className="h-4 w-4" />
-                Tap RFID Reader
-              </button>
+            {/* Method Switcher Buttons with Framer Motion Sliding Pill (layoutId="activeWorshipMethodBg") */}
+            <div className="relative flex flex-wrap items-center gap-1.5 rounded-2xl bg-slate-100/90 p-1.5 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-700/60">
+              {[
+                {
+                  key: 'MANUAL',
+                  label: 'Manual Checklist',
+                  icon: UserCheck,
+                  activeColor: 'text-sky-700 dark:text-sky-300',
+                  iconColor: 'text-sky-600 dark:text-sky-400',
+                },
+                {
+                  key: 'QRCODE',
+                  label: 'Scan QR Code Kartu',
+                  icon: QrCode,
+                  activeColor: 'text-indigo-700 dark:text-indigo-300',
+                  iconColor: 'text-indigo-600 dark:text-indigo-400',
+                },
+                {
+                  key: 'RFID',
+                  label: 'Tap RFID Reader',
+                  icon: Radio,
+                  activeColor: 'text-emerald-700 dark:text-emerald-300',
+                  iconColor: 'text-emerald-600 dark:text-emerald-400',
+                },
+              ].map((m) => {
+                const isActive = worshipMethod === m.key
+                const IconComponent = m.icon
+                return (
+                  <motion.button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setWorshipMethod(m.key)}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    className={`relative z-10 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-colors cursor-pointer ${
+                      isActive
+                        ? m.activeColor
+                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeWorshipMethodBg"
+                        className="absolute inset-0 rounded-xl bg-white shadow-md dark:bg-slate-700"
+                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      <IconComponent className={`h-4 w-4 shrink-0 ${isActive ? m.iconColor : 'text-slate-400'}`} />
+                      <span>{m.label}</span>
+                    </span>
+                  </motion.button>
+                )
+              })}
             </div>
           </div>
 
-          {/* Active Mode Banner */}
-          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-            {worshipMethod === 'MANUAL' && (
-              <div className="flex items-center justify-between rounded-xl bg-sky-50/80 p-3 text-xs dark:bg-sky-950/30">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-sky-600 shrink-0" />
-                  <span className="font-semibold text-sky-900 dark:text-sky-200">
-                    Mode Checklist Manual Aktif — Centang nama siswa pada tabel di bawah, lalu klik "Hadir Berjamaah" / "Masbuk".
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {worshipMethod === 'QRCODE' && (
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl bg-indigo-50/80 p-3 text-xs dark:bg-indigo-950/30">
-                <div className="flex items-center gap-2">
-                  <Camera className="h-4 w-4 text-indigo-600 shrink-0" />
-                  <span className="font-semibold text-indigo-900 dark:text-indigo-200">
-                    Mode Scan QR Code Kartu Siswa — Pemindaian aktif via Kamera / Scanner Kartu Pelajar.
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowCameraModal(true)
-                    startCamera()
-                  }}
-                  className="flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-indigo-700 hover:scale-105 active:scale-95"
+          {/* Active Mode Banner with AnimatePresence */}
+          <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800">
+            <AnimatePresence mode="wait">
+              {worshipMethod === 'MANUAL' && (
+                <motion.div
+                  key="MANUAL"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center justify-between rounded-xl bg-sky-50/80 p-3 text-xs dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/50"
                 >
-                  <Camera className="h-4 w-4" />
-                  <span>Buka Layar Scanner Kamera</span>
-                </button>
-              </div>
-            )}
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-sky-600 shrink-0" />
+                    <span className="font-semibold text-sky-900 dark:text-sky-200">
+                      Mode Checklist Manual Aktif — Centang nama siswa pada tabel di bawah, lalu klik "Hadir Berjamaah" / "Masbuk".
+                    </span>
+                  </div>
+                </motion.div>
+              )}
 
-            {worshipMethod === 'RFID' && (
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl bg-emerald-50/80 p-3 text-xs dark:bg-emerald-950/30">
-                <div className="flex items-center gap-2">
-                  <Wifi className="h-4 w-4 text-emerald-600 shrink-0 animate-pulse" />
-                  <span className="font-semibold text-emerald-900 dark:text-emerald-200">
-                    Mode RFID Receiver Aktif — Tempelkan Kartu Siswa pada reader. Sinyal siap diproses.
-                  </span>
-                </div>
-                <div className="relative min-w-[200px]">
-                  <input
-                    type="text"
-                    autoFocus
-                    value={scanInput}
-                    onChange={(e) => setScanInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleProcessScan(scanInput)}
-                    placeholder="Tap Kartu RFID..."
-                    className="w-full rounded-xl border border-emerald-300 bg-white py-1.5 pl-8 pr-3 text-xs font-mono font-bold text-emerald-800 focus:border-emerald-500 focus:outline-none dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300"
-                  />
-                  <Radio className="absolute left-2.5 top-2 h-3.5 w-3.5 text-emerald-500 animate-bounce" />
-                </div>
+              {worshipMethod === 'QRCODE' && (
+                <motion.div
+                  key="QRCODE"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl bg-indigo-50/80 p-3 text-xs dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <Camera className="h-4 w-4 text-indigo-600 shrink-0" />
+                    <span className="font-semibold text-indigo-900 dark:text-indigo-200">
+                      Mode Scan QR Code Kartu Siswa — Pemindaian aktif via Kamera / Scanner Kartu Pelajar.
+                    </span>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setShowCameraModal(true)
+                      startCamera()
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/20 transition-all hover:bg-indigo-700"
+                  >
+                    <Camera className="h-4 w-4" />
+                    <span>Buka Layar Scanner Kamera</span>
+                  </motion.button>
+                </motion.div>
+              )}
+
+              {worshipMethod === 'RFID' && (
+                <motion.div
+                  key="RFID"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl bg-emerald-50/80 p-3 text-xs dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <Wifi className="h-4 w-4 text-emerald-600 shrink-0 animate-pulse" />
+                    <span className="font-semibold text-emerald-900 dark:text-emerald-200">
+                      Mode RFID Receiver Aktif — Tempelkan Kartu Siswa pada reader. Sinyal siap diproses.
+                    </span>
+                  </div>
+                  <div className="relative min-w-[200px]">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={scanInput}
+                      onChange={(e) => setScanInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleProcessScan(scanInput)}
+                      placeholder="Tap Kartu RFID..."
+                      className="w-full rounded-xl border border-emerald-300 bg-white py-1.5 pl-8 pr-3 text-xs font-mono font-bold text-emerald-800 focus:border-emerald-500 focus:outline-none dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 shadow-2xs"
+                    />
+                    <Radio className="absolute left-2.5 top-2 h-3.5 w-3.5 text-emerald-500 animate-bounce" />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        {/* CARD 3: SESI IBADAH SEKOLAH HORIZONTAL CARD */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-[#111827]">
+          <div className="mb-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 shadow-2xs">
+                <Moon className="h-5 w-5" />
               </div>
-            )}
+              <div>
+                <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                  Sesi Ibadah Sekolah
+                </h2>
+                <p className="text-[11px] font-medium text-slate-400">Pilih sesi ibadah aktif untuk mencatat atau meninjau presensi siswa</p>
+              </div>
+            </div>
+            <span className="rounded-full bg-emerald-100/90 px-3 py-1 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300">
+              {sessions.length} Sesi
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {sessions.map((sess) => {
+              const isSelected = selectedSession?.id === sess.id
+              const isDzikir = sess.template.code.includes('DOA') || sess.template.code.includes('DZIKIR')
+              const isDhuha = sess.template.code.includes('DHUHA')
+              const isZhuhur = sess.template.code.includes('ZHUHUR')
+              
+              const SessionIconComponent = isDzikir ? Sun : isDhuha ? Sparkles : isZhuhur ? Sun : Moon
+
+              return (
+                <div
+                  key={sess.id}
+                  onClick={() => {
+                    setSelectedSession(sess)
+                    handleOpenAttendingModal('hadir')
+                  }}
+                  className={`cursor-pointer group relative overflow-hidden rounded-2xl border p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                    isSelected
+                      ? 'border-emerald-500 bg-gradient-to-br from-emerald-50/90 via-emerald-50/40 to-white dark:border-emerald-600 dark:from-emerald-950/50 dark:to-[#111827] shadow-sm ring-2 ring-emerald-500/20'
+                      : 'border-slate-200/80 bg-white hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700'
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-emerald-500 to-teal-600" />
+                  )}
+
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-all ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 group-hover:bg-emerald-100 group-hover:text-emerald-700'
+                      }`}>
+                        <SessionIconComponent className="size-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className={`text-xs font-black truncate ${isSelected ? 'text-emerald-950 dark:text-emerald-100' : 'text-slate-800 dark:text-slate-200'}`}>
+                          {sess.template.nama}
+                        </h3>
+                        <div className="mt-0.5 flex items-center gap-1 text-[11px] font-black text-amber-600 dark:text-amber-400">
+                          <Clock className="size-3 shrink-0" />
+                          <span>{sess.scheduled_start_at} - {sess.scheduled_end_at} WIB</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleOpenEditSessionModal(sess)
+                      }}
+                      title="Ubah Jam Sesi Manual"
+                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition-colors shrink-0"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-2.5 dark:border-slate-800/80 text-[11px]">
+                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1 truncate font-semibold">
+                        <MapPin className="size-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{sess.location_name}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-0.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Kehadiran:</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedSession(sess)
+                          handleOpenAttendingModal('hadir')
+                        }}
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-black transition-all hover:scale-105 active:scale-95 ${
+                          isSelected ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                        }`}
+                      >
+                        {countHadir}/{totalStudents} Siswa (Lihat Siswa)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
-      </header>
+      </motion.header>
 
-      {/* ── MAIN CONTENT LAYOUT (SESI IBADAH & DATA TABLE) ───────────────── */}
-      <main className="py-4">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          
-          {/* ── LEFT COLUMN: DAFTAR SESI IBADAH SEKOLAH (col-span-3) ───────── */}
-          <div className="space-y-4 lg:col-span-3">
-            <div className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#111827]">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Sesi Ibadah Sekolah
-                </h2>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                  {sessions.length} Sesi
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {sessions.map((s) => {
-                  const isSel = selectedSession?.id === s.id
-                  return (
-                    <div
-                      key={s.id}
-                      className={`group relative rounded-xl border p-3.5 transition-all ${
-                        isSel
-                          ? 'border-sky-500 bg-sky-50/60 shadow-sm dark:border-sky-600 dark:bg-sky-950/30'
-                          : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-[#1B2433]'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedSession(s)}
-                          className="flex items-center gap-2.5 text-left flex-1"
-                        >
-                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isSel ? 'bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>
-                            {s.template.category === 'shalat_wajib' ? <Sun className="h-4 w-4 text-amber-500" /> : <Sparkles className="h-4 w-4 text-sky-500" />}
-                          </div>
-                          <div>
-                            <p className={`text-xs font-bold ${isSel ? 'text-sky-900 dark:text-sky-200' : 'text-slate-800 dark:text-slate-200'}`}>
-                              {s.template.nama}
-                            </p>
-                            <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                              <Clock className="h-3 w-3" /> {s.scheduled_start_at} - {s.scheduled_end_at} WIB
-                            </p>
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditSessionModal(s)}
-                          title="Ubah Jam Sesi Manual"
-                          className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-100 pt-2 dark:border-slate-800">
-                        <span className="truncate max-w-[130px]"><MapPin className="inline h-3 w-3 mr-0.5 text-slate-400" />{s.location_name}</span>
-                        <span className="font-bold text-emerald-600">{countHadir}/{totalStudents} Siswa</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* ── RIGHT COLUMN: DATA TABEL PRESENSI SISWA TAILGRIDS (col-span-9) ── */}
-          <div className="space-y-4 lg:col-span-9">
+      {/* ── MAIN CONTENT LAYOUT (FULL WIDTH DATA TABLE) ───────────────── */}
+      <section className="space-y-5">
+        <div className="space-y-4">
             
             {/* Toolbar Outer Container */}
-            <div className="rounded-[18px] border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-[#111827] overflow-hidden">
+            <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#111827] overflow-hidden">
               
               {/* Row 1: Section Title + Subtext + Action Buttons */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 p-4 sm:p-6 dark:border-slate-800">
@@ -867,20 +1229,23 @@ export default function StudentWorshipAttendancePage() {
                     </div>
                   )}
 
-                  <button
-                    onClick={() => toastInfo('Export Presensi', 'Mengunduh rekap presensi siswa format Excel...')}
-                    title="Export Rekap Presensi"
-                    className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition-all hover:bg-amber-100 hover:scale-105 dark:bg-amber-950/60 dark:text-amber-400"
-                  >
-                    <Download className="h-4.5 w-4.5" />
-                  </button>
-                  <button
+                  {/* TailGrids Standard Action Buttons: Import, Export, Cetak (Printer) */}
+                  <SquircleActionButton
+                    variant="import"
+                    label="Import Data Presensi"
                     onClick={() => toastInfo('Import Presensi', 'Membuka dialog import presensi masal...')}
-                    title="Import Data Presensi"
-                    className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600 transition-all hover:bg-sky-100 hover:scale-105 dark:bg-sky-950/60 dark:text-sky-400"
-                  >
-                    <Upload className="h-4.5 w-4.5" />
-                  </button>
+                  />
+                  <SquircleActionButton
+                    variant="export"
+                    label="Export Rekap Presensi"
+                    onClick={() => toastInfo('Export Presensi', 'Mengunduh rekap presensi siswa format Excel...')}
+                  />
+                  <SquircleActionButton
+                    variant="view"
+                    icon={Printer}
+                    label="Cetak Data Kehadiran Siswa"
+                    onClick={() => setIsPrintTableModalOpen(true)}
+                  />
                 </div>
               </div>
 
@@ -1068,8 +1433,7 @@ export default function StudentWorshipAttendancePage() {
               </div>
             </div>
           </div>
-        </div>
-      </main>
+        </section>
 
       {/* ── MODAL UBAH MANUAL JADWAL SESI IBADAH ─────────────────────────── */}
       {showEditSessionModal && (
@@ -1436,6 +1800,173 @@ export default function StudentWorshipAttendancePage() {
         </div>
       )}
 
+      {/* ── MODAL DATA SISWA PRESENSI SHOLAT ────────────────────────────── */}
+      <Backdrop isOpen={isAttendingModalOpen} onOpenChange={setIsAttendingModalOpen}>
+        <Dialog className="w-full max-w-4xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 rounded-3xl">
+          <div className="space-y-4">
+            {/* Header */}
+            <DialogHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <DialogTitle className="text-lg font-black text-slate-900 dark:text-white">
+                      Data Presensi Siswa Sholat
+                    </DialogTitle>
+                    <Badge color="emerald" size="sm">
+                      {selectedSession?.template.nama}
+                    </Badge>
+                  </div>
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+                    Sesi: <span className="font-bold text-slate-700 dark:text-slate-200">{selectedSession?.template.nama}</span> | Jam: {selectedSession?.scheduled_start_at} - {selectedSession?.scheduled_end_at} WIB | Lokasi: {selectedSession?.location_name}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {/* Filter Tabs & Search Bar */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50 p-3 rounded-2xl dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
+              {/* Status Filter Buttons */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+                {[
+                  { key: 'hadir', label: 'Hadir Berjamaah', color: 'bg-emerald-600 text-white' },
+                  { key: 'masbuk', label: 'Masbuk / Terlambat', color: 'bg-amber-600 text-white' },
+                  { key: 'uzur', label: 'Uzur / Sakit', color: 'bg-purple-600 text-white' },
+                  { key: 'izin', label: 'Izin / Alpa', color: 'bg-rose-600 text-white' },
+                  { key: 'belum_verifikasi', label: 'Belum Verifikasi', color: 'bg-slate-700 text-white' },
+                  { key: 'ALL', label: 'Semua Siswa', color: 'bg-sky-600 text-white' },
+                ].map((st) => (
+                  <button
+                    key={st.key}
+                    onClick={() => setModalStatusFilter(st.key)}
+                    className={`px-3 py-1.5 rounded-xl transition-all ${
+                      modalStatusFilter === st.key
+                        ? `${st.color} shadow-xs scale-105`
+                        : 'bg-white text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search & Print Actions */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 sm:w-48">
+                  <Search className="absolute left-3 top-2.5 size-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={modalSearchQuery}
+                    onChange={(e) => setModalSearchQuery(e.target.value)}
+                    placeholder="Cari nama/kelas..."
+                    className="w-full rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </div>
+                <button
+                  onClick={handlePrintModalTable}
+                  title="Cetak Data Presensi Modal"
+                  className="p-2 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100 transition-all dark:bg-sky-950 dark:border-sky-800 dark:text-sky-300 shrink-0"
+                >
+                  <Printer className="size-4" />
+                </button>
+                <button
+                  onClick={handleDownloadPdfModalTable}
+                  title="Unduh PDF Data Modal"
+                  className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all dark:bg-amber-950 dark:border-amber-800 dark:text-amber-300 shrink-0"
+                >
+                  <Download className="size-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Table List */}
+            <DialogBody className="py-0 max-h-[380px] overflow-y-auto">
+              {filteredModalStudents.length === 0 ? (
+                <div className="py-12 text-center text-slate-400">
+                  <AlertCircle className="size-8 mx-auto mb-2 text-slate-300" />
+                  <p className="font-semibold text-xs">Tidak ada data siswa ditemukan untuk status ini.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-[11px] font-black uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      <tr>
+                        <th className="p-3">No</th>
+                        <th className="p-3">Siswa</th>
+                        <th className="p-3">Kelas</th>
+                        <th className="p-3 text-center">Status Presensi</th>
+                        <th className="p-3">Waktu</th>
+                        <th className="p-3">Metode</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {filteredModalStudents.map((st, idx) => (
+                        <tr key={st.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="p-3 font-semibold text-slate-500">{idx + 1}</td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar size="sm" status="online">
+                                <AvatarFallback className="bg-emerald-100 font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                                  {st.name.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-bold text-slate-900 dark:text-white">{st.name}</p>
+                                <p className="text-[10px] text-slate-400">NISN: {st.nisn}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">{st.class_name}</td>
+                          <td className="p-3 text-center">
+                            {st.status === 'hadir' && <Badge color="success" size="sm">Hadir Berjamaah</Badge>}
+                            {st.status === 'masbuk' && <Badge color="warning" size="sm">Masbuk / Terlambat</Badge>}
+                            {st.status === 'uzur' && <Badge color="purple" size="sm">Uzur / Sakit</Badge>}
+                            {(st.status === 'izin' || st.status === 'alpa') && <Badge color="error" size="sm">Izin / Alpa</Badge>}
+                            {st.status === 'belum_verifikasi' && <Badge color="gray" size="sm">Belum Verifikasi</Badge>}
+                          </td>
+                          <td className="p-3 font-medium text-slate-600 dark:text-slate-400">{st.time || '-'}</td>
+                          <td className="p-3 font-medium text-slate-500">{st.method || 'Manual Checklist'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </DialogBody>
+
+            {/* Footer */}
+            <DialogFooter className="border-t border-slate-100 pt-3 dark:border-slate-800 flex items-center justify-between">
+              <div className="text-xs font-semibold text-slate-500">
+                Menampilkan <span className="font-bold text-emerald-600">{filteredModalStudents.length}</span> dari {students.length} siswa
+              </div>
+              <DialogClose
+                onClick={() => setIsAttendingModalOpen(false)}
+                variant="ghost"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              >
+                Tutup
+              </DialogClose>
+            </DialogFooter>
+          </div>
+        </Dialog>
+      </Backdrop>
+
+      {/* ── TAILGRIDS PRINT OPTION MODAL FOR MAIN DATATABLE ─────────────── */}
+      <PrintOptionModal
+        isOpen={isPrintTableModalOpen}
+        onClose={() => setIsPrintTableModalOpen(false)}
+        title={`Daftar Kehadiran Siswa — ${selectedSession?.template.nama}`}
+        subtitle={`Sesi: ${selectedSession?.template.nama} | Jam: ${selectedSession?.scheduled_start_at} - ${selectedSession?.scheduled_end_at} WIB | Lokasi: ${selectedSession?.location_name} | Unit: ${userUnitName}`}
+        onPrint={() => {
+          handlePrintCleanTableMain()
+          setIsPrintTableModalOpen(false)
+        }}
+        onDownload={() => {
+          handleDownloadPdfTableMain()
+          setIsPrintTableModalOpen(false)
+        }}
+      />
+
+      </motion.div>
     </div>
   )
 }

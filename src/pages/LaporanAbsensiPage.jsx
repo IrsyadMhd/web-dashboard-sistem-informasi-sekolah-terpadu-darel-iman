@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ActionDropdown from '../components/app/ActionDropdown'
 import {
+  BookOpen,
   Building2,
   CalendarDays,
   ChevronLeft,
@@ -12,17 +13,23 @@ import {
   FileSpreadsheet,
   FileText,
   GraduationCap,
+  Home,
   MoreVertical,
   Printer,
   RefreshCcw,
   Search,
   Stethoscope,
   Upload,
+  User,
   UserCheck,
   UserX,
   X,
 } from 'lucide-react'
 import { Download1, Upload1 } from '@tailgrids/icons'
+import { PrintOptionModal } from '../components/master-data'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { cn } from '../lib/utils'
 import {
   HoverCard,
   HoverCardContent,
@@ -58,6 +65,7 @@ import {
 } from '../components/tailgrids/core/dialog'
 import { Badge } from '../components/tailgrids/core/badge'
 import { Button } from '../components/tailgrids/core/button'
+import { Backdrop, OverlayWrapper } from '../components/tailgrids/core/overlay'
 
 const PAGE_SIZE = 5
 const MODAL_PAGE_SIZE = 6
@@ -324,6 +332,10 @@ export default function LaporanAbsensiPage() {
   const [importFile, setImportFile] = useState(null)
   const [isImporting, setIsImporting] = useState(false)
   const [importError, setImportError] = useState('')
+  const [printOptionModalOpen, setPrintOptionModalOpen] = useState(false)
+  const [groupByMode, setGroupByMode] = useState('siswa') // 'siswa' | 'subject'
+  const [selectedSubjectGroup, setSelectedSubjectGroup] = useState(null)
+  const [selectedStudentGroup, setSelectedStudentGroup] = useState(null)
   const importInputRef = useRef(null)
 
   // Modal State for Summary Cards
@@ -530,8 +542,117 @@ export default function LaporanAbsensiPage() {
       .map((item) => ({ ...item, label: formatTanggal(item.tanggal).replace(/\s\d{4}$/, '') }))
   }, [rows])
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
-  const paginatedRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const groupedByStudentRows = useMemo(() => {
+    if (!Array.isArray(rows) || rows.length === 0) return []
+
+    const map = new Map()
+    rows.forEach((row) => {
+      const studentName = row.siswa?.full_name || 'Tanpa Nama'
+      const nis = row.siswa?.nis || '-'
+      const key = `${row.siswa?.id || studentName}_${nis}`
+
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key,
+          student: row.siswa,
+          studentName,
+          nis,
+          unitName: getUnitName(row),
+          kelasName: getNamaKelas(row),
+          subjects: new Set(),
+          hadir: 0,
+          terlambat: 0,
+          izin: 0,
+          sakit: 0,
+          alpa: 0,
+          total: 0,
+          subjectRows: [],
+        })
+      }
+
+      const item = map.get(key)
+      item.total += 1
+      item.subjectRows.push(row)
+
+      const mapelName = row.jadwal_pelajaran?.subject?.name || 'Mata Pelajaran Umum'
+      if (mapelName) item.subjects.add(mapelName)
+
+      const st = normalisasiStatus(row.status_hadir)
+      if (st === 'hadir') item.hadir += 1
+      else if (st === 'terlambat') item.terlambat += 1
+      else if (st === 'izin') item.izin += 1
+      else if (st === 'sakit') item.sakit += 1
+      else if (st === 'alpa') item.alpa += 1
+      else item.hadir += 1
+    })
+
+    return Array.from(map.values()).map((g) => {
+      const percentHadir = g.total > 0 ? Math.round((g.hadir / g.total) * 100) : 0
+      return {
+        ...g,
+        subjectListStr: Array.from(g.subjects).join(', ') || 'Semua Mata Pelajaran',
+        percentHadir,
+      }
+    })
+  }, [rows])
+
+  const groupedBySubjectRows = useMemo(() => {
+    if (!Array.isArray(rows) || rows.length === 0) return []
+
+    const map = new Map()
+    rows.forEach((row) => {
+      const subjectName = row.jadwal_pelajaran?.subject?.name || 'Mata Pelajaran Umum'
+      if (!map.has(subjectName)) {
+        map.set(subjectName, {
+          id: subjectName,
+          subjectName,
+          unitNames: new Set(),
+          kelasNames: new Set(),
+          hadir: 0,
+          terlambat: 0,
+          izin: 0,
+          sakit: 0,
+          alpa: 0,
+          total: 0,
+          studentRows: [],
+        })
+      }
+      const item = map.get(subjectName)
+      item.total += 1
+      item.studentRows.push(row)
+
+      const u = getUnitName(row)
+      if (u && u !== '-') item.unitNames.add(u)
+
+      const k = getNamaKelas(row)
+      if (k && k !== '-') item.kelasNames.add(k)
+
+      const st = normalisasiStatus(row.status_hadir)
+      if (st === 'hadir') item.hadir += 1
+      else if (st === 'terlambat') item.terlambat += 1
+      else if (st === 'izin') item.izin += 1
+      else if (st === 'sakit') item.sakit += 1
+      else if (st === 'alpa') item.alpa += 1
+      else item.hadir += 1
+    })
+
+    return Array.from(map.values()).map((g) => {
+      const percentHadir = g.total > 0 ? Math.round((g.hadir / g.total) * 100) : 0
+      return {
+        ...g,
+        unitListStr: Array.from(g.unitNames).join(', ') || 'Semua Unit',
+        kelasListStr: Array.from(g.kelasNames).join(', ') || 'Semua Kelas',
+        percentHadir,
+      }
+    })
+  }, [rows])
+
+  const activeGroupedRows = useMemo(() => {
+    return groupByMode === 'siswa' ? groupedByStudentRows : groupedBySubjectRows
+  }, [groupByMode, groupedByStudentRows, groupedBySubjectRows])
+
+  const totalPages = Math.max(1, Math.ceil(activeGroupedRows.length / PAGE_SIZE))
+  const paginatedRows = activeGroupedRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   // Card Modal Handlers
   const openCardModal = (statusKey, label, tone) => {
@@ -604,69 +725,113 @@ export default function LaporanAbsensiPage() {
     setNotice('File laporan berhasil diunduh.')
   }
 
+  const handlePrintClean = useCallback(() => {
+    if (groupByMode === 'siswa') {
+      const headers = ['No', 'Nama Siswa', 'NIS', 'Unit Pendidikan', 'Kelas & Rombel', 'Mata Pelajaran', 'Total Presensi', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
+      const printRows = groupedByStudentRows.map((g, i) => [
+        i + 1,
+        g.studentName,
+        g.nis,
+        g.unitName,
+        g.kelasName,
+        g.subjectListStr,
+        g.total,
+        g.hadir,
+        g.terlambat,
+        g.izin,
+        g.sakit,
+        g.alpa,
+        `${g.percentHadir}%`
+      ])
+      printCleanTable({
+        title: 'Rekap Absensi Pembelajaran per Siswa',
+        subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
+        headers,
+        rows: printRows,
+      })
+    } else {
+      const headers = ['No', 'Mata Pelajaran', 'Unit Pendidikan', 'Kelas & Rombel', 'Total Record', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
+      const printRows = groupedBySubjectRows.map((g, i) => [
+        i + 1,
+        g.subjectName,
+        g.unitListStr,
+        g.kelasListStr,
+        g.total,
+        g.hadir,
+        g.terlambat,
+        g.izin,
+        g.sakit,
+        g.alpa,
+        `${g.percentHadir}%`
+      ])
+      printCleanTable({
+        title: 'Rekap Absensi Pembelajaran per Mata Pelajaran',
+        subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
+        headers,
+        rows: printRows,
+      })
+    }
+  }, [groupByMode, groupedByStudentRows, groupedBySubjectRows])
+
+  const handleDownloadPdfTable = useCallback(() => {
+    if (groupByMode === 'siswa') {
+      const headers = ['No', 'Nama Siswa', 'NIS', 'Unit Pendidikan', 'Kelas & Rombel', 'Mata Pelajaran', 'Total Presensi', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
+      const printRows = groupedByStudentRows.map((g, i) => [
+        i + 1,
+        g.studentName,
+        g.nis,
+        g.unitName,
+        g.kelasName,
+        g.subjectListStr,
+        g.total,
+        g.hadir,
+        g.terlambat,
+        g.izin,
+        g.sakit,
+        g.alpa,
+        `${g.percentHadir}%`
+      ])
+      downloadPdfTable({
+        title: 'Rekap Absensi Pembelajaran per Siswa',
+        subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
+        headers,
+        rows: printRows,
+        filename: `Laporan_Absensi_Siswa_${new Date().toISOString().slice(0, 10)}.pdf`
+      })
+    } else {
+      const headers = ['No', 'Mata Pelajaran', 'Unit Pendidikan', 'Kelas & Rombel', 'Total Record', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
+      const printRows = groupedBySubjectRows.map((g, i) => [
+        i + 1,
+        g.subjectName,
+        g.unitListStr,
+        g.kelasListStr,
+        g.total,
+        g.hadir,
+        g.terlambat,
+        g.izin,
+        g.sakit,
+        g.alpa,
+        `${g.percentHadir}%`
+      ])
+      downloadPdfTable({
+        title: 'Rekap Absensi Pembelajaran per Mata Pelajaran',
+        subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
+        headers,
+        rows: printRows,
+        filename: `Laporan_Absensi_Mapel_${new Date().toISOString().slice(0, 10)}.pdf`
+      })
+    }
+  }, [groupByMode, groupedByStudentRows, groupedBySubjectRows])
+
   const printReport = () => {
-    window.print()
+    setPrintOptionModalOpen(true)
   }
 
   return (
     <section className="attendance-report-page">
-      {/* Top Action Bar (Aksi Cepat Laporan) */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5 p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-xs">
-        <div>
-          <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Rekap Absensi Pembelajaran</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pemantauan dan rekapitulasi presensi siswa per unit pendidikan & rombel</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* TailGrids Import Soft Pastel Squircle Sky Blue Button */}
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/80 transition-all cursor-pointer shadow-2xs"
-              >
-                <Upload1 className="size-4 text-sky-600 dark:text-sky-400" /> Import Data (.csv, .xlsx, .xls)
-              </button>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-56 p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
-              <strong className="block text-slate-800 dark:text-slate-100 font-bold mb-0.5">Import Absensi Pembelajaran</strong>
-              <span className="text-slate-500 dark:text-slate-400">Unggah file presensi format CSV, XLSX, atau XLS.</span>
-            </HoverCardContent>
-          </HoverCard>
-
-          {/* TailGrids Export Soft Pastel Squircle Amber Button */}
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setIsExportModalOpen(true)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 transition-all cursor-pointer shadow-2xs"
-              >
-                <Download1 className="size-4 text-amber-600 dark:text-amber-400" /> Export Datatable ({rows.length} Data)
-              </button>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-56 p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
-              <strong className="block text-slate-800 dark:text-slate-100 font-bold mb-0.5">Ekspor Datatable Terfilter</strong>
-              <span className="text-slate-500 dark:text-slate-400">Ekspor {rows.length} data datatable saat ini ke .csv, .xlsx, atau .xls</span>
-            </HoverCardContent>
-          </HoverCard>
-
-          <button
-            type="button"
-            onClick={printReport}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all cursor-pointer shadow-2xs"
-          >
-            <Printer className="size-4" /> Cetak Laporan
-          </button>
-          <button
-            type="button"
-            onClick={load}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 bg-slate-100 dark:bg-slate-800 dark:text-slate-300 transition-all cursor-pointer ml-1"
-            title="Muat ulang data"
-          >
-            <RefreshCcw className="size-4" />
-          </button>
-        </div>
+      {/* Navigation Breadcrumb (Matching Dashboard Wali Kelas Style) */}
+      <div className="mb-5">
+        <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi' }, { label: 'Laporan Absensi Pembelajaran' }]} />
       </div>
 
       {/* Summary Cards Grid (5 Equal & Colored Cards) */}
@@ -890,22 +1055,117 @@ export default function LaporanAbsensiPage() {
         </article>
       </div>
 
-      {/* Table Card - TailGrids Master Data Datatable */}
+      {/* Table Card - TailGrids Master Data Datatable (Dual Mode: Siswa & Mata Pelajaran) */}
       <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] shadow-sm dark:border-slate-800">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Rincian Absensi Pembelajaran</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Data rekapitulasi kehadiran siswa berdasarkan unit pendidikan, kelas, dan periode filter aktif.</p>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Rekap Absensi Pembelajaran</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Pemantauan dan rekapitulasi presensi {groupByMode === 'siswa' ? 'siswa per mata pelajaran' : 'siswa per unit pendidikan & rombel'}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={load}
-              className="flex size-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
-              title="Muat ulang data"
-            >
-              <RefreshCcw className="size-4" />
-            </button>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Mode Sortir / Group Switcher (Berdasarkan Siswa vs Berdasarkan Mata Pelajaran) */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => { setGroupByMode('siswa'); setPage(1); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer",
+                  groupByMode === 'siswa'
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                )}
+              >
+                <User className="size-3.5" />
+                <span>Berdasarkan Siswa</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setGroupByMode('subject'); setPage(1); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer",
+                  groupByMode === 'subject'
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                )}
+              >
+                <BookOpen className="size-3.5" />
+                <span>Berdasarkan Mata Pelajaran</span>
+              </button>
+            </div>
+
+            {/* Soft Pastel Squircle Action Buttons */}
+            <div className="flex items-center gap-2 flex-nowrap shrink-0">
+              {/* Import Button */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Import Data (.csv, .xlsx, .xls)"
+                  aria-label="Import Data"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-600 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-500/30 cursor-pointer shadow-2xs"
+                >
+                  <Upload1 className="size-5 transition-colors" />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Import Data (.csv, .xlsx, .xls)
+                </div>
+              </div>
+
+              {/* Export Button */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title={`Export Datatable (${activeGroupedRows.length} Data)`}
+                  aria-label="Export Datatable"
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-600 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-amber-500/30 cursor-pointer shadow-2xs"
+                >
+                  <Download1 className="size-5 transition-colors" />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Export Datatable ({activeGroupedRows.length} Data)
+                </div>
+              </div>
+
+              {/* Cetak Button */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Cetak Laporan"
+                  aria-label="Cetak Laporan"
+                  onClick={printReport}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-indigo-600/30 cursor-pointer shadow-2xs"
+                >
+                  <Printer className="size-5 transition-colors" />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Cetak Laporan
+                </div>
+              </div>
+
+              {/* Refresh Button */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Muat Ulang Data"
+                  aria-label="Muat Ulang Data"
+                  onClick={load}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-slate-100/90 text-slate-600 hover:bg-slate-700 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-slate-500/30 cursor-pointer shadow-2xs"
+                >
+                  <RefreshCcw className="size-5 transition-colors" />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Muat Ulang Data
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -914,73 +1174,320 @@ export default function LaporanAbsensiPage() {
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold tracking-wider uppercase text-[11px]">
                 <th className="py-3.5 px-3 w-12 text-center">NO</th>
-                <th className="py-3.5 px-3">SISWA</th>
-                <th className="py-3.5 px-3">NIS</th>
-                <th className="py-3.5 px-3">UNIT PENDIDIKAN</th>
-                <th className="py-3.5 px-3">KELAS & ROMBEL</th>
-                <th className="py-3.5 px-3">TANGGAL</th>
-                <th className="py-3.5 px-3">MATA PELAJARAN</th>
-                <th className="py-3.5 px-3 text-center">STATUS</th>
-                <th className="py-3.5 px-3">CATATAN</th>
-                <th className="py-3.5 px-3 text-center w-24">AKSI</th>
+                {groupByMode === 'siswa' ? (
+                  <>
+                    <th className="py-3.5 px-3">SISWA</th>
+                    <th className="py-3.5 px-3">NIS</th>
+                    <th className="py-3.5 px-3">UNIT PENDIDIKAN</th>
+                    <th className="py-3.5 px-3">KELAS & ROMBEL</th>
+                    <th className="py-3.5 px-3 text-center">TOTAL MAPEL</th>
+                    <th className="py-3.5 px-3">REKAP STATISTIK PRESENSI</th>
+                    <th className="py-3.5 px-3 text-center">% KEHADIRAN</th>
+                    <th className="py-3.5 px-3 text-center w-28">AKSI</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="py-3.5 px-3">MATA PELAJARAN</th>
+                    <th className="py-3.5 px-3">UNIT PENDIDIKAN</th>
+                    <th className="py-3.5 px-3">KELAS & ROMBEL</th>
+                    <th className="py-3.5 px-3 text-center">TOTAL PRESENSI</th>
+                    <th className="py-3.5 px-3">REKAP STATISTIK PRESENSI</th>
+                    <th className="py-3.5 px-3 text-center">% KEHADIRAN</th>
+                    <th className="py-3.5 px-3 text-center w-28">AKSI</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-              {!loading && paginatedRows.length ? paginatedRows.map((row, index) => {
-                const status = normalisasiStatus(row.status_hadir)
-                const namaKelas = getNamaKelas(row)
-                const unitName = getUnitName(row)
+              {!loading && paginatedRows.length ? paginatedRows.map((group, index) => {
+                if (groupByMode === 'siswa') {
+                  return (
+                    <tr
+                      key={group.id || index}
+                      onClick={() => setSelectedStudentGroup(group)}
+                      className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                    >
+                      <td className="py-3.5 px-3 text-center text-slate-400 font-semibold">{(page - 1) * PAGE_SIZE + index + 1}</td>
+                      <td className="py-3.5 px-3">
+                        <HoverCard>
+                          <HoverCardTrigger className="cursor-pointer text-left focus:outline-none block">
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openStudentProfile(group.student)
+                              }}
+                              className="group/btn cursor-pointer"
+                              title={`Arahkan kursor untuk pratinjau data atau klik untuk profil lengkap ${group.studentName}`}
+                            >
+                              <PersonIdentityCell
+                                src={group.student?.photo_url || group.student?.photo || group.student?.photo_thumb}
+                                name={group.studentName}
+                                className="group-hover/btn:opacity-80 transition-opacity"
+                              />
+                            </div>
+                          </HoverCardTrigger>
+                          <HoverCardContent side="right" align="start" className="w-72 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl z-50">
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="size-11 border-2 border-emerald-500 shadow-xs">
+                                  <AvatarImage src={group.student?.photo_url || group.student?.photo} />
+                                  <AvatarFallback className="bg-emerald-100 text-emerald-800 font-bold">{(group.studentName).slice(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                                    {group.studentName}
+                                  </h4>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                                    NIS: {group.nis}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <div>
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Unit</span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300">{group.unitName}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Kelas</span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300">{group.kelasName}</span>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50">
+                                  <span className="text-[10px] text-emerald-600 font-bold block">Hadir</span>
+                                  <strong className="text-sm font-black text-emerald-700 dark:text-emerald-300">{group.hadir}</strong>
+                                </div>
+                                <div className="p-2 rounded-lg bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/50">
+                                  <span className="text-[10px] text-violet-600 font-bold block">Terlambat</span>
+                                  <strong className="text-sm font-black text-violet-700 dark:text-violet-300">{group.terlambat}</strong>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedStudentGroup(group)
+                                }}
+                                className="w-full py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors shadow-xs cursor-pointer"
+                              >
+                                Lihat Detail Presensi Mapel ({group.total})
+                              </button>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                      </td>
+                      <td className="py-3.5 px-3 font-mono text-slate-600 dark:text-slate-300">{group.nis}</td>
+                      <td className="py-3.5 px-3">
+                        <Badge color="emerald" size="sm">
+                          {group.unitName}
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{group.kelasName}</td>
+                      <td className="py-3.5 px-3 text-center font-bold text-slate-900 dark:text-white">
+                        <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs">
+                          {group.subjects.size} Mapel
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300" title="Hadir">{group.hadir} H</span>
+                          {group.terlambat > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-100 text-violet-800 dark:bg-violet-950/80 dark:text-violet-300" title="Terlambat">{group.terlambat} T</span>}
+                          {group.izin > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300" title="Izin">{group.izin} I</span>}
+                          {group.sakit > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300" title="Sakit">{group.sakit} S</span>}
+                          {group.alpa > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300" title="Alpha">{group.alpa} A</span>}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <Badge color={group.percentHadir >= 80 ? 'success' : group.percentHadir >= 60 ? 'warning' : 'error'} size="sm">
+                          {group.percentHadir}% Hadir
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <div className="group relative inline-flex">
+                            <button
+                              type="button"
+                              title="Cetak Rincian Siswa"
+                              aria-label="Cetak Rincian Siswa"
+                              onClick={() => {
+                                const headers = ['No', 'Mata Pelajaran', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
+                                const printRows = group.subjectRows.map((r, i) => [
+                                  i + 1,
+                                  r.jadwal_pelajaran?.subject?.name || '-',
+                                  getUnitName(r),
+                                  getNamaKelas(r),
+                                  formatTanggal(r.tanggal),
+                                  statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
+                                  r.catatan || r.keterangan || '-'
+                                ])
+                                printCleanTable({
+                                  title: `Rincian Presensi Pembelajaran — ${group.studentName}`,
+                                  subtitle: `NIS: ${group.nis} | Unit: ${group.unitName} | Kelas: ${group.kelasName}`,
+                                  headers,
+                                  rows: printRows,
+                                })
+                              }}
+                              className="flex size-9 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-indigo-600/30 cursor-pointer shadow-2xs"
+                            >
+                              <Printer className="size-4 transition-colors" />
+                            </button>
+                            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                              Cetak Rincian
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                }
+
                 return (
-                  <tr key={row.id || index} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr
+                    key={group.subjectName || index}
+                    onClick={() => setSelectedSubjectGroup(group)}
+                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                  >
                     <td className="py-3.5 px-3 text-center text-slate-400 font-semibold">{(page - 1) * PAGE_SIZE + index + 1}</td>
                     <td className="py-3.5 px-3">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openStudentProfile(row.siswa)
-                        }}
-                        className="text-left group cursor-pointer focus:outline-none"
-                        title={`Klik untuk melihat profil lengkap ${row.siswa?.full_name || 'siswa'}`}
-                      >
-                        <PersonIdentityCell
-                          src={row.siswa?.photo_url || row.siswa?.photo || row.siswa?.photo_thumb}
-                          name={row.siswa?.full_name || '-'}
-                          className="group-hover:opacity-80 transition-opacity"
-                        />
-                      </button>
+                      <HoverCard>
+                        <HoverCardTrigger className="cursor-pointer text-left focus:outline-none block">
+                          <div className="flex items-center gap-2.5 group/mapel">
+                            <div className="size-9 rounded-xl bg-emerald-100/90 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover/mapel:scale-105 transition-transform">
+                              <BookOpen className="size-4" />
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-900 dark:text-white text-xs group-hover/mapel:text-emerald-600 dark:group-hover/mapel:text-emerald-400 transition-colors">
+                                {group.subjectName}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block font-normal">
+                                {group.total} Catatan Presensi Siswa
+                              </span>
+                            </div>
+                          </div>
+                        </HoverCardTrigger>
+                        <HoverCardContent side="right" align="start" className="w-80 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl z-50">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                              <div className="size-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                                <BookOpen className="size-5" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-sm text-slate-900 dark:text-white">{group.subjectName}</h4>
+                                <p className="text-xs text-slate-500">{group.unitListStr}</p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50">
+                                <span className="text-[10px] text-emerald-600 font-bold block">Hadir</span>
+                                <strong className="text-sm font-black text-emerald-700 dark:text-emerald-300">{group.hadir}</strong>
+                              </div>
+                              <div className="p-2 rounded-lg bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/50">
+                                <span className="text-[10px] text-violet-600 font-bold block">Terlambat</span>
+                                <strong className="text-sm font-black text-violet-700 dark:text-violet-300">{group.terlambat}</strong>
+                              </div>
+                              <div className="p-2 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-100 dark:border-sky-900/50">
+                                <span className="text-[10px] text-sky-600 font-bold block">Izin</span>
+                                <strong className="text-sm font-black text-sky-700 dark:text-sky-300">{group.izin}</strong>
+                              </div>
+                              <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50">
+                                <span className="text-[10px] text-amber-600 font-bold block">Sakit</span>
+                                <strong className="text-sm font-black text-amber-700 dark:text-amber-300">{group.sakit}</strong>
+                              </div>
+                            </div>
+                            <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 flex justify-between items-center text-xs">
+                              <span className="text-[10px] text-rose-600 font-bold">Alpha</span>
+                              <strong className="text-sm font-black text-rose-700 dark:text-rose-300">{group.alpa}</strong>
+                            </div>
+                            <Button
+                              variant="primary"
+                              appearance="fill"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedSubjectGroup(group)
+                              }}
+                              className="w-full rounded-xl font-bold cursor-pointer"
+                            >
+                              Lihat Data Siswa ({group.total})
+                            </Button>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
                     </td>
-                    <td className="py-3.5 px-3 font-mono text-slate-600 dark:text-slate-300">{row.siswa?.nis || '-'}</td>
                     <td className="py-3.5 px-3">
                       <Badge color="emerald" size="sm">
-                        {unitName}
+                        {group.unitListStr}
                       </Badge>
                     </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{namaKelas}</td>
-                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatTanggal(row.tanggal)}</td>
-                    <td className="py-3.5 px-3 text-slate-700 dark:text-slate-300">{row.jadwal_pelajaran?.subject?.name || '-'}</td>
+                    <td className="py-3.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{group.kelasListStr}</td>
+                    <td className="py-3.5 px-3 text-center font-bold text-slate-900 dark:text-white">
+                      <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs">
+                        {group.total} Siswa
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300" title="Hadir">{group.hadir} H</span>
+                        {group.terlambat > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-violet-100 text-violet-800 dark:bg-violet-950/80 dark:text-violet-300" title="Terlambat">{group.terlambat} T</span>}
+                        {group.izin > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300" title="Izin">{group.izin} I</span>}
+                        {group.sakit > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300" title="Sakit">{group.sakit} S</span>}
+                        {group.alpa > 0 && <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300" title="Alpha">{group.alpa} A</span>}
+                      </div>
+                    </td>
                     <td className="py-3.5 px-3 text-center">
-                      <Badge color={getBadgeColor(status)} size="sm">
-                        {statusLabel[status] || row.status_hadir || '-'}
+                      <Badge color={group.percentHadir >= 80 ? 'success' : group.percentHadir >= 60 ? 'warning' : 'error'} size="sm">
+                        {group.percentHadir}% Hadir
                       </Badge>
                     </td>
-                    <td className="py-3.5 px-3 text-slate-500 dark:text-slate-400 max-w-xs truncate">{row.catatan || row.keterangan || '-'}</td>
                     <td className="py-3.5 px-3 text-center">
-                      <div className="flex justify-center">
-                        <ActionDropdown
-                          onView={() => setSelectedRow(row)}
-                          extraItems={[
-                            { label: 'Lihat Profil Siswa', icon: <Eye className="h-4 w-4 text-emerald-600" />, onClick: () => openStudentProfile(row.siswa) },
-                            { label: 'Unduh data', icon: <Download className="h-4 w-4 text-emerald-600" />, onClick: () => downloadRows([row], `absensi-${row.siswa?.nis || row.id || 'siswa'}.csv`) },
-                            { label: 'Cetak laporan', icon: <Printer className="h-4 w-4 text-slate-500" />, onClick: printReport },
-                          ]}
-                        />
+                      <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="group relative inline-flex">
+                          <button
+                            type="button"
+                            title="Cetak Rincian Mapel"
+                            aria-label="Cetak Rincian Mapel"
+                            onClick={() => {
+                              const headers = ['No', 'Siswa', 'NIS', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
+                              const printRows = group.studentRows.map((r, i) => [
+                                i + 1,
+                                r.siswa?.full_name || '-',
+                                r.siswa?.nis || '-',
+                                getUnitName(r),
+                                getNamaKelas(r),
+                                formatTanggal(r.tanggal),
+                                statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
+                                r.catatan || r.keterangan || '-'
+                              ])
+                              printCleanTable({
+                                title: `Rincian Presensi Siswa — ${group.subjectName}`,
+                                subtitle: `Unit: ${group.unitListStr} | Kelas: ${group.kelasListStr}`,
+                                headers,
+                                rows: printRows,
+                              })
+                            }}
+                            className="flex size-9 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-indigo-600/30 cursor-pointer shadow-2xs"
+                          >
+                            <Printer className="size-4 transition-colors" />
+                          </button>
+                          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                            Cetak Rincian
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>
                 )
               }) : (
-                <tr><td colSpan="10" className="py-12 text-center text-slate-400 font-medium">{loading ? 'Memuat data absensi...' : 'Belum ada data pada filter ini.'}</td></tr>
+                <tr>
+                  <td colSpan={groupByMode === 'siswa' ? '9' : '8'} className="py-12 text-center text-slate-400 font-medium">
+                    {loading ? 'Memuat data absensi...' : `Belum ada data ${groupByMode === 'siswa' ? 'siswa' : 'mata pelajaran'} pada filter ini.`}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -988,7 +1495,7 @@ export default function LaporanAbsensiPage() {
 
         <div className="w-full border-t border-slate-100 dark:border-slate-800 px-4 py-3.5 sm:px-6 md:px-8 flex items-center justify-between">
           <span className="text-xs font-semibold text-slate-500">
-            Menampilkan {rows.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, rows.length)} dari {rows.length} data
+            Menampilkan {activeGroupedRows.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, activeGroupedRows.length)} dari {activeGroupedRows.length} {groupByMode === 'siswa' ? 'siswa' : 'mata pelajaran'}
           </span>
           <div className="flex items-center gap-1.5">
             <button
@@ -1038,6 +1545,287 @@ export default function LaporanAbsensiPage() {
             </footer>
           </article>
         </div>
+      )}
+
+      {/* Modal Detail Presensi per Mata Pelajaran */}
+      {selectedSubjectGroup && (
+        <Dialog
+          isOpen={!!selectedSubjectGroup}
+          onOpenChange={(open) => !open && setSelectedSubjectGroup(null)}
+          showCloseButton={true}
+          className="w-full max-w-4xl rounded-2xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
+              <div className="size-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                <BookOpen className="size-5" />
+              </div>
+              <div>
+                <span>Detail Presensi Siswa — {selectedSubjectGroup.subjectName}</span>
+                <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                  {selectedSubjectGroup.unitListStr} • {selectedSubjectGroup.kelasListStr} ({selectedSubjectGroup.total} Data Siswa)
+                </span>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          <DialogBody className="py-4 space-y-4 max-h-[65vh] overflow-y-auto">
+            {/* Stats Header Bar inside Modal */}
+            <div className="grid grid-cols-5 gap-2 text-center text-xs">
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
+                <span className="text-[10px] font-bold text-emerald-600 uppercase block">Hadir</span>
+                <strong className="text-base font-black text-emerald-700 dark:text-emerald-300">{selectedSubjectGroup.hadir}</strong>
+              </div>
+              <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200/60 dark:border-violet-800/60">
+                <span className="text-[10px] font-bold text-violet-600 uppercase block">Terlambat</span>
+                <strong className="text-base font-black text-violet-700 dark:text-violet-300">{selectedSubjectGroup.terlambat}</strong>
+              </div>
+              <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60">
+                <span className="text-[10px] font-bold text-sky-600 uppercase block">Izin</span>
+                <strong className="text-base font-black text-sky-700 dark:text-sky-300">{selectedSubjectGroup.izin}</strong>
+              </div>
+              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60">
+                <span className="text-[10px] font-bold text-amber-600 uppercase block">Sakit</span>
+                <strong className="text-base font-black text-amber-700 dark:text-amber-300">{selectedSubjectGroup.sakit}</strong>
+              </div>
+              <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
+                <span className="text-[10px] font-bold text-rose-600 uppercase block">Alpha</span>
+                <strong className="text-base font-black text-rose-700 dark:text-rose-300">{selectedSubjectGroup.alpa}</strong>
+              </div>
+            </div>
+
+            {/* Table of Students inside Modal */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
+                    <th className="py-2.5 px-3 w-10 text-center">NO</th>
+                    <th className="py-2.5 px-3">SISWA</th>
+                    <th className="py-2.5 px-3">NIS</th>
+                    <th className="py-2.5 px-3">KELAS</th>
+                    <th className="py-2.5 px-3">TANGGAL</th>
+                    <th className="py-2.5 px-3 text-center">STATUS</th>
+                    <th className="py-2.5 px-3">CATATAN</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {selectedSubjectGroup.studentRows.map((sRow, idx) => {
+                    const st = normalisasiStatus(sRow.status_hadir)
+                    return (
+                      <tr key={sRow.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                          <HoverCard>
+                            <HoverCardTrigger className="cursor-pointer text-left focus:outline-none block">
+                              <span
+                                onClick={() => openStudentProfile(sRow.siswa)}
+                                className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer"
+                              >
+                                {sRow.siswa?.full_name || '-'}
+                              </span>
+                            </HoverCardTrigger>
+                            <HoverCardContent side="right" align="start" className="w-64 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl z-50">
+                              <div className="space-y-2">
+                                <h4 className="font-bold text-slate-900 dark:text-white text-xs">{sRow.siswa?.full_name}</h4>
+                                <p className="text-[11px] text-slate-500">NIS: {sRow.siswa?.nis || '-'}</p>
+                                <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                                  <span>Kelas: {getNamaKelas(sRow)}</span> | <span>Tanggal: {formatTanggal(sRow.tanggal)}</span>
+                                </div>
+                                <Button
+                                  variant="primary"
+                                  appearance="fill"
+                                  size="xs"
+                                  onClick={() => openStudentProfile(sRow.siswa)}
+                                  className="w-full rounded font-bold cursor-pointer"
+                                >
+                                  Profil Siswa
+                                </Button>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-300">{sRow.siswa?.nis || '-'}</td>
+                        <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{getNamaKelas(sRow)}</td>
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{formatTanggal(sRow.tanggal)}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <Badge color={getBadgeColor(st)} size="sm">
+                            {statusLabel[st] || sRow.status_hadir || '-'}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{sRow.catatan || sRow.keterangan || '-'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </DialogBody>
+
+          <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+            <Button
+              variant="primary"
+              appearance="fill"
+              size="sm"
+              onClick={() => {
+                const headers = ['No', 'Siswa', 'NIS', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
+                const printRows = selectedSubjectGroup.studentRows.map((r, i) => [
+                  i + 1,
+                  r.siswa?.full_name || '-',
+                  r.siswa?.nis || '-',
+                  getUnitName(r),
+                  getNamaKelas(r),
+                  formatTanggal(r.tanggal),
+                  statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
+                  r.catatan || r.keterangan || '-'
+                ])
+                printCleanTable({
+                  title: `Rincian Presensi Siswa — ${selectedSubjectGroup.subjectName}`,
+                  subtitle: `Unit: ${selectedSubjectGroup.unitListStr} | Kelas: ${selectedSubjectGroup.kelasListStr}`,
+                  headers,
+                  rows: printRows,
+                })
+              }}
+              className="rounded-xl font-bold flex items-center gap-2"
+            >
+              <Printer className="size-4" /> Cetak Data Siswa Mapel Ini
+            </Button>
+
+            <Button
+              variant="ghost"
+              appearance="outline"
+              size="sm"
+              onClick={() => setSelectedSubjectGroup(null)}
+              className="rounded-xl font-bold"
+            >
+              Tutup
+            </Button>
+          </DialogFooter>
+        </Dialog>
+      )}
+
+      {/* Modal Detail Presensi Siswa per Mata Pelajaran */}
+      {selectedStudentGroup && (
+        <Dialog
+          isOpen={!!selectedStudentGroup}
+          onOpenChange={(open) => !open && setSelectedStudentGroup(null)}
+          showCloseButton={true}
+          className="w-full max-w-4xl rounded-2xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
+              <Avatar className="size-10 border-2 border-emerald-500 shadow-xs">
+                <AvatarImage src={selectedStudentGroup.student?.photo_url || selectedStudentGroup.student?.photo} />
+                <AvatarFallback className="bg-emerald-100 text-emerald-800 font-bold">{(selectedStudentGroup.studentName).slice(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div>
+                <span>Detail Presensi — {selectedStudentGroup.studentName}</span>
+                <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                  NIS: {selectedStudentGroup.nis} • {selectedStudentGroup.unitName} • {selectedStudentGroup.kelasName} ({selectedStudentGroup.total} Record Presensi)
+                </span>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          <DialogBody className="py-4 space-y-4 max-h-[65vh] overflow-y-auto">
+            <div className="grid grid-cols-5 gap-2 text-center text-xs">
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
+                <span className="text-[10px] font-bold text-emerald-600 uppercase block">Hadir</span>
+                <strong className="text-base font-black text-emerald-700 dark:text-emerald-300">{selectedStudentGroup.hadir}</strong>
+              </div>
+              <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200/60 dark:border-violet-800/60">
+                <span className="text-[10px] font-bold text-violet-600 uppercase block">Terlambat</span>
+                <strong className="text-base font-black text-violet-700 dark:text-violet-300">{selectedStudentGroup.terlambat}</strong>
+              </div>
+              <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60">
+                <span className="text-[10px] font-bold text-sky-600 uppercase block">Izin</span>
+                <strong className="text-base font-black text-sky-700 dark:text-sky-300">{selectedStudentGroup.izin}</strong>
+              </div>
+              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60">
+                <span className="text-[10px] font-bold text-amber-600 uppercase block">Sakit</span>
+                <strong className="text-base font-black text-amber-700 dark:text-amber-300">{selectedStudentGroup.sakit}</strong>
+              </div>
+              <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
+                <span className="text-[10px] font-bold text-rose-600 uppercase block">Alpha</span>
+                <strong className="text-base font-black text-rose-700 dark:text-rose-300">{selectedStudentGroup.alpa}</strong>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
+                    <th className="py-2.5 px-3 w-10 text-center">NO</th>
+                    <th className="py-2.5 px-3">MATA PELAJARAN</th>
+                    <th className="py-2.5 px-3">KELAS</th>
+                    <th className="py-2.5 px-3">TANGGAL</th>
+                    <th className="py-2.5 px-3 text-center">STATUS</th>
+                    <th className="py-2.5 px-3">CATATAN</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {selectedStudentGroup.subjectRows.map((sRow, idx) => {
+                    const st = normalisasiStatus(sRow.status_hadir)
+                    return (
+                      <tr key={sRow.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                          {sRow.jadwal_pelajaran?.subject?.name || '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{getNamaKelas(sRow)}</td>
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{formatTanggal(sRow.tanggal)}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <Badge color={getBadgeColor(st)} size="sm">
+                            {statusLabel[st] || sRow.status_hadir || '-'}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{sRow.catatan || sRow.keterangan || '-'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </DialogBody>
+
+          <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+            <Button
+              variant="primary"
+              appearance="fill"
+              size="sm"
+              onClick={() => {
+                const headers = ['No', 'Mata Pelajaran', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
+                const printRows = selectedStudentGroup.subjectRows.map((r, i) => [
+                  i + 1,
+                  r.jadwal_pelajaran?.subject?.name || '-',
+                  getUnitName(r),
+                  getNamaKelas(r),
+                  formatTanggal(r.tanggal),
+                  statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
+                  r.catatan || r.keterangan || '-'
+                ])
+                printCleanTable({
+                  title: `Rincian Presensi Pembelajaran — ${selectedStudentGroup.studentName}`,
+                  subtitle: `NIS: ${selectedStudentGroup.nis} | Unit: ${selectedStudentGroup.unitName} | Kelas: ${selectedStudentGroup.kelasName}`,
+                  headers,
+                  rows: printRows,
+                })
+              }}
+              className="rounded-xl font-bold flex items-center gap-2"
+            >
+              <Printer className="size-4" /> Cetak Presensi Siswa Ini
+            </Button>
+
+            <Button
+              variant="ghost"
+              appearance="outline"
+              size="sm"
+              onClick={() => setSelectedStudentGroup(null)}
+              className="rounded-xl font-bold"
+            >
+              Tutup
+            </Button>
+          </DialogFooter>
+        </Dialog>
       )}
 
       {/* Summary Card Interactive Datatable Modal */}
@@ -1486,6 +2274,15 @@ export default function LaporanAbsensiPage() {
           </DialogFooter>
         </Dialog>
       )}
+
+      {/* TailGrids Opsi Cetak & Unduh PDF / Clean Print */}
+      <PrintOptionModal
+        isOpen={printOptionModalOpen}
+        onClose={() => setPrintOptionModalOpen(false)}
+        onPrint={handlePrintClean}
+        onDownload={handleDownloadPdfTable}
+        title="Rekap Absensi Pembelajaran"
+      />
 
       {notice && <div className="attendance-report-toast" role="status">{notice}</div>}
     </section>

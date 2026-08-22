@@ -1,12 +1,10 @@
 import React from 'react'
-import MutabaahSubNav from '../../components/mutabaah/MutabaahSubNav'
-import MutabaahOverviewPage from '../MutabaahPage'
+import MutabaahAnalyticsPage from '../MutabaahAnalyticsPage'
 
 export default function MutabaahTargetEvaluationPage() {
   return (
     <div data-testid="mutabaah-target-page" className="mutabaah-target-wrapper">
-      <MutabaahSubNav />
-      <MutabaahOverviewPage view="evaluasi" />
+      <MutabaahAnalyticsPage view="evaluasi" />
     </div>
   )
 }

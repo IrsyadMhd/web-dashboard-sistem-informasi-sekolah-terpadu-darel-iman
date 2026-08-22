@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertCircle,
   Award,
@@ -804,10 +805,78 @@ export default function HomeroomAttendanceDashboardPage() {
     }, 200)
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
+  function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+    const tones = {
+      emerald: {
+        card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+        title: 'text-emerald-700 dark:text-emerald-400',
+        icon: 'text-emerald-500',
+        val: 'text-emerald-600 dark:text-emerald-300',
+        sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+      },
+      blue: {
+        card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+        title: 'text-blue-700 dark:text-blue-400',
+        icon: 'text-blue-500',
+        val: 'text-blue-600 dark:text-blue-300',
+        sub: 'text-blue-600/70 dark:text-blue-400/70',
+      },
+      amber: {
+        card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+        title: 'text-amber-700 dark:text-amber-400',
+        icon: 'text-amber-500',
+        val: 'text-amber-600 dark:text-amber-300',
+        sub: 'text-amber-600/70 dark:text-amber-400/70',
+      },
+      rose: {
+        card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
+        title: 'text-rose-700 dark:text-rose-400',
+        icon: 'text-rose-500',
+        val: 'text-rose-600 dark:text-rose-300',
+        sub: 'text-rose-600/70 dark:text-rose-400/70',
+      },
+    }
+    const t = tones[tone] || tones.emerald
+    return (
+      <motion.div
+        variants={itemVariants}
+        whileHover={{ scale: 1.04, y: -2 }}
+        whileTap={{ scale: 0.96 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+        onClick={onClick}
+        className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+      >
+        <div className="flex items-center justify-between">
+          <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+          <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+        </div>
+        <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+        {subtext && (
+          <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+            {subtext}
+          </p>
+        )}
+      </motion.div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Main Dashboard Workspace (Hidden on Print so only Modal Report prints) */}
-      <div className="space-y-6 print:hidden">
+      <motion.div variants={itemVariants} className="space-y-6 print:hidden">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi' }, { label: 'Dashboard Wali Kelas' }]} />
 
@@ -850,54 +919,42 @@ export default function HomeroomAttendanceDashboardPage() {
           </div>
         </div>
       </div>
+      {/* KPI STATS CARDS */}
+      <motion.div variants={itemVariants} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiTintedCard
+          icon={Users}
+          label="Total Siswa Rombel"
+          value={stats.total_students || 0}
+          subtext="Siswa Aktif Rombel Binaan"
+          tone="emerald"
+        />
+        <KpiTintedCard
+          icon={Award}
+          label="% Kehadiran Bulan Ini"
+          value={`${stats.attendance_rate || 100}%`}
+          subtext="Tingkat Kehadiran Rombel"
+          tone="blue"
+        />
+        <KpiTintedCard
+          icon={AlertCircle}
+          label="Verifikasi Izin Pending"
+          value={pendingPermissions.length}
+          subtext="Menunggu Persetujuan"
+          tone="amber"
+          onClick={handleOpenPermissionModal}
+        />
+        <KpiTintedCard
+          icon={ShieldAlert}
+          label="Perlu Tindak Lanjut"
+          value={followUps.length}
+          subtext="Siswa Alpa / Bermasalah"
+          tone="rose"
+          onClick={handleOpenFollowUpModal}
+        />
+      </motion.div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase text-slate-500">Total Siswa Rombel</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-              <Users className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-3 text-3xl font-black text-slate-900 dark:text-white">{stats.total_students || 0}</p>
-          <span className="text-xs font-medium text-slate-500">Siswa Aktif Rombel Binaan</span>
-        </div>
-
-        <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase text-slate-500">% Kehadiran Bulan Ini</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-blue-100/80 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-              <Award className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-3 text-3xl font-black text-blue-600 dark:text-blue-400">{stats.attendance_rate || 100}%</p>
-          <span className="text-xs font-medium text-slate-500">Tingkat Kehadiran Rombel</span>
-        </div>
-
-        <div className="rounded-2xl border border-amber-100 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase text-slate-500">Verifikasi Izin Pending</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-amber-100/80 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-              <AlertCircle className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-3 text-3xl font-black text-amber-600 dark:text-amber-400">{pendingPermissions.length}</p>
-          <span className="text-xs font-medium text-slate-500">Menunggu Persetujuan</span>
-        </div>
-
-        <div className="rounded-2xl border border-rose-100 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase text-slate-500">Perlu Tindak Lanjut</span>
-            <div className="flex size-9 items-center justify-center rounded-xl bg-rose-100/80 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-              <ShieldAlert className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-3 text-3xl font-black text-rose-600 dark:text-rose-400">{followUps.length}</p>
-          <span className="text-xs font-medium text-slate-500">Siswa Alpa / Bermasalah</span>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Two-Column Section: Pending Permissions & Follow-ups */}
+      <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -982,10 +1039,10 @@ export default function HomeroomAttendanceDashboardPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {isKepsekOrDivisi && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
+        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1122,10 +1179,10 @@ export default function HomeroomAttendanceDashboardPage() {
               </TableRoot>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
-    </div>
+      </motion.div>
 
       {/* ── 1. Pop-up Detail Modal for Class & Students ─────────────────────────────── */}
       <Backdrop isOpen={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
@@ -2000,6 +2057,6 @@ export default function HomeroomAttendanceDashboardPage() {
           </DialogFooter>
         </Dialog>
       </Backdrop>
-    </div>
+    </motion.div>
   )
 }

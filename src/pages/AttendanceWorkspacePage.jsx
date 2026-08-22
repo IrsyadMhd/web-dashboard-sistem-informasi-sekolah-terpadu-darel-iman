@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, BookOpenCheck, Clock3, FilePlus2, HeartPulse, Lock, PlayCircle, Save, ShieldCheck, Square, XCircle } from 'lucide-react'
+import { AlertCircle, BookOpenCheck, Clock3, FilePlus2, HeartPulse, Lock, PlayCircle, Printer, Save, ShieldCheck, Sliders, Square, XCircle } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { useParams, useSearchParams } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { TableRoot, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/tailgrids/core/table'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Button } from '@/components/tailgrids/core/button'
 import { lmsPresensiService } from '../services/lmsPresensiService'
 import { useAuthStore } from '../stores/authStore'
 import { AttendanceCapturePanel, AttendanceMethodSelector } from '../components/attendance/AttendanceCapturePanels'
 import { WorkflowStepBar } from '../components/common/WorkflowStepBar'
+import { SquircleActionButton, PrintOptionModal } from '../components/master-data'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 
 const today = new Date().toLocaleDateString('en-CA')
 const unwrapPage = (response) => {
@@ -13,22 +19,59 @@ const unwrapPage = (response) => {
   return Array.isArray(payload) ? payload : (payload?.data || [])
 }
 
-function Metric({ icon: Icon, label, value, tone = 'emerald' }) {
+function Metric({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
   const tones = {
-    emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
-    amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
-    blue: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
-    violet: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300',
-    rose: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300',
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+    violet: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
   }
+
+  const t = tones[tone] || tones.emerald
+
   return (
-    <article className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-700 dark:bg-[#1B2433]">
-      <div className={`mb-3 grid h-10 w-10 place-items-center rounded-xl ${tones[tone] || tones.emerald}`}>
-        <Icon size={20} />
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-pointer group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
       </div>
-      <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{value ?? 0}</p>
-      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
-    </article>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.button>
   )
 }
 
@@ -67,6 +110,159 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
   const [reviewMode, setReviewMode] = useState(false)
   const [method, setMethod] = useState('manual')
   const [substituteReason, setSubstituteReason] = useState('')
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [printTeacherFilter, setPrintTeacherFilter] = useState('')
+
+  const teachersList = useMemo(() => {
+    const map = new Map()
+    schedules.forEach((item) => {
+      const emp = item.employee || item.teacher
+      if (emp && emp.id && !map.has(emp.id)) {
+        map.set(emp.id, {
+          id: emp.id,
+          nama_lengkap: emp.nama_lengkap || emp.name || 'Guru',
+          niy: emp.niy || emp.nip || '',
+        })
+      }
+    })
+    return Array.from(map.values())
+  }, [schedules])
+
+  const handleTeacherChange = (teacherId) => {
+    setPrintTeacherFilter(teacherId)
+    if (teacherId) {
+      const matchingSchedule = schedules.find(
+        (s) => (s.employee?.id || s.employee_id || s.teacher_id) === teacherId
+      )
+      if (matchingSchedule) {
+        setScheduleId(matchingSchedule.id)
+      }
+    }
+  }
+
+  const formatStatusLabel = (status) => {
+    switch (status) {
+      case 'hadir':
+        return 'Hadir'
+      case 'terlambat':
+        return 'Terlambat'
+      case 'izin':
+        return 'Izin'
+      case 'sakit':
+        return 'Sakit'
+      case 'alpa':
+        return 'Alpha'
+      case 'dispensasi':
+        return 'Dispensasi'
+      case 'belum_diverifikasi':
+      case 'belum_diisi':
+      default:
+        return 'Belum Diisi'
+    }
+  }
+
+  const handlePrintClean = () => {
+    if (!students.length) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Roster Siswa Kosong',
+        text: 'Pilih jadwal pelajaran yang memiliki daftar siswa terlebih dahulu.',
+        confirmColor: '#0E5C44',
+      })
+      return
+    }
+
+    const teacherName = selected?.employee?.nama_lengkap || selected?.teacher?.name || currentUser?.nama_lengkap || currentUser?.name || '-'
+    const teacherNiy = selected?.employee?.niy || selected?.employee?.nip || currentUser?.niy || '-'
+    const subjectName = selected?.subject?.name || selected?.subject?.nama_mapel || '-'
+    const className = selected?.kelas?.nama_kelas || selected?.kelas?.name || '-'
+    const timeRange = selected?.time_start && selected?.time_end ? `${selected.time_start.slice(0, 5)} - ${selected.time_end.slice(0, 5)}` : '-'
+
+    const headers = [
+      'NO',
+      'NIS / NISN',
+      'NAMA SISWA',
+      'KELAS',
+      'MATA PELAJARAN',
+      'GURU PENGAMPU',
+      'STATUS PRESENSI',
+      'JAM HADIR',
+      'CATATAN',
+    ]
+
+    const rows = students.map((s, idx) => [
+      idx + 1,
+      s.nis || s.nisn || '-',
+      s.full_name || s.name || s.nama || '-',
+      className,
+      subjectName,
+      teacherName,
+      formatStatusLabel(s.status),
+      s.arrival_time || '-',
+      s.notes || '-',
+    ])
+
+    const subtitleInfo = `Guru: ${teacherName}${teacherNiy !== '-' ? ` (NIY/NIP: ${teacherNiy})` : ''} | Mapel: ${subjectName} | Kelas: ${className} | Tanggal: ${date} (${timeRange}) | Pertemuan ke-${meeting}`
+
+    printCleanTable({
+      title: 'DAFTAR MURID & PRESENSI MATA PELAJARAN',
+      subtitle: subtitleInfo,
+      headers,
+      rows,
+    })
+  }
+
+  const handleDownloadPdf = () => {
+    if (!students.length) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Roster Siswa Kosong',
+        text: 'Pilih jadwal pelajaran yang memiliki daftar siswa terlebih dahulu.',
+        confirmColor: '#0E5C44',
+      })
+      return
+    }
+
+    const teacherName = selected?.employee?.nama_lengkap || selected?.teacher?.name || currentUser?.nama_lengkap || currentUser?.name || '-'
+    const teacherNiy = selected?.employee?.niy || selected?.employee?.nip || currentUser?.niy || '-'
+    const subjectName = selected?.subject?.name || selected?.subject?.nama_mapel || '-'
+    const className = selected?.kelas?.nama_kelas || selected?.kelas?.name || '-'
+    const timeRange = selected?.time_start && selected?.time_end ? `${selected.time_start.slice(0, 5)} - ${selected.time_end.slice(0, 5)}` : '-'
+
+    const headers = [
+      'NO',
+      'NIS / NISN',
+      'NAMA SISWA',
+      'KELAS',
+      'MATA PELAJARAN',
+      'GURU PENGAMPU',
+      'STATUS PRESENSI',
+      'JAM HADIR',
+      'CATATAN',
+    ]
+
+    const rows = students.map((s, idx) => [
+      idx + 1,
+      s.nis || s.nisn || '-',
+      s.full_name || s.name || s.nama || '-',
+      className,
+      subjectName,
+      teacherName,
+      formatStatusLabel(s.status),
+      s.arrival_time || '-',
+      s.notes || '-',
+    ])
+
+    const subtitleInfo = `Guru: ${teacherName}${teacherNiy !== '-' ? ` (NIY/NIP: ${teacherNiy})` : ''} | Mapel: ${subjectName} | Kelas: ${className} | Tanggal: ${date} (${timeRange}) | Pertemuan ke-${meeting}`
+
+    downloadPdfTable({
+      title: 'DAFTAR MURID & PRESENSI MATA PELAJARAN',
+      subtitle: subtitleInfo,
+      headers,
+      rows,
+      filename: `Daftar_Murid_${subjectName.replace(/\s+/g, '_')}_${className.replace(/\s+/g, '_')}_${date}.pdf`,
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -307,66 +503,102 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
         </div>
       )}
 
-      <div className="grid gap-4 rounded-[18px] border border-slate-200 bg-white p-5 md:grid-cols-3 dark:border-slate-700 dark:bg-[#1B2433]">
-        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Tanggal
-          <input disabled={activeLogin} type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-transparent p-3 outline-none focus:ring-2 focus:ring-[#3FBF75] disabled:bg-slate-100 dark:disabled:bg-slate-800" />
+      <div className="grid gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs md:grid-cols-3 dark:border-slate-800 dark:bg-[#1B2433]">
+        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tanggal
+          <input disabled={activeLogin} type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 disabled:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/60 dark:text-white dark:focus:bg-[#111827] dark:disabled:bg-slate-800/80" />
         </label>
-        <label className="text-xs font-bold text-slate-600 md:col-span-2 dark:text-slate-300">Jadwal Pelajaran
-          <select disabled={activeLogin} value={scheduleId} onChange={(event) => setScheduleId(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-transparent p-3 outline-none focus:ring-2 focus:ring-[#3FBF75] disabled:bg-slate-100 dark:disabled:bg-slate-800">
+        <label className="text-xs font-bold text-slate-700 md:col-span-2 dark:text-slate-300">Jadwal Pelajaran
+          <select disabled={activeLogin} value={scheduleId} onChange={(event) => setScheduleId(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 disabled:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/60 dark:text-white dark:focus:bg-[#111827] dark:disabled:bg-slate-800/80">
             <option value="">{schedules.length === 0 ? 'Belum ada jadwal pelajaran' : 'Pilih Jadwal Pelajaran'}</option>
             {schedules.map((item) => <option key={item.id} value={item.id}>{item.subject?.name || item.subject?.nama_mapel} · {item.kelas?.nama_kelas || item.kelas?.name} · {item.time_start?.slice(0, 5)}–{item.time_end?.slice(0, 5)}</option>)}
           </select>
         </label>
-        {selected && <div className="md:col-span-3 flex flex-wrap items-start justify-between gap-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+        {selected && <div className="md:col-span-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-50/80 border border-emerald-200/70 p-4 text-sm text-emerald-900 dark:bg-emerald-950/30 dark:border-emerald-800/60 dark:text-emerald-200">
           <div className="min-w-0">
-            <b>{selected.subject?.name}</b> · {selected.kelas?.nama_kelas} · {selected.employee?.nama_lengkap} · {selected.time_start?.slice(0, 5)}–{selected.time_end?.slice(0, 5)}
+            <b>{selected.subject?.name || selected.subject?.nama_mapel}</b> · {selected.kelas?.nama_kelas || selected.kelas?.name} · {selected.employee?.nama_lengkap || selected.teacher?.name} · {selected.time_start?.slice(0, 5)}–{selected.time_end?.slice(0, 5)}
           </div>
-          {step04Blocked ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-900 dark:text-amber-200">
-              Step 04: {teachingSessionStatus || 'Belum Aktif'}
-            </span>
-          ) : isScheduleTimeActive ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-              Jam Pelajaran Aktif
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-              Di Luar Jam Pelajaran
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {step04Blocked ? (
+              <Badge color="warning" size="sm">
+                Step 04: {teachingSessionStatus || 'Belum Aktif'}
+              </Badge>
+            ) : isScheduleTimeActive ? (
+              <Badge color="success" size="sm">
+                Jam Pelajaran Aktif
+              </Badge>
+            ) : (
+              <Badge color="error" size="sm">
+                Di Luar Jam Pelajaran
+              </Badge>
+            )}
+            <SquircleActionButton
+              variant="view"
+              icon={Printer}
+              label="Cetak Daftar Murid (Mapel & Kelas)"
+              onClick={() => setIsPrintModalOpen(true)}
+              disabled={!students.length}
+            />
+          </div>
         </div>}
         {selected?.requires_substitute_reason && (
           <label className="text-xs font-bold text-amber-700 md:col-span-3 dark:text-amber-300">
             Alasan mengambil presensi sebagai wali kelas/pengganti
-            <textarea required value={substituteReason} onChange={(event) => setSubstituteReason(event.target.value)} className="mt-2 w-full rounded-xl border border-amber-300 bg-amber-50 p-3 text-slate-900 dark:bg-amber-950/20 dark:text-white" rows="2" placeholder="Contoh: Guru mata pelajaran berhalangan hadir." />
+            <textarea required value={substituteReason} onChange={(event) => setSubstituteReason(event.target.value)} className="mt-2 w-full rounded-2xl border border-amber-300 bg-amber-50/80 p-3 text-slate-900 outline-none focus:ring-2 focus:ring-amber-500/20 dark:bg-amber-950/20 dark:text-white" rows="2" placeholder="Contoh: Guru mata pelajaran berhalangan hadir." />
           </label>
         )}
-        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Pertemuan ke-
-          <input disabled={isLockedForTeacher} type="number" min="1" value={meeting} onChange={(event) => setMeeting(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-transparent p-3 disabled:opacity-50" />
+        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Pertemuan ke-
+          <input disabled={isLockedForTeacher} type="number" min="1" value={meeting} onChange={(event) => setMeeting(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3 text-slate-900 outline-none focus:border-emerald-500 focus:bg-white disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/60 dark:text-white" />
         </label>
-        <label className="text-xs font-bold text-slate-600 md:col-span-2 dark:text-slate-300">Topik
-          <input disabled={isLockedForTeacher} value={topic} onChange={(event) => setTopic(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-transparent p-3 disabled:opacity-50" placeholder="Topik pembelajaran" />
+        <label className="text-xs font-bold text-slate-700 md:col-span-2 dark:text-slate-300">Topik
+          <input disabled={isLockedForTeacher} value={topic} onChange={(event) => setTopic(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3 text-slate-900 outline-none focus:border-emerald-500 focus:bg-white disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/60 dark:text-white" placeholder="Topik pembelajaran" />
         </label>
-        <label className="text-xs font-bold text-slate-600 md:col-span-3 dark:text-slate-300">Catatan
-          <textarea disabled={isLockedForTeacher} value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-transparent p-3 disabled:opacity-50" rows="2" />
+        <label className="text-xs font-bold text-slate-700 md:col-span-3 dark:text-slate-300">Catatan
+          <textarea disabled={isLockedForTeacher} value={notes} onChange={(event) => setNotes(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3 text-slate-900 outline-none focus:border-emerald-500 focus:bg-white disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900/60 dark:text-white" rows="2" />
         </label>
       </div>
 
-      <section className="space-y-4 rounded-[18px] border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-[#1B2433]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div><h2 className="font-extrabold text-slate-900 dark:text-white">Metode Presensi</h2><p className="text-xs text-slate-500">Semua metode masuk ke draft yang sama dan dapat diperiksa sebelum finalisasi.</p></div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-3 py-1 text-xs font-bold ${captureStarted ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+      <section className="space-y-5 rounded-2xl border border-slate-200/90 bg-gradient-to-br from-white via-slate-50/40 to-emerald-50/30 p-6 shadow-sm dark:border-slate-800 dark:bg-gradient-to-br dark:from-[#1B2433] dark:via-[#1B2433] dark:to-emerald-950/20">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 shrink-0 shadow-2xs">
+              <Sliders size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Metode Presensi</h2>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Semua metode masuk ke draft yang sama dan dapat diperiksa sebelum finalisasi.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold shadow-2xs ${
+              captureStarted
+                ? 'bg-emerald-100/90 text-emerald-800 ring-1 ring-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:ring-emerald-800/60 animate-pulse'
+                : session?.session_closed_at
+                ? 'bg-rose-100/90 text-rose-800 ring-1 ring-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:ring-rose-800/60'
+                : 'bg-amber-100/90 text-amber-800 ring-1 ring-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:ring-amber-800/60'
+            }`}>
+              <span className={`size-2 rounded-full ${
+                captureStarted ? 'bg-emerald-600 dark:bg-emerald-400' : session?.session_closed_at ? 'bg-rose-600 dark:bg-rose-400' : 'bg-amber-600 dark:bg-amber-400'
+              }`} />
               {captureStarted ? 'Capture aktif' : session?.session_closed_at ? 'Capture ditutup' : 'Capture belum dibuka'}
             </span>
             {!captureStarted && !sessionFinal && (
-              <button type="button" onClick={startCapture} disabled={captureBusy || busy || isLockedForTeacher} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#0E5C44] px-4 py-2 text-xs font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40">
-                <PlayCircle size={16} /> {captureBusy ? 'Membuka...' : 'Mulai Capture'}
+              <button
+                type="button"
+                onClick={startCapture}
+                disabled={captureBusy || busy || isLockedForTeacher}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-[#0E5C44] to-emerald-700 hover:from-emerald-800 hover:to-emerald-800 px-4.5 py-2 text-xs font-extrabold text-white shadow-md shadow-emerald-900/20 hover:scale-105 active:scale-95 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              >
+                <PlayCircle size={17} className="shrink-0" /> {captureBusy ? 'Membuka...' : 'Mulai Capture'}
               </button>
             )}
             {captureStarted && (
-              <button type="button" onClick={closeCapture} disabled={captureBusy} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 disabled:opacity-40 dark:border-slate-600 dark:text-slate-200">
-                <Square size={15} /> {captureBusy ? 'Menutup...' : 'Tutup Capture'}
+              <button
+                type="button"
+                onClick={closeCapture}
+                disabled={captureBusy}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4.5 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-100 hover:text-slate-900 shadow-xs hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+              >
+                <Square size={16} className="shrink-0 text-slate-500" /> {captureBusy ? 'Menutup...' : 'Tutup Capture'}
               </button>
             )}
           </div>
@@ -382,19 +614,28 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
         />
       </section>
 
-      <div className="overflow-hidden rounded-[18px] border border-slate-200 bg-white dark:border-slate-700 dark:bg-[#1B2433]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-700">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 p-5 dark:border-slate-800">
           <div><h2 className="font-extrabold text-slate-900 dark:text-white">Daftar Siswa</h2><p className="text-xs text-slate-500">{students.length} siswa aktif</p></div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={isLockedForTeacher || reviewMode} onClick={markAllPresent} className="min-h-11 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-bold text-[#0E5C44] hover:-translate-y-0.5 disabled:opacity-40">Tandai Semua Hadir</button>
-            <button type="button" onClick={() => setReviewMode((current) => !current)} disabled={!students.length} className="min-h-11 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">
+          <div className="flex flex-wrap items-center gap-2">
+            <SquircleActionButton
+              variant="view"
+              icon={Printer}
+              label="Cetak Daftar Siswa"
+              onClick={() => setIsPrintModalOpen(true)}
+              disabled={!students.length}
+            />
+            <Button type="button" variant="ghost" appearance="outline" disabled={isLockedForTeacher || reviewMode} onClick={markAllPresent} size="sm" className="border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40">
+              Tandai Semua Hadir
+            </Button>
+            <Button type="button" variant="ghost" appearance="outline" size="sm" onClick={() => setReviewMode((current) => !current)} disabled={!students.length}>
               {reviewMode ? 'Kembali ke Checklist' : 'Tinjau Roster'}
-            </button>
+            </Button>
           </div>
         </div>
-        {rosterLoading && <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 text-xs font-semibold text-slate-500 dark:border-slate-800"><Clock3 className="animate-spin" size={15} /> Memuat roster siswa dan draft terakhir...</div>}
-        {rosterError && <div className="flex items-start gap-2 border-b border-rose-100 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"><XCircle size={16} className="mt-0.5 shrink-0" /> {rosterError}</div>}
-        {reviewMode && <div className="grid gap-3 border-b border-amber-100 bg-amber-50/70 p-4 sm:grid-cols-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+        {rosterLoading && <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 text-xs font-semibold text-slate-500 dark:border-slate-800"><Clock3 className="animate-spin" size={15} /> Memuat roster siswa dan draft terakhir...</div>}
+        {rosterError && <div className="flex items-start gap-2 border-b border-rose-100 bg-rose-50 px-5 py-3.5 text-xs font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"><XCircle size={16} className="mt-0.5 shrink-0" /> {rosterError}</div>}
+        {reviewMode && <div className="grid gap-3 border-b border-amber-100 bg-amber-50/70 p-5 sm:grid-cols-3 dark:border-amber-900/50 dark:bg-amber-950/20">
           <div><p className="text-xs font-bold text-amber-800 dark:text-amber-300">Review sebelum finalisasi</p><p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Periksa seluruh status roster. Rekomendasi izin/sakit tetap harus dikonfirmasi guru.</p></div>
           <div className="flex flex-wrap items-center gap-2 text-xs font-bold sm:col-span-2 sm:justify-end">
             <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">Hadir {statusCounts.hadir || 0}</span>
@@ -405,96 +646,171 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
           </div>
         </div>}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="sticky top-0 bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900"><tr><th className="p-4">Siswa</th><th>Status</th><th>Jam Hadir</th><th>Metode</th><th>Catatan</th><th>Verifikasi</th></tr></thead>
-             <tbody>{students.map((student) => <tr key={student.id} className="border-t border-slate-100 hover:bg-emerald-50/40 dark:border-slate-800 dark:hover:bg-emerald-950/20">
-               <td className="p-4"><b className="text-slate-900 dark:text-white">{student.full_name}</b><p className="text-xs text-slate-500">{student.nis || student.nisn}</p>{student.recommended_status && <p className="mt-1 text-[10px] font-bold text-amber-700 dark:text-amber-300">Rekomendasi: {student.recommended_status}</p>}</td>
-               <td>
-                 <div className="flex flex-wrap gap-1 my-1">
-                   {['belum_diverifikasi', 'belum_diisi'].includes(student.status) && <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">Belum Diisi</span>}
-                  <button
-                    type="button"
-                     disabled={isLockedForTeacher || reviewMode}
-                    onClick={() => updateStudent(student.id, { status: 'hadir', recorded_method: 'manual' })}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                      student.status === 'hadir'
-                        ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600'
-                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
-                    }`}
-                  >
-                    Hadir
-                  </button>
-                  <button
-                    type="button"
-                     disabled={isLockedForTeacher || reviewMode}
-                    onClick={() => updateStudent(student.id, { status: 'terlambat', recorded_method: 'manual' })}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                      student.status === 'terlambat'
-                        ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-600'
-                        : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300'
-                    }`}
-                  >
-                    Terlambat
-                  </button>
-                  <button
-                    type="button"
-                     disabled={isLockedForTeacher || reviewMode}
-                    onClick={() => updateStudent(student.id, { status: 'izin', recorded_method: 'manual' })}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                      student.status === 'izin'
-                        ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600'
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300'
-                    }`}
-                  >
-                    Izin
-                  </button>
-                  <button
-                    type="button"
-                     disabled={isLockedForTeacher || reviewMode}
-                    onClick={() => updateStudent(student.id, { status: 'sakit', recorded_method: 'manual' })}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                      student.status === 'sakit'
-                        ? 'bg-violet-600 text-white shadow-sm ring-2 ring-violet-600'
-                        : 'bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-950/40 dark:text-violet-300'
-                    }`}
-                  >
-                    Sakit
-                  </button>
-                  <button
-                    type="button"
-                     disabled={isLockedForTeacher || reviewMode}
-                    onClick={() => updateStudent(student.id, { status: 'alpa', recorded_method: 'manual' })}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                      student.status === 'alpa'
-                        ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-600'
-                        : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300'
-                    }`}
-                  >
-                   Alpha
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isLockedForTeacher || reviewMode}
-                    onClick={() => updateStudent(student.id, { status: 'dispensasi', recorded_method: 'manual' })}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${student.status === 'dispensasi' ? 'bg-sky-600 text-white shadow-sm ring-2 ring-sky-600' : 'bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300'}`}
-                  >
-                    Dispensasi
-                  </button>
-                </div>
-              </td>
-              <td><input disabled={isLockedForTeacher || reviewMode} type="time" value={student.arrival_time} onChange={(event) => updateStudent(student.id, { arrival_time: event.target.value })} className="rounded-lg border border-slate-200 bg-transparent p-2 disabled:opacity-40" /></td>
-              <td><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-[#0E5C44]">{student.recorded_method || 'belum'}</span></td>
-              <td><input disabled={isLockedForTeacher || reviewMode} value={student.notes} onChange={(event) => updateStudent(student.id, { notes: event.target.value })} className="rounded-lg border border-slate-200 bg-transparent p-2 disabled:opacity-40" /></td>
-              <td><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{student.verification_status === 'verified' ? 'Terverifikasi' : 'Belum'}</span></td>
-            </tr>)}</tbody>
-          </table>
+          <TableRoot fullBleed={false}>
+            <TableHeader>
+              <TableRow className="bg-slate-50/80 dark:bg-slate-900/80">
+                <TableHead className="py-3.5 pl-6 pr-4 font-bold text-slate-700 dark:text-slate-200">Siswa</TableHead>
+                <TableHead className="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-200">Status Kehadiran</TableHead>
+                <TableHead className="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-200">Jam Hadir</TableHead>
+                <TableHead className="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-200">Metode</TableHead>
+                <TableHead className="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-200">Catatan</TableHead>
+                <TableHead className="py-3.5 pr-6 pl-4 font-bold text-slate-700 dark:text-slate-200">Verifikasi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {students.map((student) => (
+                <TableRow key={student.id} className="transition-colors hover:bg-slate-50/90 dark:hover:bg-slate-800/60">
+                  <TableCell className="py-3.5 pl-6 pr-4">
+                    <b className="text-sm font-extrabold text-slate-900 dark:text-white">{student.full_name}</b>
+                    <p className="text-xs font-medium text-slate-500">{student.nis || student.nisn}</p>
+                    {student.recommended_status && (
+                      <span className="mt-1 inline-block rounded-md bg-amber-100/90 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
+                        Rekomendasi: {student.recommended_status}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4">
+                    <div className="flex flex-wrap gap-1.5 my-1">
+                      {['belum_diverifikasi', 'belum_diisi'].includes(student.status) && (
+                        <span className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          Belum Diisi
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        disabled={isLockedForTeacher || reviewMode}
+                        onClick={() => updateStudent(student.id, { status: 'hadir', recorded_method: 'manual' })}
+                        className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-200 cursor-pointer ${
+                          student.status === 'hadir'
+                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-105'
+                            : 'bg-emerald-100/80 text-emerald-800 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/80 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white'
+                        }`}
+                      >
+                        Hadir
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isLockedForTeacher || reviewMode}
+                        onClick={() => updateStudent(student.id, { status: 'terlambat', recorded_method: 'manual' })}
+                        className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-200 cursor-pointer ${
+                          student.status === 'terlambat'
+                            ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 scale-105'
+                            : 'bg-amber-100/80 text-amber-800 hover:bg-amber-500 hover:text-white dark:bg-amber-950/80 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white'
+                        }`}
+                      >
+                        Terlambat
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isLockedForTeacher || reviewMode}
+                        onClick={() => updateStudent(student.id, { status: 'izin', recorded_method: 'manual' })}
+                        className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-200 cursor-pointer ${
+                          student.status === 'izin'
+                            ? 'bg-sky-500 text-white shadow-md shadow-sky-500/30 scale-105'
+                            : 'bg-sky-100/80 text-sky-800 hover:bg-sky-500 hover:text-white dark:bg-sky-950/80 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white'
+                        }`}
+                      >
+                        Izin
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isLockedForTeacher || reviewMode}
+                        onClick={() => updateStudent(student.id, { status: 'sakit', recorded_method: 'manual' })}
+                        className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-200 cursor-pointer ${
+                          student.status === 'sakit'
+                            ? 'bg-violet-600 text-white shadow-md shadow-violet-600/30 scale-105'
+                            : 'bg-violet-100/80 text-violet-800 hover:bg-violet-600 hover:text-white dark:bg-violet-950/80 dark:text-violet-300 dark:hover:bg-violet-600 dark:hover:text-white'
+                        }`}
+                      >
+                        Sakit
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isLockedForTeacher || reviewMode}
+                        onClick={() => updateStudent(student.id, { status: 'alpa', recorded_method: 'manual' })}
+                        className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-200 cursor-pointer ${
+                          student.status === 'alpa'
+                            ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30 scale-105'
+                            : 'bg-rose-100/80 text-rose-800 hover:bg-rose-600 hover:text-white dark:bg-rose-950/80 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white'
+                        }`}
+                      >
+                        Alpha
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isLockedForTeacher || reviewMode}
+                        onClick={() => updateStudent(student.id, { status: 'dispensasi', recorded_method: 'manual' })}
+                        className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-200 cursor-pointer ${
+                          student.status === 'dispensasi'
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-105'
+                            : 'bg-indigo-100/80 text-indigo-800 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/80 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white'
+                        }`}
+                      >
+                        Dispensasi
+                      </button>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4">
+                    <input
+                      disabled={isLockedForTeacher || reviewMode}
+                      type="time"
+                      value={student.arrival_time}
+                      onChange={(event) => updateStudent(student.id, { arrival_time: event.target.value })}
+                      className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-2 text-xs font-bold text-slate-900 outline-none focus:border-emerald-500 focus:bg-white disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900/60 dark:text-white"
+                    />
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4">
+                    <Badge color="emerald" size="sm">
+                      {student.recorded_method || 'manual'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-3.5 px-4">
+                    <input
+                      disabled={isLockedForTeacher || reviewMode}
+                      value={student.notes}
+                      onChange={(event) => updateStudent(student.id, { notes: event.target.value })}
+                      className="w-full rounded-xl border border-slate-200/80 bg-slate-50/50 p-2 text-xs text-slate-900 outline-none focus:border-emerald-500 focus:bg-white disabled:opacity-40 dark:border-slate-800 dark:bg-slate-900/60 dark:text-white"
+                      placeholder="Catatan..."
+                    />
+                  </TableCell>
+                  <TableCell className="py-3.5 pr-6 pl-4">
+                    <Badge color={student.verification_status === 'verified' ? 'success' : 'gray'} size="sm">
+                      {student.verification_status === 'verified' ? 'Terverifikasi' : 'Belum'}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </TableRoot>
         </div>
-        {!students.length && <div className="p-12 text-center text-sm text-slate-500">Pilih jadwal yang memiliki siswa aktif.</div>}
-         <div className="sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-slate-200 bg-white/95 p-4 backdrop-blur dark:border-slate-700 dark:bg-[#1B2433]/95">
-           <button disabled={busy || !students.length || isLockedForTeacher} onClick={() => save(false)} className="flex items-center gap-2 rounded-xl border border-[#0E5C44] px-5 py-3 font-bold text-[#0E5C44] disabled:opacity-40"><Save size={17} /> Simpan Draft</button>
-           <button disabled={busy || !students.length || sessionFinal || isLockedForTeacher || unmarkedCount > 0} onClick={() => save(true)} className="flex items-center gap-2 rounded-xl bg-[#0E5C44] px-5 py-3 font-bold text-white shadow-lg transition hover:scale-[1.03] disabled:opacity-40"><ShieldCheck size={17} /> Finalisasi</button>
+        {!students.length && <div className="p-12 text-center text-sm font-semibold text-slate-500">Pilih jadwal yang memiliki siswa aktif.</div>}
+         <div className="sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-slate-200/80 bg-white/95 p-4 backdrop-blur dark:border-slate-800 dark:bg-[#1B2433]/95">
+           <Button variant="ghost" appearance="outline" disabled={busy || !students.length || isLockedForTeacher} onClick={() => save(false)} size="md" className="border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40 font-extrabold">
+             <Save size={17} className="mr-1.5" /> Simpan Draft
+           </Button>
+           <Button variant="primary" disabled={busy || !students.length || sessionFinal || isLockedForTeacher || unmarkedCount > 0} onClick={() => save(true)} size="md" className="bg-[#0E5C44] hover:bg-[#0b4835] text-white font-extrabold shadow-md">
+             <ShieldCheck size={17} className="mr-1.5" /> Finalisasi
+           </Button>
          </div>
-      </div>
+       </div>
+
+      {/* PRINT OPTION MODAL */}
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        title={`Daftar Murid (${selected?.subject?.name || selected?.subject?.nama_mapel || 'Mata Pelajaran'} - ${selected?.kelas?.nama_kelas || selected?.kelas?.name || 'Kelas'})`}
+        teachersList={teachersList}
+        selectedTeacherId={printTeacherFilter}
+        onTeacherChange={handleTeacherChange}
+        onPrint={() => {
+          handlePrintClean()
+          setIsPrintModalOpen(false)
+        }}
+        onDownload={() => {
+          handleDownloadPdf()
+          setIsPrintModalOpen(false)
+        }}
+      />
     </div>
   )
 }
@@ -531,23 +847,38 @@ export default function AttendanceWorkspacePage() {
     })
   }, [authUser])
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
+      <motion.header variants={itemVariants} className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Absensi Kelas & Mata Pelajaran</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Pencatatan presensi siswa sesuai jadwal mata pelajaran aktif dengan pengawasan keamanan jam mengajar.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Absensi Kelas & Mata Pelajaran</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Pencatatan presensi siswa sesuai jadwal mata pelajaran aktif dengan pengawasan keamanan jam mengajar.</p>
         </div>
-      </header>
+      </motion.header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric icon={FilePlus2} label="Izin Membutuhkan Verifikasi" value={counts.permissions} tone="blue" />
-        <Metric icon={AlertCircle} label="Pengajuan Koreksi" value={counts.corrections} tone="amber" />
-        <Metric icon={HeartPulse} label="Tindak Lanjut Siswa" value={counts.followUps} tone="violet" />
-        <Metric icon={BookOpenCheck} label="Status Jadwal Harian" value="Aktif" tone="emerald" />
-      </div>
+      <motion.div variants={itemVariants} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Metric icon={FilePlus2} label="Izin Membutuhkan Verifikasi" subtext="Pengajuan izin/sakit siswa" value={counts.permissions} tone="blue" />
+        <Metric icon={AlertCircle} label="Pengajuan Koreksi" subtext="Permohonan koreksi presensi" value={counts.corrections} tone="amber" />
+        <Metric icon={HeartPulse} label="Tindak Lanjut Siswa" subtext="Catatan BK / Musyrif" value={counts.followUps} tone="violet" />
+        <Metric icon={BookOpenCheck} label="Status Jadwal Harian" subtext="Jadwal mengajar aktif" value="Aktif" tone="emerald" />
+      </motion.div>
 
-      <TeacherWorkspace activeScheduleId={activeScheduleId} activeDate={activeDate} requestedSessionId={routeSessionId} />
-    </div>
+      <motion.div variants={itemVariants}>
+        <TeacherWorkspace activeScheduleId={activeScheduleId} activeDate={activeDate} requestedSessionId={routeSessionId} />
+      </motion.div>
+    </motion.div>
   )
 }

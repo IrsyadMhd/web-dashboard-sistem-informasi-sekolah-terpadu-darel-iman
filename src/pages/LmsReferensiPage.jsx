@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen,
   BookMarked,
@@ -42,6 +43,88 @@ import {
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { RotateCcw, Printer } from 'lucide-react'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    teal: {
+      card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
+      title: 'text-teal-700 dark:text-teal-400',
+      icon: 'text-teal-500',
+      val: 'text-teal-600 dark:text-teal-300',
+      sub: 'text-teal-600/70 dark:text-teal-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataReferensi, setDataReferensi] = useState([])
@@ -385,7 +468,8 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
       {!(embedded || hideBreadcrumb) && (
         <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Referensi Pembelajaran' }]} />
       )}
-      <div className="master-data-page space-y-6 pb-12">
+      <div className="education-unit-page lms-referensi-page space-y-6">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
         <PrintOptionModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
@@ -442,6 +526,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
         />
       {/* Header Banner */}
       {!hidePageHeader && (
+        <motion.div variants={itemVariants}>
         <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-8 text-white shadow-xl">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -476,6 +561,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
             </div>
           </div>
         </div>
+        </motion.div>
       )}
 
       {/* Alert Messages */}
@@ -504,103 +590,54 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <KpiTintedCard
+          icon={BookMarked}
+          label="Total Referensi"
+          value={computedStats.total_referensi}
+          subtext="Item referensi terdaftar"
+          tone="emerald"
           onClick={() => handleOpenKpiModal('total')}
-          className="group bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all duration-200"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-[#0E5C44]">
-              Total Referensi
-            </span>
-            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-400">
-              <BookMarked className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">{computedStats.total_referensi}</span>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Item referensi terdaftar</p>
-          </div>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={CheckCircle}
+          label="Status Aktif"
+          value={computedStats.total_aktif}
+          subtext="Siap digunakan mengajar"
+          tone="teal"
           onClick={() => handleOpenKpiModal('aktif')}
-          className="group bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all duration-200"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-teal-600">
-              Status Aktif
-            </span>
-            <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400">
-              <CheckCircle className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">{computedStats.total_aktif}</span>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Siap digunakan mengajar</p>
-          </div>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={FileText}
+          label="Dengan File Dokumen"
+          value={computedStats.dengan_file}
+          subtext="Berkas PDF/Dokumen terunggah"
+          tone="blue"
           onClick={() => handleOpenKpiModal('file')}
-          className="group bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all duration-200"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-blue-600">
-              Dengan File Dokumen
-            </span>
-            <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
-              <FileText className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">{computedStats.dengan_file}</span>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Berkas PDF/Dokumen terunggah</p>
-          </div>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={LinkIcon}
+          label="Tautan URL Web"
+          value={computedStats.dengan_url}
+          subtext="Link portal/jurnal eksternal"
+          tone="purple"
           onClick={() => handleOpenKpiModal('url')}
-          className="group bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all duration-200"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-purple-600">
-              Tautan URL Web
-            </span>
-            <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
-              <LinkIcon className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">{computedStats.dengan_url}</span>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Link portal/jurnal eksternal</p>
-          </div>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Layers}
+          label="Modul Ajar Terkait"
+          value={computedStats.total_modul_ajar}
+          subtext="Induk Modul Ajar aktif"
+          tone="amber"
           onClick={() => handleOpenKpiModal('modul')}
-          className="group bg-white dark:bg-[#1B2433] rounded-[18px] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all duration-200"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-amber-600">
-              Modul Ajar Terkait
-            </span>
-            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
-              <Layers className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">{computedStats.total_modul_ajar}</span>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Induk Modul Ajar aktif</p>
-          </div>
-        </div>
-      </div>
+        />
+      </motion.div>
 
       {/* Tab Navigation Card (below KPI grid) */}
       {tabNav}
 
       {/* SEARCH & FILTER BAR (2-Row Layout) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
         {/* Baris 1: Field Pencarian Full-Width */}
         <div className="w-full">
           <div className="relative w-full">
@@ -670,9 +707,10 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
             <span>Reset</span>
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* DATA TABLE CONTAINER */}
+      <motion.div variants={itemVariants}>
       <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="referensi-table-title">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
           <div>
@@ -823,6 +861,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
           </div>
         )}
       </section>
+      </motion.div>
 
       {/* KPI DETAIL MODAL */}
       {kpiModalOpen && (
@@ -1239,6 +1278,7 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
           </div>
         </div>
       )}
+      </motion.div>
     </div>
     </PageContainer>
   )

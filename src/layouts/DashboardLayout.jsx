@@ -378,11 +378,28 @@ export default function DashboardLayout() {
     ]),
   ]
 
+  const currentUnitObj = dbUnits.find((u) => u.id === activeUnit || u.name === activeUnit || u.code === activeUnit)
+  const unitNameToCheck = String(activeUnit || currentUnitObj?.name || currentUnitObj?.unit_name || user?.education_unit_name || user?.education_unit || user?.unit_name || user?.unit || '').toLowerCase()
+  const unitCodeToCheck = String(currentUnitObj?.code || currentUnitObj?.unit_code || user?.unit_code || '').toLowerCase()
+  const isPesantrenUnit = Boolean(
+    user?.is_pesantren ||
+    currentUnitObj?.is_pesantren ||
+    currentUnitObj?.has_pesantren ||
+    currentUnitObj?.is_boarding ||
+    unitCodeToCheck.includes('ponpes') ||
+    unitCodeToCheck.includes('pesantren') ||
+    unitNameToCheck.includes('pesantren') ||
+    unitNameToCheck.includes('ponpes') ||
+    unitNameToCheck.includes('pondok') ||
+    unitNameToCheck.includes('mahad') ||
+    unitNameToCheck.includes('asrama')
+  )
+  const setoranTahfizhMenuLabel = isPesantrenUnit ? 'Setoran Tahfizh Santri' : 'Setoran Tahfizh Siswa'
+
   const attendanceSubmenus = [
     ...((hasFullMenuAccess || isTataUsaha || hasRole('Wali Kelas', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan')) && (isTataUsaha || hasRole('Wali Kelas', 'Tata Usaha', 'TU', 'tata_usaha', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan') || can('attendance.homeroom.dashboard', 'homeroom_attendance.dashboard', 'homeroom_attendance.view', 'attendance.view', 'kehadiran.siswa.monitoring')) ? [
       { to: '/absensi/dashboard-wali-kelas', label: 'Dashboard Wali Kelas' },
       { to: '/absensi/rekap-kehadiran', label: 'Manajemen Kehadiran Siswa' },
-      { to: '/absensi/rekap-data', label: 'Rekap Data' },
     ] : []),
     // Submenu presensi guru telah dikonsolidasikan ke dalam Portal Guru -> Workspace Pembelajaran Guru
     ...((hasFullMenuAccess || isStudentRole(roles)) && can('attendance.student.view_own', 'student_attendance.view_own') ? [
@@ -395,13 +412,13 @@ export default function DashboardLayout() {
     ...(!hasRole('Guru') && !hasRole('Guru Tahfizh') && !hasRole('Wali Kelas') && !hasRole('Siswa') ? [
       { to: '/dashboard/absensi-gerbang', label: 'Absensi Gerbang' },
       { to: '/dashboard/absensi-pembelajaran', label: 'Absensi Kelas & MaPel' },
-      { to: '/dashboard/absensi-ibadah', label: 'Absensi Ibadah Santri' },
+      ...(isPesantrenUnit ? [{ to: '/dashboard/absensi-ibadah', label: 'Absensi Ibadah Santri' }] : []),
       { to: '/dashboard/absensi-ibadah-siswa', label: 'Absensi Ibadah Siswa' },
       { to: '/dashboard/laporan-absensi', label: 'Rekap Presensi & Laporan' },
     ] : [
       { to: '/dashboard/absensi-pembelajaran', label: 'Absensi Kelas & Mata Pelajaran' },
       { to: '/dashboard/absensi-gerbang', label: 'Absensi Gerbang' },
-      { to: '/dashboard/absensi-ibadah', label: 'Absensi Ibadah Santri' },
+      ...(isPesantrenUnit ? [{ to: '/dashboard/absensi-ibadah', label: 'Absensi Ibadah Santri' }] : []),
       { to: '/dashboard/absensi-ibadah-siswa', label: 'Absensi Ibadah Siswa' },
     ]),
   ].filter((item, index, list) => list.findIndex((entry) => entry.to === item.to) === index)
@@ -412,17 +429,6 @@ export default function DashboardLayout() {
       'Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus',
       'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek'
     )
-
-  const currentUnitObj = dbUnits.find((u) => u.id === activeUnit || u.name === activeUnit)
-  const unitNameToCheck = String(activeUnit || currentUnitObj?.name || user?.education_unit || user?.unit_name || user?.unit || '').toLowerCase()
-  const isPesantrenUnit = Boolean(
-    user?.is_pesantren ||
-    unitNameToCheck.includes('pesantren') ||
-    unitNameToCheck.includes('ponpes') ||
-    unitNameToCheck.includes('mahad') ||
-    unitNameToCheck.includes('asrama')
-  )
-  const setoranTahfizhMenuLabel = isPesantrenUnit ? 'Setoran Tahfizh Santri' : 'Setoran Tahfizh Siswa'
 
   const bolehBukaMenu = (to) => {
     if (hasFullMenuAccess) return true
@@ -553,7 +559,8 @@ export default function DashboardLayout() {
         can('student_worship_attendance.view', 'student_worship_attendance.manage', 'worship_attendance.view', 'kehadiran.siswa.monitoring')
       )
     }
-    if (to === '/dashboard/absensi-ibadah' || to.startsWith('/dashboard/absensi-ibadah') || to.includes('/worship')) {
+    if ((to === '/dashboard/absensi-ibadah' || to.startsWith('/dashboard/absensi-ibadah/')) && !to.startsWith('/dashboard/absensi-ibadah-siswa')) {
+      if (!isPesantrenUnit && !hasFullMenuAccess) return false
       return (
         hasRole(
           'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
@@ -662,9 +669,12 @@ export default function DashboardLayout() {
   }
 
   const shouldHideFromKepalaSekolah = (item, submenu = null) => {
+    const to = submenu?.to || item?.to || ''
+    if (!isPesantrenUnit && !hasFullMenuAccess && (to === '/dashboard/absensi-ibadah' || to.startsWith('/dashboard/absensi-ibadah/')) && !to.startsWith('/dashboard/absensi-ibadah-siswa')) {
+      return true
+    }
     if (hasFullMenuAccess || !isKepalaSekolah) return false
     if (item.key === 'master-data') return true
-    const to = submenu?.to || item?.to || ''
     if (
       to === '/dashboard/students/unit-pendidikan' ||
       to === '/dashboard/yayasan/unit-pendidikan' ||
@@ -858,17 +868,9 @@ export default function DashboardLayout() {
       label: 'MUTABA’AH',
       icon: BookHeart,
       submenus: [
-        { to: '/dashboard/mutabaah', label: 'Dashboard Mutaba’ah' },
+        { to: '/dashboard/mutabaah', label: 'Mutaba’ah Yaumiyah' },
         { to: '/dashboard/tahfizh', label: setoranTahfizhMenuLabel },
-        { to: '/dashboard/mutabaah/rekap', label: 'Rekap Mutaba’ah' },
-        { to: '/dashboard/mutabaah/target-evaluasi', label: 'Target & Evaluasi' },
-        ...(hasRole('Super Admin', 'Admin', 'Yayasan', 'Kepala Sekolah', 'Divisi Pendidikan', 'Tata Usaha', 'TU', 'Operator', 'Wali Kelas', 'Musyrif', 'Pembimbing') || can('mutabaah.agenda.view') ? [{ to: '/dashboard/mutabaah/rincian-agenda', label: 'Rincian Agenda TU' }] : []),
-        ...(hasRole('Super Admin', 'Admin', 'Yayasan', 'Kepala Sekolah', 'Divisi Pendidikan', 'Tata Usaha', 'TU', 'Operator', 'Wali Kelas', 'Musyrif', 'Pembimbing') || can('mutabaah.template.view') ? [{ to: '/dashboard/mutabaah/template-agenda', label: 'Template Agenda' }] : []),
-        ...(hasRole('Super Admin', 'Admin', 'Yayasan', 'Kepala Sekolah', 'Divisi Pendidikan', 'Tata Usaha', 'TU', 'Operator', 'Wali Kelas', 'Musyrif', 'Pembimbing') || can('mutabaah.template.assign') ? [{ to: '/dashboard/mutabaah/assign-template', label: 'Assign Template' }] : []),
-        ...(hasRole('Super Admin', 'Admin', 'Yayasan', 'Kepala Sekolah', 'Divisi Pendidikan', 'Tata Usaha', 'TU', 'Operator', 'Wali Kelas', 'Musyrif', 'Pembimbing') || can('mutabaah.supervisor.view') ? [{ to: '/dashboard/mutabaah/assign-pembimbing', label: 'Assign Pembimbing' }] : []),
-        { to: '/dashboard/mutabaah/monitoring-orang-tua', label: 'Monitoring Orang Tua' },
         { to: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren', label: 'Monitor Siswa Non Ponpes' },
-
       ],
     },
     {
@@ -889,6 +891,7 @@ export default function DashboardLayout() {
       submenus: [
         { to: '/dashboard/laporan-siswa', label: 'Laporan Siswa' },
         { to: '/dashboard/laporan-absensi', label: 'Laporan Absensi Pembelajaran' },
+        { to: '/absensi/laporan', label: 'Laporan Rombel' },
         { to: '/dashboard/rekap-absensi-gerbang', label: 'Laporan Absensi Gerbang' },
         { to: '/dashboard/rekap-absensi-ibadah', label: 'Laporan Absensi Ibadah' },
         { to: '/dashboard/mutabaah/rekap', label: 'Laporan Mutaba’ah' },

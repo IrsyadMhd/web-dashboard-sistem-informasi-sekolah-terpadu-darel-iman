@@ -17,10 +17,16 @@ import {
 import { useAuthStore } from '../../stores/authStore'
 import { hasAnyRole } from '../../auth/portalResolver'
 import api from '../../services/api'
-import { reportService } from '../../services/reportService'
+import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
 
 export default function TahfizhReportSummaryPage() {
   const user = useAuthStore((state) => state.user)
+
+  const breadcrumbItems = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/dashboard/tahfizh', label: 'Tahfizh & Murajaah' },
+    { href: '/dashboard/tahfizh/rekapan', label: 'Rekapan Tahfizh' },
+  ]
 
   // Determine user roles
   const userRoles = useMemo(() => {
@@ -253,7 +259,12 @@ export default function TahfizhReportSummaryPage() {
   }, [isTeacher, teacherClasses, selectedClass])
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="px-4 sm:px-6 md:px-8 py-6 space-y-6 max-w-7xl mx-auto pb-12">
+      {/* 🧭 TAILGRIDS BREADCRUMBS COMPONENT */}
+      <div className="print:hidden">
+        <Breadcrumbs items={breadcrumbItems} dividerType="chevron" />
+      </div>
+
       {/* PRINT ONLY HEADER */}
       <div className="hidden print:block mb-6 text-center border-b-2 border-slate-900 pb-4">
         <h1 className="text-xl font-black uppercase text-slate-900">LAPORAN REKAPAN SETORAN TAHFIZH AL-QUR'AN</h1>

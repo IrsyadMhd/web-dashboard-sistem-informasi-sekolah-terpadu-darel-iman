@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText,
   Video,
@@ -41,6 +42,95 @@ import {
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { RotateCcw, Printer } from 'lucide-react'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    red: {
+      card: 'border-red-100 bg-red-50/50 hover:border-red-200 dark:border-red-950/50 dark:bg-red-950/20',
+      title: 'text-red-700 dark:text-red-400',
+      icon: 'text-red-500',
+      val: 'text-red-600 dark:text-red-300',
+      sub: 'text-red-600/70 dark:text-red-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+    teal: {
+      card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
+      title: 'text-teal-700 dark:text-teal-400',
+      icon: 'text-teal-500',
+      val: 'text-teal-600 dark:text-teal-300',
+      sub: 'text-teal-600/70 dark:text-teal-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-4 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataMedia, setDataMedia] = useState([])
@@ -399,7 +489,8 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
       {!(embedded || hideBreadcrumb) && (
         <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Media Pembelajaran' }]} />
       )}
-      <div className="master-data-page space-y-6 pb-12">
+      <div className="education-unit-page lms-media-page space-y-6">
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
         <PrintOptionModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
@@ -455,6 +546,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
         />
       {/* Hero Banner */}
       {!hidePageHeader && (
+        <motion.div variants={itemVariants}>
         <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 sm:p-8 text-white shadow-xl shadow-[#0E5C44]/15">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="space-y-2">
@@ -483,6 +575,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
           <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute left-1/2 top-0 w-48 h-48 bg-emerald-300/10 rounded-full blur-2xl pointer-events-none" />
         </div>
+        </motion.div>
       )}
 
       {/* Alert Messages */}
@@ -511,97 +604,70 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
       )}
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
-        <div
+      <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+        <KpiTintedCard
+          icon={Layers}
+          label="Total"
+          value={computedStats.total_media}
+          subtext="Media Pembelajaran"
+          tone="emerald"
           onClick={() => handleOpenKpiModal('total')}
-          className="group p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-[#0E5C44]">Total</span>
-            <Layers className="w-4 h-4 text-[#0E5C44]" />
-          </div>
-          <p className="text-2xl font-extrabold mt-2 text-slate-900 dark:text-white">{computedStats.total_media}</p>
-          <span className="text-[11px] text-slate-400">Media Pembelajaran</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={FileText}
+          label="PDF"
+          value={computedStats.total_pdf}
+          subtext="Dokumen PDF"
+          tone="red"
           onClick={() => handleOpenKpiModal('pdf')}
-          className="group p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-red-500 uppercase tracking-wider">PDF</span>
-            <FileText className="w-4 h-4 text-red-500" />
-          </div>
-          <p className="text-2xl font-extrabold mt-2 text-slate-900 dark:text-white">{computedStats.total_pdf}</p>
-          <span className="text-[11px] text-slate-400">Dokumen PDF</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Video}
+          label="Video"
+          value={computedStats.total_video}
+          subtext="Video Pembelajaran"
+          tone="blue"
           onClick={() => handleOpenKpiModal('video')}
-          className="group p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-500 uppercase tracking-wider">Video</span>
-            <Video className="w-4 h-4 text-blue-500" />
-          </div>
-          <p className="text-2xl font-extrabold mt-2 text-slate-900 dark:text-white">{computedStats.total_video}</p>
-          <span className="text-[11px] text-slate-400">Video Pembelajaran</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Music}
+          label="Audio"
+          value={computedStats.total_audio}
+          subtext="Podcast / Audio"
+          tone="purple"
           onClick={() => handleOpenKpiModal('audio')}
-          className="group p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-purple-500 uppercase tracking-wider">Audio</span>
-            <Music className="w-4 h-4 text-purple-500" />
-          </div>
-          <p className="text-2xl font-extrabold mt-2 text-slate-900 dark:text-white">{computedStats.total_audio}</p>
-          <span className="text-[11px] text-slate-400">Podcast / Audio</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Presentation}
+          label="PPT"
+          value={computedStats.total_ppt}
+          subtext="Slide Presentasi"
+          tone="amber"
           onClick={() => handleOpenKpiModal('ppt')}
-          className="group p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">PPT</span>
-            <Presentation className="w-4 h-4 text-amber-500" />
-          </div>
-          <p className="text-2xl font-extrabold mt-2 text-slate-900 dark:text-white">{computedStats.total_ppt}</p>
-          <span className="text-[11px] text-slate-400">Slide Presentasi</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={FileCode}
+          label="Word"
+          value={computedStats.total_word}
+          subtext="Dokumen Office"
+          tone="emerald"
           onClick={() => handleOpenKpiModal('word')}
-          className="group p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-500 uppercase tracking-wider">Word</span>
-            <FileCode className="w-4 h-4 text-emerald-500" />
-          </div>
-          <p className="text-2xl font-extrabold mt-2 text-slate-900 dark:text-white">{computedStats.total_word}</p>
-          <span className="text-[11px] text-slate-400">Dokumen Office</span>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={LinkIcon}
+          label="Link"
+          value={computedStats.total_link}
+          subtext="Tautan Eksternal"
+          tone="teal"
           onClick={() => handleOpenKpiModal('link')}
-          className="group p-4 rounded-[18px] bg-white dark:bg-[#1B2433] border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:scale-[1.02] cursor-pointer transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-teal-500 uppercase tracking-wider">Link</span>
-            <LinkIcon className="w-4 h-4 text-teal-500" />
-          </div>
-          <p className="text-2xl font-extrabold mt-2 text-slate-900 dark:text-white">{computedStats.total_link}</p>
-          <span className="text-[11px] text-slate-400">Tautan Eksternal</span>
-        </div>
-      </div>
+        />
+      </motion.div>
 
       {/* Tab Navigation Card (below KPI grid) */}
       {tabNav}
 
       {/* SEARCH & FILTER BAR (2-Row Layout) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
         {/* Baris 1: Field Pencarian Full-Width */}
         <div className="w-full">
           <div className="relative w-full">
@@ -672,9 +738,10 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
             <span>Reset</span>
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* DATA TABLE CONTAINER */}
+      <motion.div variants={itemVariants}>
       <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="media-table-title">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
           <div>
@@ -837,6 +904,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
           </div>
         </div>
       </section>
+      </motion.div>
 
       {/* KPI DETAIL MODAL */}
       {kpiModalOpen && (
@@ -1219,6 +1287,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
           </div>
         </div>
       )}
+        </motion.div>
       </div>
     </PageContainer>
   )

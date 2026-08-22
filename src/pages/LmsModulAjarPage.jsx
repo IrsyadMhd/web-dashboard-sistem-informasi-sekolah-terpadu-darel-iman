@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Swal from 'sweetalert2'
 import {
@@ -37,6 +38,80 @@ import {
 
 const FASE_LIST = ['Fase A', 'Fase B', 'Fase C', 'Fase D', 'Fase E', 'Fase F']
 const STATUS_LIST = ['Draft', 'Review', 'Publish', 'Arsip']
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-default group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
   const queryClient = useQueryClient()
@@ -548,6 +623,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
         <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Modul Ajar' }]} />
       )}
       <MasterDataPage className="education-unit-page modul-ajar-master-page" hideBreadcrumb={embedded || hideBreadcrumb}>
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       <PrintOptionModal
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
@@ -589,6 +665,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
         }}
       />
       {!hidePageHeader && (
+        <motion.div variants={itemVariants}>
         <MasterPageHeader
           tone="brand"
           icon={BookOpen}
@@ -596,18 +673,19 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
           description="Pusat perencanaan aktivitas guru yang terintegrasi dengan Kurikulum, CP, TP, penugasan, evaluasi, dan rapor."
           actions={pageActions}
         />
+        </motion.div>
       )}
 
       {/* KPI Cards Grid */}
-      <MasterStatsGrid className="education-unit-kpis print:hidden">
-        <MasterStatCard icon={BookOpen} label="Total Modul" value={stats.total_modul || 0} description="Terdaftar di sistem" variant="success" />
-        <MasterStatCard icon={FileText} label="Draft & Review" value={(stats.total_draft || 0) + (stats.total_review || 0)} description="Dalam penyusunan" variant="warning" />
-        <MasterStatCard icon={CheckCircle} label="Dipublikasikan" value={stats.total_published || 0} description="Siap digunakan" variant="info" />
-        <MasterStatCard icon={Layers} label="TP Ter-cover" value={stats.total_tp_tercover || 0} description="Terhubung ke modul" variant="neutral" />
-      </MasterStatsGrid>
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+        <KpiTintedCard icon={BookOpen} label="Total Modul" value={stats.total_modul || 0} subtext="Terdaftar di sistem" tone="emerald" />
+        <KpiTintedCard icon={FileText} label="Draft & Review" value={(stats.total_draft || 0) + (stats.total_review || 0)} subtext="Dalam penyusunan" tone="amber" />
+        <KpiTintedCard icon={CheckCircle} label="Dipublikasikan" value={stats.total_published || 0} subtext="Siap digunakan" tone="blue" />
+        <KpiTintedCard icon={Layers} label="TP Ter-cover" value={stats.total_tp_tercover || 0} subtext="Terhubung ke modul" tone="purple" />
+      </motion.div>
 
       {/* Search & Filter Bar (2-Row Layout) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5 print:hidden">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5 print:hidden">
         {/* Baris 1: Field Pencarian Full-Width */}
         <div className="w-full">
           <div className="relative w-full">
@@ -711,9 +789,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
             <span>Reset</span>
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Card Data Table */}
+      <motion.div variants={itemVariants}>
       <div className="rounded-[18px] bg-white dark:bg-[#1B2433] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
         {/* Section Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
@@ -846,6 +925,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
           </div>
         </div>
       </div>
+      </motion.div>
 
       {/* Modal Add / Edit (Multi-Step Form Wizard) */}
       {isFormModalOpen && (
@@ -1470,6 +1550,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
           </div>
         </div>
       )}
+    </motion.div>
     </MasterDataPage>
     </PageContainer>
   )

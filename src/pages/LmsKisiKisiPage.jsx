@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText,
   BookOpen,
@@ -36,6 +37,81 @@ import {
 } from '../components/master-data'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { RotateCcw, Printer } from 'lucide-react'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 const normalizeArray = (value) => {
   if (Array.isArray(value)) return value
@@ -518,7 +594,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
   )
 
   const pageContent = (
-    <div className="master-data-page space-y-6 pb-12 font-sans">
+    <div className="education-unit-page lms-kisi-kisi-page space-y-6">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Toast Notification */}
       {toast.show && (
         <div
@@ -533,6 +610,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
 
       {/* Hero Banner (Hidden when embedded) */}
       {!embedded && !hidePageHeader && (
+        <motion.div variants={itemVariants}>
         <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-8 text-white shadow-xl">
           <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -555,88 +633,50 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
             </button>
           </div>
         </div>
+        </motion.div>
       )}
 
       {/* KPI Stats Grid (Interactive Click Filters) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <KpiTintedCard
+          icon={FileText}
+          label="Total Kisi-kisi"
+          value={stats.total}
+          subtext={`${stats.aktif} Status Aktif`}
+          tone="emerald"
           onClick={() => setFilters((prev) => ({ ...prev, jenis_ujian: '', status: '' }))}
-          className={`bg-white dark:bg-slate-800 p-5 rounded-[18px] border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] flex items-center justify-between ${
-            filters.jenis_ujian === ''
-              ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'
-              : 'border-gray-100 dark:border-slate-700 shadow-sm'
-          }`}
-          title="Klik untuk melihat semua kisi-kisi"
-        >
-          <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Kisi-kisi</p>
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mt-1">{stats.total}</h3>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">{stats.aktif} Status Aktif</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#0E5C44] dark:text-emerald-400">
-            <FileText className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Target}
+          label="Target Butir Soal"
+          value={stats.total_soal_target}
+          subtext="Accumulated Questions"
+          tone="blue"
           onClick={() => setFilters((prev) => ({ ...prev, jenis_ujian: '', status: '' }))}
-          className="bg-white dark:bg-slate-800 p-5 rounded-[18px] border border-gray-100 dark:border-slate-700 shadow-sm hover:-translate-y-0.5 hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer active:scale-[0.98] flex items-center justify-between"
-          title="Klik untuk memproses estimasi butir soal"
-        >
-          <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Target Butir Soal</p>
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mt-1">{stats.total_soal_target}</h3>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 font-medium">Accumulated Questions</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-            <Target className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={BookOpen}
+          label="Kisi-kisi UH"
+          value={stats.uh}
+          subtext="Ulangan Harian"
+          tone="purple"
           onClick={() => setFilters((prev) => ({ ...prev, jenis_ujian: 'UH' }))}
-          className={`bg-white dark:bg-slate-800 p-5 rounded-[18px] border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] flex items-center justify-between ${
-            filters.jenis_ujian === 'UH'
-              ? 'border-purple-500 ring-2 ring-purple-500/20 shadow-md'
-              : 'border-gray-100 dark:border-slate-700 shadow-sm'
-          }`}
-          title="Klik untuk memfilter Ulangan Harian (UH)"
-        >
-          <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kisi-kisi UH</p>
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mt-1">{stats.uh}</h3>
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 font-medium">Ulangan Harian</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
-            <BookOpen className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div
+        />
+        <KpiTintedCard
+          icon={Award}
+          label="PTS & PAS / UAS"
+          value={stats.pts + stats.pas}
+          subtext="Ujian Semester"
+          tone="amber"
           onClick={() => setFilters((prev) => ({ ...prev, jenis_ujian: 'PTS' }))}
-          className={`bg-white dark:bg-slate-800 p-5 rounded-[18px] border cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 active:scale-[0.98] flex items-center justify-between ${
-            filters.jenis_ujian === 'PTS' || filters.jenis_ujian === 'PAS'
-              ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-md'
-              : 'border-gray-100 dark:border-slate-700 shadow-sm'
-          }`}
-          title="Klik untuk memfilter Ujian Semester (PTS/PAS)"
-        >
-          <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">PTS & PAS / UAS</p>
-            <h3 className="text-2xl font-bold text-slate-800 dark:text-white mt-1">{stats.pts + stats.pas}</h3>
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">Ujian Semester</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
-            <Award className="w-6 h-6" />
-          </div>
-        </div>
-      </div>
+        />
+      </motion.div>
 
       {/* Tab Navigation (Pindahkan di atas card datatable) */}
       {tabNav && <div className="my-2">{tabNav}</div>}
 
       {/* SEARCH & FILTER BAR (2-ROW LAYOUT) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
         {/* Baris 1: Full-width Search Input */}
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -693,9 +733,10 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* MAIN DATATABLE SECTION */}
+      <motion.div variants={itemVariants}>
       <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-700">
           <div>
@@ -880,6 +921,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
         </div>
         </MasterDataTable>
       </section>
+      </motion.div>
 
       {/* ROW DETAIL MODAL POPUP — Kisi-kisi */}
       {showRowDetailModal && rowDetailItem && (
@@ -1325,6 +1367,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav }) {
         onImport={handleImport}
         templateFields={['judul_kisi', 'mata_pelajaran_id', 'jenis_ujian', 'jumlah_soal', 'alokasi_waktu_menit', 'status']}
       />
+      </motion.div>
     </div>
   )
 

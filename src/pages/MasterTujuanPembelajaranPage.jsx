@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Target,
   BookOpen,
@@ -41,6 +42,80 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-default group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function MasterTujuanPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
   const [dataTp, setDataTp] = useState([])
@@ -466,6 +541,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
         <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Tujuan Pembelajaran' }]} />
       )}
       <MasterDataPage className="education-unit-page tp-master-page" hideBreadcrumb={embedded || hideBreadcrumb}>
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       <PrintOptionModal
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
@@ -506,6 +582,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
       />
       {/* Hero Section */}
       {!hidePageHeader && (
+        <motion.div variants={itemVariants}>
         <MasterPageHeader
           tone="brand"
           icon={Target}
@@ -513,6 +590,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
           description="Kelola Tujuan Pembelajaran (TP) berbasis relasi bertingkat: Unit Pendidikan → Tahun Ajaran → Kurikulum → Mata Pelajaran → CP Database → TP → Modul Ajar."
           actions={pageActions}
         />
+        </motion.div>
       )}
 
       <CsvImportModal open={importOpen} onClose={() => setImportOpen(false)} title="Tujuan Pembelajaran" onImport={handleImport} columns={[
@@ -521,12 +599,12 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
       ]} />
 
       {/* KPI Cards */}
-      <MasterStatsGrid className="education-unit-kpis">
-        <MasterStatCard icon={Target} label="TOTAL TUJUAN PEMBELAJARAN" value={stats.total_tp ?? 0} description="Terdaftar di sistem" variant="success" />
-        <MasterStatCard icon={CheckCircle} label="TP STATUS AKTIF" value={stats.total_tp_aktif ?? 0} description="Berfungsi aktif" variant="info" />
-        <MasterStatCard icon={BookOpen} label="TOTAL CP TERIKAT" value={stats.total_cp ?? 0} description="Capaian Pembelajaran" variant="warning" />
-        <MasterStatCard icon={Layers} label="CP MEMILIKI TP" value={stats.cp_ber_tp ?? 0} description="Sudah dilengkapi TP" variant="neutral" />
-      </MasterStatsGrid>
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiTintedCard icon={Target} label="Total Tujuan Pembelajaran" value={stats.total_tp ?? 0} subtext="Terdaftar di sistem" tone="emerald" />
+        <KpiTintedCard icon={CheckCircle} label="TP Status Aktif" value={stats.total_tp_aktif ?? 0} subtext="Berfungsi aktif" tone="blue" />
+        <KpiTintedCard icon={BookOpen} label="Total CP Terikat" value={stats.total_cp ?? 0} subtext="Capaian Pembelajaran" tone="amber" />
+        <KpiTintedCard icon={Layers} label="CP Memiliki TP" value={stats.cp_ber_tp ?? 0} subtext="Sudah dilengkapi TP" tone="purple" />
+      </motion.div>
 
       {/* Notifications */}
       {successMsg && (
@@ -554,7 +632,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
       )}
 
       {/* Search & Filter Bar (2-Row Layout) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
         {/* Baris 1: Field Pencarian Full-Width */}
         <div className="w-full">
           <div className="relative w-full">
@@ -605,9 +683,10 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
             <span>Reset</span>
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Main Table */}
+      <motion.div variants={itemVariants}>
       <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
           <div>
@@ -721,6 +800,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
           </div>
         )}
       </div>
+      </motion.div>
 
       {/* Modal Form TP - Mengikuti urutan persis yang dipersyaratkan */}
       {modalOpen && (
@@ -949,6 +1029,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
           </div>
         </div>
       )}
+    </motion.div>
     </MasterDataPage>
     </PageContainer>
   )

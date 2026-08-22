@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   UploadCloud,
   FileText,
@@ -47,6 +48,81 @@ import {
 } from '../components/master-data'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { RotateCcw, Printer, Search } from 'lucide-react'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    teal: {
+      card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
+      title: 'text-teal-700 dark:text-teal-400',
+      icon: 'text-teal-500',
+      val: 'text-teal-600 dark:text-teal-300',
+      sub: 'text-teal-600/70 dark:text-teal-400/70',
+    },
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      variants={itemVariants}
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
+        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabNav }) {
   const user = useAuthStore((state) => state.user)
@@ -479,9 +555,11 @@ export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabN
   )
 
   const pageContent = (
-    <div className="master-data-page space-y-6 pb-12">
+    <div className="education-unit-page lms-pengumpulan-page space-y-6">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Master Canonical Page Header (Hidden when embedded) */}
       {!embedded && !hidePageHeader && (
+        <motion.div variants={itemVariants}>
         <AppPageHeader
           variant="brand"
           icon={UploadCloud}
@@ -498,6 +576,7 @@ export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabN
             </button>
           }
         />
+        </motion.div>
       )}
 
       {/* Alert Notifications */}
@@ -525,67 +604,59 @@ export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabN
         </div>
       )}
 
-      {/* Canonical KPI Cards (Interactive Click Filters) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          title="Total Pengumpulan"
-          value={stats.total || 0}
+      {/* KPI STATS CARDS */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiTintedCard
           icon={UploadCloud}
+          label="Total Pengumpulan"
+          value={stats.total || 0}
+          subtext="Seluruh submission tugas"
           tone="emerald"
-          subtitle="Seluruh submission tugas siswa"
-          loading={loading}
           onClick={() => {
             setSelectedStatus('')
             setPage(1)
           }}
-          className={selectedStatus === '' ? 'ring-2 ring-emerald-500/30 border-emerald-500' : ''}
         />
-        <KpiCard
-          title="Sudah Dinilai"
-          value={stats.dinilai || 0}
+        <KpiTintedCard
           icon={Award}
-          tone="green"
-          subtitle="Telah diberi nilai oleh guru"
-          loading={loading}
+          label="Sudah Dinilai"
+          value={stats.dinilai || 0}
+          subtext="Telah diberi nilai oleh guru"
+          tone="teal"
           onClick={() => {
             setSelectedStatus('dinilai')
             setPage(1)
           }}
-          className={selectedStatus === 'dinilai' ? 'ring-2 ring-emerald-500/30 border-emerald-500' : ''}
         />
-        <KpiCard
-          title="Belum Dinilai"
-          value={stats.dikumpulkan || stats.belum_dinilai || 0}
+        <KpiTintedCard
           icon={Clock}
+          label="Belum Dinilai"
+          value={stats.dikumpulkan || stats.belum_dinilai || 0}
+          subtext="Menunggu pemeriksaan guru"
           tone="blue"
-          subtitle="Menunggu pemeriksaan guru"
-          loading={loading}
           onClick={() => {
             setSelectedStatus('dikumpulkan')
             setPage(1)
           }}
-          className={selectedStatus === 'dikumpulkan' ? 'ring-2 ring-sky-500/30 border-sky-500' : ''}
         />
-        <KpiCard
-          title="Terlambat Kumpul"
-          value={stats.terlambat || 0}
+        <KpiTintedCard
           icon={AlertTriangle}
+          label="Terlambat Kumpul"
+          value={stats.terlambat || 0}
+          subtext="Melewati deadline"
           tone="amber"
-          subtitle="Melewati deadline"
-          loading={loading}
           onClick={() => {
             setSelectedStatus('terlambat')
             setPage(1)
           }}
-          className={selectedStatus === 'terlambat' ? 'ring-2 ring-amber-500/30 border-amber-500' : ''}
         />
-      </div>
+      </motion.div>
 
       {/* Tab Navigation (Pindahkan di atas card datatable) */}
       {tabNav && <div className="my-2">{tabNav}</div>}
 
       {/* SEARCH & FILTER BAR (2-ROW LAYOUT) */}
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
+      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
         {/* Baris 1: Full-width Search Input */}
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
@@ -661,9 +732,10 @@ export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabN
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* MAIN DATATABLE SECTION */}
+      <motion.div variants={itemVariants}>
       <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-700">
           <div>
@@ -863,6 +935,7 @@ export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabN
         )}
         </MasterDataTable>
       </section>
+      </motion.div>
 
       {/* ROW DETAIL MODAL POPUP — Pengumpulan Tugas */}
       {showRowDetailModal && rowDetailItem && (
@@ -1261,7 +1334,6 @@ export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabN
         }}
       />
 
-      {/* CSV Import Modal */}
       <CsvImportModal
         isOpen={importOpen}
         onClose={() => setImportOpen(false)}
@@ -1269,6 +1341,7 @@ export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabN
         onImport={handleImport}
         templateFields={['siswa_id', 'penugasan_id', 'jawaban_teks', 'nilai', 'status']}
       />
+      </motion.div>
     </div>
   )
 

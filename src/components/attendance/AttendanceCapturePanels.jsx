@@ -10,22 +10,31 @@ const methods = [
 
 export function AttendanceMethodSelector({ value, onChange }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {methods.map(([id, label, Icon]) => (
-        <button
-          key={id}
-          type="button"
-          onClick={() => onChange(id)}
-          className={`flex items-center justify-center gap-3 rounded-2xl border p-4 text-center text-sm font-bold transition shadow-sm ${
-            value === id
-              ? 'border-[#0E5C44] bg-emerald-50 text-[#0E5C44] dark:bg-emerald-950/40 dark:text-emerald-300 ring-2 ring-[#0E5C44]'
-              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-[#1B2433] dark:text-slate-300'
-          }`}
-        >
-          <Icon size={20} />
-          {label}
-        </button>
-      ))}
+    <div className="grid gap-3.5 sm:grid-cols-2">
+      {methods.map(([id, label, Icon]) => {
+        const isActive = value === id
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            className={`flex items-center justify-start gap-3.5 rounded-2xl border p-4 text-left text-xs sm:text-sm font-extrabold transition-all duration-200 cursor-pointer ${
+              isActive
+                ? 'border-emerald-600 bg-gradient-to-r from-emerald-50 via-teal-50/60 to-emerald-50/30 text-emerald-950 dark:border-emerald-500 dark:from-emerald-950/80 dark:via-emerald-900/40 dark:to-emerald-950/30 dark:text-emerald-200 ring-2 ring-emerald-500/40 shadow-md scale-[1.01]'
+                : 'border-slate-200/90 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50/30 hover:text-emerald-900 dark:border-slate-800 dark:bg-[#1B2433] dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-slate-200 shadow-2xs hover:shadow-xs'
+            }`}
+          >
+            <div className={`flex size-10 items-center justify-center rounded-xl transition-colors shrink-0 ${
+              isActive
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+            }`}>
+              <Icon size={20} />
+            </div>
+            <span className="truncate">{label}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -71,8 +80,23 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
 
   if (method === 'manual') {
     return (
-      <div className="rounded-2xl bg-emerald-50/80 p-4 text-xs font-semibold text-emerald-900 border border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900 dark:text-emerald-200">
-        Gunakan tombol opsi status di bawah untuk checklist kehadiran siswa satu per satu (Hadir, Terlambat, Izin, Sakit, Alpha).
+      <div className="flex items-start gap-3.5 rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50/20 p-4.5 shadow-2xs dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-emerald-900/30 dark:to-emerald-950/20">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs mt-0.5">
+          <ListChecks size={20} />
+        </div>
+        <div>
+          <h4 className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200 uppercase tracking-wider">
+            Checklist Presensi Manual (Roll Call)
+          </h4>
+          <p className="mt-1 text-xs font-semibold text-emerald-900/90 dark:text-emerald-300/90 leading-relaxed">
+            Gunakan tombol opsi status di bawah untuk checklist kehadiran siswa satu per satu (
+            <span className="font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md">Hadir</span>,{' '}
+            <span className="font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-900/60 px-1.5 py-0.5 rounded-md">Terlambat</span>,{' '}
+            <span className="font-extrabold text-sky-700 dark:text-sky-300 bg-sky-100/90 dark:bg-sky-900/60 px-1.5 py-0.5 rounded-md">Izin</span>,{' '}
+            <span className="font-extrabold text-violet-700 dark:text-violet-300 bg-violet-100/90 dark:bg-violet-900/60 px-1.5 py-0.5 rounded-md">Sakit</span>,{' '}
+            <span className="font-extrabold text-rose-700 dark:text-rose-300 bg-rose-100/90 dark:bg-rose-900/60 px-1.5 py-0.5 rounded-md">Alpha</span>).
+          </p>
+        </div>
       </div>
     )
   }
