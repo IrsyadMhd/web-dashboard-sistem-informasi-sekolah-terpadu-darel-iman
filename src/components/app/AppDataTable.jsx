@@ -312,9 +312,9 @@ export default function AppDataTable({
             )}
             <TableRoot fullBleed={false} className="w-full min-w-[850px] border-collapse print:min-w-0 print:m-0">
               <TableHeader>
-                <TableRow className="hover:bg-transparent border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40">
+                <TableRow className="hover:bg-transparent border-y border-slate-200/90 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-800/90">
                   {onToggleSelect && (
-                    <TableHead className="w-10 px-4 print:hidden">
+                    <TableHead className="w-10 px-4 print:hidden bg-slate-100/90 dark:bg-slate-800/90">
                       <input
                         type="checkbox"
                         aria-label="Pilih semua"
@@ -334,7 +334,7 @@ export default function AppDataTable({
                     <TableHead
                       key={col.key || col.label}
                       className={cn(
-                        'whitespace-nowrap text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400',
+                        'whitespace-nowrap text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 bg-slate-100/90 dark:bg-slate-800/90',
                         col.hideOnMobile && 'hidden lg:table-cell print:table-cell',
                         col.className,
                         col.headerProps?.className

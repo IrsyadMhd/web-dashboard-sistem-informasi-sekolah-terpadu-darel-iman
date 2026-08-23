@@ -1,184 +1,1155 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  AlertTriangle,
+  ArrowUpDown,
   Award,
   BookOpen,
   Calendar,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  Clock,
   Download,
-  FileCheck2,
+  Eye,
   FileSpreadsheet,
-  FileText,
   Filter,
-  PieChart,
+  MoreVertical,
   Printer,
+  RefreshCcw,
   Search,
+  Stethoscope,
+  TrendingUp,
+  User,
+  UserCheck,
   Users,
+  UserX,
+  X,
+  CheckCircle2,
 } from 'lucide-react'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { lmsPresensiService } from '../../services/lmsPresensiService'
+import { kelasService } from '../../services/kelasService'
+import PageContainer from '../../components/app/PageContainer'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppBadge from '../../components/app/AppBadge'
 import AppSkeleton from '../../components/app/AppSkeleton'
 import AppEmptyState from '../../components/app/AppEmptyState'
-import { Button } from '@/components/tailgrids/core/button'
+import {
+  MasterStatsGrid,
+  MasterStatCard,
+  SquircleActionButton,
+  PrintOptionModal,
+} from '../../components/master-data'
 import { Input } from '@/components/tailgrids/core/input'
+import { Button } from '@/components/tailgrids/core/button'
 import { Pagination } from '@/components/tailgrids/core/pagination'
 import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/tailgrids/core/table'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/tailgrids/core/hover-card'
+import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/tailgrids/core/dialog'
+import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
+import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
+import { cn } from '../../lib/utils'
+
+const MODAL_PAGE_SIZE = 6
+
+const formatAngka = (value) => new Intl.NumberFormat('id-ID').format(Number(value || 0))
+
+const warnaStatus = {
+  hadir: '#12a968',
+  terlambat: '#8b5cf6',
+  izin: '#3182f6',
+  sakit: '#ff8a1f',
+  alpa: '#ff4668',
+}
+
+const toneStyles = {
+  emerald: {
+    cardBg: 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/80 dark:border-emerald-900/50',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/80',
+    iconColor: 'text-emerald-700 dark:text-emerald-300',
+    badge: 'bg-emerald-200/80 text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200',
+  },
+  violet: {
+    cardBg: 'bg-violet-50/70 dark:bg-violet-950/40 border-violet-200/80 dark:border-violet-900/50',
+    iconBg: 'bg-violet-100 dark:bg-violet-900/80',
+    iconColor: 'text-violet-700 dark:text-violet-300',
+    badge: 'bg-violet-200/80 text-violet-800 dark:bg-violet-900/90 dark:text-violet-200',
+  },
+  sky: {
+    cardBg: 'bg-sky-50/70 dark:bg-sky-950/40 border-sky-200/80 dark:border-sky-900/50',
+    iconBg: 'bg-sky-100 dark:bg-sky-900/80',
+    iconColor: 'text-sky-700 dark:text-sky-300',
+    badge: 'bg-sky-200/80 text-sky-800 dark:bg-sky-900/90 dark:text-sky-200',
+  },
+  amber: {
+    cardBg: 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/50',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/80',
+    iconColor: 'text-amber-700 dark:text-amber-300',
+    badge: 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/90 dark:text-amber-200',
+  },
+  rose: {
+    cardBg: 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-200/80 dark:border-rose-900/50',
+    iconBg: 'bg-rose-100 dark:bg-rose-900/80',
+    iconColor: 'text-rose-700 dark:text-rose-300',
+    badge: 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/90 dark:text-rose-200',
+  },
+}
+
+const getPeriodDateRange = (periodKey) => {
+  const now = new Date()
+  const iso = (d) => d.toISOString().slice(0, 10)
+  const todayStr = iso(now)
+
+  if (periodKey === 'hari') {
+    return { from: todayStr, to: todayStr }
+  }
+  if (periodKey === 'minggu') {
+    const past = new Date(now)
+    past.setDate(now.getDate() - 6)
+    return { from: iso(past), to: todayStr }
+  }
+  if (periodKey === 'bulan') {
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { from: iso(firstDay), to: todayStr }
+  }
+  if (periodKey === 'semester') {
+    const past = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+    return { from: iso(past), to: todayStr }
+  }
+  if (periodKey === 'tahun') {
+    const firstDay = new Date(now.getFullYear(), 0, 1)
+    return { from: iso(firstDay), to: todayStr }
+  }
+  return { from: '', to: '' }
+}
 
 export default function AttendanceReportPage() {
   const [loading, setLoading] = useState(true)
-  const [reports, setReports] = useState([])
+  const [presensiRows, setPresensiRows] = useState([])
+  const [masterClasses, setMasterClasses] = useState([])
+  const [unitOptions, setUnitOptions] = useState([])
+
   const [search, setSearch] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
-  const [currentPage, setCurrentPage] = useState(1)
-  const perPage = 10
+  const [selectedUnitId, setSelectedUnitId] = useState('')
+  const [selectedClassId, setSelectedClassId] = useState('')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('all')
 
+  // State untuk filter Periode (Hari, Minggu, Bulan, Semester, Tahun)
+  const [period, setPeriod] = useState('semua')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+  const [sortField, setSortField] = useState('rombel_name')
+  const [sortDirection, setSortDirection] = useState('asc')
+  const [viewMode, setViewMode] = useState('rombel') // 'rombel' | 'evaluasi'
+
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [selectedDetailRombel, setSelectedDetailRombel] = useState(null)
+
+  // Card Modal State (Summary Card Interactive Datatable Modal)
+  const [cardModal, setCardModal] = useState({
+    isOpen: false,
+    statusKey: 'semua',
+    title: '',
+    tone: 'emerald',
+    searchQuery: '',
+    page: 1,
+  })
+
+  // ── 1. Fetch Master Options ─────────────────────────────────────────────
   useEffect(() => {
     let active = true
-    const fetchReport = async () => {
+    const fetchOptions = async () => {
+      try {
+        const opts = await kelasService.getOptions()
+        if (!active) return
+        const unitsList = opts.units || opts.unit_pendidikan || opts.education_units || []
+        setUnitOptions(Array.isArray(unitsList) ? unitsList : [])
+      } catch (err) {
+        console.error('Failed to load unit options:', err)
+      }
+    }
+    fetchOptions()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // ── 2. Fetch Master Classes & Presensi Data ──────────────────────────────
+  useEffect(() => {
+    let active = true
+    const fetchData = async () => {
       setLoading(true)
       try {
-        const response = await lmsPresensiService.getReport({ month: selectedMonth })
+        const [kelasRes, presensiRes] = await Promise.allSettled([
+          kelasService.getDaftar({ per_page: 200, unit_pendidikan_id: selectedUnitId || undefined }),
+          lmsPresensiService.getReport({
+            month: selectedMonth,
+            unit_id: selectedUnitId || undefined,
+            class_id: selectedClassId || undefined,
+          }),
+        ])
+
         if (!active) return
-        const raw = response.data?.data || response.data?.rombel || response.data || []
-        setReports(Array.isArray(raw) ? raw : [])
+
+        if (kelasRes.status === 'fulfilled') {
+          const rawKelas = kelasRes.value?.data?.data || kelasRes.value?.data || kelasRes.value || []
+          setMasterClasses(Array.isArray(rawKelas) ? rawKelas : [])
+        } else {
+          setMasterClasses([])
+        }
+
+        if (presensiRes.status === 'fulfilled') {
+          const payload = presensiRes.value?.data
+          const rows = payload?.rows || payload?.data?.rows || (Array.isArray(payload) ? payload : [])
+          setPresensiRows(Array.isArray(rows) ? rows : [])
+        } else {
+          setPresensiRows([])
+        }
       } catch (err) {
-        console.error('Failed to load attendance report:', err)
-        if (active) setReports([])
+        console.error('Failed to load attendance report data:', err)
+        if (active) {
+          setMasterClasses([])
+          setPresensiRows([])
+        }
       } finally {
         if (active) setLoading(false)
       }
     }
-    fetchReport()
+    fetchData()
     return () => {
       active = false
     }
-  }, [selectedMonth])
+  }, [selectedMonth, selectedUnitId, selectedClassId])
 
-  const filteredReports = useMemo(() => {
-    return reports.filter((item) => {
-      const term = search.toLowerCase()
-      const rombel = (item.rombel_name || item.rombel || item.nama_kelas || '').toLowerCase()
-      return !term || rombel.includes(term)
+  // Filter Presensi Rows Berdasarkan Periode Waktu (Hari, Minggu, Bulan, Semester, Tahun)
+  const timeFilteredRows = useMemo(() => {
+    let filtered = presensiRows
+    if (dateFrom) {
+      filtered = filtered.filter((r) => !r.tanggal ? true : r.tanggal >= dateFrom)
+    }
+    if (dateTo) {
+      filtered = filtered.filter((r) => !r.tanggal ? true : r.tanggal <= dateTo)
+    }
+    return filtered
+  }, [presensiRows, dateFrom, dateTo])
+
+  // ── 3. Aggregate Presensi Data per Rombel ────────────────────────────────
+  const aggregatedReports = useMemo(() => {
+    const classMap = new Map()
+
+    // Populate with Master Classes first
+    masterClasses.forEach((cls) => {
+      const classId = String(cls.id)
+      classMap.set(classId, {
+        id: classId,
+        rombel_name: cls.nama_kelas || cls.kode_kelas || 'Rombel ' + classId,
+        kode_kelas: cls.kode_kelas || '',
+        unit_name: cls.unitPendidikan?.name || cls.unit_pendidikan?.name || 'Unit Pendidikan',
+        unit_id: cls.unit_pendidikan_id || cls.unit_id || '',
+        total_students: Number(cls.jumlah_siswa || cls.total_siswa || cls.siswa_count || 0),
+        hadir: 0,
+        terlambat: 0,
+        sakit: 0,
+        izin: 0,
+        alpa: 0,
+        total_logs: 0,
+        student_set: new Set(),
+      })
     })
-  }, [reports, search])
 
-  const totalPages = Math.ceil(filteredReports.length / perPage) || 1
+    // Process time-filtered presensi logs
+    timeFilteredRows.forEach((row) => {
+      const classId = String(
+        row.jadwal_pelajaran?.kelas_id || row.siswa?.kelas_id || row.siswa?.kelas?.id || row.kelas_id || 'unassigned'
+      )
+      const className =
+        row.jadwal_pelajaran?.kelas?.nama_kelas || row.siswa?.kelas?.nama_kelas || row.rombel_name || 'Rombel ' + classId
+      const unitName =
+        row.siswa?.kelas?.unitPendidikan?.name ||
+        row.siswa?.educationUnit?.name ||
+        row.jadwal_pelajaran?.kelas?.unitPendidikan?.name ||
+        'Unit Pendidikan'
+      const unitId = row.siswa?.unit_id || row.siswa?.kelas?.unit_pendidikan_id || ''
+
+      if (!classMap.has(classId)) {
+        classMap.set(classId, {
+          id: classId,
+          rombel_name: className,
+          kode_kelas: row.jadwal_pelajaran?.kelas?.kode_kelas || '',
+          unit_name: unitName,
+          unit_id: unitId,
+          total_students: 0,
+          hadir: 0,
+          terlambat: 0,
+          sakit: 0,
+          izin: 0,
+          alpa: 0,
+          total_logs: 0,
+          student_set: new Set(),
+        })
+      }
+
+      const item = classMap.get(classId)
+      if (row.siswa_id || row.siswa?.id) {
+        item.student_set.add(row.siswa_id || row.siswa?.id)
+      }
+
+      const status = String(row.status_hadir || '').toLowerCase()
+      if (status === 'hadir') item.hadir += 1
+      else if (status === 'terlambat') item.terlambat += 1
+      else if (status === 'sakit') item.sakit += 1
+      else if (status === 'izin') item.izin += 1
+      else if (status === 'alpa') item.alpa += 1
+
+      item.total_logs += 1
+    })
+
+    // Convert map to list and compute attendance rates
+    return Array.from(classMap.values()).map((item) => {
+      const studentCount = item.student_set.size > 0 ? item.student_set.size : item.total_students
+      const totalAttended = item.hadir + item.terlambat
+      const totalLogged = item.total_logs
+
+      let rate = 100
+      if (totalLogged > 0) {
+        rate = Math.round((totalAttended / totalLogged) * 100)
+      } else if (studentCount > 0 && item.alpa > 0) {
+        rate = Math.max(0, 100 - Math.round((item.alpa / studentCount) * 100))
+      }
+
+      let evalStatus = 'Optimal'
+      if (rate < 75) evalStatus = 'Perlu Evaluasi'
+      else if (rate < 90) evalStatus = 'Cukup'
+
+      return {
+        ...item,
+        total_students: studentCount,
+        attendance_rate: rate,
+        evaluation_status: evalStatus,
+      }
+    })
+  }, [masterClasses, timeFilteredRows])
+
+  // ── 4. Summary Overall Metrics & 5 Colored Cards ────────────────────────
+  const overallSummary = useMemo(() => {
+    let present = 0, late = 0, permission = 0, sick = 0, absent = 0
+    timeFilteredRows.forEach((r) => {
+      const st = String(r.status_hadir || '').toLowerCase()
+      if (st === 'hadir') present += 1
+      else if (st === 'terlambat') late += 1
+      else if (st === 'izin') permission += 1
+      else if (st === 'sakit') sick += 1
+      else if (st === 'alpa') absent += 1
+    })
+
+    // Fallback compute from aggregated rombel if logs count is 0
+    if (present + late + permission + sick + absent === 0 && aggregatedReports.length > 0) {
+      aggregatedReports.forEach((r) => {
+        present += r.hadir
+        late += r.terlambat
+        permission += r.izin
+        sick += r.sakit
+        absent += r.alpa
+      })
+    }
+
+    const total = present + late + permission + sick + absent || 1
+
+    return { present, late, permission, sick, absent, total }
+  }, [timeFilteredRows, aggregatedReports])
+
+  const cards = useMemo(
+    () => [
+      {
+        label: 'Hadir',
+        statusKey: 'hadir',
+        value: overallSummary.present,
+        icon: UserCheck,
+        tone: 'emerald',
+        percent: (overallSummary.present / overallSummary.total) * 100,
+      },
+      {
+        label: 'Terlambat',
+        statusKey: 'terlambat',
+        value: overallSummary.late,
+        icon: Clock,
+        tone: 'violet',
+        percent: (overallSummary.late / overallSummary.total) * 100,
+      },
+      {
+        label: 'Izin',
+        statusKey: 'izin',
+        value: overallSummary.permission,
+        icon: ClipboardCheck,
+        tone: 'sky',
+        percent: (overallSummary.permission / overallSummary.total) * 100,
+      },
+      {
+        label: 'Sakit',
+        statusKey: 'sakit',
+        value: overallSummary.sick,
+        icon: Stethoscope,
+        tone: 'amber',
+        percent: (overallSummary.sick / overallSummary.total) * 100,
+      },
+      {
+        label: 'Alpha',
+        statusKey: 'alpa',
+        value: overallSummary.absent,
+        icon: UserX,
+        tone: 'rose',
+        percent: (overallSummary.absent / overallSummary.total) * 100,
+      },
+    ],
+    [overallSummary]
+  )
+
+  const distribution = useMemo(
+    () => [
+      { name: 'Hadir', value: overallSummary.present, color: warnaStatus.hadir },
+      { name: 'Terlambat', value: overallSummary.late, color: warnaStatus.terlambat },
+      { name: 'Izin', value: overallSummary.permission, color: warnaStatus.izin },
+      { name: 'Sakit', value: overallSummary.sick, color: warnaStatus.sakit },
+      { name: 'Alpha', value: overallSummary.absent, color: warnaStatus.alpa },
+    ],
+    [overallSummary]
+  )
+
+  const chartData = useMemo(() => {
+    return aggregatedReports.slice(0, 10).map((item) => ({
+      label: item.rombel_name.length > 12 ? item.rombel_name.slice(0, 12) + '...' : item.rombel_name,
+      hadir: item.hadir + item.terlambat,
+      terlambat: item.terlambat,
+      izin: item.izin,
+      sakit: item.sakit,
+      alpa: item.alpa,
+    }))
+  }, [aggregatedReports])
+
+  // ── 5. Filtering & Sorting ────────────────────────────────────────────────
+  const filteredReports = useMemo(() => {
+    return aggregatedReports.filter((item) => {
+      const term = search.toLowerCase()
+      const matchesSearch =
+        !term ||
+        item.rombel_name.toLowerCase().includes(term) ||
+        item.unit_name.toLowerCase().includes(term) ||
+        item.kode_kelas.toLowerCase().includes(term)
+
+      const matchesUnit = !selectedUnitId || String(item.unit_id) === String(selectedUnitId)
+      const matchesClass = !selectedClassId || String(item.id) === String(selectedClassId)
+
+      let matchesStatus = true
+      if (selectedStatusFilter === 'optimal') matchesStatus = item.attendance_rate >= 90
+      else if (selectedStatusFilter === 'cukup') matchesStatus = item.attendance_rate >= 75 && item.attendance_rate < 90
+      else if (selectedStatusFilter === 'evaluasi') matchesStatus = item.attendance_rate < 75
+
+      return matchesSearch && matchesUnit && matchesClass && matchesStatus
+    })
+  }, [aggregatedReports, search, selectedUnitId, selectedClassId, selectedStatusFilter])
+
+  const sortedReports = useMemo(() => {
+    return [...filteredReports].sort((a, b) => {
+      let aVal = a[sortField]
+      let bVal = b[sortField]
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase()
+        bVal = (bVal || '').toLowerCase()
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredReports, sortField, sortDirection])
+
+  const totalPages = Math.ceil(sortedReports.length / perPage) || 1
   const paginatedReports = useMemo(() => {
     const start = (currentPage - 1) * perPage
-    return filteredReports.slice(start, start + perPage)
-  }, [filteredReports, currentPage])
+    return sortedReports.slice(start, start + perPage)
+  }, [sortedReports, currentPage, perPage])
 
-  const handlePrint = () => {
-    window.print()
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const resetFilters = () => {
+    setSearch('')
+    setSelectedUnitId('')
+    setSelectedClassId('')
+    setSelectedStatusFilter('all')
+    setPeriod('semua')
+    setDateFrom('')
+    setDateTo('')
+    setCurrentPage(1)
+  }
+
+  // Card Modal Handlers
+  const openCardModal = (statusKey, label, tone) => {
+    setCardModal({
+      isOpen: true,
+      statusKey,
+      title: `Data Presensi Status ${label}`,
+      tone,
+      searchQuery: '',
+      page: 1,
+    })
+  }
+
+  const closeCardModal = () => {
+    setCardModal((prev) => ({ ...prev, isOpen: false }))
+  }
+
+  const modalRows = useMemo(() => {
+    if (!cardModal.isOpen) return []
+    let list = timeFilteredRows
+    if (cardModal.statusKey && cardModal.statusKey !== 'semua') {
+      list = list.filter((r) => String(r.status_hadir || '').toLowerCase() === cardModal.statusKey)
+    }
+    if (cardModal.searchQuery.trim()) {
+      const q = cardModal.searchQuery.toLowerCase().trim()
+      list = list.filter((r) => {
+        const name = (r.siswa?.full_name || '').toLowerCase()
+        const nis = (r.siswa?.nis || '').toLowerCase()
+        const kelas = (r.jadwal_pelajaran?.kelas?.nama_kelas || r.siswa?.kelas?.nama_kelas || '').toLowerCase()
+        return name.includes(q) || nis.includes(q) || kelas.includes(q)
+      })
+    }
+    return list
+  }, [timeFilteredRows, cardModal.isOpen, cardModal.statusKey, cardModal.searchQuery])
+
+  const modalTotalPages = Math.max(1, Math.ceil(modalRows.length / MODAL_PAGE_SIZE))
+  const paginatedModalRows = useMemo(() => {
+    return modalRows.slice((cardModal.page - 1) * MODAL_PAGE_SIZE, cardModal.page * MODAL_PAGE_SIZE)
+  }, [modalRows, cardModal.page])
+
+  // ── 6. Export Handlers ───────────────────────────────────────────────────
+  const handleExportCSV = () => {
+    const filename = `Laporan_Presensi_Rombel_${selectedMonth}_${new Date().toISOString().slice(0, 10)}.csv`
+    const csvHeader = ['#', 'Rombel/Kelas', 'Unit Pendidikan', 'Total Siswa', 'Hadir (H)', 'Sakit (S)', 'Izin (I)', 'Alpa (A)', 'Persentase (%)', 'Status Evaluasi']
+    const csvRows = sortedReports.map((r, i) => [
+      i + 1,
+      r.rombel_name,
+      r.unit_name,
+      r.total_students,
+      r.hadir + r.terlambat,
+      r.sakit,
+      r.izin,
+      r.alpa,
+      `${r.attendance_rate}%`,
+      r.evaluation_status,
+    ])
+
+    const csvContent = [csvHeader, ...csvRows]
+      .map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(','))
+      .join('\n')
+
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
+  const handlePrintClean = () => {
+    setIsPrintModalOpen(false)
+    printCleanTable({
+      title: 'Laporan Presensi Rombongan Belajar',
+      subtitle: `Periode Bulan: ${selectedMonth} — Unit: ${selectedUnitId ? unitOptions.find((u) => String(u.id) === String(selectedUnitId))?.name || 'Semua Unit' : 'Semua Unit'}`,
+      headers: ['#', 'Rombel / Kelas', 'Unit Pendidikan', 'Total Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', '% Kehadiran', 'Status Evaluasi'],
+      rows: sortedReports.map((r, i) => [
+        i + 1,
+        r.rombel_name,
+        r.unit_name,
+        r.total_students,
+        r.hadir + r.terlambat,
+        r.sakit,
+        r.izin,
+        r.alpa,
+        `${r.attendance_rate}%`,
+        r.evaluation_status,
+      ]),
+    })
+  }
+
+  const handleDownloadPDF = () => {
+    setIsPrintModalOpen(false)
+    downloadPdfTable({
+      title: 'Laporan Presensi Rombongan Belajar',
+      subtitle: `Periode Bulan: ${selectedMonth}`,
+      headers: ['#', 'Rombel / Kelas', 'Unit Pendidikan', 'Total Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', '% Kehadiran', 'Status Evaluasi'],
+      rows: sortedReports.map((r, i) => [
+        i + 1,
+        r.rombel_name,
+        r.unit_name,
+        r.total_students,
+        r.hadir + r.terlambat,
+        r.sakit,
+        r.izin,
+        r.alpa,
+        `${r.attendance_rate}%`,
+        r.evaluation_status,
+      ]),
+      filename: `Laporan_Presensi_Rombel_${selectedMonth}.pdf`,
+    })
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header & Breadcrumb */}
-      <div>
-        <AppBreadcrumb items={[{ label: 'Rekap Data', href: '/dashboard' }, { label: 'Laporan Rombel' }]} />
-        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <PageContainer className="space-y-6 pb-12">
+      {/* Navigation Breadcrumb (Matching LaporanAbsensiPage Style) */}
+      <div className="mb-2">
+        <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi' }, { label: 'Laporan Absensi Rombel' }]} />
+      </div>
+
+      {/* Summary Cards Grid (5 Equal & Colored Cards - Style from LaporanAbsensiPage) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
+        {cards.map(({ label, statusKey, value, icon: Icon, tone, percent }) => {
+          const style = toneStyles[tone] || toneStyles.emerald
+          return (
+            <article
+              key={label}
+              onClick={() => openCardModal(statusKey, label, tone)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openCardModal(statusKey, label, tone)}
+              className={`group flex flex-col justify-between h-full p-4 rounded-[18px] border shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${style.cardBg}`}
+              title={`Klik untuk melihat detail data ${label}`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className={`size-10 sm:size-11 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}>
+                  <Icon className="size-5 sm:size-6" />
+                </div>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${style.badge}`}>
+                  {percent.toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">{label}</span>
+                <strong className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
+                  {formatAngka(value)}
+                </strong>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+                <span>dari total data</span>
+                <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                  Detail &rarr;
+                </span>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+
+      {/* 3-Column Equal Grid: Filter Laporan, Grafik Kehadiran, & Distribusi (Style from LaporanAbsensiPage) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+        {/* Col 1: Filter Laporan */}
+        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-              Laporan Presensi Rombel
-            </h1>
-            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-              Laporan agregat dan evaluasi kehadiran siswa per rombel & unit pendidikan.
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Filter Laporan</h2>
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                Reset Filter
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Unit Pendidikan
+                </label>
+                <select
+                  value={selectedUnitId}
+                  onChange={(e) => {
+                    setSelectedUnitId(e.target.value)
+                    setSelectedClassId('')
+                    setCurrentPage(1)
+                  }}
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">Semua Unit Pendidikan</option>
+                  {unitOptions.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name || unit.code} {unit.level ? `(${unit.level})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Kelas / Rombel
+                </label>
+                <select
+                  value={selectedClassId}
+                  onChange={(e) => {
+                    setSelectedClassId(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">Semua Kelas</option>
+                  {masterClasses.map((kelas) => (
+                    <option key={kelas.id} value={kelas.id}>
+                      {kelas.nama_kelas || kelas.kode_kelas}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Status Evaluasi
+                </label>
+                <select
+                  value={selectedStatusFilter}
+                  onChange={(e) => {
+                    setSelectedStatusFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="all">Semua Status Evaluasi</option>
+                  <option value="optimal">Optimal (≥ 90%)</option>
+                  <option value="cukup">Cukup (75% - 89%)</option>
+                  <option value="evaluasi">Perlu Evaluasi (&lt; 75%)</option>
+                </select>
+              </div>
+
+              {/* Fitur Filter Periode Waktu (Hari, Minggu, Bulan, Semester, Tahun) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Periode Waktu
+                </label>
+                <select
+                  value={period}
+                  onChange={(e) => {
+                    const nextPeriod = e.target.value
+                    setPeriod(nextPeriod)
+                    if (nextPeriod !== 'custom' && nextPeriod !== 'semua') {
+                      const { from, to } = getPeriodDateRange(nextPeriod)
+                      setDateFrom(from)
+                      setDateTo(to)
+                    } else if (nextPeriod === 'semua') {
+                      setDateFrom('')
+                      setDateTo('')
+                    }
+                    setCurrentPage(1)
+                  }}
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="semua">Semua Periode Data</option>
+                  <option value="hari">Hari Ini (Per Hari)</option>
+                  <option value="minggu">7 Hari Terakhir (Per Minggu)</option>
+                  <option value="bulan">Bulan Ini (Per Bulan)</option>
+                  <option value="semester">6 Bulan Terakhir (Per Semester)</option>
+                  <option value="tahun">Tahun Ini (Per Tahun)</option>
+                  <option value="custom">Rentang Tanggal Kustom</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => {
+                      setDateFrom(e.target.value)
+                      setPeriod('custom')
+                      setCurrentPage(1)
+                    }}
+                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => {
+                      setDateTo(e.target.value)
+                      setPeriod('custom')
+                      setCurrentPage(1)
+                    }}
+                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        {/* Col 2: Grafik Kehadiran */}
+        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Grafik Kehadiran Rombel</h2>
+            <span className="text-xs font-semibold text-slate-400">Trend Data</span>
+          </div>
+          <div className="h-64 w-full">
+            {loading ? (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Memuat grafik...</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="hadirGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#12a968" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="#12a968" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#edf1f5" vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#718096', fontSize: 10 }} />
+                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: '#718096', fontSize: 10 }} />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="hadir" name="Hadir" stroke={warnaStatus.hadir} fill="url(#hadirGradient)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke={warnaStatus.terlambat} fill="transparent" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="izin" name="Izin" stroke={warnaStatus.izin} fill="transparent" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="sakit" name="Sakit" stroke={warnaStatus.sakit} fill="transparent" strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="alpa" name="Alpha" stroke={warnaStatus.alpa} fill="transparent" strokeWidth={1.5} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </article>
+
+        {/* Col 3: Distribusi Kehadiran */}
+        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Distribusi Kehadiran</h2>
+            <span className="text-xs font-bold text-slate-500">{formatAngka(overallSummary.total)} Total</span>
+          </div>
+          <div className="flex flex-col items-center justify-center flex-1">
+            <div className="relative w-40 h-40 mb-3">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={distribution} dataKey="value" innerRadius="62%" outerRadius="88%" paddingAngle={2}>
+                    {distribution.map((item) => <Cell key={item.name} fill={item.color} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <strong className="text-xl font-black text-slate-900 dark:text-white">{formatAngka(overallSummary.total)}</strong>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total</span>
+              </div>
+            </div>
+
+            <div className="w-full grid grid-cols-2 gap-2 text-xs">
+              {distribution.map((item) => (
+                <div key={item.name} className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60">
+                  <span className="size-2.5 rounded-full shrink-0" style={{ background: item.color }} />
+                  <div className="flex items-center justify-between w-full min-w-0">
+                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">{item.name}</span>
+                    <span className="text-[11px] font-bold text-slate-900 dark:text-white ml-1">{formatAngka(item.value)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
+      </div>
+
+      {/* Main Datatable Outer Container (Style from LaporanAbsensiPage) */}
+      <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+        {/* Header Baris 1: Title & Mode Switcher & Soft Pastel Squircle Action Buttons */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Rekap Absensi Rombongan Belajar</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Pemantauan dan rekapitulasi presensi siswa per rombongan belajar & unit pendidikan
             </p>
           </div>
-          <Button
-            variant="primary"
-            appearance="fill"
-            size="md"
-            onClick={handlePrint}
-          >
-            <Printer className="mr-2 h-4 w-4" /> Cetak Laporan Resmi
-          </Button>
-        </div>
-      </div>
 
-      {/* Filter Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            type="text"
-            placeholder="Cari nama rombel / kelas..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setCurrentPage(1)
-            }}
-            className="pl-9 text-xs"
-          />
-        </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Mode Switcher Buttons (Like LaporanAbsensiPage) */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => { setViewMode('rombel'); setCurrentPage(1); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer",
+                  viewMode === 'rombel'
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                )}
+              >
+                <BookOpen className="size-3.5" />
+                <span>Berdasarkan Rombel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setViewMode('evaluasi'); setCurrentPage(1); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer",
+                  viewMode === 'evaluasi'
+                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                )}
+              >
+                <Award className="size-3.5" />
+                <span>Berdasarkan Status Evaluasi</span>
+              </button>
+            </div>
 
-        <div className="flex items-center gap-3">
-          <label className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-            <Calendar size={14} /> Periode Bulan:
-          </label>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          />
-        </div>
-      </div>
-
-      {/* Report Table */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
-        {loading ? (
-          <div className="p-6">
-            <AppSkeleton rows={5} />
+            {/* Soft Pastel Squircle Action Buttons */}
+            <div className="flex items-center gap-2 flex-nowrap shrink-0">
+              <SquircleActionButton
+                variant="export"
+                label="Export CSV"
+                onClick={handleExportCSV}
+              />
+              <SquircleActionButton
+                variant="view"
+                icon={Printer}
+                label="Cetak Data"
+                onClick={() => setIsPrintModalOpen(true)}
+              />
+            </div>
           </div>
-        ) : paginatedReports.length === 0 ? (
-          <div className="p-8">
-            <AppEmptyState title="Tidak ada laporan presensi rombel" description="Belum ada data statistik presensi rombel untuk periode ini." />
+        </div>
+
+        {/* Toolbar Baris 2: Search Input & Per-Page Controls */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 bg-slate-50/60 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Cari nama rombel / kelas / unit..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="pl-9 text-xs font-medium"
+            />
           </div>
-        ) : (
-          <>
+
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+            <span className="text-xs font-medium text-slate-500">Per Halaman:</span>
+            <div className="relative">
+              <select
+                value={perPage}
+                onChange={(e) => {
+                  setPerPage(Number(e.target.value))
+                  setCurrentPage(1)
+                }}
+                className="h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-800 shadow-2xs focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Viewport Tabel dengan Horizontal Padding */}
+        <div className="px-4 sm:px-6 md:px-8 overflow-x-auto">
+          {loading ? (
+            <div className="py-6">
+              <AppSkeleton rows={6} />
+            </div>
+          ) : paginatedReports.length === 0 ? (
+            <div className="py-8">
+              <AppEmptyState
+                title="Tidak ada data presensi rombel"
+                description="Belum ada data rekapitulasi kehadiran rombel yang sesuai dengan filter pilihan Anda."
+              />
+            </div>
+          ) : (
             <TableRoot fullBleed={false}>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead>Rombel / Kelas</TableHead>
-                  <TableHead className="text-center">Total Siswa</TableHead>
+                  <TableHead className="w-12 text-center">#</TableHead>
+
+                  <TableHead
+                    className="cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    onClick={() => handleSort('rombel_name')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Rombel / Kelas</span>
+                      <ArrowUpDown className="size-3.5 text-slate-400" />
+                    </div>
+                  </TableHead>
+
+                  <TableHead
+                    className="text-center cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    onClick={() => handleSort('total_students')}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Total Siswa</span>
+                      <ArrowUpDown className="size-3.5 text-slate-400" />
+                    </div>
+                  </TableHead>
+
                   <TableHead className="text-center">Hadir (H)</TableHead>
                   <TableHead className="text-center">Sakit (S)</TableHead>
                   <TableHead className="text-center">Izin (I)</TableHead>
                   <TableHead className="text-center">Alpa (A)</TableHead>
-                  <TableHead className="text-center">Rata-rata % Kehadiran</TableHead>
+
+                  <TableHead
+                    className="text-center cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    onClick={() => handleSort('attendance_rate')}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>% Kehadiran</span>
+                      <ArrowUpDown className="size-3.5 text-slate-400" />
+                    </div>
+                  </TableHead>
+
                   <TableHead className="text-right">Status Evaluasi</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {paginatedReports.map((item, index) => {
-                  const rombelName = item.rombel_name || item.rombel || item.nama_kelas || `Rombel ${index + 1}`
-                  const totalStudents = item.total_students || item.total_siswa || 0
-                  const hadir = item.hadir || item.present || 0
-                  const sakit = item.sakit || item.sick || 0
-                  const izin = item.izin || item.permission || 0
-                  const alpa = item.alpa || item.absent || 0
-                  const rate = item.attendance_rate || (totalStudents ? Math.round((hadir / (hadir + sakit + izin + alpa || 1)) * 100) : 95)
+                  const rate = item.attendance_rate
+                  const evalVariant = rate >= 90 ? 'success' : rate >= 75 ? 'warning' : 'danger'
 
                   return (
-                    <TableRow key={item.id || index} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50">
-                      <TableCell className="font-semibold text-slate-500">
+                    <TableRow key={item.id} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors">
+                      <TableCell className="text-center font-bold text-slate-400 text-xs">
                         {(currentPage - 1) * perPage + index + 1}
                       </TableCell>
+
+                      {/* Cell Identitas Rombel dengan HoverCard */}
                       <TableCell>
-                        <div className="font-bold text-slate-900 dark:text-white">{rombelName}</div>
-                        <div className="text-[11px] text-slate-500 font-medium">{item.unit_name || 'Unit Pendidikan'}</div>
+                        <HoverCard>
+                          <HoverCardTrigger
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setSelectedDetailRombel(item)
+                            }}
+                            className="font-extrabold text-slate-900 dark:text-white text-sm border-b border-dashed border-slate-400/60 hover:border-[#0E5C44] transition-colors cursor-pointer inline-block"
+                          >
+                            {item.rombel_name}
+                          </HoverCardTrigger>
+
+                          <HoverCardContent className="w-72 p-0 overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#1B2433] shadow-xl rounded-2xl z-50">
+                            <div className="relative h-20 w-full bg-gradient-to-r from-emerald-800 to-teal-900 p-3.5 flex items-center justify-between text-white">
+                              <div>
+                                <span className="text-[9px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full text-white">
+                                  {item.kode_kelas || 'ROMBEL'}
+                                </span>
+                                <h4 className="text-sm font-extrabold mt-1 text-white truncate max-w-[170px]">
+                                  {item.rombel_name}
+                                </h4>
+                              </div>
+                              <div className="size-10 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center font-black text-xs text-white border border-white/20 shrink-0">
+                                {item.attendance_rate}%
+                              </div>
+                            </div>
+
+                            <div className="p-3.5 space-y-2.5">
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <span className="text-slate-400 block text-[10px] font-semibold">Unit Pendidikan</span>
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">{item.unit_name}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-400 block text-[10px] font-semibold">Total Siswa</span>
+                                  <span className="font-bold text-slate-800 dark:text-slate-200">{item.total_students} Siswa</span>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center text-[11px]">
+                                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded-lg border border-emerald-200/50">
+                                  <span className="block text-[9px] font-bold text-emerald-600">Hadir</span>
+                                  <span className="font-extrabold text-emerald-800 dark:text-emerald-300">{item.hadir + item.terlambat}</span>
+                                </div>
+                                <div className="bg-blue-50 dark:bg-blue-950/40 p-1.5 rounded-lg border border-blue-200/50">
+                                  <span className="block text-[9px] font-bold text-blue-600">Sakit</span>
+                                  <span className="font-extrabold text-blue-800 dark:text-blue-300">{item.sakit}</span>
+                                </div>
+                                <div className="bg-amber-50 dark:bg-amber-950/40 p-1.5 rounded-lg border border-amber-200/50">
+                                  <span className="block text-[9px] font-bold text-amber-600">Izin</span>
+                                  <span className="font-extrabold text-amber-800 dark:text-amber-300">{item.izin}</span>
+                                </div>
+                                <div className="bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded-lg border border-rose-200/50">
+                                  <span className="block text-[9px] font-bold text-rose-600">Alpa</span>
+                                  <span className="font-extrabold text-rose-800 dark:text-rose-300">{item.alpa}</span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDetailRombel(item)}
+                                className="w-full py-2 bg-[#0E5C44] text-white text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all hover:bg-[#1E8E5A] active:scale-98 shadow-xs cursor-pointer"
+                              >
+                                Lihat Detail Rincian Rombel
+                              </button>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+
+                        <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                          {item.unit_name}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-center font-bold text-slate-700 dark:text-slate-300">{totalStudents}</TableCell>
-                      <TableCell className="text-center font-bold text-emerald-700 dark:text-emerald-400">{hadir}</TableCell>
-                      <TableCell className="text-center font-semibold text-blue-600 dark:text-blue-400">{sakit}</TableCell>
-                      <TableCell className="text-center font-semibold text-amber-600 dark:text-amber-400">{izin}</TableCell>
-                      <TableCell className="text-center font-bold text-rose-600 dark:text-rose-400">{alpa}</TableCell>
-                      <TableCell className="text-center font-black text-slate-900 dark:text-white">{rate}%</TableCell>
+
+                      <TableCell className="text-center font-bold text-slate-700 dark:text-slate-300">
+                        {item.total_students} Siswa
+                      </TableCell>
+
+                      <TableCell className="text-center font-bold text-emerald-700 dark:text-emerald-400">
+                        {item.hadir + item.terlambat}
+                      </TableCell>
+
+                      <TableCell className="text-center font-semibold text-blue-600 dark:text-blue-400">
+                        {item.sakit}
+                      </TableCell>
+
+                      <TableCell className="text-center font-semibold text-amber-600 dark:text-amber-400">
+                        {item.izin}
+                      </TableCell>
+
+                      <TableCell className="text-center font-bold text-rose-600 dark:text-rose-400">
+                        {item.alpa}
+                      </TableCell>
+
+                      <TableCell className="text-center">
+                        <div className="inline-flex items-center gap-1 font-black text-slate-900 dark:text-white text-base">
+                          {rate}%
+                        </div>
+                      </TableCell>
+
                       <TableCell className="text-right">
-                        <AppBadge variant={rate >= 90 ? 'success' : rate >= 75 ? 'warning' : 'danger'}>
-                          {rate >= 90 ? 'Optimal' : rate >= 75 ? 'Cukup' : 'Perlu Evaluasi'}
+                        <AppBadge
+                          variant={evalVariant}
+                          className="hover:scale-105 transition-transform cursor-pointer"
+                          onClick={() => setSelectedDetailRombel(item)}
+                        >
+                          {item.evaluation_status}
                         </AppBadge>
                       </TableCell>
                     </TableRow>
@@ -186,18 +1157,303 @@ export default function AttendanceReportPage() {
                 })}
               </TableBody>
             </TableRoot>
+          )}
+        </div>
 
-            <div className="w-full border-t border-slate-200 px-4 py-3.5 sm:px-6 dark:border-slate-800">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={(page) => setCurrentPage(page)}
-                sideLayout="full"
-              />
-            </div>
-          </>
-        )}
+        {/* Footer Pagination Navigation */}
+        <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrentPage(page)}
+            sideLayout="full"
+          />
+        </div>
       </div>
-    </div>
+
+      {/* Summary Card Interactive Datatable Modal */}
+      {cardModal.isOpen && (
+        <Dialog
+          isOpen={cardModal.isOpen}
+          onOpenChange={(open) => !open && closeCardModal()}
+          className="w-full max-w-4xl max-h-[90vh] flex flex-col p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+        >
+          <DialogHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div>
+              <div className="flex items-center gap-3">
+                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {cardModal.title}
+                </DialogTitle>
+                <AppBadge variant={cardModal.tone === 'rose' ? 'danger' : cardModal.tone === 'amber' ? 'warning' : 'success'}>
+                  {modalRows.length} Data Log
+                </AppBadge>
+              </div>
+              <DialogDescription className="text-xs text-slate-500 mt-1">
+                Daftar rincian log presensi siswa dengan status {cardModal.title}
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+
+          <DialogBody className="flex-1 overflow-y-auto py-4 space-y-4">
+            {/* Modal Search Toolbar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama siswa, NIS, atau kelas..."
+                  value={cardModal.searchQuery}
+                  onChange={(e) => setCardModal((prev) => ({ ...prev, searchQuery: e.target.value, page: 1 }))}
+                  className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                {cardModal.searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setCardModal((prev) => ({ ...prev, searchQuery: '', page: 1 }))}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Datatable */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="py-3 px-4">No</th>
+                    <th className="py-3 px-4">Siswa</th>
+                    <th className="py-3 px-4">Kelas</th>
+                    <th className="py-3 px-4">Tanggal</th>
+                    <th className="py-3 px-4">Mata Pelajaran</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Catatan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {paginatedModalRows.length > 0 ? (
+                    paginatedModalRows.map((row, idx) => {
+                      const studentName = row.siswa?.full_name || row.siswa_name || 'Siswa'
+                      const studentNis = row.siswa?.nis || '-'
+                      const kelasName = row.jadwal_pelajaran?.kelas?.nama_kelas || row.siswa?.kelas?.nama_kelas || 'Rombel'
+                      const status = String(row.status_hadir || '').toLowerCase()
+
+                      return (
+                        <tr key={row.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-4 font-medium text-slate-500">
+                            {(cardModal.page - 1) * MODAL_PAGE_SIZE + idx + 1}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900 dark:text-white">{studentName}</div>
+                            <div className="text-[10px] text-slate-400">NIS: {studentNis}</div>
+                          </td>
+                          <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">
+                            {kelasName}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                            {row.tanggal || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
+                            {row.jadwal_pelajaran?.subject?.name || '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <AppBadge variant={status === 'hadir' ? 'success' : status === 'alpa' ? 'danger' : 'warning'}>
+                              {status.toUpperCase()}
+                            </AppBadge>
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                            {row.catatan || row.keterangan || '-'}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="py-8 text-center text-slate-400 font-medium">
+                        {cardModal.searchQuery ? 'Tidak ada data presensi yang cocok dengan pencarian.' : 'Belum ada data pada kategori ini.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </DialogBody>
+
+          <DialogFooter className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+            <span className="text-xs text-slate-500 font-medium">
+              Menampilkan {modalRows.length ? (cardModal.page - 1) * MODAL_PAGE_SIZE + 1 : 0}–{Math.min(cardModal.page * MODAL_PAGE_SIZE, modalRows.length)} dari {modalRows.length} data
+            </span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 mr-4">
+                <button
+                  type="button"
+                  disabled={cardModal.page === 1}
+                  onClick={() => setCardModal((prev) => ({ ...prev, page: prev.page - 1 }))}
+                  className="p-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-xs font-semibold px-2 text-slate-700 dark:text-slate-300">
+                  {cardModal.page} / {modalTotalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={cardModal.page === modalTotalPages}
+                  onClick={() => setCardModal((prev) => ({ ...prev, page: prev.page + 1 }))}
+                  className="p-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+              <Button variant="ghost" onClick={closeCardModal}>
+                Tutup
+              </Button>
+            </div>
+          </DialogFooter>
+        </Dialog>
+      )}
+
+      {/* Modal Detail Rincian Rombel saat Klik Data */}
+      <OverlayWrapper isOpen={!!selectedDetailRombel} onOpenChange={() => setSelectedDetailRombel(null)}>
+        <Backdrop isOpen={!!selectedDetailRombel} onOpenChange={() => setSelectedDetailRombel(null)}>
+          <Dialog
+            isOpen={!!selectedDetailRombel}
+            onOpenChange={() => setSelectedDetailRombel(null)}
+            showCloseButton={true}
+            className="w-full max-w-2xl rounded-2xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
+          >
+            {selectedDetailRombel && (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-bold text-[#0E5C44] dark:text-[#3FBF75] flex items-center gap-3">
+                    <div className="size-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-[#0E5C44] dark:text-[#3FBF75] flex items-center justify-center font-extrabold text-sm shrink-0">
+                      {selectedDetailRombel.kode_kelas || 'R'}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold leading-tight text-slate-900 dark:text-white">
+                        {selectedDetailRombel.rombel_name}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        {selectedDetailRombel.unit_name} — Periode: {selectedMonth}
+                      </p>
+                    </div>
+                  </DialogTitle>
+                </DialogHeader>
+
+                <DialogBody className="space-y-4 py-2">
+                  {/* Progress Bar Persentase Kehadiran */}
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-slate-700 dark:text-slate-300">Tingkat Kehadiran Rombel</span>
+                      <span className="text-[#0E5C44] dark:text-[#3FBF75] text-sm font-black">
+                        {selectedDetailRombel.attendance_rate}% ({selectedDetailRombel.evaluation_status})
+                      </span>
+                    </div>
+                    <div className="h-3.5 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 rounded-full ${
+                          selectedDetailRombel.attendance_rate >= 90
+                            ? 'bg-emerald-500'
+                            : selectedDetailRombel.attendance_rate >= 75
+                            ? 'bg-amber-500'
+                            : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${selectedDetailRombel.attendance_rate}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Grid Metric Cards Detail */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
+                      <span className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                        Total Hadir (H)
+                      </span>
+                      <span className="text-xl font-black text-emerald-900 dark:text-emerald-200">
+                        {selectedDetailRombel.hadir + selectedDetailRombel.terlambat}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/60">
+                      <span className="block text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+                        Sakit (S)
+                      </span>
+                      <span className="text-xl font-black text-blue-900 dark:text-blue-200">
+                        {selectedDetailRombel.sakit}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60">
+                      <span className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                        Izin (I)
+                      </span>
+                      <span className="text-xl font-black text-amber-900 dark:text-amber-200">
+                        {selectedDetailRombel.izin}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
+                      <span className="block text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
+                        Alpa (A)
+                      </span>
+                      <span className="text-xl font-black text-rose-900 dark:text-rose-200">
+                        {selectedDetailRombel.alpa}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Summary / Rekomendasi Evaluasi */}
+                  <div className="p-3.5 rounded-xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900 space-y-1 text-xs">
+                    <h5 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <CheckCircle2 size={14} className="text-emerald-600" /> Rekomendasi Evaluasi Kehadiran:
+                    </h5>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium">
+                      {selectedDetailRombel.attendance_rate >= 90
+                        ? 'Tingkat kehadiran rombel ini sangat baik dan optimal. Pertahankan konsistensi presensi kelas.'
+                        : selectedDetailRombel.attendance_rate >= 75
+                        ? 'Tingkat kehadiran rombel cukup memadai, tetapi disarankan wali kelas memantau siswa yang berulang kali izin/sakit.'
+                        : 'Tingkat kehadiran rombel rendah (perlu perhatian khusus). Diperlukan koordinasi wali kelas dan bimbingan konseling untuk penanganan presensi.'}
+                    </p>
+                  </div>
+                </DialogBody>
+
+                <DialogFooter className="pt-2 flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    appearance="outline"
+                    size="sm"
+                    onClick={() => setSelectedDetailRombel(null)}
+                  >
+                    Tutup
+                  </Button>
+                  <Button
+                    variant="primary"
+                    appearance="fill"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDetailRombel(null)
+                      setIsPrintModalOpen(true)
+                    }}
+                  >
+                    <Printer className="size-4 mr-1.5" /> Cetak Laporan Rombel
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </Dialog>
+        </Backdrop>
+      </OverlayWrapper>
+
+      {/* Modal Opsi Cetak & Unduh PDF */}
+      <PrintOptionModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        onPrint={handlePrintClean}
+        onDownload={handleDownloadPDF}
+        title="Laporan Presensi Rombel"
+      />
+    </PageContainer>
   )
 }

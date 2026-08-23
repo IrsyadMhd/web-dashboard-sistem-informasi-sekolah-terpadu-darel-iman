@@ -17,6 +17,7 @@ import {
   Users,
   UserX,
   X,
+  CheckCircle2,
 } from 'lucide-react'
 import {
   ArrowBothDirectionHorizontal2,
@@ -53,6 +54,7 @@ import {
   MasterEmptyState,
   PrintOptionModal,
   MasterFilterSelect,
+  SquircleActionButton,
 } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 
@@ -80,6 +82,16 @@ import {
   HoverCardTrigger,
   HoverCardContent,
 } from '@/components/tailgrids/core/hover-card'
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/tailgrids/core/dialog'
+import { Backdrop } from '@/components/tailgrids/core/overlay'
 
 const angka = (nilai) => new Intl.NumberFormat('id-ID').format(Number(nilai || 0))
 const warnaPie = ['#059669', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2']
@@ -92,11 +104,45 @@ export default function LaporanSiswaPage() {
   const [status, setStatus] = useState('semua')
   const [unit, setUnit] = useState('semua')
   const [kelas, setKelas] = useState('semua')
+  const [period, setPeriod] = useState('semua')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [jenisKelamin, setJenisKelamin] = useState('semua')
   const [halaman, setHalaman] = useState(1)
   const [perHalaman, setPerHalaman] = useState(10)
   const [sortKey, setSortKey] = useState('nama')
   const [sortOrder, setSortOrder] = useState('asc')
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [selectedStudentModal, setSelectedStudentModal] = useState(null)
+  const [printTargetStudent, setPrintTargetStudent] = useState(null)
+
+  const getPeriodDateRange = (periodKey) => {
+    const now = new Date()
+    const iso = (d) => d.toISOString().slice(0, 10)
+    const todayStr = iso(now)
+
+    if (periodKey === 'hari') {
+      return { from: todayStr, to: todayStr }
+    }
+    if (periodKey === 'minggu') {
+      const past = new Date(now)
+      past.setDate(now.getDate() - 6)
+      return { from: iso(past), to: todayStr }
+    }
+    if (periodKey === 'bulan') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+      return { from: iso(firstDay), to: todayStr }
+    }
+    if (periodKey === 'semester') {
+      const past = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+      return { from: iso(past), to: todayStr }
+    }
+    if (periodKey === 'tahun') {
+      const firstDay = new Date(now.getFullYear(), 0, 1)
+      return { from: iso(firstDay), to: todayStr }
+    }
+    return { from: '', to: '' }
+  }
 
   const muatData = async () => {
     try {
@@ -147,10 +193,43 @@ export default function LaporanSiswaPage() {
       const cocokCari = `${item.nis || ''} ${item.nama || ''} ${item.kelas || ''} ${item.unit || ''}`
         .toLowerCase()
         .includes(pencarian.toLowerCase())
-      const cocokStatus = status === 'semua' || (status === 'aktif' ? item.aktif : !item.aktif)
+
+      // Gender Filter (L / P / semua)
+      const jkVal = String(item.jenis_kelamin || item.jk || '').toUpperCase()
+      const cocokJK =
+        jenisKelamin === 'semua' ||
+        (jenisKelamin === 'L' && (jkVal.startsWith('L') || jkVal.includes('LAKI'))) ||
+        (jenisKelamin === 'P' && (jkVal.startsWith('P') || jkVal.includes('PEREMPUAN')))
+
+      // Status Filter (Aktif, Alumni, Mutasi Keluar, Non-aktif)
+      const statusRaw = String(item.status || (item.aktif ? 'aktif' : 'nonaktif')).toLowerCase()
+      let cocokStatus = true
+
+      if (status === 'aktif') {
+        cocokStatus = item.aktif === true && !statusRaw.includes('alumni') && !statusRaw.includes('mutasi')
+      } else if (status === 'alumni') {
+        cocokStatus = statusRaw.includes('alumni') || item.is_alumni === true
+      } else if (status === 'mutasi_keluar') {
+        cocokStatus = statusRaw.includes('mutasi') || statusRaw.includes('keluar')
+      } else if (status === 'nonaktif') {
+        cocokStatus = item.aktif === false || statusRaw.includes('nonaktif') || statusRaw.includes('non-aktif')
+      }
+
+      // Filter Periode Tanggal
+      const tglItem = item.tanggal_masuk || item.tgl_masuk || item.created_at?.slice(0, 10) || item.date || item.tanggal
+      let cocokPeriode = true
+      if (dateFrom && tglItem) {
+        cocokPeriode = tglItem >= dateFrom
+      }
+      if (dateTo && tglItem && cocokPeriode) {
+        cocokPeriode = tglItem <= dateTo
+      }
+
       return (
         cocokCari &&
+        cocokJK &&
         cocokStatus &&
+        cocokPeriode &&
         (unit === 'semua' || item.unit === unit) &&
         (kelas === 'semua' || item.kelas === kelas)
       )
@@ -168,14 +247,14 @@ export default function LaporanSiswaPage() {
       })
     }
     return filtered
-  }, [siswa, pencarian, status, unit, kelas, sortKey, sortOrder])
+  }, [siswa, pencarian, jenisKelamin, status, unit, kelas, dateFrom, dateTo, sortKey, sortOrder])
 
   const totalHalaman = Math.max(Math.ceil(hasilFilter.length / perHalaman), 1)
   const baris = hasilFilter.slice((halaman - 1) * perHalaman, halaman * perHalaman)
 
   useEffect(() => {
     setHalaman(1)
-  }, [pencarian, status, unit, kelas, perHalaman])
+  }, [pencarian, status, unit, kelas, jenisKelamin, period, dateFrom, dateTo, perHalaman])
 
   const dataKelas = useMemo(
     () =>
@@ -218,44 +297,88 @@ export default function LaporanSiswaPage() {
     { key: 'aktif', label: 'Status', export: (row) => (row.aktif ? 'Aktif' : 'Nonaktif') },
   ]
 
+  const getFilterRingkasan = () => {
+    const parts = []
+    if (unit !== 'semua') parts.push(`Unit: ${unit}`)
+    if (kelas !== 'semua') parts.push(`Kelas/Rombel: ${kelas}`)
+    if (jenisKelamin !== 'semua') parts.push(`JK: ${jenisKelamin === 'L' ? 'Laki-laki (L)' : 'Perempuan (P)'}`)
+    if (status !== 'semua') {
+      const mapStatus = {
+        aktif: 'Siswa Aktif',
+        alumni: 'Siswa Alumni',
+        mutasi_keluar: 'Mutasi Keluar',
+        nonaktif: 'Siswa Non-aktif',
+      }
+      parts.push(`Status: ${mapStatus[status] || status}`)
+    }
+    if (period !== 'semua') parts.push(`Periode: ${period}`)
+    return parts.length > 0 ? parts.join(' | ') : 'Semua Data Siswa'
+  }
+
   const handlePrintClean = () => {
+    const listToPrint = printTargetStudent ? [printTargetStudent] : hasilFilter
+    const title = printTargetStudent
+      ? `Laporan Detail Siswa: ${printTargetStudent.nama || ''}`
+      : 'Rekap Laporan Data Siswa Terpadu'
+    const subtitle = printTargetStudent
+      ? `NIS: ${printTargetStudent.nis || '-'} | Unit: ${printTargetStudent.unit || '-'} | Kelas: ${printTargetStudent.kelas || '-'}`
+      : `Filter Terpasang: [ ${getFilterRingkasan()} ] — Total: ${listToPrint.length} Siswa`
+
     printCleanTable({
-      title: 'Rekap Laporan Data Siswa Terpadu',
-      subtitle: `Daftar siswa terfilter - Total: ${hasilFilter.length} Siswa`,
+      title,
+      subtitle,
       headers: ['NO', 'NIS', 'NAMA SISWA', 'UNIT PENDIDIKAN', 'KELAS / ROMBEL', 'JK', 'STATUS'],
-      rows: hasilFilter.map((item, index) => [
-        index + 1,
-        item.nis || '-',
-        item.nama || '-',
-        item.unit || '-',
-        item.kelas || '-',
-        item.jenis_kelamin || '-',
-        item.aktif ? 'Aktif' : 'Non Aktif',
-      ]),
+      rows: listToPrint.map((item, index) => {
+        const itemStatus = item.status || (item.aktif ? 'Aktif' : 'Non-aktif')
+        return [
+          index + 1,
+          item.nis || '-',
+          item.nama || '-',
+          item.unit || '-',
+          item.kelas || '-',
+          item.jenis_kelamin || item.jk || '-',
+          itemStatus,
+        ]
+      }),
     })
   }
 
   const handleDownloadPdf = () => {
+    const listToPrint = printTargetStudent ? [printTargetStudent] : hasilFilter
+    const title = printTargetStudent
+      ? `Laporan Detail Siswa: ${printTargetStudent.nama || ''}`
+      : 'Rekap Laporan Data Siswa Terpadu'
+    const filename = printTargetStudent
+      ? `laporan-siswa-${printTargetStudent.nis || printTargetStudent.id || 'detail'}.pdf`
+      : `rekap-laporan-siswa-${new Date().toISOString().slice(0, 10)}.pdf`
+
     downloadPdfTable({
-      title: 'Rekap Laporan Data Siswa Terpadu',
-      filename: `rekap-laporan-siswa-${new Date().toISOString().slice(0, 10)}.pdf`,
+      title,
+      filename,
       headers: ['NO', 'NIS', 'NAMA SISWA', 'UNIT PENDIDIKAN', 'KELAS / ROMBEL', 'JK', 'STATUS'],
-      rows: hasilFilter.map((item, index) => [
-        index + 1,
-        item.nis || '-',
-        item.nama || '-',
-        item.unit || '-',
-        item.kelas || '-',
-        item.jenis_kelamin || '-',
-        item.aktif ? 'Aktif' : 'Non Aktif',
-      ]),
+      rows: listToPrint.map((item, index) => {
+        const itemStatus = item.status || (item.aktif ? 'Aktif' : 'Non-aktif')
+        return [
+          index + 1,
+          item.nis || '-',
+          item.nama || '-',
+          item.unit || '-',
+          item.kelas || '-',
+          item.jenis_kelamin || item.jk || '-',
+          itemStatus,
+        ]
+      }),
     })
   }
 
   const resetFilter = () => {
     setUnit('semua')
     setKelas('semua')
+    setJenisKelamin('semua')
     setStatus('semua')
+    setPeriod('semua')
+    setDateFrom('')
+    setDateTo('')
     setPencarian('')
     setSortKey('nama')
     setSortOrder('asc')
@@ -292,11 +415,152 @@ export default function LaporanSiswaPage() {
       {/* ── Print Modal Integration ─────────────────────────────────────────── */}
       <PrintOptionModal
         isOpen={isPrintModalOpen}
-        onClose={() => setIsPrintModalOpen(false)}
-        title="Laporan Data Siswa"
+        onClose={() => {
+          setIsPrintModalOpen(false)
+          setPrintTargetStudent(null)
+        }}
+        title={printTargetStudent ? `Cetak Laporan: ${printTargetStudent.nama}` : 'Laporan Data Siswa'}
         onPrint={handlePrintClean}
         onDownloadPdf={handleDownloadPdf}
       />
+
+      {/* ── Detail Student Dialog Modal ────────────────────────────────────── */}
+      {selectedStudentModal && (
+        <Backdrop
+          isOpen={Boolean(selectedStudentModal)}
+          onOpenChange={(open) => !open && setSelectedStudentModal(null)}
+        >
+          <Dialog className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-[#1B2433]">
+            <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <DialogTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-emerald-600" />
+                  <span>Detail Data Siswa</span>
+                </DialogTitle>
+                <MasterStatusBadge status={selectedStudentModal.aktif ? 'aktif' : 'nonaktif'} />
+              </div>
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Informasi profil lengkap dan status keaktifan siswa.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogBody className="space-y-4 py-4 text-xs">
+              {/* Profile Summary Card */}
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                <div className="size-14 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold flex items-center justify-center text-sm shrink-0 overflow-hidden shadow-2xs">
+                  {selectedStudentModal.foto_url ? (
+                    <img
+                      src={selectedStudentModal.foto_url}
+                      alt={selectedStudentModal.nama}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    (selectedStudentModal.nama || 'S').slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    {selectedStudentModal.nama}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                    NIS: {selectedStudentModal.nis || '-'}
+                  </p>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                    {selectedStudentModal.unit || '-'} — {selectedStudentModal.kelas || '-'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Detail Items Grid */}
+              <div className="grid grid-cols-2 gap-3.5 p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                    NIS
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono text-xs">
+                    {selectedStudentModal.nis || '-'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                    Nama Siswa
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                    {selectedStudentModal.nama || '-'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                    Unit Pendidikan
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                    {selectedStudentModal.unit || '-'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                    Kelas / Rombel
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                    {selectedStudentModal.kelas || '-'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                    Jenis Kelamin
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                    {selectedStudentModal.jenis_kelamin || '-'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">
+                    Status Siswa
+                  </span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs">
+                    {selectedStudentModal.aktif ? 'Aktif' : 'Non-aktif'}
+                  </span>
+                </div>
+              </div>
+            </DialogBody>
+
+            <DialogFooter className="flex items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="bg-amber-100/90 text-amber-600 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 font-semibold"
+                  onClick={() =>
+                    exportCsv(
+                      `siswa-${selectedStudentModal.nis || selectedStudentModal.id}.csv`,
+                      kolomCsv,
+                      [selectedStudentModal]
+                    )
+                  }
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                  Export Excel
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="bg-indigo-100/90 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 font-semibold"
+                  onClick={() => {
+                    setPrintTargetStudent(selectedStudentModal)
+                    setIsPrintModalOpen(true)
+                  }}
+                >
+                  <Printer className="h-4 w-4 mr-1.5" />
+                  Cetak Laporan
+                </Button>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedStudentModal(null)}>
+                Tutup
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        </Backdrop>
+      )}
 
       {/* ── KPI Stat Cards Grid ─────────────────────────────────────────────── */}
       <MasterStatsGrid columns={5}>
@@ -342,240 +606,229 @@ export default function LaporanSiswaPage() {
         />
       </MasterStatsGrid>
 
-      {/* ── Analytics Section (Charts Cards) ───────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Siswa per Unit Pendidikan */}
-        <Card className="rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-              <span>Siswa per Unit Pendidikan</span>
-              <Badge color="emerald" size="sm">
-                Distribution
-              </Badge>
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Komposisi siswa berdasarkan unit sekolah Islam terpadu
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="relative w-full md:w-1/2 h-56 flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dataUnit}
-                      dataKey="jumlah"
-                      nameKey="nama"
-                      innerRadius="60%"
-                      outerRadius="88%"
-                      paddingAngle={2}
-                    >
-                      {dataUnit.map((_, i) => (
-                        <Cell key={i} fill={warnaPie[i % warnaPie.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v) => [angka(v), 'Jumlah Siswa']} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
-                    {angka(total)}
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-medium">Total Siswa</span>
-                </div>
-              </div>
-
-              <div className="w-full md:w-1/2 space-y-2 max-h-56 overflow-y-auto pr-1">
-                {dataUnit.map((item, i) => (
-                  <div
-                    key={item.nama}
-                    className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="size-3 rounded-full shrink-0"
-                        style={{ backgroundColor: warnaPie[i % warnaPie.length] }}
-                      />
-                      <span className="font-medium text-slate-700 dark:text-slate-300 truncate">
-                        {item.nama}
-                      </span>
-                    </div>
-                    <span className="font-bold text-slate-900 dark:text-slate-100 shrink-0 ml-2">
-                      {angka(item.jumlah)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 2: Siswa per Jenjang */}
-        <Card className="rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center justify-between">
-              <span>Siswa per Jenjang / Level</span>
-              <Badge color="blue" size="sm">
-                Level Breakdown
-              </Badge>
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Jumlah siswa aktif terdistribusi pada setiap level kelas
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dataKelas} margin={{ top: 15, right: 10, left: -20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                  <XAxis dataKey="nama" tick={{ fontSize: 11 }} stroke="#888888" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="#888888" />
-                  <Tooltip formatter={(v) => [angka(v), 'Siswa']} />
-                  <Bar dataKey="jumlah" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={44} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 2: 3 Analytics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 3: Siswa per Jenis Kelamin */}
-        <Card className="rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              Siswa per Jenis Kelamin
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Rasio Laki-laki & Perempuan
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-sky-100 bg-sky-50/60 dark:border-sky-950 dark:bg-sky-950/20 p-3 text-center">
-                <span className="text-xs text-sky-700 dark:text-sky-400 font-semibold block">
-                  Laki-laki
-                </span>
-                <span className="text-xl font-extrabold text-sky-600 dark:text-sky-300 mt-1 block">
-                  {angka(gender.laki_laki)}
-                </span>
-                <span className="text-[10px] text-sky-500 font-medium mt-0.5 block">
-                  {totalGender ? Math.round((gender.laki_laki / totalGender) * 100) : 0}%
-                </span>
-              </div>
-              <div className="rounded-xl border border-pink-100 bg-pink-50/60 dark:border-pink-950 dark:bg-pink-950/20 p-3 text-center">
-                <span className="text-xs text-pink-700 dark:text-pink-400 font-semibold block">
-                  Perempuan
-                </span>
-                <span className="text-xl font-extrabold text-pink-600 dark:text-pink-300 mt-1 block">
-                  {angka(gender.perempuan)}
-                </span>
-                <span className="text-[10px] text-pink-500 font-medium mt-0.5 block">
-                  {totalGender ? Math.round((gender.perempuan / totalGender) * 100) : 0}%
-                </span>
-              </div>
+      {/* ── 3-Column Equal Grid: Filter Laporan, Grafik Siswa per Jenjang, & Distribusi Unit (Style persis LaporanAbsensiPage) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+        {/* Col 1: Panel Filter Laporan (Sama seperti LaporanAbsensiPage) */}
+        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+          <div>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Filter Laporan Siswa</h2>
+              <button
+                type="button"
+                onClick={resetFilter}
+                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                Reset Filter
+              </button>
             </div>
 
-            {/* Progress Bar */}
-            <div className="space-y-1">
-              <div className="h-3 w-full rounded-full bg-pink-100 dark:bg-pink-950/50 overflow-hidden flex">
-                <div
-                  className="h-full bg-sky-500 transition-all duration-500"
-                  style={{
-                    width: `${totalGender ? (gender.laki_laki / totalGender) * 100 : 50}%`,
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Unit Pendidikan
+                </label>
+                <select
+                  value={unit}
+                  onChange={(e) => {
+                    setUnit(e.target.value)
+                    setHalaman(1)
                   }}
-                />
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="semua">Semua Unit Pendidikan</option>
+                  {daftarUnit.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="flex justify-between text-[10px] font-semibold text-slate-400">
-                <span className="text-sky-600">L: {angka(gender.laki_laki)}</span>
-                <span className="text-pink-600">P: {angka(gender.perempuan)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Card 4: Status Siswa */}
-        <Card className="rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              Siswa per Status
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Aktif, Alumni, & Non-aktif
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="flex items-center gap-2 h-44">
-              <div className="w-1/2 h-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { nama: 'Aktif', jumlah: aktif },
-                        { nama: 'Alumni', jumlah: alumni },
-                        { nama: 'Non-aktif', jumlah: nonaktif },
-                      ]}
-                      dataKey="jumlah"
-                      innerRadius="55%"
-                      outerRadius="85%"
-                    >
-                      <Cell fill="#059669" />
-                      <Cell fill="#d97706" />
-                      <Cell fill="#94a3b8" />
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Kelas / Rombel
+                </label>
+                <select
+                  value={kelas}
+                  onChange={(e) => {
+                    setKelas(e.target.value)
+                    setHalaman(1)
+                  }}
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="semua">Semua Kelas & Rombel</option>
+                  {daftarKelas.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="w-1/2 space-y-2 text-xs">
-                <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300">
-                  <span className="font-semibold">Aktif</span>
-                  <span className="font-bold">{angka(aktif)}</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300">
-                  <span className="font-semibold">Alumni</span>
-                  <span className="font-bold">{angka(alumni)}</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                  <span className="font-semibold">Non-aktif</span>
-                  <span className="font-bold">{angka(nonaktif)}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Card 5: Tren Jumlah Siswa */}
-        <Card className="rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-              Tren Jumlah Siswa
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Pertumbuhan tahunan
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="h-44 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={tren} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="tahun" tick={{ fontSize: 10 }} stroke="#888888" />
-                  <YAxis tick={{ fontSize: 10 }} stroke="#888888" />
-                  <Tooltip formatter={(v) => [angka(v), 'Siswa']} />
-                  <Line
-                    name="Jumlah Siswa"
-                    dataKey="jumlah"
-                    stroke="#059669"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#059669' }}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Jenis Kelamin
+                </label>
+                <select
+                  value={jenisKelamin}
+                  onChange={(e) => {
+                    setJenisKelamin(e.target.value)
+                    setHalaman(1)
+                  }}
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="semua">Semua Gender</option>
+                  <option value="L">Laki-laki (L)</option>
+                  <option value="P">Perempuan (P)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Status Siswa
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value)
+                    setHalaman(1)
+                  }}
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="semua">Semua Status</option>
+                  <option value="aktif">Siswa Aktif</option>
+                  <option value="alumni">Siswa Alumni</option>
+                  <option value="mutasi_keluar">Mutasi Keluar</option>
+                  <option value="nonaktif">Siswa Non-aktif</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Periode Waktu
+                </label>
+                <select
+                  value={period}
+                  onChange={(e) => {
+                    const nextPeriod = e.target.value
+                    setPeriod(nextPeriod)
+                    if (nextPeriod !== 'custom' && nextPeriod !== 'semua') {
+                      const { from, to } = getPeriodDateRange(nextPeriod)
+                      setDateFrom(from)
+                      setDateTo(to)
+                    } else if (nextPeriod === 'semua') {
+                      setDateFrom('')
+                      setDateTo('')
+                    }
+                    setHalaman(1)
+                  }}
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="semua">Semua Periode Data</option>
+                  <option value="hari">Hari Ini (Per Hari)</option>
+                  <option value="minggu">7 Hari Terakhir (Per Minggu)</option>
+                  <option value="bulan">Bulan Ini (Per Bulan)</option>
+                  <option value="semester">6 Bulan Terakhir (Per Semester)</option>
+                  <option value="tahun">Tahun Ini (Per Tahun)</option>
+                  <option value="custom">Rentang Tanggal Kustom</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => {
+                      setDateFrom(e.target.value)
+                      setPeriod('custom')
+                      setHalaman(1)
+                    }}
+                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
                   />
-                </LineChart>
-              </ResponsiveContainer>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => {
+                      setDateTo(e.target.value)
+                      setPeriod('custom')
+                      setHalaman(1)
+                    }}
+                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </article>
+
+        {/* Col 2: Siswa per Jenjang / Level */}
+        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Siswa per Jenjang</h2>
+            <span className="text-xs font-semibold text-slate-400">Level Breakdown</span>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dataKelas} margin={{ top: 15, right: 10, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                <XAxis dataKey="nama" tick={{ fontSize: 10 }} stroke="#888888" />
+                <YAxis tick={{ fontSize: 10 }} stroke="#888888" />
+                <Tooltip formatter={(v) => [angka(v), 'Siswa']} />
+                <Bar dataKey="jumlah" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={44} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        {/* Col 3: Distribusi Siswa per Unit */}
+        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Distribusi Unit Sekolah</h2>
+            <span className="text-xs font-bold text-slate-500">{angka(total)} Total</span>
+          </div>
+          <div className="flex flex-col items-center justify-center flex-1">
+            <div className="relative w-40 h-40 mb-3">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={dataUnit}
+                    dataKey="jumlah"
+                    nameKey="nama"
+                    innerRadius="62%"
+                    outerRadius="88%"
+                    paddingAngle={2}
+                  >
+                    {dataUnit.map((_, i) => (
+                      <Cell key={i} fill={warnaPie[i % warnaPie.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => [angka(v), 'Jumlah Siswa']} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <strong className="text-xl font-black text-slate-900 dark:text-white">{angka(total)}</strong>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total Siswa</span>
+              </div>
+            </div>
+
+            <div className="w-full grid grid-cols-2 gap-2 text-xs">
+              {dataUnit.slice(0, 4).map((item, i) => (
+                <div key={item.nama} className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60">
+                  <span className="size-2.5 rounded-full shrink-0" style={{ background: warnaPie[i % warnaPie.length] }} />
+                  <div className="flex items-center justify-between w-full min-w-0">
+                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">{item.nama}</span>
+                    <span className="text-[11px] font-bold text-slate-900 dark:text-white ml-1">{angka(item.jumlah)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
       </div>
 
       {/* ── Main Master Datatable Card ─────────────────────────────────────── */}
@@ -593,40 +846,22 @@ export default function LaporanSiswaPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 flex-nowrap shrink-0 py-1">
-              {/* Export Button (Amber) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Export Excel"
-                  aria-label="Export Excel"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-600 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-amber-500/30 cursor-pointer shadow-2xs"
-                  onClick={() => exportCsv('rekap-siswa.csv', kolomCsv, hasilFilter)}
-                >
-                  <Download1 className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Export Excel (.csv)
-                </div>
-              </div>
-
-              {/* Print / PDF Button (Indigo) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Cetak & Export PDF"
-                  aria-label="Cetak & Export PDF"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-indigo-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => setIsPrintModalOpen(true)}
-                >
-                  <Printer className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Cetak / PDF
-                </div>
-              </div>
+            <div className="flex items-center gap-2 flex-nowrap shrink-0 py-1">
+              {/* Soft Pastel Squircle Action Buttons */}
+              <SquircleActionButton
+                variant="export"
+                label="Export CSV"
+                onClick={() => exportCsv('rekap-siswa.csv', kolomCsv, hasilFilter)}
+              />
+              <SquircleActionButton
+                variant="view"
+                icon={Printer}
+                label="Cetak Data"
+                onClick={() => {
+                  setPrintTargetStudent(null)
+                  setIsPrintModalOpen(true)
+                }}
+              />
             </div>
           </div>
 
@@ -651,310 +886,210 @@ export default function LaporanSiswaPage() {
             )}
           </div>
 
-          {/* Baris 3: Filter Controls Flex Horizontal */}
-          <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-            <span className="font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
-              <Filter className="h-3.5 w-3.5 text-emerald-600" />
-              Filter:
-            </span>
-
-            {/* Filter Unit */}
-            {dashboard?.akses?.semua_unit && (
-              <div className="relative min-w-[160px]">
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="h-9 w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <option value="semua">Semua Unit</option>
-                  {daftarUnit.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              </div>
-            )}
-
-            {/* Filter Kelas */}
-            <div className="relative min-w-[140px]">
-              <select
-                value={kelas}
-                onChange={(e) => setKelas(e.target.value)}
-                className="h-9 w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="semua">Semua Kelas</option>
-                {daftarKelas.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </div>
-
-            {/* Filter Status */}
-            <div className="relative min-w-[130px]">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="h-9 w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value="semua">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="nonaktif">Non-aktif</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          {/* Baris 3: Per-Page Control & Summary Badges */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium">
+              <span>Menampilkan <strong>{hasilFilter.length}</strong> siswa terfilter</span>
             </div>
 
             {/* Per Page Select */}
-            <div className="relative">
-              <select
-                value={perHalaman}
-                onChange={(e) => {
-                  setPerHalaman(Number(e.target.value))
-                  setHalaman(1)
-                }}
-                className="h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-              >
-                <option value={5}>5 per Hal</option>
-                <option value={10}>10 per Hal</option>
-                <option value={15}>15 per Hal</option>
-                <option value={25}>25 per Hal</option>
-                <option value={50}>50 per Hal</option>
-                <option value={100}>100 per Hal</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <div className="relative flex items-center gap-1.5">
+              <span className="text-xs font-medium text-slate-500">Per Halaman:</span>
+              <div className="relative">
+                <select
+                  value={perHalaman}
+                  onChange={(e) => {
+                    setPerHalaman(Number(e.target.value))
+                    setHalaman(1)
+                  }}
+                  className="h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              </div>
             </div>
-
-            {/* Reset Filter Button */}
-            {(unit !== 'semua' || kelas !== 'semua' || status !== 'semua' || pencarian !== '') && (
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={resetFilter}
-                className="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400"
-              >
-                Reset Filter
-              </Button>
-            )}
           </div>
         </div>
 
-        {/* ── Table Viewport Container ────────────────────────────────────── */}
+        {/* ── Datatable Viewport dengan Horizontal Padding ───────────────────── */}
         <div className="px-4 sm:px-6 md:px-8 overflow-x-auto">
-          <TableRoot fullBleed={false}>
-            <TableHeader>
-              <TableRow className="border-b border-slate-200/80 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/50">
-                <TableHead className="w-12 text-center text-xs font-bold text-slate-600 dark:text-slate-300">
-                  No
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 transition-colors"
-                  onClick={() => handleSort('nis')}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>NIS</span>
-                    <ArrowBothDirectionHorizontal2
-                      className={`h-3 w-3 transition-transform ${
-                        sortKey === 'nis' ? 'text-emerald-600 rotate-180' : 'text-slate-400'
-                      }`}
-                    />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 transition-colors"
-                  onClick={() => handleSort('nama')}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Nama Siswa</span>
-                    <ArrowBothDirectionHorizontal2
-                      className={`h-3 w-3 transition-transform ${
-                        sortKey === 'nama' ? 'text-emerald-600 rotate-180' : 'text-slate-400'
-                      }`}
-                    />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 transition-colors"
-                  onClick={() => handleSort('unit')}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Unit Pendidikan</span>
-                    <ArrowBothDirectionHorizontal2
-                      className={`h-3 w-3 transition-transform ${
-                        sortKey === 'unit' ? 'text-emerald-600 rotate-180' : 'text-slate-400'
-                      }`}
-                    />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 transition-colors"
-                  onClick={() => handleSort('kelas')}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Kelas / Rombel</span>
-                    <ArrowBothDirectionHorizontal2
-                      className={`h-3 w-3 transition-transform ${
-                        sortKey === 'kelas' ? 'text-emerald-600 rotate-180' : 'text-slate-400'
-                      }`}
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                  JK
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 transition-colors"
-                  onClick={() => handleSort('aktif')}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>Status</span>
-                    <ArrowBothDirectionHorizontal2
-                      className={`h-3 w-3 transition-transform ${
-                        sortKey === 'aktif' ? 'text-emerald-600 rotate-180' : 'text-slate-400'
-                      }`}
-                    />
-                  </div>
-                </TableHead>
-                <TableHead className="text-right text-xs font-bold text-slate-600 dark:text-slate-300">
-                  Aksi
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {baris.length ? (
-                baris.map((item, index) => (
-                  <TableRow
-                    key={item.id || index}
-                    className="border-b border-slate-100 dark:border-slate-800/60 transition-all duration-200 hover:bg-slate-50/90 dark:hover:bg-slate-800/50"
-                  >
-                    <TableCell className="text-center text-xs text-slate-500 font-medium">
-                      {(halaman - 1) * perHalaman + index + 1}
-                    </TableCell>
-                    <TableCell className="text-xs font-mono font-medium text-slate-700 dark:text-slate-300">
-                      {item.nis || '-'}
-                    </TableCell>
-                    <TableCell className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                      <HoverCard>
-                        <HoverCardTrigger asChild>
-                          <div className="cursor-pointer transition-colors hover:text-emerald-600">
-                            <PersonIdentityCell
-                              name={item.nama}
-                              subtitle={`NIS: ${item.nis || '-'}`}
-                              avatarUrl={item.foto_url}
-                            />
-                          </div>
-                        </HoverCardTrigger>
-                        <HoverCardContent className="w-72 p-4 border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#1B2433] shadow-xl rounded-2xl space-y-3 z-50">
-                          <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold flex items-center justify-center text-xs shrink-0 overflow-hidden">
-                              {item.foto_url ? (
-                                <img src={item.foto_url} alt={item.nama} className="h-full w-full object-cover" />
-                              ) : (
-                                (item.nama || 'S').slice(0, 2).toUpperCase()
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                {item.nama}
-                              </h4>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                                NIS: {item.nis || '-'}
-                              </p>
-                            </div>
-                            <MasterStatusBadge status={item.aktif ? 'aktif' : 'nonaktif'} />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                            <div>
-                              <span className="text-slate-400 block text-[10px]">Unit Pendidikan</span>
-                              <span className="font-semibold text-slate-700 dark:text-slate-200">{item.unit || '-'}</span>
-                            </div>
-                            <div>
-                              <span className="text-slate-400 block text-[10px]">Kelas / Rombel</span>
-                              <span className="font-semibold text-slate-700 dark:text-slate-200">{item.kelas || '-'}</span>
-                            </div>
-                            <div>
-                              <span className="text-slate-400 block text-[10px]">Jenis Kelamin</span>
-                              <span className="font-semibold text-slate-700 dark:text-slate-200">{item.jenis_kelamin || '-'}</span>
-                            </div>
-                            <div>
-                              <span className="text-slate-400 block text-[10px]">Status Siswa</span>
-                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">{item.aktif ? 'Aktif' : 'Non-aktif'}</span>
-                            </div>
-                          </div>
-                        </HoverCardContent>
-                      </HoverCard>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-600 dark:text-slate-300">
-                      <span className="inline-flex items-center gap-1 font-medium">
-                        <Building2 className="h-3.5 w-3.5 text-slate-400" />
-                        {item.unit || '-'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-600 dark:text-slate-300">
-                      <Badge color="cyan" size="sm">
-                        {item.kelas || '-'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-600 dark:text-slate-300">
-                      {item.jenis_kelamin || '-'}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <MasterStatusBadge status={item.aktif ? 'aktif' : 'nonaktif'} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <ActionDropdown
-                        extraItems={[
-                          {
-                            label: 'Export Data',
-                            icon: <FileSpreadsheet className="h-4 w-4 text-emerald-600" />,
-                            onClick: () =>
-                              exportCsv(
-                                `siswa-${item.nis || item.id}.csv`,
-                                kolomCsv,
-                                [item]
-                              ),
-                          },
-                          {
-                            label: 'Cetak Siswa',
-                            icon: <Printer className="h-4 w-4 text-slate-500" />,
-                            onClick: () => setIsPrintModalOpen(true),
-                          },
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          {hasilFilter.length === 0 ? (
+            <div className="py-8">
+              <MasterEmptyState
+                message="Tidak ada data siswa yang cocok dengan filter atau pencarian Anda."
+              />
+            </div>
+          ) : (
+            <TableRoot fullBleed={false}>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center">
-                    <MasterEmptyState
-                      message="Tidak ada data siswa yang sesuai dengan filter atau kata kunci pencarian."
-                      actionText="Reset Filter"
-                      onAction={resetFilter}
-                    />
-                  </TableCell>
+                  <TableHead className="w-12 text-center">#</TableHead>
+
+                  <TableHead
+                    className="cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    onClick={() => handleSort('nama')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Nama Siswa</span>
+                      <ArrowBothDirectionHorizontal2 className="size-3.5 text-slate-400" />
+                    </div>
+                  </TableHead>
+
+                  <TableHead
+                    className="text-center cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    onClick={() => handleSort('nis')}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>NIS</span>
+                      <ArrowBothDirectionHorizontal2 className="size-3.5 text-slate-400" />
+                    </div>
+                  </TableHead>
+
+                  <TableHead
+                    className="text-center cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    onClick={() => handleSort('unit')}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Unit Pendidikan</span>
+                      <ArrowBothDirectionHorizontal2 className="size-3.5 text-slate-400" />
+                    </div>
+                  </TableHead>
+
+                  <TableHead
+                    className="text-center cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    onClick={() => handleSort('kelas')}
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Kelas / Rombel</span>
+                      <ArrowBothDirectionHorizontal2 className="size-3.5 text-slate-400" />
+                    </div>
+                  </TableHead>
+
+                  <TableHead className="text-center">Gender</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </TableRoot>
+              </TableHeader>
+
+              <TableBody>
+                {baris.map((item, index) => {
+                  const itemStatus = item.status || (item.aktif ? 'aktif' : 'nonaktif')
+
+                  return (
+                    <TableRow
+                      key={item.id || item.nis || index}
+                      className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors"
+                    >
+                      <TableCell className="text-center font-bold text-slate-400 text-xs">
+                        {(halaman - 1) * perHalaman + index + 1}
+                      </TableCell>
+
+                      {/* Cell Identitas Siswa dengan HoverCard */}
+                      <TableCell>
+                        <HoverCard>
+                          <HoverCardTrigger
+                            onClick={(e) => {
+                              e.preventDefault()
+                              setSelectedStudentModal(item)
+                            }}
+                            className="font-extrabold text-slate-900 dark:text-white text-sm border-b border-dashed border-slate-400/60 hover:border-[#0E5C44] transition-colors cursor-pointer inline-block"
+                          >
+                            <PersonIdentityCell
+                              src={item.foto_url}
+                              name={item.nama}
+                              subtitle={item.nis ? `NIS: ${item.nis}` : null}
+                            />
+                          </HoverCardTrigger>
+
+                          <HoverCardContent className="w-72 p-0 overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#1B2433] shadow-xl rounded-2xl z-50">
+                            <div className="relative h-20 w-full bg-gradient-to-r from-emerald-800 to-teal-900 p-3.5 flex items-center justify-between text-white">
+                              <div>
+                                <span className="text-[9px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full text-white">
+                                  {item.kelas || 'SISWA'}
+                                </span>
+                                <h4 className="text-sm font-extrabold mt-1 text-white truncate max-w-[170px]">
+                                  {item.nama}
+                                </h4>
+                              </div>
+                              <div className="size-10 rounded-full bg-white/10 backdrop-blur-xs flex items-center justify-center font-black text-xs text-white border border-white/20 shrink-0 overflow-hidden">
+                                {item.foto_url ? (
+                                  <img src={item.foto_url} alt={item.nama} className="h-full w-full object-cover" />
+                                ) : (
+                                  (item.nama || 'S').slice(0, 2).toUpperCase()
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="p-3.5 space-y-2.5">
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <span className="text-slate-400 block text-[10px] font-semibold">NIS</span>
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 font-mono truncate block">{item.nis || '-'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-slate-400 block text-[10px] font-semibold">Unit</span>
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 truncate block">{item.unit || '-'}</span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStudentModal(item)}
+                                className="w-full py-2 bg-[#0E5C44] text-white text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all hover:bg-[#1E8E5A] active:scale-98 shadow-xs cursor-pointer"
+                              >
+                                Lihat Detail Profil Siswa
+                              </button>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                      </TableCell>
+
+                      <TableCell className="text-center font-mono font-semibold text-slate-600 dark:text-slate-400 text-xs">
+                        {item.nis || '-'}
+                      </TableCell>
+
+                      <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300">
+                        {item.unit || '-'}
+                      </TableCell>
+
+                      <TableCell className="text-center font-semibold text-slate-800 dark:text-slate-200">
+                        {item.kelas || '-'}
+                      </TableCell>
+
+                      <TableCell className="text-center text-xs font-semibold text-slate-600 dark:text-slate-400">
+                        {item.jenis_kelamin || item.jk || '-'}
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <MasterStatusBadge
+                          status={itemStatus}
+                          className="hover:scale-105 transition-transform cursor-pointer"
+                          onClick={() => setSelectedStudentModal(item)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </TableRoot>
+          )}
         </div>
 
-        {/* ── Table Footer / Pagination Navigation ─────────────────────────── */}
+        {/* ── Footer Pagination ────────────────────────────────────────────── */}
         <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800">
           <Pagination
             currentPage={halaman}
             totalPages={totalHalaman}
+            onPageChange={(page) => setHalaman(page)}
             sideLayout="full"
-            onPageChange={setHalaman}
           />
         </div>
       </div>
     </PageContainer>
   )
 }
-

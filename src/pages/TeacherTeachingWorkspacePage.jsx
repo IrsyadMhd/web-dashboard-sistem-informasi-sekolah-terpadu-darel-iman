@@ -1,4 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { AppModal } from '../components/app'
 import {
@@ -1425,7 +1428,16 @@ export default function TeacherTeachingWorkspacePage() {
   }
 
   return (
-    <MasterDataPage className="education-unit-page" hideBreadcrumb>
+    <PageContainer className="teacher-workspace-page space-y-6 pb-12">
+      {/* ── BREADCRUMB NAV ────────────────────────────────────────── */}
+      <AppBreadcrumb
+        items={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Portal Guru', href: '/portal-guru/workspace' },
+          { label: 'Workspace Pembelajaran Guru' },
+        ]}
+      />
+
       {/* ── TOAST NOTIFICATION LAYER ────────────────────────────────────── */}
       <div className="fixed bottom-5 right-5 z-[9999] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2.5 pointer-events-none" aria-live="polite" aria-atomic="true">
         {toasts.map((toast) => (
@@ -1456,89 +1468,71 @@ export default function TeacherTeachingWorkspacePage() {
         ))}
       </div>
 
-      {/* ── MASTER HERO PAGE HEADER ────────────────────────────────────────── */}
-      <MasterPageHeader
-        title="Workspace Pengajaran Guru"
-        description={`Kelola jadwal, presensi, materi, penugasan, penilaian, dan pendampingan siswa dalam satu workspace • ${selectedAcademicYear} ${selectedSemester}`}
-        tone="brand"
-        icon={GraduationCap}
-        actions={<MasterActionButton className="education-unit-hero__action !h-11 !border-white !bg-white !text-emerald-800 !shadow-none hover:!bg-emerald-50" icon={Play} onClick={() => {
-          changeTab('jadwal')
-          window.setTimeout(() => document.getElementById('teacher-step04-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
-        }}>Mulai Mengajar</MasterActionButton>}
-      />
 
-      <MasterStatsGrid className="education-unit-kpis">
+
+      <MasterStatsGrid className="grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <MasterStatCard icon={CalendarDays} label="Jadwal Mengajar" value={schedules.length} description={`${new Set(schedules.map(getScheduleSubject)).size} mata pelajaran`} variant="success" delay={40} />
         <MasterStatCard icon={Users} label="Siswa Terdaftar" value={students.length} description={`Rombel ${selectedClassName}`} variant="info" delay={80} />
         <MasterStatCard icon={BookOpen} label="Materi Terbit" value={publishedMaterials} description={`${materials.length} total materi`} variant="warning" delay={120} />
-        <MasterStatCard icon={FileText} label="Penugasan Aktif" value={activeAssignments} description={`${assignments.length} total penugasan`} variant="neutral" delay={160} />
+        <MasterStatCard icon={FileText} label="Penugasan Aktif" value={activeAssignments} description={`${assignments.length} total penugasan`} variant="primary" delay={160} />
+        <MasterStatCard icon={GraduationCap} label="Catatan & Tahfizh" value={tahfizhLogs.length + studentNotes.length} description="Total pendampingan" variant="danger" delay={200} />
       </MasterStatsGrid>
 
-      <section className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-[var(--shadow-soft-xl)] dark:border-slate-700/80 dark:bg-[#1B2433]" aria-label="Filter dan navigasi workspace guru">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 lg:pb-0">
-            <label className="shrink-0">
-              <span className="sr-only">Tahun ajaran</span>
-              <select value={selectedAcademicYear} onChange={(event) => setSelectedAcademicYear(event.target.value)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200">
-                {academicYears.length > 0 ? (
-                  academicYears.map((ay) => (
-                    <option key={ay.id} value={ay.name || ay.id}>{ay.name}</option>
-                  ))
-                ) : (
-                  <option value={selectedAcademicYear}>{selectedAcademicYear}</option>
-                )}
-              </select>
-            </label>
-            <label className="shrink-0">
-              <span className="sr-only">Semester</span>
-              <select value={selectedSemester} onChange={(event) => setSelectedSemester(event.target.value)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200">
-                <option value="Ganjil">Semester Ganjil</option><option value="Genap">Semester Genap</option>
-              </select>
-            </label>
-            <label className="min-w-44 shrink-0">
-              <span className="sr-only">Kelas</span>
-              <select value={selectedClass} onChange={(event) => { setSelectedClass(event.target.value); addToast('info', 'Kelas Dipilih', 'Memuat data pengajaran untuk kelas yang dipilih.') }} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-200">
-                <option value="">Semua Kelas</option>{classes.map((item) => <option key={item.id} value={item.id}>{item.name || item.nama_kelas}</option>)}
-              </select>
-            </label>
+
+
+      {/* ── CARD AKSI CEPAT & NAVIGASI MODUL ────────────────────────────────────────── */}
+      <section className="rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-[var(--shadow-soft-xl)] dark:border-slate-800 dark:bg-[#1B2433]" aria-label="Aksi Cepat Workspace Guru">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+              <Zap className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Aksi Cepat & Navigasi Modul</h3>
+              <p className="text-xs text-slate-500">Klik modul di bawah untuk berpindah antar fitur pengajaran guru secara langsung.</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setShowCommandPalette(true)} title="Buka pencarian cepat" aria-label="Buka pencarian cepat" className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 focus-visible:ring-3 focus-visible:ring-emerald-700/20 dark:border-slate-700 dark:hover:bg-slate-800"><Command className="h-4 w-4" /></button>
-            <button type="button" onClick={() => { fetchInitialData(); addToast('info', 'Data Diperbarui', 'Memuat ulang data workspace pengajaran.') }} title="Muat ulang data" aria-label="Muat ulang data" className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 focus-visible:ring-3 focus-visible:ring-emerald-700/20 dark:border-slate-700 dark:hover:bg-slate-800"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></button>
-            <MasterActionButton variant="export" icon={Download} className="!h-11" onClick={() => setShowExportModal(true)}>Export</MasterActionButton>
-          </div>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+            {cardModulesList.length} Modul Aksi
+          </span>
         </div>
-        <div className="mt-3.5 border-t border-slate-100 pt-3.5 dark:border-slate-800" role="tablist" aria-label="Modul pengajaran">
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-2.5">
-            {cardModulesList.map((mod) => {
-              const Icon = mod.icon
-              const isActive = activeTab === mod.id
-              return (
-                <button
-                  type="button"
-                  key={mod.id}
-                  onClick={() => handleCardClick(mod)}
-                  role="tab"
-                  aria-selected={isActive}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center group ${
-                    isActive
-                      ? 'border-emerald-600 bg-emerald-50/90 dark:bg-emerald-950/60 shadow-md ring-2 ring-emerald-600/30'
-                      : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-md'
-                  }`}
-                >
-                  <div className={`p-2 rounded-xl border ${mod.tone || 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/60'} mb-1.5 shrink-0 group-hover:scale-110 transition ${isActive ? 'ring-2 ring-emerald-500/40' : ''}`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className={`font-bold text-[10.5px] leading-tight transition-colors ${
-                    isActive ? 'text-emerald-900 dark:text-emerald-200 font-black' : 'text-slate-800 dark:text-slate-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400'
-                  }`}>
-                    {mod.title}
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" role="tablist" aria-label="Modul pengajaran">
+          {cardModulesList.map((mod) => {
+            const Icon = mod.icon
+            const isActive = activeTab === mod.id
+            return (
+              <motion.button
+                type="button"
+                key={mod.id}
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                onClick={() => handleCardClick(mod)}
+                role="tab"
+                aria-selected={isActive}
+                className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all text-center group cursor-pointer ${
+                  isActive
+                    ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/60 shadow-md ring-2 ring-emerald-600/30'
+                    : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md'
+                }`}
+              >
+                <div className={`p-2.5 rounded-xl border ${mod.tone || 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/60'} mb-2 shrink-0 group-hover:scale-110 transition ${isActive ? 'ring-2 ring-emerald-500/40' : ''}`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className={`font-bold text-[11px] leading-tight transition-colors ${
+                  isActive ? 'text-emerald-900 dark:text-emerald-200 font-black' : 'text-slate-700 dark:text-slate-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400'
+                }`}>
+                  {mod.title}
+                </span>
+                {mod.badge && (
+                  <span className={`mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-extrabold ${mod.badgeColor || 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'}`}>
+                    {mod.badge}
                   </span>
-                </button>
-              )
-            })}
-          </div>
+                )}
+              </motion.button>
+            )
+          })}
         </div>
       </section>
 
@@ -3912,6 +3906,6 @@ export default function TeacherTeachingWorkspacePage() {
       >
         <TeacherTeachingSessionPanel onNotify={addToast} isModal={true} />
       </AppModal>
-    </MasterDataPage>
+    </PageContainer>
   )
 }

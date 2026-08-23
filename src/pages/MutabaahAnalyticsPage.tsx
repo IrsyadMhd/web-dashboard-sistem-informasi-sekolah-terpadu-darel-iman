@@ -66,7 +66,9 @@ import {
 import Swal from 'sweetalert2'
 import { mutabaahService } from '../services/mutabaahService'
 import { useAuthStore } from '../stores/authStore'
+import { isTeacherRole } from '../auth/portalResolver'
 import MutabaahSubNav from '../components/mutabaah/MutabaahSubNav'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { Download1, Upload1 } from '@tailgrids/icons'
 import {
   MasterDataPage,
@@ -118,6 +120,10 @@ const worshipItemsList = [
 
 export default function MutabaahAnalyticsPage({ view }: { view: View }) {
   const user = useAuthStore((state) => state.user)
+  const userRoles = useMemo(() => user?.roles || (user?.role ? [user.role] : []), [user])
+  const isTeacher = useMemo(() => isTeacherRole(userRoles), [userRoles])
+  const teacherUnitId = user?.education_unit_id || user?.education_unit?.id || user?.employee?.education_unit_id || user?.unit_id || ''
+  const teacherUnitName = user?.education_unit_name || user?.education_unit?.name || user?.unit_name || user?.unit || ''
   const [filters, setFilters] = useState<Filters>({ date_from: firstDay, date_to: today, page: 1, per_page: 15 })
   const [students, setStudents] = useState(initialStudents)
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([])
@@ -152,54 +158,49 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
 
   const handlePrintClean = () => {
     setPrintOptionModalOpen(false)
+    const headers = isTeacher
+      ? ['Santri', 'NIS', 'Kelas', 'Progress Hari Ini', 'Progress Pekan Ini', 'Status']
+      : ['Santri', 'NIS', 'Kelas', 'Asrama', 'Musyrif', 'Progress Hari Ini', 'Progress Pekan Ini', 'Status']
+    const rows = students.map((st) =>
+      isTeacher
+        ? [st.name, st.nis, st.class, `${st.progressToday}%`, `${st.progressWeek}%`, st.status]
+        : [st.name, st.nis, st.class, st.dorm, st.supervisor, `${st.progressToday}%`, `${st.progressWeek}%`, st.status]
+    )
     printCleanTable({
       title: 'Laporan Data Mutabaah Santri',
       subtitle: `Periode: ${filters.date_from || 'Semua'} s.d ${filters.date_to || 'Semua'}`,
-      headers: ['Santri', 'NIS', 'Kelas', 'Asrama', 'Musyrif', 'Progress Hari Ini', 'Progress Pekan Ini', 'Status'],
-      rows: students.map((st) => [
-        st.name,
-        st.nis,
-        st.class,
-        st.dorm,
-        st.supervisor,
-        `${st.progressToday}%`,
-        `${st.progressWeek}%`,
-        st.status,
-      ]),
+      headers,
+      rows,
     })
   }
 
   const handleDownloadPdfTable = () => {
     setPrintOptionModalOpen(false)
+    const headers = isTeacher
+      ? ['Santri', 'NIS', 'Kelas', 'Progress Hari Ini', 'Progress Pekan Ini', 'Status']
+      : ['Santri', 'NIS', 'Kelas', 'Asrama', 'Musyrif', 'Progress Hari Ini', 'Progress Pekan Ini', 'Status']
+    const rows = students.map((st) =>
+      isTeacher
+        ? [st.name, st.nis, st.class, `${st.progressToday}%`, `${st.progressWeek}%`, st.status]
+        : [st.name, st.nis, st.class, st.dorm, st.supervisor, `${st.progressToday}%`, `${st.progressWeek}%`, st.status]
+    )
     downloadPdfTable({
       title: 'Laporan Data Mutabaah Santri',
       subtitle: `Periode: ${filters.date_from || 'Semua'} s.d ${filters.date_to || 'Semua'}`,
-      headers: ['Santri', 'NIS', 'Kelas', 'Asrama', 'Musyrif', 'Progress Hari Ini', 'Progress Pekan Ini', 'Status'],
-      rows: students.map((st) => [
-        st.name,
-        st.nis,
-        st.class,
-        st.dorm,
-        st.supervisor,
-        `${st.progressToday}%`,
-        `${st.progressWeek}%`,
-        st.status,
-      ]),
+      headers,
+      rows,
     })
   }
 
   const handleExportCsv = () => {
-    const headers = ['Nama Santri', 'NIS', 'Kelas', 'Asrama', 'Musyrif', 'Progress Hari Ini (%)', 'Progress Pekan Ini (%)', 'Status']
-    const rows = students.map((st) => [
-      st.name,
-      st.nis,
-      st.class,
-      st.dorm,
-      st.supervisor,
-      st.progressToday,
-      st.progressWeek,
-      st.status,
-    ])
+    const headers = isTeacher
+      ? ['Nama Santri', 'NIS', 'Kelas', 'Progress Hari Ini (%)', 'Progress Pekan Ini (%)', 'Status']
+      : ['Nama Santri', 'NIS', 'Kelas', 'Asrama', 'Musyrif', 'Progress Hari Ini (%)', 'Progress Pekan Ini (%)', 'Status']
+    const rows = students.map((st) =>
+      isTeacher
+        ? [st.name, st.nis, st.class, st.progressToday, st.progressWeek, st.status]
+        : [st.name, st.nis, st.class, st.dorm, st.supervisor, st.progressToday, st.progressWeek, st.status]
+    )
     const csvContent = [
       headers.join(','),
       ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
@@ -314,6 +315,37 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
     queryFn: mutabaahService.enterpriseOptions,
     staleTime: 300_000,
   })
+
+  const classList = useMemo(() => {
+    if (Array.isArray(options.data?.classes) && options.data.classes.length > 0) return options.data.classes
+    if (Array.isArray(options.data?.kelas) && options.data.kelas.length > 0) return options.data.kelas
+    if (Array.isArray(options.data?.rombel) && options.data.rombel.length > 0) return options.data.rombel
+    return ['VII-A', 'VII-B', 'VIII-A', 'VIII-B', 'IX-A', 'IX-B', 'X-A', 'X-B', 'XI-A', 'XI-B', 'XII-A', 'XII-B']
+  }, [options.data])
+
+  const dormList = useMemo(() => {
+    if (Array.isArray(options.data?.dorms) && options.data.dorms.length > 0) return options.data.dorms
+    return [
+      { id: '1', name: 'Asrama Al-Ghazali' },
+      { id: '2', name: 'Asrama Fatimah' },
+      { id: '3', name: 'Asrama Ibn Sina' },
+    ]
+  }, [options.data])
+
+  useEffect(() => {
+    if (isTeacher) {
+      const unitsList = options.data?.units || []
+      const matchedUnit = unitsList.find((u: any) =>
+        u.id === teacherUnitId ||
+        String(u.id) === String(teacherUnitId) ||
+        (teacherUnitName && String(u.name || '').toLowerCase().includes(String(teacherUnitName).toLowerCase()))
+      )
+      const targetUnitId = matchedUnit ? matchedUnit.id : teacherUnitId || (unitsList[0]?.id ?? '')
+      if (targetUnitId && filters.education_unit_id !== targetUnitId) {
+        setFilters((prev) => ({ ...prev, education_unit_id: targetUnitId }))
+      }
+    }
+  }, [isTeacher, teacherUnitId, teacherUnitName, options.data?.units])
 
   const analytics = useQuery({
     queryKey: ['mutabaah-analytics', view, filters],
@@ -441,6 +473,24 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
 
   return (
     <MasterDataPage className="education-unit-page mutabaah-page" hideBreadcrumb>
+      {/* 🧭 BREADCRUMB HEADER */}
+      <div className="mb-4 flex items-center justify-between">
+        <AppBreadcrumb
+          items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Mutaba’ah Yaumiyyah', href: '/dashboard/mutabaah' },
+            {
+              label:
+                view === 'rekap'
+                  ? 'Laporan Rekap Mutaba’ah'
+                  : view === 'evaluasi'
+                  ? 'Evaluasi Target Mutaba’ah'
+                  : 'Dashboard Monitoring Mutaba’ah',
+            },
+          ]}
+        />
+      </div>
+
       {/* 📊 KPI CARDS GRID */}
       <MasterStatsGrid>
         <MasterStatCard icon={Users} label="Total Santri Aktif" value={view === 'rekap' ? (recapData?.total || students.length) : (analytics.data?.kpis?.total_students || 0)} description="Sesuai data master siswa" variant="info" delay={40} />
@@ -825,32 +875,57 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
                 {(options.data?.units || []).map((unit: any) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
               </select>
             </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Asrama</label>
-              <select
-                value={filters.dorm_id || ''}
-                onChange={(e) => update('dorm_id', e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="">Semua Asrama</option>
-                <option value="1">Asrama Al-Ghazali</option>
-                <option value="2">Asrama Fatimah</option>
-                <option value="3">Asrama Ibn Sina</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Musyrif</label>
-              <select
-                value={filters.supervisor_id || ''}
-                onChange={(e) => update('supervisor_id', e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                <option value="">Semua Musyrif</option>
-                <option value="1">Ust. Ahmad Fadli</option>
-                <option value="2">Ustadzah Maryam</option>
-                <option value="3">Ust. Zulkifli</option>
-              </select>
-            </div>
+            {isTeacher ? (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Kelas</label>
+                <select
+                  value={filters.class_id || filters.kelas_id || ''}
+                  onChange={(e) => {
+                    update('class_id', e.target.value)
+                    update('kelas_id', e.target.value)
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">Semua Kelas</option>
+                  {(classList || []).map((cls: any) => {
+                    const val = typeof cls === 'string' ? cls : cls.id
+                    const label = typeof cls === 'string' ? cls : cls.name || cls.nama_kelas || cls.id
+                    return <option key={val} value={val}>{label}</option>
+                  })}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Asrama</label>
+                <select
+                  value={filters.dorm_id || ''}
+                  onChange={(e) => update('dorm_id', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">Semua Asrama</option>
+                  {(dormList || []).map((dorm: any) => {
+                    const val = typeof dorm === 'string' ? dorm : dorm.id
+                    const label = typeof dorm === 'string' ? dorm : dorm.name || dorm.id
+                    return <option key={val} value={val}>{label}</option>
+                  })}
+                </select>
+              </div>
+            )}
+            {!isTeacher && (
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Musyrif</label>
+                <select
+                  value={filters.supervisor_id || ''}
+                  onChange={(e) => update('supervisor_id', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">Semua Musyrif</option>
+                  <option value="1">Ust. Ahmad Fadli</option>
+                  <option value="2">Ustadzah Maryam</option>
+                  <option value="3">Ust. Zulkifli</option>
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Pencarian</label>
               <input
@@ -900,8 +975,8 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
                   />
                 </th>}
                 <th className="px-3 py-3">Santri</th>
-                <th className="px-3 py-3">Kelas & Asrama</th>
-                <th className="px-3 py-3">Musyrif</th>
+                <th className="px-3 py-3">{isTeacher ? 'Kelas' : 'Kelas & Asrama'}</th>
+                {!isTeacher && <th className="px-3 py-3">Musyrif</th>}
                 <th className="px-3 py-3">Progress Hari Ini</th>
                 <th className="px-3 py-3">Progress Pekan Ini</th>
                 <th className="px-3 py-3">Status</th>
@@ -911,7 +986,7 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={view !== 'rekap' ? 8 : 7} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={view !== 'rekap' ? (isTeacher ? 7 : 8) : (isTeacher ? 6 : 7)} className="px-4 py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Users className="size-8 text-slate-300 dark:text-slate-600" />
                       <p className="text-xs font-semibold">Tidak ada data Mutabaah Santri yang ditemukan</p>
@@ -949,11 +1024,13 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
                     </td>
                     <td className="px-3 py-3">
                       <p className="font-semibold text-slate-800 dark:text-slate-200">{st.class}</p>
-                      <p className="text-[10px] text-slate-400">{st.dorm}</p>
+                      {!isTeacher && <p className="text-[10px] text-slate-400">{st.dorm}</p>}
                     </td>
-                    <td className="px-3 py-3 font-semibold text-slate-700 dark:text-slate-300">
-                      {st.supervisor}
-                    </td>
+                    {!isTeacher && (
+                      <td className="px-3 py-3 font-semibold text-slate-700 dark:text-slate-300">
+                        {st.supervisor}
+                      </td>
+                    )}
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-24 rounded-full bg-slate-100 dark:bg-slate-700">
@@ -1285,7 +1362,7 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
                     {selectedStudent?.name}
                   </DialogTitle>
                   <DialogDescription className="text-xs text-slate-400">
-                    NIS: {selectedStudent?.nis} • Kelas: {selectedStudent?.class} • Asrama: {selectedStudent?.dorm}
+                    NIS: {selectedStudent?.nis} • Kelas: {selectedStudent?.class} {!isTeacher && selectedStudent?.dorm && `• Asrama: ${selectedStudent.dorm}`}
                   </DialogDescription>
                 </div>
               </div>
@@ -1294,10 +1371,12 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
 
             <DialogBody className="space-y-3 py-4 text-xs">
               <div className="grid grid-cols-2 gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/40">
-                <div>
-                  <p className="text-slate-400">Musyrif Pembimbing:</p>
-                  <p className="font-bold text-slate-800 dark:text-slate-200">{selectedStudent?.supervisor || '-'}</p>
-                </div>
+                {!isTeacher && (
+                  <div>
+                    <p className="text-slate-400">Musyrif Pembimbing:</p>
+                    <p className="font-bold text-slate-800 dark:text-slate-200">{selectedStudent?.supervisor || '-'}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-slate-400">Status Mutabaah:</p>
                   <p className="font-bold text-slate-800 dark:text-slate-200">{selectedStudent?.status || '-'}</p>

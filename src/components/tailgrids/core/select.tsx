@@ -135,12 +135,17 @@ export function Select<T extends object>({
     );
   }
 
+  const handleSelectionChange = (key: Key) => {
+    props.onChange?.(key);
+    (props as any).onValueChange?.(key);
+  };
+
   return (
     <AriaSelect
       {...(props as any)}
       className={cn("group flex w-full flex-col gap-2", className)}
       selectedKey={props.value as Key}
-      onSelectionChange={props.onChange}
+      onSelectionChange={handleSelectionChange}
     >
       {children}
     </AriaSelect>

@@ -112,6 +112,13 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
   const tabs = ['Semua', 'Siswa', 'Guru', 'Pegawai', 'Mapel', 'Unit', 'Kelas', 'Portal', 'Laporan']
 
   const filtered = SYSTEM_INDEX.filter((item) => {
+    if (item.link?.includes('/unit-pendidikan') || item.link?.includes('/master-jenis-unit')) {
+      const isDenied = roles.some((r) => [
+        'kepalasekolah', 'kepsek', 'divisipendidikan', 'divisi_pendidikan', 'kepalabidangpendidikan'
+      ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, '')))
+      const isSuperAdmin = roles.some((r) => String(r).toLowerCase().replace(/[\s_-]+/g, '').includes('superadmin'))
+      if (isDenied && !isSuperAdmin) return false
+    }
     if (item.link?.includes('/akademik/nilai-rapor') || item.link?.includes('/lms/penilaian') || item.link?.includes('/lms/rapor')) {
       const isDenied = roles.some((r) => [
         'yayasan', 'ketuayayasan', 'pengurusyayasan', 'sekretarisyayasan', 'bendaharayayasan',
@@ -127,6 +134,15 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, '')))
       const isSuperAdmin = roles.some((r) => String(r).toLowerCase().replace(/[\s_-]+/g, '').includes('superadmin'))
       if (isDenied && !isSuperAdmin) return false
+    }
+    if (item.link?.includes('/absensi-gerbang')) {
+      const isTeacherOnly = roles.some((r) => [
+        'guru', 'gurumatapelajaran', 'gurutahfizh', 'gurubk', 'walikelas', 'musyrif', 'musyrifah'
+      ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, ''))) &&
+      !roles.some((r) => [
+        'superadmin', 'admin', 'tatausaha', 'tu', 'operator', 'kepalasekolah', 'kepsek', 'divisipendidikan'
+      ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, '')))
+      if (isTeacherOnly) return false
     }
     const matchesTab = activeTab === 'Semua' || item.type === activeTab
     const q = query.toLowerCase().trim()
