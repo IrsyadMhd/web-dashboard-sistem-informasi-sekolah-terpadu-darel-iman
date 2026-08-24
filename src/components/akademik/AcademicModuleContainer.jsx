@@ -14,9 +14,9 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
     return { ...tab, to: `${location.pathname}?${params.toString()}` }
   }), [location.pathname, searchParams, tabs])
 
-  const renderNav = () => (
-    <nav aria-label={`Tab ${title}`} className="rounded-[18px] border border-slate-200/80 bg-white p-2 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-      <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+  const renderNav = (extraActions = null) => (
+    <nav aria-label={`Tab ${title}`} className="rounded-[18px] border border-slate-200/80 bg-white p-2 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] flex flex-col sm:flex-row sm:items-center justify-between gap-2 overflow-hidden">
+      <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none flex-1">
         {tabLinks.map((tab) => {
           const Icon = tab.icon
           const isSelected = activeTab === tab.key
@@ -54,6 +54,11 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
           )
         })}
       </div>
+      {extraActions && (
+        <div className="flex flex-wrap items-center gap-2 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+          {extraActions}
+        </div>
+      )}
     </nav>
   )
 
@@ -95,7 +100,7 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
 
       <motion.div variants={itemVariants} className="academic-module-content">
         {tabsBelowKpi && React.isValidElement(children)
-          ? React.cloneElement(children, { tabNav: tabNavElement })
+          ? React.cloneElement(children, { tabNav: renderNav })
           : children}
       </motion.div>
     </motion.section>

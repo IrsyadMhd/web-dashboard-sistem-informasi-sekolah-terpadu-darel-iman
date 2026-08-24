@@ -7,11 +7,13 @@ import {
   Monitor,
   Activity,
   Grid,
-  CheckCircle2,
+  KeyRound,
 } from 'lucide-react'
 
-import { AppPageHeader } from '../components/app'
+import { AppPageHeader, PageContainer } from '@/components/app'
 import { useAuthStore } from '../stores/authStore'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/tailgrids/core/alert'
 
 import UserProfileCard from '../components/auth/UserProfileCard'
 import ChangePasswordCard from '../components/auth/ChangePasswordCard'
@@ -21,7 +23,6 @@ import SessionLoginCard from '../components/auth/SessionLoginCard'
 import ActivityLoginCard from '../components/auth/ActivityLoginCard'
 import SelectUnitCard from '../components/auth/SelectUnitCard'
 import SelectAcademicYearCard from '../components/auth/SelectAcademicYearCard'
-import { KeyRound } from 'lucide-react'
 
 const VALID_TABS = ['profil', 'ganti-password', 'password-anak', '2fa', 'session-login', 'activity-login', 'unit-tahun']
 
@@ -68,7 +69,7 @@ export default function UserProfileManagementPage() {
   ]
 
   return (
-    <div className="space-y-6 pb-12">
+    <PageContainer className="space-y-6 pb-12">
       {/* Master Canonical Page Header */}
       <AppPageHeader
         variant="brand"
@@ -88,8 +89,8 @@ export default function UserProfileManagementPage() {
         }
       />
 
-      {/* Tabs Bar */}
-      <div className="bg-white p-2 rounded-[18px] border border-slate-200/80 shadow-sm overflow-x-auto flex gap-1.5 dark:border-slate-800 dark:bg-[#1B2433]">
+      {/* Tabs Bar Container */}
+      <div className="bg-white p-2 rounded-[18px] border border-slate-200/80 shadow-xs overflow-x-auto flex gap-1.5 dark:border-slate-800 dark:bg-[#1B2433]">
         {tabs.map((tab) => {
           const IconComp = tab.icon
           const isActive = activeTab === tab.id
@@ -106,9 +107,9 @@ export default function UserProfileManagementPage() {
               <IconComp className={`w-4 h-4 ${isActive ? 'text-emerald-200 dark:text-slate-900' : 'text-slate-400'}`} />
               <span>{tab.label}</span>
               {tab.restricted && (
-                <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-semibold border border-amber-300">
+                <Badge color="warning" size="sm" className="py-0 px-1.5 text-[10px]">
                   🔒 Terkunci
-                </span>
+                </Badge>
               )}
             </button>
           )
@@ -126,23 +127,24 @@ export default function UserProfileManagementPage() {
         {activeTab === 'unit-tahun' && (
           <div className="space-y-6">
             {!canEditUnitAndRole && (
-              <div className="bg-amber-50/90 border border-amber-200/90 text-amber-900 rounded-2xl p-5 shadow-xs flex items-start gap-4">
-                <div className="p-2.5 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
+              <Alert status="warning" className="rounded-[18px]">
+                <AlertIndicator>
                   <Lock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-amber-900">Akses Terbatas: Pemilihan Unit Pendidikan & Tahun Ajaran</h3>
-                  <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                </AlertIndicator>
+                <AlertContent>
+                  <AlertTitle>Akses Terbatas: Pemilihan Unit Pendidikan & Tahun Ajaran</AlertTitle>
+                  <AlertDescription>
                     Fitur pergantian Unit Pendidikan & Tahun Ajaran aktif <strong>terkunci</strong> dan tidak dapat diubah oleh role Anda. Akses ini hanya diberikan kepada <strong>Super Admin, Admin, Pengurus Yayasan, Kepala Sekolah, dan Divisi Pendidikan</strong>.
-                  </p>
-                </div>
-              </div>
+                  </AlertDescription>
+                </AlertContent>
+              </Alert>
             )}
             <SelectUnitCard disabled={!canEditUnitAndRole} />
             <SelectAcademicYearCard disabled={!canEditUnitAndRole} />
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   )
 }
+

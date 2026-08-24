@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck, CheckCircle2 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { familyPortalService } from '../../services/familyPortalService'
+import { Button } from '@/components/tailgrids/core/button'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
+import { Card } from '@/components/tailgrids/core/card'
 
 export default function ChildPasswordManagementCard() {
   const [children, setChildren] = useState([])
@@ -92,133 +96,139 @@ export default function ChildPasswordManagementCard() {
 
   if (loadingChildren) {
     return (
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-8 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
+      <Card className="rounded-[18px] border border-slate-200/80 bg-white p-8 text-center shadow-xs dark:border-slate-800 dark:bg-slate-900">
         <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
         <p className="mt-3 text-xs font-semibold text-slate-500">Memuat data anak...</p>
-      </div>
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-[18px] border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5 dark:border-slate-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                <KeyRound className="h-5 w-5" />
-              </span>
-              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Pengaturan Password Login Anak</h2>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Tentukan atau reset password yang digunakan anak Anda untuk login ke Portal Siswa.
-            </p>
+    <Card className="rounded-[18px] border border-slate-200/80 bg-white p-6 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              <KeyRound className="h-5 w-5" />
+            </span>
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Pengaturan Password Login Anak</h2>
           </div>
-
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-            Akses Orang Tua Active
-          </span>
+          <p className="mt-1 text-xs text-slate-500">
+            Tentukan atau reset password yang digunakan anak Anda untuk login ke Portal Siswa.
+          </p>
         </div>
 
-        {successMessage && (
-          <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300">
-            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-            <span>{successMessage}</span>
+        <Badge color="emerald" size="md">
+          Akses Orang Tua Active
+        </Badge>
+      </div>
+
+      {successMessage && (
+        <Alert status="success" className="mt-4 rounded-xl">
+          <AlertIndicator>
+            <CheckCircle2 className="h-5 w-5" />
+          </AlertIndicator>
+          <AlertContent>
+            <AlertDescription>{successMessage}</AlertDescription>
+          </AlertContent>
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit} className="mt-6 max-w-2xl space-y-5">
+        {/* Child Selector */}
+        <div>
+          <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Pilih Anak</label>
+          {children.length > 0 ? (
+            <select
+              value={selectedChildId}
+              onChange={(e) => setSelectedChildId(e.target.value)}
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-xs font-bold outline-none focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            >
+              {children.map((child) => (
+                <option key={child.id} value={child.id}>
+                  {child.full_name || child.nama_lengkap} — {child.kelas?.nama_kelas || child.unit_name || 'Sekolah'} (NIS: {child.nis || '-'})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+              Belum ada data anak terhubung.
+            </p>
+          )}
+        </div>
+
+        {selectedChild && (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-200 font-black text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                {(selectedChild.full_name || 'A')[0]}
+              </span>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  {selectedChild.full_name || selectedChild.nama_lengkap}
+                </h3>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {selectedChild.unit_name || 'Sekolah Terpadu'} · Kelas {selectedChild.kelas?.nama_kelas || '-'}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 border-t border-emerald-200/60 pt-3 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">
+              <span>Username/Identifier Login: <b>{selectedChild.nis || selectedChild.nisn || selectedChild.full_name}</b></span>
+              <span>Role Login: <b>Siswa</b></span>
+            </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 max-w-2xl space-y-5">
-          {/* Child Selector */}
+        {/* New Password & Confirmation */}
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Pilih Anak</label>
-            {children.length > 0 ? (
-              <select
-                value={selectedChildId}
-                onChange={(e) => setSelectedChildId(e.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-xs font-bold outline-none focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              >
-                {children.map((child) => (
-                  <option key={child.id} value={child.id}>
-                    {child.full_name || child.nama_lengkap} — {child.kelas?.nama_kelas || child.unit_name || 'Sekolah'} (NIS: {child.nis || '-'})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-                Belum ada data anak terhubung.
-              </p>
-            )}
-          </div>
-
-          {selectedChild && (
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-200 font-black text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                  {(selectedChild.full_name || 'A')[0]}
-                </span>
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                    {selectedChild.full_name || selectedChild.nama_lengkap}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    {selectedChild.unit_name || 'Sekolah Terpadu'} · Kelas {selectedChild.kelas?.nama_kelas || '-'}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-emerald-200/60 pt-3 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                <span>Username/Identifier Login: <b>{selectedChild.nis || selectedChild.nisn || selectedChild.full_name}</b></span>
-                <span>Role Login: <b>Siswa</b></span>
-              </div>
-            </div>
-          )}
-
-          {/* New Password & Confirmation */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Password Baru Anak</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Minimal 6 karakter..."
-                  required
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                  aria-label="Toggle password visibility"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Konfirmasi Password Baru</label>
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Password Baru Anak</label>
+            <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
-                value={form.confirmPassword}
-                onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                placeholder="Ulangi password baru..."
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Minimal 6 karakter..."
                 required
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                aria-label="Toggle password visibility"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting || !selectedChildId}
-            className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#0E5C44] px-6 text-xs font-bold text-white shadow-md shadow-[#0E5C44]/20 transition hover:bg-[#157255] disabled:opacity-50 dark:bg-[#3FBF75] dark:text-slate-900"
-          >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            {submitting ? 'Menyimpan...' : 'Simpan Password Login Anak'}
-          </button>
-        </form>
-      </div>
-    </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Konfirmasi Password Baru</label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={form.confirmPassword}
+              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+              placeholder="Ulangi password baru..."
+              required
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          pending={submitting}
+          disabled={submitting || !selectedChildId}
+          className="flex items-center justify-center gap-2"
+        >
+          {!submitting && <ShieldCheck className="h-4 w-4" />}
+          <span>{submitting ? 'Menyimpan...' : 'Simpan Password Login Anak'}</span>
+        </Button>
+      </form>
+    </Card>
   )
 }
+

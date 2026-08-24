@@ -232,6 +232,8 @@ const CONTAINERS = {
   'nilai-rapor': {
     title: 'Nilai & Rapor',
     description: 'Buku nilai, rekap, rapor digital, dan keluaran PDF tersedia dalam satu area.',
+    hideHeaderCard: true,
+    tabsBelowKpi: true,
     tabs: [
       {
         key: 'buku-nilai',

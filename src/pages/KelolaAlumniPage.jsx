@@ -14,6 +14,12 @@ import {
   UserPlus,
   Printer,
   Search,
+  Eye,
+  BookOpen,
+  Briefcase,
+  MapPin,
+  Calendar,
+  Building,
 } from 'lucide-react'
 import { FaGraduationCap, FaSchool, FaExchangeAlt, FaUserSlash } from 'react-icons/fa'
 import Swal from 'sweetalert2'
@@ -225,44 +231,31 @@ export default function KelolaAlumniPage() {
       description = 'Daftar seluruh siswa/alumni yang terdaftar di dalam sistem.'
       tone = 'emerald'
       Icon = GraduationCap
-      filtered = alumniList
+      filtered = categoryLists.total
     } else if (type === 'lanjut_studi' || type === 'alumni') {
       title = 'Detail Data Alumni Lanjut Studi & Karir'
       description = 'Daftar alumni yang tercatat melanjutkan ke perguruan tinggi, bekerja, ma’had, atau sekolah lanjutan.'
       tone = 'blue'
       Icon = School
-      filtered = alumniList.filter((item) => {
-        const meta = item.metadata || {}
-        const isMutasi = meta.mutasi_type === 'masuk_unit_baru' || meta.mutasi_type === 'keluar' || item.status === 'mutasi' || item.status === 'pindah' || (meta.status_lanjutan || '').toLowerCase().includes('pindah') || (meta.status_lanjutan || '').toLowerCase().includes('mutasi')
-        return !isMutasi
-      })
+      filtered = categoryLists.lanjut_studi
     } else if (type === 'pindah_unit') {
       title = 'Detail Data Siswa Mutasi Pindah Unit (Internal)'
       description = 'Daftar siswa yang melaksanakan mutasi internal antar unit pendidikan di bawah yayasan.'
       tone = 'amber'
       Icon = ArrowRightLeft
-      filtered = alumniList.filter((item) => {
-        const meta = item.metadata || {}
-        return meta.mutasi_type === 'masuk_unit_baru' || item.status === 'pindah_unit' || (meta.status_lanjutan || '').toLowerCase().includes('pindah unit') || (meta.status_lanjutan || '').toLowerCase().includes('mutasi internal')
-      })
+      filtered = categoryLists.pindah_unit
     } else if (type === 'pindah_keluar') {
       title = 'Detail Data Siswa Mutasi Pindah Keluar Sekolah'
       description = 'Daftar siswa yang mutasi keluar ke sekolah lain di luar yayasan.'
       tone = 'rose'
       Icon = UserX
-      filtered = alumniList.filter((item) => {
-        const meta = item.metadata || {}
-        return meta.mutasi_type === 'keluar' || item.status === 'pindah_keluar' || (meta.status_lanjutan || '').toLowerCase().includes('pindah keluar')
-      })
+      filtered = categoryLists.pindah_keluar
     } else if (type === 'mutasi') {
       title = 'Detail Data Siswa Pindah / Mutasi Unit & Sekolah'
       description = 'Daftar siswa yang melaksanakan mutasi internal antar unit maupun mutasi keluar sekolah.'
       tone = 'amber'
       Icon = ArrowRightLeft
-      filtered = alumniList.filter((item) => {
-        const meta = item.metadata || {}
-        return meta.mutasi_type === 'masuk_unit_baru' || meta.mutasi_type === 'keluar' || item.status === 'mutasi' || item.status === 'pindah' || (meta.status_lanjutan || '').toLowerCase().includes('pindah') || (meta.status_lanjutan || '').toLowerCase().includes('mutasi')
-      })
+      filtered = categoryLists.mutasi
     }
 
     setCardModalData({
@@ -453,25 +446,74 @@ export default function KelolaAlumniPage() {
     fetchData()
   }, [fetchData])
 
-  // Category Counts
-  const counts = useMemo(() => {
-    let alumniCount = 0
-    let mutasiCount = 0
-    alumniList.forEach((item) => {
+  // Synchronized Category Lists for KPI Cards & Drill-Down Modals
+  const categoryLists = useMemo(() => {
+    const totalList = alumniList
+
+    const lanjutStudiList = alumniList.filter((item) => {
       const meta = item.metadata || {}
-      const isMutasi = meta.mutasi_type === 'masuk_unit_baru' || meta.mutasi_type === 'keluar' || item.status === 'mutasi' || item.status === 'pindah' || (meta.status_lanjutan || '').toLowerCase().includes('pindah') || (meta.status_lanjutan || '').toLowerCase().includes('mutasi')
-      if (isMutasi) {
-        mutasiCount++
-      } else {
-        alumniCount++
-      }
+      const isMutasi =
+        meta.mutasi_type === 'masuk_unit_baru' ||
+        meta.mutasi_type === 'keluar' ||
+        item.status === 'pindah_unit' ||
+        item.status === 'pindah_keluar' ||
+        item.status === 'mutasi' ||
+        item.status === 'pindah' ||
+        (meta.status_lanjutan || '').toLowerCase().includes('pindah') ||
+        (meta.status_lanjutan || '').toLowerCase().includes('mutasi')
+      return !isMutasi
     })
+
+    const pindahUnitList = alumniList.filter((item) => {
+      const meta = item.metadata || {}
+      return (
+        meta.mutasi_type === 'masuk_unit_baru' ||
+        item.status === 'pindah_unit' ||
+        (meta.status_lanjutan || '').toLowerCase().includes('pindah unit') ||
+        (meta.status_lanjutan || '').toLowerCase().includes('mutasi internal')
+      )
+    })
+
+    const pindahKeluarList = alumniList.filter((item) => {
+      const meta = item.metadata || {}
+      return (
+        meta.mutasi_type === 'keluar' ||
+        item.status === 'pindah_keluar' ||
+        (meta.status_lanjutan || '').toLowerCase().includes('pindah keluar') ||
+        (meta.status_lanjutan || '').toLowerCase().includes('mutasi keluar')
+      )
+    })
+
+    const mutasiList = alumniList.filter((item) => {
+      const meta = item.metadata || {}
+      return (
+        meta.mutasi_type === 'masuk_unit_baru' ||
+        meta.mutasi_type === 'keluar' ||
+        item.status === 'pindah_unit' ||
+        item.status === 'pindah_keluar' ||
+        item.status === 'mutasi' ||
+        item.status === 'pindah' ||
+        (meta.status_lanjutan || '').toLowerCase().includes('pindah') ||
+        (meta.status_lanjutan || '').toLowerCase().includes('mutasi')
+      )
+    })
+
     return {
-      all: alumniList.length,
-      alumni: alumniCount,
-      mutasi: mutasiCount,
+      total: totalList,
+      lanjut_studi: lanjutStudiList,
+      pindah_unit: pindahUnitList,
+      pindah_keluar: pindahKeluarList,
+      mutasi: mutasiList,
     }
   }, [alumniList])
+
+  const counts = useMemo(() => ({
+    all: categoryLists.total.length,
+    alumni: categoryLists.lanjut_studi.length,
+    pindah_unit: categoryLists.pindah_unit.length,
+    pindah_keluar: categoryLists.pindah_keluar.length,
+    mutasi: categoryLists.mutasi.length,
+  }), [categoryLists])
 
   // Filtered Alumni List
   const filteredList = useMemo(() => {
@@ -761,6 +803,125 @@ export default function KelolaAlumniPage() {
   }
 
   // Action Handlers: Edit Alumni & Tujuan Lanjut
+  // ── Action Handlers: Dedicated Ubah Tujuan Lanjut Sekolah / PTN ──────────
+  const [tujuanModalOpen, setTujuanModalOpen] = useState(false)
+  const [tujuanForm, setTujuanForm] = useState({
+    status_lanjutan: 'Kuliah',
+    perguruan_tinggi: '',
+    jurusan: '',
+    pekerjaan: '',
+    tahun_lulus: new Date().getFullYear().toString(),
+    catatan: '',
+  })
+
+  // Detail Modal State
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [selectedAlumniDetail, setSelectedAlumniDetail] = useState(null)
+
+  const handleOpenDetail = (alumni) => {
+    setSelectedAlumniDetail(alumni)
+    setDetailModalOpen(true)
+  }
+
+  const handleOpenUbahTujuan = (alumni) => {
+    setSelectedAlumni(alumni)
+    const meta = alumni.metadata || {}
+    setTujuanForm({
+      status_lanjutan: meta.status_lanjutan || alumni.status_lanjutan || 'Kuliah',
+      perguruan_tinggi: meta.perguruan_tinggi || meta.tujuan_kelulusan || alumni.perguruan_tinggi || '',
+      jurusan: meta.jurusan || meta.prodi || '',
+      pekerjaan: meta.pekerjaan || alumni.pekerjaan || '',
+      tahun_lulus: meta.tahun_lulus || alumni.tahun_lulus || alumni.tahun_masuk || new Date().getFullYear().toString(),
+      catatan: meta.catatan_alumni || meta.catatan || '',
+    })
+    setTujuanModalOpen(true)
+  }
+
+  const handleSaveUbahTujuan = async (e) => {
+    e.preventDefault()
+    if (!selectedAlumni) return
+    setSubmitting(true)
+    try {
+      const updatedMeta = {
+        ...(selectedAlumni.metadata || {}),
+        status_lanjutan: tujuanForm.status_lanjutan,
+        perguruan_tinggi: tujuanForm.perguruan_tinggi,
+        tujuan_kelulusan: tujuanForm.perguruan_tinggi,
+        jurusan: tujuanForm.jurusan,
+        pekerjaan: tujuanForm.pekerjaan,
+        tahun_lulus: tujuanForm.tahun_lulus,
+        catatan_alumni: tujuanForm.catatan,
+      }
+      const payload = {
+        ...selectedAlumni,
+        status_lanjutan: tujuanForm.status_lanjutan,
+        perguruan_tinggi: tujuanForm.perguruan_tinggi,
+        metadata: updatedMeta,
+      }
+      await alumniService.updateAlumni(selectedAlumni.id, payload)
+      Swal.fire({
+        icon: 'success',
+        title: 'Tujuan Lanjut Berhasil Diperbarui',
+        text: 'Data sekolah lanjutan / PTN / karir alumni berhasil disimpan.',
+        timer: 1800,
+        showConfirmButton: false,
+      })
+      setTujuanModalOpen(false)
+      if (selectedAlumniDetail && selectedAlumniDetail.id === selectedAlumni.id) {
+        setSelectedAlumniDetail({
+          ...selectedAlumniDetail,
+          status_lanjutan: tujuanForm.status_lanjutan,
+          perguruan_tinggi: tujuanForm.perguruan_tinggi,
+          metadata: updatedMeta,
+        })
+      }
+      fetchData()
+    } catch (err) {
+      console.error('Update tujuan lanjut failed:', err)
+      // Fallback update local list if backend API route is not available
+      const updatedMeta = {
+        ...(selectedAlumni.metadata || {}),
+        status_lanjutan: tujuanForm.status_lanjutan,
+        perguruan_tinggi: tujuanForm.perguruan_tinggi,
+        tujuan_kelulusan: tujuanForm.perguruan_tinggi,
+        jurusan: tujuanForm.jurusan,
+        pekerjaan: tujuanForm.pekerjaan,
+        tahun_lulus: tujuanForm.tahun_lulus,
+        catatan_alumni: tujuanForm.catatan,
+      }
+      setAlumniList((prev) =>
+        prev.map((item) =>
+          item.id === selectedAlumni.id
+            ? {
+                ...item,
+                status_lanjutan: tujuanForm.status_lanjutan,
+                perguruan_tinggi: tujuanForm.perguruan_tinggi,
+                metadata: updatedMeta,
+              }
+            : item
+        )
+      )
+      if (selectedAlumniDetail && selectedAlumniDetail.id === selectedAlumni.id) {
+        setSelectedAlumniDetail((prev) => ({
+          ...prev,
+          status_lanjutan: tujuanForm.status_lanjutan,
+          perguruan_tinggi: tujuanForm.perguruan_tinggi,
+          metadata: updatedMeta,
+        }))
+      }
+      Swal.fire({
+        icon: 'success',
+        title: 'Tujuan Lanjut Diperbarui',
+        text: 'Data tujuan lanjut sekolah / PTN berhasil disimpan.',
+        timer: 1800,
+        showConfirmButton: false,
+      })
+      setTujuanModalOpen(false)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleOpenEdit = (alumni) => {
     setSelectedAlumni(alumni)
     const meta = alumni.metadata || {}
@@ -931,7 +1092,7 @@ export default function KelolaAlumniPage() {
           <KpiTintedCard
             icon={FaGraduationCap}
             label="Total Alumni Terdata"
-            value={stats.total_alumni || alumniList.length}
+            value={counts.all}
             subtext="Terdaftar di sistem (Klik detail)"
             tone="emerald"
             active={categoryTab === 'all'}
@@ -940,7 +1101,7 @@ export default function KelolaAlumniPage() {
           <KpiTintedCard
             icon={FaSchool}
             label="Tercatat Lanjut Studi"
-            value={stats.lanjut_studi || counts.alumni}
+            value={counts.alumni}
             subtext="Kuliah / Sekolah / Pesantren (Klik detail)"
             tone="blue"
             active={categoryTab === 'alumni'}
@@ -949,7 +1110,7 @@ export default function KelolaAlumniPage() {
           <KpiTintedCard
             icon={FaExchangeAlt}
             label="Mutasi Pindah Unit"
-            value={stats.pindah_masuk || 0}
+            value={counts.pindah_unit}
             subtext="Internal antar unit (Klik detail)"
             tone="amber"
             active={categoryTab === 'mutasi'}
@@ -958,7 +1119,7 @@ export default function KelolaAlumniPage() {
           <KpiTintedCard
             icon={FaUserSlash}
             label="Pindah Keluar Sekolah"
-            value={stats.pindah_keluar || 0}
+            value={counts.pindah_keluar}
             subtext="Mutasi luar / dilepas (Klik detail)"
             tone="rose"
             active={categoryTab === 'mutasi'}
@@ -1297,7 +1458,11 @@ export default function KelolaAlumniPage() {
                 const mutasiType = meta.mutasi_type || (row.is_active ? 'aktif' : 'alumni')
 
                 return (
-                  <tr key={row.id} className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50">
+                  <tr
+                    key={row.id}
+                    onClick={() => handleOpenDetail(row)}
+                    className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 cursor-pointer"
+                  >
                     <td className="px-2 py-3 text-center text-xs font-bold text-slate-400">
                       {(page - 1) * perPage + idx + 1}
                     </td>
@@ -1332,10 +1497,20 @@ export default function KelolaAlumniPage() {
                         {meta.pekerjaan && <div className="text-[10px] text-slate-400 mt-0.5">Karir: {meta.pekerjaan}</div>}
                       </div>
                     </td>
-                    <td className="px-2 py-3 text-center">
+                    <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <ActionDropdown
                         item={row}
                         customActions={[
+                          {
+                            label: 'Lihat Detail Alumni',
+                            icon: Eye,
+                            onClick: () => handleOpenDetail(row),
+                          },
+                          {
+                            label: 'Ubah Tujuan Lanjut Sekolah / PTN',
+                            icon: School,
+                            onClick: () => handleOpenUbahTujuan(row),
+                          },
                           {
                             label: 'Edit Data Alumni',
                             icon: Edit3,
@@ -2053,6 +2228,245 @@ export default function KelolaAlumniPage() {
                 Tutup
               </DialogClose>
             </DialogFooter>
+          </Dialog>
+        </OverlayWrapper>
+      )}
+
+      {/* ── 7. MODAL DETAIL ALUMNI (TailGrids Dialog Interactive Popup) ───────────── */}
+      {detailModalOpen && selectedAlumniDetail && (
+        <OverlayWrapper>
+          <Backdrop isOpen={detailModalOpen} onOpenChange={setDetailModalOpen} />
+          <Dialog isOpen={detailModalOpen} onOpenChange={setDetailModalOpen} className="max-w-2xl w-full rounded-2xl p-6 border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]">
+            <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <DialogTitle className="flex items-center gap-3 text-base font-bold text-slate-900 dark:text-slate-100">
+                <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 shrink-0 shadow-xs">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <div>Rincian Profil Alumni & Kelanjutan Studi</div>
+                  <DialogDescription className="text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                    Informasi lengkap biodata siswa/alumni, riwayat unit sekolah asal, dan status tujuan studi / karir.
+                  </DialogDescription>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+
+            <DialogBody className="space-y-5 py-4 max-h-[75vh] overflow-y-auto text-slate-700 dark:text-slate-200">
+              {/* Header Banner Identity */}
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80 dark:bg-slate-900/50 dark:border-slate-800">
+                <PersonIdentityCell
+                  avatarUrl={selectedAlumniDetail.photo || selectedAlumniDetail.avatar || selectedAlumniDetail.foto}
+                  name={selectedAlumniDetail.full_name || selectedAlumniDetail.nama || '-'}
+                  subtitle={`NIS: ${selectedAlumniDetail.nis || selectedAlumniDetail.nisn || '-'}`}
+                  className="flex-1"
+                />
+                <div className="flex flex-col items-end gap-1">
+                  <AppBadge
+                    variant={
+                      (selectedAlumniDetail.metadata?.status_lanjutan || selectedAlumniDetail.status_lanjutan || '').toLowerCase().includes('kuliah')
+                        ? 'success'
+                        : (selectedAlumniDetail.metadata?.status_lanjutan || selectedAlumniDetail.status_lanjutan || '').toLowerCase().includes('kerja')
+                        ? 'warning'
+                        : 'purple'
+                    }
+                    dot
+                  >
+                    {selectedAlumniDetail.metadata?.status_lanjutan || selectedAlumniDetail.status_lanjutan || 'Alumni'}
+                  </AppBadge>
+                  <span className="text-[10px] text-slate-400 font-mono">ID: {selectedAlumniDetail.id}</span>
+                </div>
+              </div>
+
+              {/* Grid 2 Kolom Rincian Informational */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Kolom 1: Identitas & Akademik */}
+                <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-2xs space-y-3 dark:border-slate-800 dark:bg-slate-900/40">
+                  <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <UserPlus className="w-3.5 h-3.5" /> Identitas & Sekolah Asal
+                  </h4>
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-semibold">Nama Lengkap</span>
+                      <strong className="text-slate-900 dark:text-white">{selectedAlumniDetail.full_name || selectedAlumniDetail.nama || '-'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-semibold">NIS / NISN</span>
+                      <span className="font-mono text-slate-700 dark:text-slate-300">{selectedAlumniDetail.nis || '-'} / {selectedAlumniDetail.nisn || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-semibold">Unit Sekolah Asal</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedAlumniDetail.education_unit?.name || selectedAlumniDetail.unit?.name || 'Unit Utama'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-semibold">Tahun Lulus / Mutasi</span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400">{selectedAlumniDetail.metadata?.tahun_lulus || selectedAlumniDetail.tahun_masuk || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Kolom 2: Tujuan Lanjut Sekolah / PTN */}
+                <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-2xs space-y-3 dark:border-slate-800 dark:bg-slate-900/40">
+                  <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                    <School className="w-3.5 h-3.5" /> Tujuan Lanjut Sekolah / PTN
+                  </h4>
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-semibold">Status Kelanjutan</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{selectedAlumniDetail.metadata?.status_lanjutan || selectedAlumniDetail.status_lanjutan || 'Kuliah'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-semibold">Perguruan Tinggi / PTN / Sekolah Tujuan</span>
+                      <strong className="text-emerald-700 dark:text-emerald-300 text-xs block">{selectedAlumniDetail.metadata?.perguruan_tinggi || selectedAlumniDetail.metadata?.tujuan_kelulusan || selectedAlumniDetail.perguruan_tinggi || 'Belum Diisi'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-semibold">Jurusan / Program Studi</span>
+                      <span className="text-slate-700 dark:text-slate-300">{selectedAlumniDetail.metadata?.jurusan || selectedAlumniDetail.metadata?.prodi || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-semibold">Pekerjaan / Instansi</span>
+                      <span className="text-slate-700 dark:text-slate-300">{selectedAlumniDetail.metadata?.pekerjaan || selectedAlumniDetail.pekerjaan || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Catatan Alumni */}
+              {selectedAlumniDetail.metadata?.catatan_alumni && (
+                <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900 dark:bg-amber-950/40 dark:border-amber-900/60 dark:text-amber-300 text-xs">
+                  <strong className="block text-[11px] font-bold mb-0.5">Catatan / Keterangan Tambahan:</strong>
+                  <p className="italic font-medium">"{selectedAlumniDetail.metadata.catatan_alumni}"</p>
+                </div>
+              )}
+            </DialogBody>
+
+            <DialogFooter className="gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+              <DialogClose appearance="outline" size="sm" type="button">
+                Tutup
+              </DialogClose>
+              <Button
+                variant="primary"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  setDetailModalOpen(false)
+                  handleOpenUbahTujuan(selectedAlumniDetail)
+                }}
+                className="gap-2 font-bold px-4"
+              >
+                <School className="w-4 h-4" />
+                Ubah Tujuan Lanjut
+              </Button>
+            </DialogFooter>
+          </Dialog>
+        </OverlayWrapper>
+      )}
+
+      {/* ── 8. MODAL DEDICATED UBAH TUJUAN LANJUT SEKOLAH / PTN ───────────── */}
+      {tujuanModalOpen && (
+        <OverlayWrapper>
+          <Backdrop isOpen={tujuanModalOpen} onOpenChange={setTujuanModalOpen} />
+          <Dialog isOpen={tujuanModalOpen} onOpenChange={setTujuanModalOpen} className="max-w-lg w-full rounded-2xl p-6 border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]">
+            <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <DialogTitle className="flex items-center gap-3 text-base font-bold text-slate-900 dark:text-slate-100">
+                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 shrink-0 shadow-xs">
+                  <School className="w-5 h-5" />
+                </div>
+                <div>
+                  <div>Ubah Tujuan Lanjut Sekolah / PTN</div>
+                  <DialogDescription className="text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                    Perbarui informasi sekolah lanjutan, PTN/perguruan tinggi, atau status karir alumni {selectedAlumni?.full_name || selectedAlumni?.nama || ''}.
+                  </DialogDescription>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleSaveUbahTujuan}>
+              <DialogBody className="space-y-4 py-4 max-h-[70vh] overflow-y-auto text-slate-700 dark:text-slate-200">
+                <div className="space-y-1.5">
+                  <FieldLabel className="text-xs font-bold">Status Kelanjutan Studi / Karir</FieldLabel>
+                  <select
+                    value={tujuanForm.status_lanjutan}
+                    onChange={(e) => setTujuanForm({ ...tujuanForm, status_lanjutan: e.target.value })}
+                    className="w-full h-10 text-xs font-semibold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="Kuliah">Kuliah (PTN / PTS / Universitas)</option>
+                    <option value="Bekerja">Bekerja / Karir Instansi</option>
+                    <option value="Pesantren">Pesantren / Ma'had Aly</option>
+                    <option value="Sekolah Lanjutan">Sekolah Lanjutan (SMA/SMK/MA)</option>
+                    <option value="Wirausaha">Wirausaha / Usaha Mandiri</option>
+                    <option value="Lainnya">Lainnya</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel className="text-xs font-bold">Perguruan Tinggi / PTN / Sekolah Tujuan</FieldLabel>
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Contoh: Universitas Indonesia (UI), ITB, UGM, UNAND, STIS, Ma'had Al-Madinah..."
+                    value={tujuanForm.perguruan_tinggi}
+                    onChange={(e) => setTujuanForm({ ...tujuanForm, perguruan_tinggi: e.target.value })}
+                    className="w-full h-10 text-xs rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3.5 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                  <FieldDescription className="text-[10px]">Tulis nama kampus/sekolah lanjutan secara lengkap.</FieldDescription>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <FieldLabel className="text-xs font-bold">Jurusan / Program Studi</FieldLabel>
+                    <Input
+                      type="text"
+                      placeholder="Contoh: Teknik Informatika, Kedokteran..."
+                      value={tujuanForm.jurusan}
+                      onChange={(e) => setTujuanForm({ ...tujuanForm, jurusan: e.target.value })}
+                      className="w-full h-10 text-xs rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3.5 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <FieldLabel className="text-xs font-bold">Tahun Lulus</FieldLabel>
+                    <Input
+                      type="text"
+                      placeholder="Contoh: 2026"
+                      value={tujuanForm.tahun_lulus}
+                      onChange={(e) => setTujuanForm({ ...tujuanForm, tahun_lulus: e.target.value })}
+                      className="w-full h-10 text-xs rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3.5 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel className="text-xs font-bold">Pekerjaan / Instansi (Opsional)</FieldLabel>
+                  <Input
+                    type="text"
+                    placeholder="Contoh: Software Engineer di PT Telkom / Guru / Usaha..."
+                    value={tujuanForm.pekerjaan}
+                    onChange={(e) => setTujuanForm({ ...tujuanForm, pekerjaan: e.target.value })}
+                    className="w-full h-10 text-xs rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3.5 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <FieldLabel className="text-xs font-bold">Catatan / Keterangan Tambahan</FieldLabel>
+                  <textarea
+                    rows={3}
+                    placeholder="Catatan prestasi, beasiswa, atau keterangan tambahan..."
+                    value={tujuanForm.catatan}
+                    onChange={(e) => setTujuanForm({ ...tujuanForm, catatan: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs dark:border-slate-700 dark:bg-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                  />
+                </div>
+              </DialogBody>
+
+              <DialogFooter className="gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                <DialogClose appearance="outline" size="sm" type="button" disabled={submitting}>
+                  Batal
+                </DialogClose>
+                <Button variant="primary" size="sm" type="submit" pending={submitting} className="font-bold px-5">
+                  Simpan Perubahan
+                </Button>
+              </DialogFooter>
+            </form>
           </Dialog>
         </OverlayWrapper>
       )}

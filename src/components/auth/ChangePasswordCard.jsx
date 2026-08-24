@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { FiEye, FiEyeOff, FiClock, FiCheckCircle } from 'react-icons/fi'
 import Swal from 'sweetalert2'
 import { authService } from '../../services/authService'
+import { Button } from '@/components/tailgrids/core/button'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
+import { Card, CardContent } from '@/components/tailgrids/core/card'
 
 export default function ChangePasswordCard() {
   const [form, setForm] = useState({
@@ -77,35 +80,39 @@ export default function ChangePasswordCard() {
   }
 
   return (
-    <div className="w-full bg-slate-50/60 rounded-2xl p-4 lg:p-6">
+    <Card className="w-full rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Form: Ubah Password */}
-        <div className="lg:col-span-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
-          <div className="border-b border-slate-100 pb-4 mb-6">
-            <h2 className="text-xl font-bold text-slate-800">Ubah Password</h2>
-            <p className="text-xs text-slate-500 mt-1">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800">
+          <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Ubah Password</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Pastikan password baru Anda kuat dan mudah diingat.
             </p>
           </div>
 
           {updated && (
-            <div className="mb-5 bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-emerald-800 text-xs font-semibold flex items-center gap-2">
-              <FiCheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Password Anda telah berhasil diperbarui!</span>
-            </div>
+            <Alert status="success" className="mb-5 rounded-xl">
+              <AlertIndicator>
+                <FiCheckCircle className="w-4 h-4" />
+              </AlertIndicator>
+              <AlertContent>
+                <AlertDescription>Password Anda telah berhasil diperbarui!</AlertDescription>
+              </AlertContent>
+            </Alert>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Password Lama */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-700">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Password Saat Ini (Lama)
                 </label>
                 <button
                   type="button"
                   onClick={handleForgotCurrentPassword}
-                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline focus:outline-none"
+                  className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 hover:underline focus:outline-none"
                 >
                   Lupa password lama?
                 </button>
@@ -116,7 +123,7 @@ export default function ChangePasswordCard() {
                   value={form.oldPassword}
                   onChange={(e) => setForm({ ...form, oldPassword: e.target.value })}
                   placeholder="Masukkan password saat ini"
-                  className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm pr-10"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs pr-10"
                   required
                 />
                 <button
@@ -132,7 +139,7 @@ export default function ChangePasswordCard() {
 
             {/* Password Baru */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Password Baru
               </label>
               <div className="relative">
@@ -141,7 +148,7 @@ export default function ChangePasswordCard() {
                   value={form.newPassword}
                   onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
                   placeholder="Masukkan password baru (minimal 8 karakter)"
-                  className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm pr-10"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs pr-10"
                   required
                   minLength={8}
                 />
@@ -158,7 +165,7 @@ export default function ChangePasswordCard() {
 
             {/* Konfirmasi Password Baru */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Konfirmasi Password Baru
               </label>
               <div className="relative">
@@ -167,7 +174,7 @@ export default function ChangePasswordCard() {
                   value={form.confirmPassword}
                   onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                   placeholder="Ulangi password baru Anda"
-                  className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm pr-10"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs pr-10"
                   required
                   minLength={8}
                 />
@@ -183,26 +190,28 @@ export default function ChangePasswordCard() {
             </div>
 
             <div className="pt-2">
-              <button
+              <Button
                 type="submit"
+                variant="primary"
+                size="sm"
+                pending={loading}
                 disabled={loading}
-                className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all disabled:opacity-50"
               >
                 {loading ? 'Menyimpan...' : 'Update Password'}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
 
         {/* Right Card: Riwayat Perubahan */}
-        <div className="lg:col-span-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
-              <FiClock className="text-emerald-700" />
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-3 mb-4 flex items-center gap-2">
+              <FiClock className="text-emerald-700 dark:text-emerald-400" />
               <span>Ketentuan Keamanan Password</span>
             </h3>
 
-            <div className="space-y-3 text-xs text-slate-600">
+            <div className="space-y-3 text-xs text-slate-600 dark:text-slate-400">
               <div className="flex items-start gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
                 <p>Minimal 8 karakter.</p>
@@ -218,12 +227,13 @@ export default function ChangePasswordCard() {
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-500 bg-emerald-50/50 rounded-xl p-3 border border-emerald-100">
-            <span className="font-medium text-slate-700 block">Informasi Keamanan:</span>
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900/40">
+            <span className="font-medium text-slate-700 dark:text-slate-300 block">Informasi Keamanan:</span>
             Perubahan password memerlukan autentikasi password lama Anda yang aktif.
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
+

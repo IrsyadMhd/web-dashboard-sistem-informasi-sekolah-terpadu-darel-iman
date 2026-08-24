@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import {
   Compass,
   Play,
@@ -26,10 +27,60 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import {
   MasterActionButton,
   MasterDataPage,
-  MasterPageHeader,
   MasterStatsGrid,
   MasterStatCard,
 } from '../components/master-data'
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-emerald-50/60 to-teal-50/40 hover:bg-emerald-100/90 hover:border-emerald-300 dark:border-emerald-800/80 dark:bg-emerald-950/40',
+      title: 'text-emerald-800 dark:text-emerald-300',
+      iconBox: 'bg-emerald-600 text-white shadow-xs',
+      val: 'text-emerald-950 dark:text-white',
+      sub: 'text-emerald-700/90 dark:text-emerald-400',
+    },
+    blue: {
+      card: 'border-sky-200/90 bg-gradient-to-br from-sky-50/90 via-sky-50/60 to-blue-50/40 hover:bg-sky-100/90 hover:border-sky-300 dark:border-sky-800/80 dark:bg-sky-950/40',
+      title: 'text-sky-800 dark:text-sky-300',
+      iconBox: 'bg-sky-600 text-white shadow-xs',
+      val: 'text-sky-950 dark:text-white',
+      sub: 'text-sky-700/90 dark:text-sky-400',
+    },
+    amber: {
+      card: 'border-amber-200/90 bg-gradient-to-br from-amber-50/90 via-amber-50/60 to-yellow-50/40 hover:bg-amber-100/90 hover:border-amber-300 dark:border-amber-800/80 dark:bg-amber-950/40',
+      title: 'text-amber-800 dark:text-amber-300',
+      iconBox: 'bg-amber-500 text-white shadow-xs',
+      val: 'text-amber-950 dark:text-white',
+      sub: 'text-amber-700/90 dark:text-amber-400',
+    },
+  }
+
+  const t = tones[tone] || tones.emerald
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.03, y: -2 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+        {Icon && (
+          <div className={`p-2 rounded-xl ${t.iconBox} shrink-0 transition-transform group-hover:scale-110`}>
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+      </div>
+      <p className={`mt-2 text-3xl font-black ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-xs font-semibold ${t.sub}`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 export default function MasterJadwalSholatPage() {
   // State for Interactive Testing Form
@@ -255,7 +306,7 @@ export default function MasterJadwalSholatPage() {
 
   return (
     <PageContainer maxW="7xl">
-      <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Jadwal Sholat' }]} />
+      <AppBreadcrumb className="mb-6" items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Jadwal Sholat' }]} />
       <MasterDataPage className="education-unit-page sholat-master-page" hideBreadcrumb>
       {/* Toast Notification */}
       {toastMessage && (
@@ -269,30 +320,30 @@ export default function MasterJadwalSholatPage() {
         </div>
       )}
 
-      {/* Master Canonical Page Header */}
-      <MasterPageHeader
-        tone="brand"
-        icon={Compass}
-        title="Master Data Jadwal Sholat"
-        description="Master data sholat menurut daerah Provinsi, Kabupaten dan Kota terintegrasi dengan EQuran.id API."
-        actions={
-          <>
-            <MasterActionButton variant="secondary" icon={RefreshCw} onClick={loadMasterFromDb}>
-              Refresh DB
-            </MasterActionButton>
-            <MasterActionButton variant="export" icon={Download} disabled={masterList.length === 0} onClick={exportToCsv}>
-              Export CSV
-            </MasterActionButton>
-          </>
-        }
-      />
-
       {/* Statistics Cards */}
-      <MasterStatsGrid className="education-unit-kpis">
-        <MasterStatCard icon={Database} label="Rekord Master Tersimpan" value={`${masterStats.total_records || masterList.length} Hari`} description="Data jadwal dalam DB" variant="success" delay={40} />
-        <MasterStatCard icon={Globe} label="Provinsi Tercover" value={`${masterStats.total_provinsi || 0} / 34`} description="Seluruh provinsi Indonesia" variant="info" delay={80} />
-        <MasterStatCard icon={MapPin} label="Kab/Kota Tercover" value={`${masterStats.total_kabkota || 0} / 517`} description="Kota dan kabupaten" variant="warning" delay={120} />
-      </MasterStatsGrid>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiTintedCard
+          label="Rekord Master Tersimpan"
+          value={`${masterStats.total_records || masterList.length} Hari`}
+          subtext="Data jadwal dalam DB"
+          icon={Database}
+          tone="emerald"
+        />
+        <KpiTintedCard
+          label="Provinsi Tercover"
+          value={`${masterStats.total_provinsi || 0} / 34`}
+          subtext="Seluruh provinsi Indonesia"
+          icon={Globe}
+          tone="blue"
+        />
+        <KpiTintedCard
+          label="Kab/Kota Tercover"
+          value={`${masterStats.total_kabkota || 0} / 517`}
+          subtext="Kota dan kabupaten"
+          icon={MapPin}
+          tone="amber"
+        />
+      </div>
 
       {/* Interactive Testing & API Pull Panel (Postman-style) */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -589,6 +640,15 @@ export default function MasterJadwalSholatPage() {
             >
               <Search className="w-3.5 h-3.5" /> Filter Data
             </button>
+
+            <MasterActionButton
+              variant="export"
+              icon={Download}
+              disabled={masterList.length === 0}
+              onClick={exportToCsv}
+            >
+              Export CSV
+            </MasterActionButton>
           </div>
         </div>
 

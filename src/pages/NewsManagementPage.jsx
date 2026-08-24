@@ -337,6 +337,10 @@ export default function NewsManagementPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [deletingItem, setDeletingItem] = useState(null)
 
+  // KPI Cards Drill-Down Modal State
+  const [activeKpiModal, setActiveKpiModal] = useState(null) // null | 'total' | 'published' | 'draft' | 'global'
+  const [kpiModalSearch, setKpiModalSearch] = useState('')
+
   // Form State
   const [form, setForm] = useState({
     judul: '',
@@ -453,6 +457,32 @@ export default function NewsManagementPage() {
       return true
     })
   }, [newsList, filters, roleAnalysis])
+
+  // Filtered List for KPI Cards Drill-Down Modal
+  const filteredKpiNewsItems = useMemo(() => {
+    if (!activeKpiModal) return []
+    let base = filteredList
+    if (activeKpiModal === 'published') {
+      base = base.filter((item) => item.status === 'Dipublikasikan')
+    } else if (activeKpiModal === 'draft') {
+      base = base.filter((item) => item.status === 'Draf')
+    } else if (activeKpiModal === 'global') {
+      base = base.filter((item) => item.target_unit === 'all')
+    }
+
+    if (kpiModalSearch.trim()) {
+      const q = kpiModalSearch.toLowerCase()
+      base = base.filter(
+        (item) =>
+          (item.judul || '').toLowerCase().includes(q) ||
+          (item.ringkasan || '').toLowerCase().includes(q) ||
+          (item.kategori || '').toLowerCase().includes(q) ||
+          (item.target_unit_name || '').toLowerCase().includes(q)
+      )
+    }
+
+    return base
+  }, [activeKpiModal, filteredList, kpiModalSearch])
 
   // Pagination Slice
   const totalPages = Math.ceil(filteredList.length / filters.per_page) || 1
@@ -599,29 +629,33 @@ export default function NewsManagementPage() {
             icon={Megaphone}
             label="Total Berita"
             value={stats.total}
-            subtext="Total publikasi di database"
+            subtext="Total publikasi di database (Klik detail)"
             tone="emerald"
+            onClick={() => { setKpiModalSearch(''); setActiveKpiModal('total'); }}
           />
           <KpiTintedCard
             icon={CheckCircle2}
             label="Dipublikasikan"
             value={stats.published}
-            subtext="Aktif di portal ortu & siswa"
+            subtext="Aktif di portal ortu & siswa (Klik detail)"
             tone="blue"
+            onClick={() => { setKpiModalSearch(''); setActiveKpiModal('published'); }}
           />
           <KpiTintedCard
             icon={AlertCircle}
             label="Draf Internal"
             value={stats.draft}
-            subtext="Belum dipublikasikan"
+            subtext="Belum dipublikasikan (Klik detail)"
             tone="amber"
+            onClick={() => { setKpiModalSearch(''); setActiveKpiModal('draft'); }}
           />
           <KpiTintedCard
             icon={Globe}
             label="Lintas Unit"
             value={stats.globalUnit}
-            subtext="Target seluruh yayasan"
+            subtext="Target seluruh yayasan (Klik detail)"
             tone="purple"
+            onClick={() => { setKpiModalSearch(''); setActiveKpiModal('global'); }}
           />
         </motion.div>
 
@@ -785,87 +819,126 @@ export default function NewsManagementPage() {
           </div>
         </div>
 
-        {/* TAILGRIDS TABLE ROOT & ROWS */}
+        {/* TAILGRIDS TABLE ROOT & ROWS WITH RICH COLOR STYLING */}
         <div className="overflow-x-auto">
           <TableRoot fullBleed={false}>
             <TableHeader>
-              <TableRow className="bg-slate-50/90 dark:bg-slate-800/80">
-                <TableHead className="font-extrabold text-slate-900 dark:text-slate-200">
+              <TableRow className="bg-gradient-to-r from-slate-100 via-emerald-50/40 to-slate-100 border-b border-slate-200/90 dark:from-slate-800 dark:via-slate-800/90 dark:to-slate-800 dark:border-slate-700">
+                <TableHead className="font-extrabold text-slate-900 dark:text-slate-100 py-3.5">
                   <div className="flex items-center gap-1.5 cursor-pointer">
-                    <span>Judul Berita & Kategori</span>
-                    <ArrowBothDirectionHorizontal2 className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 font-black">Judul Berita & Kategori</span>
+                    <ArrowBothDirectionHorizontal2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                 </TableHead>
-                <TableHead className="font-extrabold text-slate-900 dark:text-slate-200">Target Unit Sekolah</TableHead>
-                <TableHead className="font-extrabold text-slate-900 dark:text-slate-200">Penerbit & Peran</TableHead>
-                <TableHead className="font-extrabold text-slate-900 dark:text-slate-200">Tanggal Publikasi</TableHead>
-                <TableHead className="font-extrabold text-slate-900 dark:text-slate-200">Status</TableHead>
-                <TableHead className="text-center font-extrabold text-slate-900 dark:text-slate-200">Aksi</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Target Unit Sekolah</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Penerbit & Peran</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Tanggal Publikasi</TableHead>
+                <TableHead className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Status</TableHead>
+                <TableHead className="text-center font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Aksi</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {paginatedList.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10 text-xs text-slate-400">
+                  <TableCell colSpan={6} className="text-center py-12 text-xs font-semibold text-slate-400 bg-slate-50/50 dark:bg-slate-900/30">
                     Belum ada berita atau pengumuman yang sesuai dengan filter pencarian.
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedList.map((row) => {
+                paginatedList.map((row, idx) => {
                   const cat = CATEGORY_OPTIONS.find((c) => c.id === row.kategori) || CATEGORY_OPTIONS[0]
                   const IconComp = cat.icon
 
+                  const catStyles = {
+                    PPDB: 'bg-amber-100/90 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 ring-1 ring-amber-300/60 dark:ring-amber-800',
+                    Akademik: 'bg-sky-100/90 text-sky-800 dark:bg-sky-950/70 dark:text-sky-300 ring-1 ring-sky-300/60 dark:ring-sky-800',
+                    Prestasi: 'bg-purple-100/90 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 ring-1 ring-purple-300/60 dark:ring-purple-800',
+                    Kegiatan: 'bg-emerald-100/90 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 ring-1 ring-emerald-300/60 dark:ring-emerald-800',
+                    Umum: 'bg-cyan-100/90 text-cyan-800 dark:bg-cyan-950/70 dark:text-cyan-300 ring-1 ring-cyan-300/60 dark:ring-cyan-800',
+                  }
+                  const iconStyle = catStyles[cat.id] || catStyles.Umum
+
                   return (
-                    <TableRow key={row.id} className="transition hover:scale-[1.003] hover:bg-slate-50/90 dark:hover:bg-slate-800/50">
-                      <TableCell className="max-w-xs">
-                        <div className="flex items-start gap-2.5">
-                          <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 shrink-0 mt-0.5 shadow-xs">
+                    <TableRow
+                      key={row.id || idx}
+                      onClick={() => {
+                        setDetailItem(row)
+                        setIsDetailOpen(true)
+                      }}
+                      className="transition-all duration-200 even:bg-slate-50/50 dark:even:bg-slate-900/30 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 hover:shadow-xs cursor-pointer group border-b border-slate-100 dark:border-slate-800/80"
+                    >
+                      {/* Judul & Kategori */}
+                      <TableCell className="max-w-xs py-3.5">
+                        <div className="flex items-start gap-3">
+                          <div className={`rounded-xl p-2.5 shrink-0 mt-0.5 shadow-xs transition-transform group-hover:scale-110 ${iconStyle}`}>
                             <IconComp className="h-4 w-4" />
                           </div>
                           <div>
-                            <p className="font-extrabold text-slate-900 dark:text-white line-clamp-1">
+                            <p className="font-extrabold text-slate-900 dark:text-white line-clamp-1 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                               {row.judul}
                             </p>
-                            <p className="text-[11px] text-slate-500 line-clamp-1">{row.ringkasan}</p>
-                            <Badge color={cat.color} size="sm" className="mt-1">
-                              {cat.label}
-                            </Badge>
+                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{row.ringkasan}</p>
+                            <div className="mt-1.5">
+                              <Badge color={cat.color} size="sm" className="font-bold text-[10px] shadow-xs">
+                                {cat.label}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
                       </TableCell>
 
-                      <TableCell>
-                        <Badge
-                          color={row.target_unit === 'all' ? 'amber' : 'cyan'}
-                          size="sm"
-                          prefixIcon={row.target_unit === 'all' ? Globe : Building2}
-                        >
-                          {row.target_unit_name || 'Seluruh Unit (Yayasan)'}
-                        </Badge>
+                      {/* Target Unit Sekolah */}
+                      <TableCell className="py-3.5">
+                        <div className="inline-flex">
+                          <Badge
+                            color={row.target_unit === 'all' ? 'amber' : 'cyan'}
+                            size="sm"
+                            prefixIcon={row.target_unit === 'all' ? Globe : Building2}
+                            className="font-bold shadow-2xs px-2.5 py-1"
+                          >
+                            {row.target_unit_name || 'Seluruh Unit (Yayasan)'}
+                          </Badge>
+                        </div>
                       </TableCell>
 
-                      <TableCell>
-                        <p className="font-bold text-slate-800 dark:text-slate-200">{row.penerbit}</p>
-                        <p className="text-[11px] text-slate-400">{row.penerbit_role}</p>
+                      {/* Penerbit & Peran */}
+                      <TableCell className="py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 font-black text-xs flex items-center justify-center shrink-0 border border-emerald-300/60 dark:border-emerald-700/60">
+                            {(row.penerbit || 'A').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs text-slate-800 dark:text-slate-200">{row.penerbit}</p>
+                            <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 mt-0.5">
+                              {row.penerbit_role}
+                            </span>
+                          </div>
+                        </div>
                       </TableCell>
 
-                      <TableCell className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                        {row.tanggal_publikasi}
+                      {/* Tanggal Publikasi */}
+                      <TableCell className="py-3.5">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-bold border border-slate-200/60 dark:border-slate-700/60">
+                          <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                          <span>{row.tanggal_publikasi}</span>
+                        </div>
                       </TableCell>
 
-                      <TableCell>
+                      {/* Status */}
+                      <TableCell className="py-3.5">
                         <Badge
                           color={row.status === 'Dipublikasikan' ? 'success' : 'warning'}
                           size="sm"
                           prefixIcon={row.status === 'Dipublikasikan' ? CheckCircle2 : AlertCircle}
+                          className="font-extrabold shadow-2xs px-2.5 py-1"
                         >
                           {row.status}
                         </Badge>
                       </TableCell>
 
-                      {/* KOLOM AKSI: MEMAKAI ACTION DROPDOWN STANDAR BENCHMARK PROJECT */}
-                      <TableCell className="text-center">
+                      {/* KOLOM AKSI: ACTION DROPDOWN */}
+                      <TableCell className="text-center py-3.5" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center">
                           <ActionDropdown
                             onView={() => {
@@ -1051,14 +1124,12 @@ export default function NewsManagementPage() {
             </div>
           </DialogBody>
 
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="ghost" size="sm">
-                Batal
-              </Button>
+          <DialogFooter className="gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+            <DialogClose appearance="outline" size="sm" type="button">
+              Batal
             </DialogClose>
-            <Button variant="primary" size="sm" type="submit">
-              {editingItem ? 'Simpan Perubahan ke Database' : 'Publikasikan Berita ke Database'}
+            <Button variant="primary" appearance="fill" size="sm" type="submit" className="font-bold px-5">
+              {editingItem ? 'Simpan Perubahan' : 'Publikasi'}
             </Button>
           </DialogFooter>
         </form>
@@ -1105,16 +1176,177 @@ export default function NewsManagementPage() {
               </div>
             </DialogBody>
 
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="primary" size="sm">
-                  Tutup Pratinjau
-                </Button>
+            <DialogFooter className="gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+              <DialogClose appearance="outline" size="sm" type="button">
+                Tutup Pratinjau
               </DialogClose>
             </DialogFooter>
           </>
         )}
       </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          KPI CARDS DRILL-DOWN MODAL — Interactive News Analytics Breakdown
+      ══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {activeKpiModal && (
+          <div
+            role="dialog"
+            tabIndex={-1}
+            aria-modal="true"
+            className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveKpiModal(null) }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+              className="modal-dialog font-sans w-full max-w-4xl"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
+                {/* Header */}
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                      {activeKpiModal === 'total' && <Megaphone className="h-5 w-5" />}
+                      {activeKpiModal === 'published' && <CheckCircle2 className="h-5 w-5" />}
+                      {activeKpiModal === 'draft' && <AlertCircle className="h-5 w-5" />}
+                      {activeKpiModal === 'global' && <Globe className="h-5 w-5" />}
+                    </div>
+                    <div>
+                      <h3 className="modal-title text-base font-extrabold text-slate-900 dark:text-white">
+                        {activeKpiModal === 'total' && 'Analisis Total Publikasi Berita & Pengumuman'}
+                        {activeKpiModal === 'published' && 'Rincian Berita Dipublikasikan (Aktif Portal)'}
+                        {activeKpiModal === 'draft' && 'Rincian Berita Draf Internal (Belum Rilis)'}
+                        {activeKpiModal === 'global' && 'Rincian Berita Lintas Unit (Target Yayasan)'}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Menampilkan {filteredKpiNewsItems.length} data berita terfilter
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveKpiModal(null)}
+                    aria-label="Tutup modal"
+                    className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  >
+                    <span className="text-lg font-bold">✕</span>
+                  </button>
+                </div>
+
+                {/* Toolbar Search inside Modal */}
+                <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/60 px-6 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+                  <div className="relative flex-1">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={kpiModalSearch}
+                      onChange={(e) => setKpiModalSearch(e.target.value)}
+                      placeholder="Cari judul berita, ringkasan, atau kategori..."
+                      className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 text-xs font-semibold text-slate-700 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    />
+                  </div>
+                  <Badge color="emerald" size="md">
+                    {filteredKpiNewsItems.length} Publikasi
+                  </Badge>
+                </div>
+
+                {/* Table Body inside Modal */}
+                <div className="modal-body flex-1 overflow-y-auto p-6">
+                  {filteredKpiNewsItems.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <p className="text-sm font-bold text-slate-500">Tidak ada berita yang cocok dengan kriteria filter ini.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-[11px] font-extrabold uppercase text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                          <tr>
+                            <th className="px-4 py-3">No</th>
+                            <th className="px-4 py-3">Judul Berita & Kategori</th>
+                            <th className="px-4 py-3">Target Unit</th>
+                            <th className="px-4 py-3 text-center">Tanggal Publikasi</th>
+                            <th className="px-4 py-3 text-center">Status</th>
+                            <th className="px-4 py-3 text-right">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium text-slate-700 dark:divide-slate-800 dark:text-slate-300">
+                          {filteredKpiNewsItems.map((item, idx) => {
+                            const cat = CATEGORY_OPTIONS.find((c) => c.id === item.kategori) || CATEGORY_OPTIONS[0]
+                            const IconComp = cat.icon
+                            return (
+                              <tr key={item.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors">
+                                <td className="px-4 py-3 font-bold text-slate-400">{idx + 1}</td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="rounded-lg bg-emerald-50 p-1.5 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 shrink-0">
+                                      <IconComp className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                      <span className="block font-bold text-slate-900 dark:text-white line-clamp-1">{item.judul}</span>
+                                      <Badge color={cat.color} size="sm" className="mt-0.5 text-[9px]">
+                                        {cat.label}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <Badge color={item.target_unit === 'all' ? 'amber' : 'cyan'} size="sm" prefixIcon={item.target_unit === 'all' ? Globe : Building2}>
+                                    {item.target_unit_name || 'Seluruh Unit (Yayasan)'}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-center font-semibold text-slate-600 dark:text-slate-300">
+                                  {item.tanggal_publikasi}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <Badge color={item.status === 'Dipublikasikan' ? 'success' : 'warning'} size="sm">
+                                    {item.status}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <Button
+                                    type="button"
+                                    size="xs"
+                                    variant="primary"
+                                    onClick={() => {
+                                      setActiveKpiModal(null)
+                                      setDetailItem(item)
+                                      setIsDetailOpen(true)
+                                    }}
+                                    className="font-bold cursor-pointer"
+                                  >
+                                    Lihat Rincian
+                                  </Button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-3 dark:border-slate-800 dark:bg-slate-900/50">
+                  <span className="text-xs font-semibold text-slate-500">
+                    Menampilkan total {filteredKpiNewsItems.length} baris
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveKpiModal(null)}
+                    className="h-8 px-4 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* MODAL KONFIRMASI HAPUS (ALERT DIALOG TAILGRIDS) */}
       <AnimatePresence>
@@ -1126,13 +1358,11 @@ export default function NewsManagementPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="ghost" size="sm">
-                Batal
-              </Button>
+          <DialogFooter className="gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+            <DialogClose appearance="outline" size="sm" type="button">
+              Batal
             </DialogClose>
-            <Button variant="danger" size="sm" onClick={handleDeleteConfirm}>
+            <Button variant="danger" appearance="fill" size="sm" onClick={handleDeleteConfirm} className="font-bold px-5">
               Hapus Permanen dari Database
             </Button>
           </DialogFooter>

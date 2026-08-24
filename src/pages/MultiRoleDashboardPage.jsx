@@ -3,16 +3,16 @@ import { Navigate } from 'react-router-dom'
 import { ShieldAlert } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import SuperAdminDashboardPage from './SuperAdminDashboardPage'
-import { hasAnyRole, resolveDefaultPortal } from '../auth/portalResolver'
+import { ROLES, hasAnyRole, resolveDefaultPortal } from '../auth/portalResolver'
 
 export default function MultiRoleDashboardPage() {
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || []
   const permissions = user?.permissions || []
 
-  const isSuperAdmin = hasAnyRole(roles, ['Super Admin', 'super_admin'])
+  const isSuperAdminOrAdmin = hasAnyRole(roles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN])
 
-  if (isSuperAdmin) {
+  if (isSuperAdminOrAdmin) {
     return <SuperAdminDashboardPage />
   }
 

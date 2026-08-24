@@ -106,6 +106,17 @@ export const ROLES = {
   ],
 
   /**
+   * Pembimbing / Pengasuh Asrama (Keasramaan).
+   * Menangani ibadah 24 jam, kamar santri, kedisiplinan, & perizinan.
+   */
+  MUSYRIF: [
+    'Musyrif', 'musyrif',
+    'Musyrifah', 'musyrifah',
+    'Musyrif / Musyrifah',
+    'Pengasuh', 'Wali Asrama', 'Pembimbing Asrama',
+  ],
+
+  /**
    * Tingkat 8 — Orang Tua / Wali Murid.
    * Dokumen: "Orang Tua & Siswa"
    * Portal orang tua, absensi barcode, izin/sakit, pantau hafalan anak.
@@ -262,6 +273,10 @@ export const isOrangTuaOrSiswa = (roles = []) =>
 /** Tenaga Pendidik semua jenis (termasuk Musyrif & Wali Kelas) */
 export const isTeacherRole = (roles = []) =>
   hasAnyRole(roles, ROLES.GURU)
+
+/** Musyrif / Pembimbing Asrama */
+export const isMusyrifRole = (roles = []) =>
+  hasAnyRole(roles, ROLES.MUSYRIF)
 
 /** Orang Tua / Wali Murid */
 export const isParentRole = (roles = []) =>

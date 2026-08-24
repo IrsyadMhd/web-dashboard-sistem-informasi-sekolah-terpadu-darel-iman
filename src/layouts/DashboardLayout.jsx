@@ -46,7 +46,7 @@ import PersonAvatar from '../components/ui/PersonAvatar'
 import GlobalSearchModal from '../components/GlobalSearchModal'
 import NotificationCenter from '../components/app/NotificationCenter'
 import AppBottomNavigation from '../components/app/AppBottomNavigation'
-import { isParentRole, isStudentRole, isTeacherRole, resolveDefaultPortal } from '../auth/portalResolver'
+import { isMusyrifRole, isParentRole, isStudentRole, isTeacherRole, resolveDefaultPortal } from '../auth/portalResolver'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,6 +82,8 @@ export default function DashboardLayout() {
   const isTataUsaha = hasRole('Tata Usaha', 'TU', 'tu', 'tata_usaha')
   const isKepalaSekolah = hasRole('Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek')
   const isDivisiPendidikan = hasRole('Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Pengawasan Akademik')
+  const isPureMusyrif = isMusyrifRole(roles) && !hasRole('Guru', 'guru', 'Guru Mata Pelajaran', 'guru_mata_pelajaran', 'Guru PAI', 'Guru Tahfizh', 'Wali Kelas', 'walas', 'wali_kelas', 'Super Admin', 'Admin')
+  const isMusyrifUser = isMusyrifRole(roles) || isPureMusyrif || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing')
   const canViewEducationUnits = can('unit.view', 'unit.view_all', 'foundation.unit.view', 'sistem.master_data')
   const canViewStudents = can('student.view', 'student.view_all', 'kesiswaan.data_lengkap_siswa')
   const canCreateStudent = can('student.create')
@@ -434,16 +436,34 @@ export default function DashboardLayout() {
 
   const bolehBukaMenu = (to) => {
     if (hasFullMenuAccess) return true
+    if (isMusyrifUser && (to === '/absensi/laporan' || to === '/dashboard/mutabaah/rekap' || to.startsWith('/dashboard/laporan'))) return false
+
+    if (isStudentRole(roles) && !hasFullMenuAccess) {
+      if (
+        to === '/absensi/laporan' ||
+        to === '/dashboard/mutabaah/rekap' ||
+        to.startsWith('/dashboard/mutabaah') ||
+        to.startsWith('/dashboard/laporan') ||
+        to.startsWith('/dashboard/rekap') ||
+        to === '/dashboard/kelola-alumni' ||
+        to === '/dashboard/tahfizh' ||
+        to.startsWith('/dashboard/tahfizh') ||
+        to.includes('/monitoring-tahfizh-ibadah')
+      ) {
+        return false
+      }
+    }
 
     if (to.startsWith('/portal-siswa')) return isStudentRole(roles) || isParentRole(roles)
     if (to.startsWith('/portal-orangtua')) return isParentRole(roles) || isStudentRole(roles)
     if (to.startsWith('/portal-guru')) {
       if (isRestrictedFoundationOrPrincipal) return false
+      if (isPureMusyrif && !hasFullMenuAccess) return false
       return isTeacherRole(roles)
     }
     if (to.startsWith('/dashboard/musyrif')) {
       if (isRestrictedFoundationOrPrincipal) return false
-      return can('dashboard.guru-tahfizh.view')
+      return can('dashboard.musyrif.view', 'dashboard.guru-tahfizh.view') || isMusyrifRole(roles)
     }
     if (to === '/dashboard') return can('dashboard.view')
     if (to.startsWith('/dashboard/pemantauan')) return can('dashboard.pemantauan.lihat', 'teacher_monitoring.view')
@@ -466,7 +486,7 @@ export default function DashboardLayout() {
     }
     if (to.includes('/master-jabatan') || to.includes('/students/jabatan')) {
       if (
-        hasRole('Guru', 'guru', 'Wali Kelas', 'wali_kelas', 'Guru Mapel', 'Guru Tahfizh', 'Guru BK') &&
+        (hasRole('Guru', 'guru', 'Wali Kelas', 'wali_kelas', 'Guru Mapel', 'Guru Tahfizh', 'Guru BK', 'Musyrif', 'musyrif', 'Musyrifah', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing') || isPureMusyrif) &&
         !hasRole('Super Admin', 'SuperAdmin', 'superadmin', 'super_admin', 'Admin', 'admin', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Yayasan')
       ) {
         return false
@@ -527,6 +547,9 @@ export default function DashboardLayout() {
     if (to.includes('/master-kurikulum')) return can('pembelajaran.kurikulum.view')
     if (to === '/dashboard/mutabaah/rekap') return !isTataUsaha && can('mutabaah.recap.view', 'mutabaah.report.view', 'mutabaah.report.export')
     if (to === '/dashboard/tahfizh' || to.startsWith('/dashboard/tahfizh')) {
+      if (isParentRole(roles) && !hasRole('Super Admin', 'SuperAdmin', 'super_admin')) {
+        return false
+      }
       return (
         hasRole(
           'Super Admin', 'Admin', 'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan',
@@ -534,7 +557,7 @@ export default function DashboardLayout() {
           'Divisi Kurikulum', 'Divisi Kesiswaan', 'Divisi Bahasa', 'Divisi Program Khusus',
           'Kepala Sekolah', 'Wakil Kepala Sekolah', 'Waka Kurikulum', 'Wakil Kurikulum',
           'Waka Kesiswaan', 'Wakil Kesiswaan', 'Tata Usaha', 'TU', 'Operator',
-          'Guru', 'Wali Kelas', 'Guru Tahfizh', 'Guru BK', 'Musyrif', 'Musyrifah', 'Siswa', 'Orang Tua'
+          'Guru', 'Wali Kelas', 'Guru Tahfizh', 'Guru BK', 'Musyrif', 'Musyrifah', 'Siswa'
         ) ||
         can(
           'kesiswaan.kelas_rombel', 'academic.schedule.view', 'sistem.master_data',
@@ -545,6 +568,7 @@ export default function DashboardLayout() {
       )
     }
     if (to === '/dashboard/absensi-pembelajaran' || to.startsWith('/dashboard/absensi-pembelajaran') || to.includes('/absensi-pembelajaran')) {
+      if (isPureMusyrif && !hasFullMenuAccess) return false
       return (
         hasRole('Super Admin', 'Admin', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Waka Kurikulum', 'Waka Kesiswaan', 'Guru', 'Wali Kelas') ||
         can('lesson_attendance.view', 'attendance.view', 'kehadiran.siswa.monitoring')
@@ -582,6 +606,9 @@ export default function DashboardLayout() {
       )
     }
     if (to.includes('/monitoring-tahfizh-ibadah') || to.includes('/mutabaah')) {
+      if (isParentRole(roles) && !hasRole('Super Admin', 'SuperAdmin', 'super_admin')) {
+        return false
+      }
       return (
         hasRole('Super Admin', 'Admin', 'Yayasan', 'Kepala Sekolah', 'Divisi Pendidikan', 'Waka Kesiswaan', 'Waka Kurikulum', 'Tata Usaha', 'TU', 'Operator', 'Wali Kelas', 'Guru', 'Musyrif', 'Musyrifah', 'Pembimbing', 'Pengurus Yayasan') ||
         can('mutabaah.view', 'mutabaah.input', 'mutabaah.agenda.manage', 'sistem.master_data', 'mutabaah.dashboard.view', 'mutabaah.recap.view', 'mutabaah.daily.view', 'mutabaah.agenda.view', 'mutabaah.template.view', 'mutabaah.supervisor.view', 'mutabaah.parent.monitor', 'divisi.monitoring')
@@ -622,6 +649,9 @@ export default function DashboardLayout() {
       )
     }
     if (to.startsWith('/absensi') || to.includes('/attendance') || to.includes('/lms/presensi')) {
+      if (to === '/absensi/laporan' || to.startsWith('/absensi/laporan')) {
+        if (isParentRole(roles) && !hasRole('Super Admin', 'SuperAdmin', 'super_admin')) return false
+      }
       if (to === '/absensi/dashboard-wali-kelas' || to.startsWith('/absensi/dashboard-wali-kelas')) {
         if (isTataUsaha && !hasRole('Wali Kelas') && !hasFullMenuAccess) return false
         return (
@@ -666,10 +696,11 @@ export default function DashboardLayout() {
     if (to === '/dashboard/berita-informasi' || to.includes('/berita-informasi')) {
       if (isTeacherOnly) return false
       return (
+        isParentRole(roles) || isStudentRole(roles) ||
         hasRole(
           'Super Admin', 'Admin', 'Yayasan', 'Ketua Yayasan', 'Pengurus Yayasan', 'pengurus_yayasan',
           'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan',
-          'Tata Usaha', 'TU', 'tata_usaha', 'Operator'
+          'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'Siswa', 'Orang Tua'
         ) ||
         can('foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data')
       )
@@ -760,6 +791,16 @@ export default function DashboardLayout() {
     return shouldHideFromKepalaSekolah(item, submenu)
   }
 
+  const shouldHideFromMusyrif = (item, submenu = null) => {
+    if (hasFullMenuAccess) return false
+    if (isMusyrifUser || isPureMusyrif) {
+      const to = submenu?.to || item?.to || ''
+      if (item?.key === 'laporan') return true
+      if (to === '/absensi/laporan' || to === '/dashboard/mutabaah/rekap') return true
+    }
+    return false
+  }
+
   const sidebarMenu = (isFoundationUser ? [
     {
       key: 'dashboard-yayasan',
@@ -837,7 +878,9 @@ export default function DashboardLayout() {
     },
     {
       key: 'master-data',
-      label: hasFullMenuAccess || isKepalaSekolah || isDivisiPendidikan ? 'MANAJEMEN DATA' : 'MASTER DATA',
+      label: (isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess
+        ? 'BERITA'
+        : (hasFullMenuAccess || isKepalaSekolah || isDivisiPendidikan ? 'MANAJEMEN DATA' : 'MASTER DATA'),
       icon: Database,
       submenus: [
         { to: '/dashboard/students/unit-pendidikan', label: 'Unit Pendidikan' },
@@ -864,15 +907,17 @@ export default function DashboardLayout() {
         { to: '/dashboard/akademik/nilai-rapor?tab=buku-nilai', label: 'Nilai & Rapor' },
       ],
     },
-    {
-      key: 'portal-guru',
-      label: 'PORTAL GURU',
-      icon: BookOpen,
-      submenus: [
-        { to: '/portal-guru/workspace', label: 'Workspace Pembelajaran Guru' },
-        { to: '/dashboard/chat-pegawai', label: 'Chat Pegawai' },
-      ],
-    },
+    ...(!isPureMusyrif && (isTeacherRole(roles) || hasFullMenuAccess) ? [
+      {
+        key: 'portal-guru',
+        label: 'PORTAL GURU',
+        icon: BookOpen,
+        submenus: [
+          { to: '/portal-guru/workspace', label: 'Workspace Pembelajaran Guru' },
+          { to: '/dashboard/chat-pegawai', label: 'Chat Pegawai & Orang Tua' },
+        ],
+      },
+    ] : []),
     {
       key: 'portal-ortu-siswa',
       label: hasRole('Orang Tua') ? 'PORTAL ORANG TUA' : hasRole('Siswa') ? 'PORTAL SISWA' : 'PORTAL ORANG TUA & SISWA',
@@ -882,17 +927,7 @@ export default function DashboardLayout() {
           { to: '/portal-orangtua', label: 'Portal Orang Tua' },
         ] : []),
          ...(isStudentRole(roles) || (hasFullMenuAccess && !isParentRole(roles)) ? [
-          { to: '/portal-siswa/profil', label: 'Profil & Biodata' },
-          { to: '/portal-siswa/informasi-sekolah', label: 'Informasi Sekolah' },
-          { to: '/portal-siswa/jadwal', label: 'Jadwal' },
-          { to: '/portal-siswa/materi', label: 'Materi' },
-          { to: '/portal-siswa/tugas', label: 'Tugas' },
-          { to: '/portal-siswa/tahfizh', label: 'Tahfizh' },
-          { to: '/portal-siswa/nilai', label: 'Nilai' },
-          { to: '/portal-siswa/komentar-guru', label: 'Komentar Guru' },
-          { to: '/portal-siswa/kisi-kisi', label: 'Kisi-kisi' },
-          { to: '/portal-siswa/ujian-cbt', label: 'Ujian CBT' },
-          { to: '/portal-siswa/hasil', label: 'Hasil' },
+          { to: '/portal-siswa', label: 'Portal Siswa' },
         ] : []),
       ],
     },
@@ -902,12 +937,14 @@ export default function DashboardLayout() {
       icon: CalendarCheck,
       submenus: attendanceSubmenus,
     },
-    ...((hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing', 'Super Admin', 'Admin', 'superadmin', 'SuperAdmin')) ? [
+    ...((isMusyrifRole(roles) || hasFullMenuAccess || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing')) ? [
       {
         key: 'musyrif-asrama',
         label: 'PORTAL MUSYRIF',
         icon: Moon,
         submenus: [
+          { to: '/dashboard/musyrif', label: 'Workspace Musyrif Asrama' },
+          { to: '/dashboard/chat-pegawai', label: 'Chat Pegawai & Orang Tua' },
           { to: '/dashboard/absensi-ibadah', label: 'Presensi Ibadah Santri' },
           { to: '/dashboard/mutabaah', label: 'Mutaba’ah Harian Santri' },
           ...(can('kesiswaan.kelas_rombel', 'academic.schedule.view', 'sistem.master_data')
@@ -916,16 +953,18 @@ export default function DashboardLayout() {
         ],
       },
     ] : []),
-    {
-      key: 'mutabaah',
-      label: 'MUTABA’AH',
-      icon: BookHeart,
-      submenus: [
-        { to: '/dashboard/mutabaah', label: 'Mutaba’ah Yaumiyah' },
-        { to: '/dashboard/tahfizh', label: setoranTahfizhMenuLabel },
-        { to: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren', label: 'Monitor Siswa Non Ponpes' },
-      ],
-    },
+    ...(!isPureMusyrif ? [
+      {
+        key: 'mutabaah',
+        label: 'MUTABA’AH',
+        icon: BookHeart,
+        submenus: [
+          { to: '/dashboard/mutabaah', label: 'Mutaba’ah Yaumiyah' },
+          { to: '/dashboard/tahfizh', label: setoranTahfizhMenuLabel },
+          { to: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren', label: 'Monitor Siswa Non Ponpes' },
+        ],
+      },
+    ] : []),
     {
       key: 'tahfizh-main',
       label: 'TAHFIZH AL-QUR’AN',
@@ -944,7 +983,6 @@ export default function DashboardLayout() {
       submenus: [
         { to: '/dashboard/laporan-siswa', label: 'Laporan Siswa' },
         { to: '/dashboard/laporan-absensi', label: 'Laporan Absensi Pembelajaran' },
-        { to: '/absensi/laporan', label: 'Laporan Rombel' },
         { to: '/dashboard/rekap-absensi-gerbang', label: 'Laporan Absensi Gerbang' },
         { to: '/dashboard/rekap-absensi-ibadah', label: 'Laporan Absensi Ibadah' },
         { to: '/dashboard/mutabaah/rekap', label: 'Laporan Mutaba’ah' },
@@ -973,10 +1011,10 @@ export default function DashboardLayout() {
     },
   ]).map((item) => (
     item.submenus
-      ? { ...item, submenus: item.submenus.filter((submenu) => !shouldHideFromGuru(item, submenu) && !shouldHideFromTataUsaha(item, submenu) && !shouldHideFromKepalaSekolah(item, submenu) && !shouldHideFromDivisiPendidikan(item, submenu) && bolehBukaMenu(submenu.to)) }
+      ? { ...item, submenus: item.submenus.filter((submenu) => !shouldHideFromGuru(item, submenu) && !shouldHideFromTataUsaha(item, submenu) && !shouldHideFromKepalaSekolah(item, submenu) && !shouldHideFromDivisiPendidikan(item, submenu) && !shouldHideFromMusyrif(item, submenu) && bolehBukaMenu(submenu.to)) }
       : item
   )).filter((item) => {
-    if (shouldHideFromGuru(item) || shouldHideFromTataUsaha(item) || shouldHideFromKepalaSekolah(item) || shouldHideFromDivisiPendidikan(item)) return false
+    if (shouldHideFromGuru(item) || shouldHideFromTataUsaha(item) || shouldHideFromKepalaSekolah(item) || shouldHideFromDivisiPendidikan(item) || shouldHideFromMusyrif(item)) return false
     if (
       (isRestrictedFoundationOrPrincipal || ((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess)) &&
       (item.key === 'portal-guru' || item.key === 'musyrif-asrama')

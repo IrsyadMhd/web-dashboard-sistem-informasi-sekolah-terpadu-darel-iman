@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { isParentRole, isStudentRole } from '../auth/portalResolver'
 import {
   BookOpen,
   BookHeart,
@@ -451,6 +453,14 @@ const MOCK_UNIT_COMPARISON_CHART = [
 export default function MonitoringTahfizhIbadahNonPesantrenPage() {
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || []
+
+  const isParent = isParentRole(roles)
+  const isStudent = isStudentRole(roles)
+  const isSuperAdmin = roles.some((r) => /super admin|superadmin|super_admin/i.test(typeof r === 'string' ? r : r?.name || ''))
+
+  if ((isParent || isStudent) && !isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />
+  }
 
   const isDivisi = roles.some((r) => String(r).toLowerCase().includes('divisi') || String(r).toLowerCase().includes('yayasan') || String(r).toLowerCase().includes('admin'))
   const isKepalaSekolah = roles.some((r) => String(r).toLowerCase().includes('kepala'))

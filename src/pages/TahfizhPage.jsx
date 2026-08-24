@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen,
@@ -119,6 +120,10 @@ export default function TahfizhPage() {
     return userRoles.some((r) => ['Orang Tua', 'orang_tua', 'ortu', 'parent', 'Parent'].includes(r))
   }, [userRoles])
 
+  if (isParent && !isSuperAdminOrAdmin) {
+    return <Navigate to="/portal-orangtua" replace />
+  }
+
   const isMusyrif = useMemo(() => {
     return userRoles.some((r) => ['Musyrif', 'Musyrifah', 'musyrif', 'musyrifah'].includes(r))
   }, [userRoles])
@@ -217,6 +222,7 @@ export default function TahfizhPage() {
 
   // Data Loading & Sheet State
   const [loadingSheet, setLoadingSheet] = useState(false)
+  const [loadingStudents, setLoadingStudents] = useState(false)
   const [savingAll, setSavingAll] = useState(false)
   const [weeklySheet, setWeeklySheet] = useState([])
   const [summaryTeacherNotes, setSummaryTeacherNotes] = useState('')
@@ -378,6 +384,7 @@ export default function TahfizhPage() {
   useEffect(() => {
     if (!selectedClassId) return
     const fetchSiswa = async () => {
+      setLoadingStudents(true)
       try {
         const res = await kelasService.getSiswaRombel(selectedClassId)
         const sList = res?.siswa || res?.data?.siswa || res?.data || (Array.isArray(res) ? res : [])
@@ -391,6 +398,10 @@ export default function TahfizhPage() {
         }
       } catch (e) {
         console.error('Error fetch siswa:', e)
+        setStudents([])
+        setSelectedStudentId('')
+      } finally {
+        setLoadingStudents(false)
       }
     }
     fetchSiswa()
@@ -419,6 +430,37 @@ export default function TahfizhPage() {
     return kelases.find((k) => String(k.id) === String(selectedClassId))
   }, [kelases, selectedClassId])
 
+  // Helper default 7 hari pekanan (Senin s/d Ahad)
+  const buildDefaultWeeklyDays = (mondayDateStr) => {
+    const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad']
+    const baseDate = mondayDateStr ? new Date(mondayDateStr) : new Date()
+    return dayNames.map((dName, idx) => {
+      const d = new Date(baseDate)
+      d.setDate(baseDate.getDate() + idx)
+      const dateStr = d.toISOString().split('T')[0]
+      return {
+        record_date: dateStr,
+        day_name: dName,
+        day_index: idx,
+        tilawah_text: '',
+        tilawah_baris: 0,
+        hafalan_surah_number: null,
+        hafalan_surah_name: '',
+        hafalan_ayah_start: '',
+        hafalan_ayah_end: '',
+        hafalan_baris: 0,
+        murajaah_text: '',
+        murajaah_lembar: 0,
+        audio_url: '',
+        notes_teacher: '',
+        notes_parent: '',
+        signature_teacher: '',
+        signature_parent: '',
+        isSaved: false,
+      }
+    })
+  }
+
   // Fetch Weekly Sheet & Progress saat Siswa atau Tanggal Minggu berubah
   const loadSheetAndProgress = async () => {
     if (!selectedStudentId) return
@@ -429,7 +471,7 @@ export default function TahfizhPage() {
         tahfizhService.getStudentProgress(selectedStudentId),
       ])
 
-      if (sheetData && sheetData.days) {
+      if (sheetData && sheetData.days && Array.isArray(sheetData.days) && sheetData.days.length > 0) {
         const mappedDays = sheetData.days.map((dayItem) => {
           const log = dayItem.log || {}
           return {
@@ -457,12 +499,13 @@ export default function TahfizhPage() {
         setSummaryTeacherNotes(sheetData.notes_teacher_summary || '')
         setSummaryParentNotes(sheetData.notes_parent_summary || '')
       } else {
-        setWeeklySheet([])
+        setWeeklySheet(buildDefaultWeeklyDays(currentMonday))
       }
 
       setStudentProgress(progressData || null)
     } catch (e) {
       console.error('Error load weekly sheet:', e)
+      setWeeklySheet(buildDefaultWeeklyDays(currentMonday))
       setNotification({ type: 'error', message: 'Gagal memuat data lembar mingguan tahfizh.' })
     } finally {
       setLoadingSheet(false)
@@ -488,7 +531,27 @@ export default function TahfizhPage() {
 
   // Handle Cell Change in Table
   const handleCellChange = (index, field, value) => {
-    const updated = [...weeklySheet]
+    if (index === null || index === undefined || index < 0) return
+    const updated = weeklySheet && weeklySheet.length > 0 ? [...weeklySheet] : buildDefaultWeeklyDays(currentMonday)
+    if (!updated[index]) {
+      const defaultDays = buildDefaultWeeklyDays(currentMonday)
+      updated[index] = defaultDays[index] || {
+        record_date: new Date().toISOString().split('T')[0],
+        day_name: 'Senin',
+        day_index: 0,
+        tilawah_text: '',
+        tilawah_baris: 0,
+        hafalan_surah_number: null,
+        hafalan_surah_name: '',
+        hafalan_ayah_start: '',
+        hafalan_ayah_end: '',
+        hafalan_baris: 0,
+        murajaah_text: '',
+        murajaah_lembar: 0,
+        audio_url: '',
+        isSaved: false,
+      }
+    }
     updated[index][field] = value
     updated[index].isModified = true
     setWeeklySheet(updated)
@@ -496,9 +559,10 @@ export default function TahfizhPage() {
 
   // Open Qur'an Master Modal for Hafalan Baru selection
   const handleOpenQuranModal = (rowIndex) => {
-    setSelectedRowIndex(rowIndex)
-    const currentRow = weeklySheet[rowIndex]
-    if (currentRow.hafalan_surah_number) {
+    const idx = (rowIndex !== null && rowIndex !== undefined && rowIndex >= 0) ? rowIndex : 0
+    setSelectedRowIndex(idx)
+    const currentRow = weeklySheet && weeklySheet[idx] ? weeklySheet[idx] : null
+    if (currentRow && currentRow.hafalan_surah_number) {
       const foundSurah = quranSurahs.find((s) => Number(s.nomor) === Number(currentRow.hafalan_surah_number))
       setModalSurah(foundSurah || quranSurahs[0] || null)
       setModalAyahStart(currentRow.hafalan_ayah_start || 1)
@@ -1681,8 +1745,7 @@ export default function TahfizhPage() {
                 <button
                   type="button"
                   title="Tambah Setoran Tahfizh Baru (Aktifkan Juz, Surah & Ayat)"
-                  disabled={!selectedStudentId}
-                  className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 dark:bg-emerald-950/60 dark:text-emerald-300"
+                  className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-emerald-950/60 dark:text-emerald-300"
                   onClick={handleOpenAddSetoranModal}
                 >
                   <Plus className="size-5" />
@@ -1698,8 +1761,7 @@ export default function TahfizhPage() {
                 <button
                   type="button"
                   title="Lanjutkan Hafalan Otomatis (Melanjutkan Ziyadah Terakhir)"
-                  disabled={!selectedStudentId}
-                  className="flex size-10 items-center justify-center rounded-2xl bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 dark:bg-violet-950/60 dark:text-violet-300"
+                  className="flex size-10 items-center justify-center rounded-2xl bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-violet-950/60 dark:text-violet-300"
                   onClick={handleContinueHafalan}
                 >
                   <Sparkles className="size-5" />
@@ -1715,8 +1777,7 @@ export default function TahfizhPage() {
                 <button
                   type="button"
                   title="Mengulangi Tahfizh (Murajaah / Repeat Ziyadah Terakhir)"
-                  disabled={!selectedStudentId}
-                  className="flex size-10 items-center justify-center rounded-2xl bg-orange-100/90 text-orange-700 hover:bg-orange-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 dark:bg-orange-950/60 dark:text-orange-300"
+                  className="flex size-10 items-center justify-center rounded-2xl bg-orange-100/90 text-orange-700 hover:bg-orange-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-orange-950/60 dark:text-orange-300"
                   onClick={handleRepeatHafalan}
                 >
                   <RefreshCcw className="size-5" />
@@ -1797,7 +1858,12 @@ export default function TahfizhPage() {
           </div>
 
           <CardContent className="p-0">
-            {filteredStudents.length === 0 ? (
+            {loadingStudents ? (
+              <div className="p-12 text-center text-slate-400 text-xs font-semibold flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+                <span>Memuat data siswa rombel...</span>
+              </div>
+            ) : filteredStudents.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-xs font-semibold">
                 {studentTableSearch ? 'Tidak ada siswa yang sesuai dengan kata kunci pencarian.' : 'Belum ada siswa terdaftar di rombel ini.'}
               </div>
@@ -2036,7 +2102,12 @@ export default function TahfizhPage() {
               </div>
 
               <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1">
-                {filteredStudentsInModal.length === 0 ? (
+                {loadingStudents ? (
+                  <div className="p-8 text-center text-slate-400 text-xs font-semibold flex flex-col items-center justify-center gap-2.5">
+                    <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                    <span>Memuat daftar siswa rombel...</span>
+                  </div>
+                ) : filteredStudentsInModal.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 text-xs font-semibold">
                     Tidak ada siswa ditemukan pada rombel ini.
                   </div>

@@ -686,14 +686,13 @@ export default function ParentPortalPage() {
                     </div>
                   </div>
 
-                  {/* Sub-Tab Switcher 5 Modul - Grid 5 Kolom Sejajar Presisi (Rapih & Tanpa Bergeser Kiri Kanan) */}
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 w-full">
+                  {/* Sub-Tab Switcher 4 Modul - Grid 4 Kolom Sejajar Presisi (Rapih & Tanpa Bergeser Kiri Kanan) */}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 w-full">
                     {[
                       ['mutabaah', 'Dashboard Mutaba’ah', HeartHandshake, 'bg-amber-100/90 text-amber-800 border-amber-200/90 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60'],
                       ['setoran', 'Setoran Tahfizh Siswa', BookOpenCheck, 'bg-emerald-100/90 text-emerald-800 border-emerald-200/90 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60'],
                       ['target', 'Target & Evaluasi', Award, 'bg-teal-100/90 text-teal-800 border-teal-200/90 hover:bg-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/60'],
                       ['ortu', 'Monitoring Orang Tua', Users, 'bg-purple-100/90 text-purple-800 border-purple-200/90 hover:bg-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800/60'],
-                      ['non_ponpes', 'Monitor Siswa Non Ponpes', Home, 'bg-sky-100/90 text-sky-800 border-sky-200/90 hover:bg-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60'],
                     ].map(([key, label, IconComp, colorClass]) => {
                       const isActive = ringkasanSubTab === key
                       return (
@@ -783,21 +782,6 @@ export default function ParentPortalPage() {
                         </p>
                       </div>
                       <Badge color="purple" className="bg-purple-700 text-white font-bold">Terverifikasi Wali Kelas</Badge>
-                    </div>
-                  </div>
-                )}
-
-                {/* CONTENT MODUL 5: MONITOR SISWA NON PONPES */}
-                {ringkasanSubTab === 'non_ponpes' && (
-                  <div className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60 space-y-2">
-                      <div className="flex items-center gap-2 font-bold text-xs text-slate-800 dark:text-slate-200">
-                        <Home className="h-4 w-4 text-emerald-600" />
-                        <span>Pemantauan Aktivitas Harian Siswa Non-Pesantren (Pulang - Pergi Sekolah)</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                        Laporan waktu kedatangan di rumah, pengulangan murajaah mandiri, dan jadwal belajar malam terbimbing oleh orang tua.
-                      </p>
                     </div>
                   </div>
                 )}

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Building2,
   Users,
@@ -17,6 +18,14 @@ import {
   FileText,
   RefreshCw,
   Search,
+  ChevronRight,
+  Filter,
+  Eye,
+  MoreVertical,
+  Calendar,
+  CheckCircle2,
+  AlertTriangle,
+  User,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -26,38 +35,124 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from 'recharts'
 
 import {
   AppPageHeader,
   AppBreadcrumb,
-  AppFilterBar,
-  KpiCard,
-  AppDataTable,
   AppBadge,
   AppButton,
-  SectionHeader,
-  ActionDropdown,
   PageContainer,
 } from '../components/app'
+import { Input } from '../components/tailgrids/core/input'
 import { Button } from '../components/tailgrids/core/button'
-import Progress from '../components/tailgrids/core/progress'
+import { Pagination } from '../components/tailgrids/core/pagination'
+import {
+  TableRoot,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '../components/tailgrids/core/table'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '../components/tailgrids/core/hover-card'
 import { SquircleActionButton } from '../components/master-data'
 
-import ChartCard from '../components/dashboard/ChartCard'
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
 import ErrorState from '../components/dashboard/ErrorState'
 import KpiQuickViewModal from '../components/KpiQuickViewModal'
 import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
 
+import { useAuthStore } from '../stores/authStore'
 import { superAdminDashboardService } from '../services/superAdminDashboardService'
+
+// Animation Variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+      delayChildren: 0.03,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' },
+  },
+}
+
+// Tone Styles for KPI Cards
+const toneStyles = {
+  emerald: {
+    cardBg: 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/80 dark:border-emerald-900/50',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/80',
+    iconColor: 'text-emerald-700 dark:text-emerald-300',
+    badge: 'bg-emerald-200/80 text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200',
+  },
+  violet: {
+    cardBg: 'bg-violet-50/70 dark:bg-violet-950/40 border-violet-200/80 dark:border-violet-900/50',
+    iconBg: 'bg-violet-100 dark:bg-violet-900/80',
+    iconColor: 'text-violet-700 dark:text-violet-300',
+    badge: 'bg-violet-200/80 text-violet-800 dark:bg-violet-900/90 dark:text-violet-200',
+  },
+  sky: {
+    cardBg: 'bg-sky-50/70 dark:bg-sky-950/40 border-sky-200/80 dark:border-sky-900/50',
+    iconBg: 'bg-sky-100 dark:bg-sky-900/80',
+    iconColor: 'text-sky-700 dark:text-sky-300',
+    badge: 'bg-sky-200/80 text-sky-800 dark:bg-sky-900/90 dark:text-sky-200',
+  },
+  amber: {
+    cardBg: 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/50',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/80',
+    iconColor: 'text-amber-700 dark:text-amber-300',
+    badge: 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/90 dark:text-amber-200',
+  },
+  rose: {
+    cardBg: 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-200/80 dark:border-rose-900/50',
+    iconBg: 'bg-rose-100 dark:bg-rose-900/80',
+    iconColor: 'text-rose-700 dark:text-rose-300',
+    badge: 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/90 dark:text-rose-200',
+  },
+  indigo: {
+    cardBg: 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200/80 dark:border-indigo-900/50',
+    iconBg: 'bg-indigo-100 dark:bg-indigo-900/80',
+    iconColor: 'text-indigo-700 dark:text-indigo-300',
+    badge: 'bg-indigo-200/80 text-indigo-800 dark:bg-indigo-900/90 dark:text-indigo-200',
+  },
+}
+
+const PIE_COLORS = ['#0E5C44', '#3FBF75', '#3182F6', '#8B5CF6', '#FF8A1F']
 
 export default function SuperAdminDashboardPage() {
   const navigate = useNavigate()
+  const currentUser = useAuthStore((state) => state.user)
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
   const [activeModal, setActiveModal] = useState(null)
+
+  // Filters
+  const [selectedUnit, setSelectedUnit] = useState('semua')
+  const [selectedStatus, setSelectedStatus] = useState('semua')
+  const [periodOption, setPeriodOption] = useState('semua')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const pageSize = 5
 
   const fetchDashboard = async () => {
     setLoading(true)
@@ -70,8 +165,8 @@ export default function SuperAdminDashboardPage() {
         setError('Format respon server tidak valid.')
       }
     } catch (err) {
-      console.error('Failed to load super admin dashboard:', err)
-      setError(err.response?.data?.message || 'Gagal memuat data dashboard Super Admin.')
+      console.error('Failed to load dashboard:', err)
+      setError(err.response?.data?.message || 'Gagal memuat data dashboard.')
     } finally {
       setLoading(false)
     }
@@ -81,8 +176,13 @@ export default function SuperAdminDashboardPage() {
     fetchDashboard()
   }, [])
 
-  if (loading && !data) return <SkeletonDashboard />
-  if (error && !data) return <ErrorState message={error} onRetry={fetchDashboard} />
+  const resetFilter = () => {
+    setSelectedUnit('semua')
+    setSelectedStatus('semua')
+    setPeriodOption('semua')
+    setSearchQuery('')
+    setPage(1)
+  }
 
   const kpis = data?.kpis || {}
   const context = data?.context || {}
@@ -90,367 +190,810 @@ export default function SuperAdminDashboardPage() {
   const unitSummaries = data?.unit_summaries || []
   const recentLogins = data?.recent_logins || []
 
-  const formatNumber = (num) => (num !== undefined && num !== null ? Number(num).toLocaleString('id-ID') : '0')
+  const formatAngka = (num) =>
+    num !== undefined && num !== null ? Number(num).toLocaleString('id-ID') : '0'
 
-  const unitColumns = [
+  // Filtered unit summaries for Datatable
+  const filteredUnits = useMemo(() => {
+    return unitSummaries.filter((unit) => {
+      const matchSearch =
+        !searchQuery ||
+        unit.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        unit.code?.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchUnit = selectedUnit === 'semua' || String(unit.id) === String(selectedUnit)
+      const matchStatus =
+        selectedStatus === 'semua' ||
+        String(unit.status).toLowerCase() === selectedStatus.toLowerCase()
+
+      return matchSearch && matchUnit && matchStatus
+    })
+  }, [unitSummaries, searchQuery, selectedUnit, selectedStatus])
+
+  const totalPages = Math.max(1, Math.ceil(filteredUnits.length / pageSize))
+  const paginatedUnits = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filteredUnits.slice(start, start + pageSize)
+  }, [filteredUnits, page, pageSize])
+
+  // Pie chart data preparation
+  const staffPieData = useMemo(() => {
+    const totalGuru = Object.values(unitSummaries).reduce((acc, u) => acc + (u.guru_count || 0), 0)
+    const totalPegawai = Object.values(unitSummaries).reduce((acc, u) => acc + (u.pegawai_count || 0), 0)
+    if (totalGuru === 0 && totalPegawai === 0) {
+      return [
+        { name: 'Guru Pendidik', value: kpis.total_teachers?.total || 45 },
+        { name: 'Pegawai & Tendik', value: (kpis.total_employees?.total || 60) - (kpis.total_teachers?.total || 45) },
+      ]
+    }
+    return [
+      { name: 'Guru Pendidik', value: totalGuru },
+      { name: 'Pegawai & Tendik', value: totalPegawai },
+    ]
+  }, [unitSummaries, kpis])
+
+  if (loading && !data) return <SkeletonDashboard />
+  if (error && !data) return <ErrorState message={error} onRetry={fetchDashboard} />
+
+  const primaryCards = [
     {
-      key: 'name',
-      label: 'Nama Unit Pendidikan',
-      sortable: true,
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0E5C44]/10 text-[#0E5C44] font-black text-xs dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]">
-            {(row.code || row.name || 'UN').substring(0, 3).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="font-extrabold text-slate-900 dark:text-white truncate">{row.name}</p>
-            <p className="text-[11px] text-slate-400 font-medium">{row.code || 'Unit Sekolah'}</p>
-          </div>
-        </div>
-      ),
+      title: 'Total Unit Pendidikan',
+      value: kpis.total_units?.total,
+      icon: Building2,
+      tone: 'emerald',
+      percent: Math.min(100, (kpis.total_units?.total || 0) * 10),
+      modalKey: 'total_units',
+      badgeText: 'Terdaftar',
     },
     {
-      key: 'siswa_count',
-      label: 'Siswa Aktif',
-      sortable: true,
-      render: (row) => (
-        <span className="font-extrabold text-[#0E5C44] dark:text-[#3FBF75]">
-          {formatNumber(row.siswa_count)} Siswa
-        </span>
-      ),
+      title: 'Unit Sekolah Aktif',
+      value: kpis.active_units?.total,
+      icon: School,
+      tone: 'sky',
+      percent: kpis.total_units?.total
+        ? Math.round(((kpis.active_units?.total || 0) / (kpis.total_units?.total || 1)) * 100)
+        : 100,
+      modalKey: 'active_units',
+      badgeText: 'Aktif',
     },
     {
-      key: 'guru_count',
-      label: 'Guru',
-      sortable: true,
-      render: (row) => <span className="font-bold text-slate-800 dark:text-slate-200">{formatNumber(row.guru_count)}</span>,
+      title: 'Total Pegawai & Tendik',
+      value: kpis.total_employees?.total,
+      icon: UserCheck,
+      tone: 'violet',
+      percent: Math.min(100, (kpis.total_employees?.total || 0) * 2),
+      modalKey: 'total_employees',
+      badgeText: 'SDM Staf',
     },
     {
-      key: 'pegawai_count',
-      label: 'Pegawai',
-      sortable: true,
-      hideOnMobile: true,
-      render: (row) => <span className="font-semibold text-slate-600 dark:text-slate-400">{formatNumber(row.pegawai_count)}</span>,
+      title: 'Total Guru Pengajar',
+      value: kpis.total_teachers?.total,
+      icon: GraduationCap,
+      tone: 'indigo',
+      percent: kpis.total_employees?.total
+        ? Math.round(((kpis.total_teachers?.total || 0) / (kpis.total_employees?.total || 1)) * 100)
+        : 100,
+      modalKey: 'total_teachers',
+      badgeText: 'Pendidik',
     },
     {
-      key: 'status',
-      label: 'Status',
-      render: (row) => (
-        <AppBadge variant={row.status === 'Aktif' || row.status === 'aktif' ? 'success' : 'secondary'} dot>
-          {row.status || 'Aktif'}
-        </AppBadge>
-      ),
+      title: 'Total Siswa Aktif',
+      value: kpis.total_students?.total,
+      icon: Users,
+      tone: 'amber',
+      percent: Math.min(100, (kpis.total_students?.total || 0) * 0.1),
+      modalKey: 'total_students',
+      badgeText: 'Siswa',
     },
   ]
 
-  const loginColumns = [
+  const secondaryCards = [
     {
-      key: 'name',
-      label: 'Nama / Email',
-      render: (row) => (
-        <div className="min-w-0">
-          <p className="font-bold text-slate-900 dark:text-white truncate text-xs">{row.name}</p>
-          <p className="text-[10px] text-slate-400 truncate">{row.email}</p>
-        </div>
-      ),
+      title: 'Total Orang Tua / Wali',
+      value: kpis.total_parents?.total,
+      icon: HeartHandshake,
+      tone: 'rose',
+      percent: kpis.total_students?.total
+        ? Math.round(((kpis.total_parents?.total || 0) / (kpis.total_students?.total || 1)) * 100)
+        : 100,
+      modalKey: 'total_parents',
+      badgeText: 'Wali',
     },
     {
-      key: 'created_at',
-      label: 'Waktu Login',
-      render: (row) => <span className="text-xs text-slate-500 font-medium">{row.created_at || 'Baru saja'}</span>,
+      title: 'Total Rombel / Kelas',
+      value: kpis.total_rombel?.total || kpis.total_classes?.total,
+      icon: Layers,
+      tone: 'sky',
+      percent: Math.min(100, ((kpis.total_rombel?.total || 0) * 2)),
+      modalKey: 'total_rombel',
+      badgeText: 'Rombel',
+    },
+    {
+      title: 'Pengguna Sistem Aktif',
+      value: kpis.active_users?.total,
+      icon: ShieldCheck,
+      tone: 'emerald',
+      percent: kpis.total_users?.total
+        ? Math.round(((kpis.active_users?.total || 0) / (kpis.total_users?.total || 1)) * 100)
+        : 100,
+      modalKey: 'active_users',
+      badgeText: 'User System',
+    },
+    {
+      title: 'Role Spatie Terdaftar',
+      value: kpis.active_roles?.total,
+      icon: Key,
+      tone: 'indigo',
+      percent: Math.min(100, (kpis.active_roles?.total || 0) * 5),
+      modalKey: 'active_roles',
+      badgeText: 'Spatie Roles',
+    },
+    {
+      title: 'User Tanpa Role',
+      value: kpis.users_without_role?.total,
+      icon: UserX,
+      tone: 'rose',
+      percent: kpis.total_users?.total
+        ? Math.round(((kpis.users_without_role?.total || 0) / (kpis.total_users?.total || 1)) * 100)
+        : 0,
+      modalKey: 'users_without_role',
+      badgeText: 'Perlu Action',
     },
   ]
+
+  const welcomeRoleName = currentUser?.roles?.includes('Super Admin') || currentUser?.roles?.includes('super_admin')
+    ? 'Super Admin'
+    : 'Admin Sistem'
 
   return (
-    <PageContainer maxW="7xl">
-      <div className="space-y-6 pb-12">
-        {/* Breadcrumb Navigation */}
-        <AppBreadcrumb items={[{ label: 'Dashboard Super Admin' }]} />
-
-        {/* Header */}
-        <AppPageHeader
-          variant="brand"
-          title="Dashboard Utama Super Admin"
-          eyebrow="System Management & Administration"
-          description="Pantau dan kelola seluruh unit pendidikan, data master, hak akses pengguna, serta performa sistem terpadu."
-          welcomeName="Super Admin"
-          chips={[
-            context.tahun_ajaran ? `Tahun Ajaran ${context.tahun_ajaran.nama}` : 'TBA 2026/2027',
-            context.semester ? `Semester ${context.semester.nama}` : 'Semester Ganjil',
-            'Sistem Manajemen Terpadu',
-          ]}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <AppButton variant="accent" size="sm" icon={Plus} onClick={() => navigate('/dashboard/master/unit-pendidikan')}>
-                Tambah Unit
-              </AppButton>
-              <AppButton variant="outline" size="sm" icon={RefreshCw} onClick={fetchDashboard} className="border-white/30 text-white hover:bg-white/10">
-                Segarkan Data
-              </AppButton>
-            </div>
-          }
-        />
-
-        {/* Filter Bar */}
-        <AppFilterBar label="Filter Sistem" onReset={fetchDashboard} />
-
-        {/* Primary KPI Grid */}
-        <section className="space-y-3">
-          <SectionHeader title="Metrik Utama Sistem & Unit" subtitle="Ringkasan agregat dari seluruh modul dan unit pendidikan" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard
-              title="Total Unit Pendidikan"
-              value={formatNumber(kpis.total_units?.total)}
-              icon={Building2}
-              colorScheme="emerald"
-              progress={Math.min(100, (kpis.total_units?.total || 0) * 6.67)}
-              progressColorScheme="emerald"
-              badge="Terdaftar"
-              badgeVariant="success"
-              onClick={() => setActiveModal('total_units')}
-            />
-            <KpiCard
-              title="Unit Sekolah Aktif"
-              value={formatNumber(kpis.active_units?.total)}
-              icon={School}
-              colorScheme="blue"
-              progress={kpis.total_units?.total ? Math.min(100, ((kpis.active_units?.total || 0) / (kpis.total_units?.total || 1)) * 100) : 100}
-              progressColorScheme="blue"
-              badge="Aktif"
-              badgeVariant="info"
-              onClick={() => setActiveModal('active_units')}
-            />
-            <KpiCard
-              title="Total Pegawai & Tendik"
-              value={formatNumber(kpis.total_employees?.total)}
-              icon={UserCheck}
-              colorScheme="violet"
-              progress={Math.min(100, (kpis.total_employees?.total || 0) * 2.7)}
-              progressColorScheme="violet"
-              badge="SDM Staf"
-              badgeVariant="purple"
-              onClick={() => setActiveModal('total_employees')}
-            />
-            <KpiCard
-              title="Total Guru Pengajar"
-              value={formatNumber(kpis.total_teachers?.total)}
-              icon={GraduationCap}
-              colorScheme="indigo"
-              progress={kpis.total_employees?.total ? Math.min(100, ((kpis.total_teachers?.total || 0) / (kpis.total_employees?.total || 1)) * 100) : 100}
-              progressColorScheme="indigo"
-              badge="Pendidik"
-              badgeVariant="success"
-              onClick={() => setActiveModal('total_teachers')}
-            />
-          </div>
-        </section>
-
-        {/* Secondary KPI Grid */}
-        <section className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard
-              title="Total Siswa Aktif"
-              value={formatNumber(kpis.total_students?.total)}
-              icon={Users}
-              colorScheme="emerald"
-              progress={Math.min(100, (kpis.total_students?.total || 0) * 3)}
-              progressColorScheme="emerald"
-              badge="Siswa"
-              badgeVariant="success"
-              onClick={() => setActiveModal('total_students')}
-            />
-            <KpiCard
-              title="Total Orang Tua"
-              value={formatNumber(kpis.total_parents?.total)}
-              icon={HeartHandshake}
-              colorScheme="rose"
-              progress={kpis.total_students?.total ? Math.min(100, ((kpis.total_parents?.total || 0) / (kpis.total_students?.total || 1)) * 100) : 100}
-              progressColorScheme="rose"
-              badge="Wali"
-              badgeVariant="warning"
-              onClick={() => setActiveModal('total_parents')}
-            />
-            <KpiCard
-              title="Total Rombel / Kelas"
-              value={formatNumber(kpis.total_rombel?.total || kpis.total_classes?.total)}
-              icon={Layers}
-              colorScheme="blue"
-              progress={Math.min(100, ((kpis.total_rombel?.total || kpis.total_classes?.total || 0) * 1.4))}
-              progressColorScheme="blue"
-              badge="Rombel"
-              badgeVariant="info"
-              onClick={() => setActiveModal('total_rombel')}
-            />
-            <KpiCard
-              title="Total Alumni"
-              value={formatNumber(kpis.total_alumni?.total)}
-              icon={GraduationCap}
-              colorScheme="amber"
-              progress={Math.min(100, (kpis.total_alumni?.total || 0) * 33)}
-              progressColorScheme="amber"
-              badge="Lulusan"
-              badgeVariant="purple"
-              onClick={() => setActiveModal('total_alumni')}
-            />
-          </div>
-        </section>
-
-        {/* System Security & User Health KPIs */}
-        <section className="space-y-3">
-          <SectionHeader title="Keamanan & Pengguna Sistem" subtitle="Status akun terdaftar, hak akses, dan kesehatan otentikasi" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard
-              title="Pengguna Sistem Aktif"
-              value={formatNumber(kpis.active_users?.total)}
-              icon={ShieldCheck}
-              colorScheme="emerald"
-              progress={kpis.total_users?.total ? Math.min(100, ((kpis.active_users?.total || 0) / (kpis.total_users?.total || 1)) * 100) : 100}
-              progressColorScheme="emerald"
-              badge="User"
-              onClick={() => setActiveModal('active_users')}
-            />
-            <KpiCard
-              title="Role Terdaftar"
-              value={formatNumber(kpis.active_roles?.total)}
-              icon={Key}
-              colorScheme="indigo"
-              progress={Math.min(100, (kpis.active_roles?.total || 0) * 10)}
-              progressColorScheme="indigo"
-              badge="Spatie Roles"
-              onClick={() => setActiveModal('active_roles')}
-            />
-            <KpiCard
-              title="User Tanpa Role"
-              value={formatNumber(kpis.users_without_role?.total)}
-              icon={UserX}
-              colorScheme="rose"
-              progress={kpis.total_users?.total ? Math.min(100, ((kpis.users_without_role?.total || 0) / (kpis.total_users?.total || 1)) * 100) : 0}
-              progressColorScheme="rose"
-              badge="Perlu Action"
-              badgeVariant="danger"
-              onClick={() => setActiveModal('users_without_role')}
-            />
-          </div>
-        </section>
-
-        {/* Quick Action Navigation */}
-        <section className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Aksi Cepat Super Admin</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Pintas manajemen data master dan konfigurasi sistem</p>
-            </div>
-            <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
-              <SquircleActionButton
-                variant="import"
-                icon={Building2}
-                label="Tambah Unit"
-                onClick={() => navigate('/dashboard/master/unit-pendidikan')}
-              />
-              <SquircleActionButton
-                variant="primary"
-                icon={UserPlus}
-                label="Tambah Pegawai"
-                onClick={() => navigate('/dashboard/employees')}
-              />
-              <SquircleActionButton
-                variant="view"
-                icon={Users}
-                label="Tambah Siswa"
-                onClick={() => navigate('/dashboard/students')}
-              />
-              <SquircleActionButton
-                variant="export"
-                icon={Key}
-                label="Kelola Role & Permissions"
-                onClick={() => navigate('/dashboard/hak-akses')}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Charts Section */}
-        <section className="space-y-3">
-          <SectionHeader title="Visualisasi Distribusi SDM & Siswa" subtitle="Grafik perbandingan kesiswaan dan kepegawaian antar unit" />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ChartCard
-              title="Distribusi Siswa per Unit Pendidikan"
-              subtitle="Jumlah siswa aktif terdaftar di masing-masing unit"
-              empty={!charts.student_distribution || charts.student_distribution.length === 0}
+    <PageContainer>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+        className="space-y-6 pb-12"
+      >
+        {/* 1. Breadcrumbs Navigation & Quick Action */}
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <AppBreadcrumb items={[{ label: `Dashboard Utama ${welcomeRoleName}` }]} />
+          <div className="flex items-center gap-2">
+            <AppButton
+              variant="outline"
+              size="sm"
+              icon={RefreshCw}
+              onClick={fetchDashboard}
+              className="text-xs text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
-              <div className="h-64 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts.student_distribution || []}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="name" stroke="#888888" fontSize={11} />
-                    <YAxis stroke="#888888" fontSize={11} />
-                    <Tooltip />
-                    <Bar dataKey="total" fill="#0E5C44" radius={[6, 6, 0, 0]} name="Siswa" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
-
-            <ChartCard
-              title="Distribusi Guru & Pegawai per Unit"
-              subtitle="Perbandingan jumlah guru dan tenaga kependidikan"
-              empty={!charts.staff_distribution || charts.staff_distribution.length === 0}
-            >
-              <div className="h-64 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts.staff_distribution || []}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="name" stroke="#888888" fontSize={11} />
-                    <YAxis stroke="#888888" fontSize={11} />
-                    <Tooltip />
-                    <Bar dataKey="guru" fill="#1E8E5A" radius={[6, 6, 0, 0]} name="Guru" />
-                    <Bar dataKey="pegawai" fill="#3FBF75" radius={[6, 6, 0, 0]} name="Pegawai" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </ChartCard>
+              Segarkan Data
+            </AppButton>
           </div>
-        </section>
+        </motion.div>
 
-        {/* Data Tables Section */}
-        <section className="space-y-3">
-          <SectionHeader title="Ringkasan Master Unit & Log Sesi User" subtitle="Daftar unit sekolah dan audit sesi login pengguna terbaru" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <AppDataTable
-                title="Ringkasan Master Unit Pendidikan"
-                description="Data statistik unit terdaftar dalam sistem"
-                data={unitSummaries}
-                columns={unitColumns}
-                keyField="id"
-                searchPlaceholder="Cari unit..."
-                onView={(row) => navigate(`/dashboard/master/unit-pendidikan`)}
-              />
+        {/* 3. Primary KPI Summary Cards (5-Card Grid) */}
+        <motion.div variants={itemVariants} className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+              Metrik Utama Sistem & Unit Sekolah
+            </h2>
+            <span className="text-xs text-slate-400 font-medium">Updated Realtime</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {primaryCards.map((card) => {
+              const style = toneStyles[card.tone] || toneStyles.emerald
+              const Icon = card.icon
+              return (
+                <motion.article
+                  key={card.title}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  onClick={() => setActiveModal(card.modalKey)}
+                  role="button"
+                  tabIndex={0}
+                  className={`group flex flex-col justify-between h-full p-4 rounded-[18px] border shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer ${style.cardBg}`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div
+                      className={`size-10 sm:size-11 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}
+                    >
+                      <Icon className="size-5 sm:size-6" />
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${style.badge}`}
+                    >
+                      {card.badgeText}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">
+                      {card.title}
+                    </span>
+                    <strong className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
+                      {formatAngka(card.value)}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+                    <span>Lihat Rincian</span>
+                    <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                      Detail &rarr;
+                    </span>
+                  </div>
+                </motion.article>
+              )
+            })}
+          </div>
+        </motion.div>
+
+        {/* 4. Secondary KPI Grid */}
+        <motion.div variants={itemVariants} className="space-y-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {secondaryCards.map((card) => {
+              const style = toneStyles[card.tone] || toneStyles.violet
+              const Icon = card.icon
+              return (
+                <motion.article
+                  key={card.title}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  onClick={() => setActiveModal(card.modalKey)}
+                  role="button"
+                  tabIndex={0}
+                  className={`group flex flex-col justify-between h-full p-4 rounded-[18px] border shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer ${style.cardBg}`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div
+                      className={`size-10 sm:size-11 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}
+                    >
+                      <Icon className="size-5 sm:size-6" />
+                    </div>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${style.badge}`}
+                    >
+                      {card.badgeText}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">
+                      {card.title}
+                    </span>
+                    <strong className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
+                      {formatAngka(card.value)}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+                    <span>Analisis Modul</span>
+                    <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                      Detail &rarr;
+                    </span>
+                  </div>
+                </motion.article>
+              )
+            })}
+          </div>
+        </motion.div>
+
+        {/* 5. Recent Logins Section (Directly Above Filter System & Unit 3-Column Grid) */}
+        <motion.div variants={itemVariants}>
+          <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <UserCheck className="size-5 text-emerald-600 dark:text-emerald-400" />
+                  Audit User Login Terbaru
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Daftar pengguna dengan riwayat aktivitas sesi masuk terkini dalam sistem terpadu
+                </p>
+              </div>
+              <AppBadge variant="info" size="sm">
+                {recentLogins.length} Sesi Masuk
+              </AppBadge>
             </div>
 
-            <div className="lg:col-span-1">
-              <AppDataTable
-                title="User Login Terbaru"
-                description="Daftar sesi masuk pengguna terkini"
-                data={recentLogins}
-                columns={loginColumns}
-                keyField="id"
-                showToolbar={false}
-                showPagination={false}
+            {recentLogins.length === 0 ? (
+              <div className="text-center py-6 text-slate-400 text-xs font-medium">
+                Belum ada data sesi login user terbaru.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+                {recentLogins.slice(0, 8).map((userItem, idx) => (
+                  <HoverCard key={userItem.id || idx}>
+                    <HoverCardTrigger asChild>
+                      <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer group">
+                        <div className="size-9 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200 flex items-center justify-center font-black text-xs shrink-0 group-hover:scale-105 transition-transform">
+                          {(userItem.name || 'U').substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            {userItem.name}
+                          </p>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {userItem.email}
+                          </p>
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                            {userItem.created_at || 'Baru saja'}
+                          </p>
+                        </div>
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-72 p-4 bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl">
+                      <div className="space-y-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shadow-inner">
+                            {(userItem.name || 'U').substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-900 dark:text-white text-xs">
+                              {userItem.name}
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              {userItem.email}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">Role Hak Akses:</span>
+                            <strong className="text-slate-800 dark:text-slate-200">{userItem.role || 'Pengguna'}</strong>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px]">Sesi Masuk:</span>
+                            <strong className="text-emerald-600 dark:text-emerald-400">{userItem.created_at || 'Terbaru'}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* 5. 3-Column Equal Grid Section */}
+        <motion.div variants={itemVariants}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+            {/* Column 1: Panel Filter Laporan & System */}
+            <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+              <div>
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Filter className="size-4 text-emerald-600 dark:text-emerald-400" />
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                      Filter System & Unit
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetFilter}
+                    className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                  >
+                    Reset Filter
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Dropdown Unit Pendidikan */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Pilihan Unit Sekolah
+                    </label>
+                    <select
+                      value={selectedUnit}
+                      onChange={(e) => {
+                        setSelectedUnit(e.target.value)
+                        setPage(1)
+                      }}
+                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="semua">Semua Unit Pendidikan</option>
+                      {unitSummaries.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name} ({unit.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Dropdown Status Unit */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Status Operasional Unit
+                    </label>
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => {
+                        setSelectedStatus(e.target.value)
+                        setPage(1)
+                      }}
+                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="semua">Semua Status Unit</option>
+                      <option value="aktif">Aktif Operasional</option>
+                      <option value="nonaktif">Non-Aktif</option>
+                    </select>
+                  </div>
+
+                  {/* Dropdown Periode Waktu */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      Periode Analisis Data
+                    </label>
+                    <select
+                      value={periodOption}
+                      onChange={(e) => {
+                        setPeriodOption(e.target.value)
+                        setPage(1)
+                      }}
+                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="semua">Semua Periode Data</option>
+                      <option value="hari">Hari Ini (Per Hari)</option>
+                      <option value="minggu">7 Hari Terakhir (Per Minggu)</option>
+                      <option value="bulan">Bulan Ini (Per Bulan)</option>
+                      <option value="semester">6 Bulan Terakhir (Per Semester)</option>
+                      <option value="tahun">Tahun Ini (Per Tahun)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/80">
+                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                  Gunakan filter di atas untuk mempersempit ringkasan statistik dan daftar unit sekolah terdaftar pada tabel.
+                </p>
+              </div>
+            </article>
+
+            {/* Column 2: Grafik Tren Utama Kesiswaan per Unit */}
+            <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+              <div>
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                      Distribusi Siswa per Unit
+                    </h2>
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      Jumlah siswa aktif terdaftar di masing-masing unit
+                    </p>
+                  </div>
+                  <AppBadge variant="success" size="sm">
+                    Kesiswaan
+                  </AppBadge>
+                </div>
+
+                <div className="h-56 w-full pt-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={charts.student_distribution || []}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                      <XAxis dataKey="name" stroke="#888888" fontSize={11} />
+                      <YAxis stroke="#888888" fontSize={11} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1E293B',
+                          borderColor: '#334155',
+                          borderRadius: '12px',
+                          color: '#F8FAFC',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Bar dataKey="total" fill="#0E5C44" radius={[6, 6, 0, 0]} name="Siswa Aktif" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500">
+                <span>Total Unit Terdaftar</span>
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  {unitSummaries.length} Unit Sekolah
+                </span>
+              </div>
+            </article>
+
+            {/* Column 3: Grafik Donut Komposisi SDM & Pegawai */}
+            <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+              <div>
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                      Komposisi SDM & Pendidik
+                    </h2>
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      Perbandingan Guru Pendidik dan Tenaga Kependidikan
+                    </p>
+                  </div>
+                  <AppBadge variant="info" size="sm">
+                    SDM Staf
+                  </AppBadge>
+                </div>
+
+                <div className="h-56 w-full relative flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={staffPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={75}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {staffPieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1E293B',
+                          borderColor: '#334155',
+                          borderRadius: '12px',
+                          color: '#F8FAFC',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500">
+                <span>Total SDM Terdaftar</span>
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  {formatAngka(kpis.total_employees?.total)} Personel
+                </span>
+              </div>
+            </article>
+          </div>
+        </motion.div>
+
+        {/* 6. Quick Action Navigation Bar */}
+        <motion.div variants={itemVariants}>
+          <section className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  Aksi Cepat Navigation
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Pintas cepat ke pengelolaan data master, akun pengguna, dan konfigurasi hak akses
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+                <SquircleActionButton
+                  variant="import"
+                  icon={Building2}
+                  label="Tambah Unit"
+                  onClick={() => navigate('/dashboard/master/unit-pendidikan')}
+                />
+                <SquircleActionButton
+                  variant="primary"
+                  icon={UserPlus}
+                  label="Tambah Pegawai"
+                  onClick={() => navigate('/dashboard/employees')}
+                />
+                <SquircleActionButton
+                  variant="view"
+                  icon={Users}
+                  label="Tambah Siswa"
+                  onClick={() => navigate('/dashboard/students')}
+                />
+                <SquircleActionButton
+                  variant="export"
+                  icon={Key}
+                  label="Kelola Hak Akses"
+                  onClick={() => navigate('/dashboard/hak-akses')}
+                />
+                <SquircleActionButton
+                  variant="view"
+                  icon={Activity}
+                  label="Log Sistem"
+                  onClick={() => navigate('/dashboard/pengaturan')}
+                />
+              </div>
+            </div>
+          </section>
+        </motion.div>
+
+        {/* 7. Outer Datatable Container */}
+        <motion.div variants={itemVariants}>
+          <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+            {/* Toolbar Header 3-Baris Terstruktur */}
+            <div className="p-4 sm:p-6 space-y-4 border-b border-slate-100 dark:border-slate-800/80">
+              {/* Baris 1: Title & Actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Building2 className="size-5 text-emerald-600 dark:text-emerald-400" />
+                    Ringkasan Master Unit Pendidikan
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Daftar unit sekolah Islam terpadu beserta status dan statistik kesiswaan & pendidik
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AppBadge variant="success">
+                    {filteredUnits.length} Unit Ditemukan
+                  </AppBadge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/dashboard/master/unit-pendidikan')}
+                    className="text-xs text-emerald-600 dark:text-emerald-400 font-bold"
+                  >
+                    Kelola Semua &rarr;
+                  </Button>
+                </div>
+              </div>
+
+              {/* Baris 2: Search Bar Full Width */}
+              <div className="relative w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Cari nama unit pendidikan atau kode unit..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setPage(1)
+                  }}
+                  className="pl-10 h-10 w-full rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Baris 3: Status Quick Filters */}
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400 pt-1">
+                <span>Menampilkan {paginatedUnits.length} dari {filteredUnits.length} data</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 font-normal">Status:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedStatus === 'semua' ? 'Semua Status' : selectedStatus}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Viewport Tabel dengan Horizontal Padding */}
+            <div className="px-4 sm:px-6 md:px-8 overflow-x-auto">
+              <TableRoot fullBleed={false}>
+                <TableHeader>
+                  <TableRow className="border-b border-slate-200 dark:border-slate-800">
+                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                      Nama Unit Pendidikan
+                    </TableHead>
+                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                      Siswa Aktif
+                    </TableHead>
+                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                      Guru Pendidik
+                    </TableHead>
+                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                      Pegawai & Tendik
+                    </TableHead>
+                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                      Status Operasional
+                    </TableHead>
+                    <TableHead className="py-3.5 text-right text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                      Aksi
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedUnits.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-slate-400 text-xs font-medium">
+                        Tidak ada data unit sekolah yang sesuai dengan pencarian.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedUnits.map((row) => (
+                      <TableRow key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/50 transition-colors">
+                        <TableCell className="py-3.5">
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <div className="flex items-center gap-3 cursor-pointer group">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs dark:bg-emerald-950 dark:text-emerald-300 group-hover:scale-105 transition-transform">
+                                  {(row.code || row.name || 'UN').substring(0, 3).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-extrabold text-slate-900 dark:text-white truncate text-xs group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                    {row.name}
+                                  </p>
+                                  <p className="text-[11px] text-slate-400 font-medium">
+                                    Kode: {row.code || 'UNIT'}
+                                  </p>
+                                </div>
+                              </div>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-72 p-4 bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl">
+                              <div className="space-y-2.5">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex size-9 rounded-xl bg-emerald-600 text-white font-bold items-center justify-center text-xs">
+                                    {(row.code || 'UN').substring(0, 3).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-bold text-slate-900 dark:text-white text-xs">
+                                      {row.name}
+                                    </h4>
+                                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                                      Unit Sekolah Terdaftar
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-100 dark:border-slate-800">
+                                  <div>
+                                    <span className="text-slate-400 block text-[10px]">Siswa:</span>
+                                    <strong className="text-slate-800 dark:text-slate-200">{formatAngka(row.siswa_count)} Siswa</strong>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400 block text-[10px]">Guru:</span>
+                                    <strong className="text-slate-800 dark:text-slate-200">{formatAngka(row.guru_count)} Guru</strong>
+                                  </div>
+                                </div>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </TableCell>
+                        <TableCell className="py-3.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                          {formatAngka(row.siswa_count)} Siswa
+                        </TableCell>
+                        <TableCell className="py-3.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                          {formatAngka(row.guru_count)} Guru
+                        </TableCell>
+                        <TableCell className="py-3.5 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                          {formatAngka(row.pegawai_count)} Pegawai
+                        </TableCell>
+                        <TableCell className="py-3.5">
+                          <AppBadge
+                            variant={row.status === 'Aktif' || row.status === 'aktif' ? 'success' : 'secondary'}
+                            dot
+                          >
+                            {row.status || 'Aktif'}
+                          </AppBadge>
+                        </TableCell>
+                        <TableCell className="py-3.5 text-right">
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            iconOnly
+                            onClick={() => navigate('/dashboard/master/unit-pendidikan')}
+                            className="text-slate-400 hover:text-emerald-600"
+                          >
+                            <Eye className="size-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </TableRoot>
+            </div>
+
+            {/* Footer Pagination Navigation */}
+            <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                sideLayout="full"
+                onPageChange={(p) => setPage(p)}
               />
             </div>
           </div>
-        </section>
+        </motion.div>
 
-        {/* KPI Detail Modal */}
+        {/* 9. Drill-down KPI Quick View Modal */}
         <ModalErrorBoundary onClose={() => setActiveModal(null)}>
-          <KpiQuickViewModal
-            type={activeModal}
-            isOpen={Boolean(activeModal)}
-            onClose={() => setActiveModal(null)}
-          />
+          <AnimatePresence>
+            {Boolean(activeModal) && (
+              <KpiQuickViewModal
+                type={activeModal}
+                isOpen={Boolean(activeModal)}
+                onClose={() => setActiveModal(null)}
+              />
+            )}
+          </AnimatePresence>
         </ModalErrorBoundary>
-      </div>
+      </motion.div>
     </PageContainer>
   )
 }

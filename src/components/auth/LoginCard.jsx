@@ -32,19 +32,25 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [sessionNotice, setSessionNotice] = useState('')
+  const [sessionNotice, setSessionNotice] = useState(null)
   const [successNotice, setSuccessNotice] = useState(null)
   const [workspaceOptions, setWorkspaceOptions] = useState([])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const reason = params.get('reason')
-    if (reason === 'inactivity') {
-      setSessionNotice('Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Silakan masuk kembali.')
+    if (reason === 'inactivity' || reason === 'expired') {
+      setSessionNotice({
+        status: 'error',
+        title: 'Pemberitahuan Sesi',
+        message: 'Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Silakan masuk kembali.',
+      })
     } else if (reason === 'browser_mismatch') {
-      setSessionNotice('Status login memerlukan autentikasi baru saat berpindah browser/link. Silakan masuk kembali.')
-    } else if (reason === 'expired') {
-      setSessionNotice('Sesi login Anda telah kedaluwarsa. Silakan masuk kembali.')
+      setSessionNotice({
+        status: 'error',
+        title: 'Pemberitahuan Sesi',
+        message: 'Status login memerlukan autentikasi baru saat berpindah browser/link. Silakan masuk kembali.',
+      })
     }
   }, [])
 
@@ -347,11 +353,20 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
 
           {/* Session Notice Banner with TailGrids Alert */}
           {sessionNotice && !successNotice && (
-            <Alert status="warning" className="animate-fade-in">
+            <Alert
+              status={typeof sessionNotice === 'object' ? sessionNotice.status : 'error'}
+              className="animate-fade-in"
+            >
               <AlertIndicator />
               <AlertContent>
-                <AlertTitle>Pemberitahuan Sesi</AlertTitle>
-                <AlertDescription>{sessionNotice}</AlertDescription>
+                <AlertTitle>
+                  {typeof sessionNotice === 'object' && sessionNotice.title
+                    ? sessionNotice.title
+                    : 'Pemberitahuan Sesi'}
+                </AlertTitle>
+                <AlertDescription>
+                  {typeof sessionNotice === 'object' ? sessionNotice.message : sessionNotice}
+                </AlertDescription>
               </AlertContent>
             </Alert>
           )}

@@ -99,42 +99,6 @@ export default function MonitoringDashboardPage() {
     return () => window.clearInterval(timer)
   }, [canLoadSummary, canLoadTeacherMonitoring])
 
-  if (loading) {
-    return (
-      <PageContainer maxW="7xl">
-        <div className="space-y-6 pb-12">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {cards.map((card) => (
-              <div key={card.key} className="h-28 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
-            ))}
-          </div>
-          <div className="h-40 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
-        </div>
-      </PageContainer>
-    )
-  }
-
-  if (error && !teacherMonitoring && !teacherMonitoringLoading) {
-    return (
-      <PageContainer maxW="7xl">
-        <div className="py-6">
-          <Alert status="error">
-            <AlertIndicator />
-            <AlertContent>
-              <AlertTitle>Gagal Memuat Data Pemantauan</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-              <div className="mt-3">
-                <Button size="sm" variant="danger" appearance="outline" onClick={loadDashboard}>
-                  <RefreshCw className="mr-2 h-4 w-4" /> Coba Lagi
-                </Button>
-              </div>
-            </AlertContent>
-          </Alert>
-        </div>
-      </PageContainer>
-    )
-  }
-
   const statistics = dashboard?.kartu_statistik || {}
   const alerts = (dashboard?.indikator_kinerja_utama || []).slice(0, 5)
 
@@ -223,7 +187,13 @@ export default function MonitoringDashboardPage() {
           </div>
         </motion.div>
 
-        {!error && (
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {cards.map(({ key }) => (
+              <div key={key} className="h-28 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-800" />
+            ))}
+          </div>
+        ) : !error ? (
           <motion.div variants={itemVariants} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {cards.map(({ key, label, icon: Icon, tone, subtext }) => (
@@ -294,7 +264,7 @@ export default function MonitoringDashboardPage() {
               </CardContent>
             </Card>
           </motion.div>
-        )}
+        ) : null}
 
         <motion.div variants={itemVariants}>
           <TeacherMonitoringPanel

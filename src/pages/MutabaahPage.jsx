@@ -5,9 +5,10 @@ import {
   NotebookPen, Pencil, Plus, Printer, Save, Trash2, UserRound, X,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams, Navigate } from 'react-router-dom'
 import { mutabaahService } from '../services/mutabaahService'
 import { useAuthStore } from '../stores/authStore'
+import { isParentRole } from '../auth/portalResolver'
 import MutabaahEnterprisePage from './MutabaahEnterprisePage'
 import MutabaahDailySpreadsheet from './MutabaahDailySpreadsheet'
 import MutabaahAnalyticsPage from './MutabaahAnalyticsPage'
@@ -80,7 +81,7 @@ export default function MutabaahPage() {
     'assign-mentor': 'supervisor-assignments',
   }[view]
 
-  if (roles.includes('Orang Tua')) return <MutabaahFamilyPortal mode="parent" />
+  if (isParentRole(roles)) return <Navigate to="/portal-orangtua" replace />
   if (roles.includes('Siswa')) return <MutabaahFamilyPortal mode="student" />
   if (!view || view === 'dashboard' || view === 'rekap' || view === 'evaluasi') return <MutabaahAnalyticsPage view={view || 'dashboard'} />
   if (view === 'parents') return <MutabaahFamilyPortal mode="parent" />

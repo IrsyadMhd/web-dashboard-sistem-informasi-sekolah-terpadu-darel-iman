@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { useAuthStore } from '../../stores/authStore'
+import { isParentRole, isStudentRole } from '../../auth/portalResolver'
 
 export function TahfizhSubNav() {
   const { pathname } = useLocation()
@@ -19,6 +20,8 @@ export function TahfizhSubNav() {
   const roles = user?.roles || []
   const userRoles = Array.isArray(roles) ? roles.map((r) => (typeof r === 'string' ? r : r?.name || '')) : []
   const isTeacher = userRoles.some((r) => /guru|musyrif|wali_kelas/i.test(r))
+  const isParent = isParentRole(roles)
+  const isStudent = isStudentRole(roles)
 
   const navItems = [
     {
@@ -54,14 +57,16 @@ export function TahfizhSubNav() {
       activeColor: 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30',
       inactiveColor: 'bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white hover:shadow-md hover:shadow-indigo-600/30',
     },
-    {
-      id: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren',
-      path: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren',
-      label: 'Monitor Non-Ponpes',
-      icon: Activity,
-      activeColor: 'bg-amber-500 text-white shadow-md shadow-amber-500/30',
-      inactiveColor: 'bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white hover:shadow-md hover:shadow-amber-500/30',
-    },
+    ...(!(isParent || isStudent) ? [
+      {
+        id: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren',
+        path: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren',
+        label: 'Monitor Non-Ponpes',
+        icon: Activity,
+        activeColor: 'bg-amber-500 text-white shadow-md shadow-amber-500/30',
+        inactiveColor: 'bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white hover:shadow-md hover:shadow-amber-500/30',
+      },
+    ] : []),
   ]
 
   return (

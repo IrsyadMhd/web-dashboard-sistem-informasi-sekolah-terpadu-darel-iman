@@ -28,15 +28,21 @@ export function Dialog({
   children,
   ...props
 }: DialogProps) {
+  const hasCustomMaxW = className && /\bmax-w-/.test(className);
+  const hasCustomPadding = className && /\b(p-0|p-\d|px-\d|py-\d)\b/.test(className);
+
   return (
     <AriaModal
       isOpen={isOpen}
       defaultOpen={defaultOpen}
       onOpenChange={onOpenChange}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm overflow-hidden"
     >
       <AriaDialog
         className={cn(
-          "w-full max-w-140 max-sm:max-w-[calc(100%-2rem)] p-6 border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl shadow-2xl outline-none z-50",
+          "relative w-full border border-slate-200/80 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 rounded-2xl shadow-2xl outline-none flex flex-col max-h-[85vh] sm:max-h-[88vh] my-auto overflow-hidden p-6 z-50",
+          !hasCustomMaxW && "max-w-140 max-sm:max-w-[calc(100%-2rem)]",
+          !hasCustomPadding && "p-6",
           className
         )}
         {...props}
@@ -48,7 +54,7 @@ export function Dialog({
               <AriaButton
                 onPress={close}
                 aria-label="Close"
-                className="absolute top-4 right-4 flex size-7 items-center justify-center rounded-md text-text-100 opacity-70 outline-none transition-opacity hover:opacity-100 focus-visible:ring-2 focus-visible:ring-primary-500 disabled:pointer-events-none [&>svg]:size-5"
+                className="absolute top-4 right-4 flex size-7 items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white transition-opacity outline-none z-10 [&>svg]:size-5"
               >
                 <Close />
                 <span className="sr-only">Close</span>
@@ -67,7 +73,7 @@ export function DialogHeader({ className, ...props }: DialogHeaderProps) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-1.5 text-left", className)}
+      className={cn("shrink-0 flex flex-col gap-1.5 text-left", className)}
       {...props}
     />
   );
@@ -102,7 +108,7 @@ export function DialogBody({ className, ...props }: DialogBodyProps) {
   return (
     <div
       data-slot="dialog-body"
-      className={cn("py-4 text-sm text-text-100", className)}
+      className={cn("flex-1 min-h-0 overflow-y-auto py-4 text-sm text-text-100 custom-scrollbar", className)}
       {...props}
     />
   );
@@ -121,7 +127,7 @@ export function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end",
+        "shrink-0 flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

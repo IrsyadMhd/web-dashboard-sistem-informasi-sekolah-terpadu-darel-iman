@@ -2,11 +2,23 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, Bookmark, BookmarkCheck, CalendarDays, Check, ChevronLeft, ChevronRight, Download, FileText, Filter, Images, Megaphone, Newspaper, Paperclip, RefreshCw, School, Search, Star, X } from 'lucide-react'
 import { schoolInformationService } from '../../services/schoolInformationService'
+import { Button } from '../tailgrids/core/button'
+import { Badge } from '../tailgrids/core/badge'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../tailgrids/core/card'
 
 const tabs = [
   ['all', 'Semua', School], ['announcement', 'Pengumuman', Megaphone], ['event', 'Agenda', CalendarDays],
   ['news', 'Berita', Newspaper], ['circular', 'Surat Edaran', FileText], ['calendar', 'Kalender', CalendarDays], ['gallery', 'Galeri', Images],
 ]
+const tabPastelColors = {
+  all: 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600',
+  announcement: 'bg-blue-100/90 text-blue-700 hover:bg-blue-600 hover:text-white dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-600',
+  event: 'bg-purple-100/90 text-purple-700 hover:bg-purple-600 hover:text-white dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-600',
+  news: 'bg-sky-100/90 text-sky-700 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500',
+  circular: 'bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500',
+  calendar: 'bg-teal-100/90 text-teal-700 hover:bg-teal-600 hover:text-white dark:bg-teal-950/60 dark:text-teal-300 dark:hover:bg-teal-600',
+  gallery: 'bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600',
+}
 const typeLabels = Object.fromEntries(tabs.map(([id, label]) => [id, label]))
 const priorityStyle = { mendesak: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/40', penting: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40', akademik: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/40', umum: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40' }
 const formatDate = (value) => value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(new Date(value)) : '-'
@@ -14,7 +26,6 @@ const unwrap = (response) => response?.data || response || {}
 
 function Skeletons() { return <div className="grid gap-3">{[1, 2, 3].map((item) => <div key={item} className="h-40 animate-pulse rounded-[18px] bg-slate-200 dark:bg-slate-800" />)}</div> }
 function Empty({ label }) { return <div className="rounded-[18px] border border-dashed border-slate-300 px-5 py-14 text-center dark:border-slate-700"><FileText className="mx-auto h-9 w-9 text-slate-300"/><p className="mt-3 text-sm font-bold text-slate-600 dark:text-slate-300">{label}</p></div> }
-function Badge({ children, className = '' }) { return <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${className}`}>{children}</span> }
 
 const isMatchChildUnit = (itemUnit, childUnitName, childUnitCode) => {
   if (!itemUnit) return true
@@ -112,67 +123,132 @@ export default function SchoolInformationWorkspace({ studentId, student, embedde
   }, [rawItems, events, news, circulars, calendarItems, galleries, student?.unit_name, student?.unit_code])
 
   return <div className={`space-y-5 ${embedded ? '' : 'mx-auto max-w-7xl p-4 sm:p-6'}`}>
-    <header className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] p-6 text-white shadow-lg sm:p-8">
-      <School className="absolute -bottom-8 right-4 h-40 w-40 text-white/10" aria-hidden="true"/>
-      <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-[.2em] text-emerald-100">Portal / Informasi Sekolah</p>
-          <h1 className="mt-2 text-2xl font-black sm:text-3xl">Informasi Sekolah</h1>
-          <p className="mt-2 max-w-2xl text-xs leading-5 text-emerald-50">Pengumuman, agenda, berita, dan surat edaran disesuaikan khusus untuk unit sekolah anak Anda.</p>
-          {student && (
-            <div className="mt-3.5 flex flex-wrap items-center gap-2">
-              <span className="rounded-xl bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur shadow-xs">
-                Siswa: <b className="text-amber-200 font-extrabold">{student.full_name}</b> {student.kelas?.nama_kelas ? `(${student.kelas.nama_kelas})` : ''}
-              </span>
-              <span className="rounded-xl bg-emerald-950/70 border border-emerald-300/40 px-3 py-1.5 text-xs font-black text-emerald-200 shadow-xs">
-                Unit Sekolah: {student.unit_name || student.unit || 'Sekolah Terpadu'}
-              </span>
+    {!embedded ? (
+      <header className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#187154] to-[#3FBF75] p-6 text-white shadow-lg sm:p-8">
+        <School className="absolute -bottom-8 right-4 h-40 w-40 text-white/10" aria-hidden="true"/>
+        <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[.2em] text-emerald-100">Portal / Informasi Sekolah</p>
+            <h1 className="mt-2 text-2xl font-black sm:text-3xl">Informasi Sekolah</h1>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-emerald-50">Pengumuman, agenda, berita, dan surat edaran disesuaikan khusus untuk unit sekolah anak Anda.</p>
+            {student && (
+              <div className="mt-3.5 flex flex-wrap items-center gap-2">
+                <Badge color="cyan" size="sm" className="bg-white/20 text-white border-transparent">
+                  Siswa: {student.full_name} {student.kelas?.nama_kelas ? `(${student.kelas.nama_kelas})` : ''}
+                </Badge>
+                <Badge color="success" size="sm" className="bg-emerald-950/70 border border-emerald-300/40 text-emerald-200">
+                  Unit: {student.unit_name || student.unit || 'Sekolah Terpadu'}
+                </Badge>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="ghost" appearance="outline" size="sm" onClick={() => setSavedOnly(!savedOnly)} prefixIcon={<Bookmark className="h-4 w-4"/>} className="border-white/30 bg-white/15 text-white hover:bg-white/25">
+              Tersimpan ({summaryData?.bookmarked_count || 0})
+            </Button>
+            <Button variant="ghost" appearance="outline" size="sm" disabled={markAll.isPending || !summaryData?.unread_count} onClick={() => markAll.mutate()} prefixIcon={<Check className="h-4 w-4"/>} className="border-white/30 bg-white/15 text-white hover:bg-white/25">
+              Tandai Dibaca
+            </Button>
+            <Button variant="ghost" appearance="outline" size="sm" iconOnly onClick={() => { listing.refetch(); summary.refetch() }} className="border-white/30 bg-white/15 text-white hover:bg-white/25">
+              <RefreshCw className="h-4 w-4"/>
+            </Button>
+            <Badge color="warning" size="md" className="font-extrabold">
+              {summaryData?.unread_count || 0} baru
+            </Badge>
+          </div>
+        </div>
+      </header>
+    ) : (
+      <Card className="p-4 border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900 rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+              <Megaphone className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">Informasi & Pengumuman Sekolah</h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Pengumuman, agenda, berita, dan surat edaran disesuaikan untuk unit sekolah siswa.</p>
             </div>
-          )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              appearance="outline"
+              size="xs"
+              onClick={() => setSavedOnly(!savedOnly)}
+              prefixIcon={<Bookmark className="h-3.5 w-3.5"/>}
+              className={`font-bold ${savedOnly ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-slate-50 text-slate-700 border-slate-200'}`}
+            >
+              Tersimpan ({summaryData?.bookmarked_count || 0})
+            </Button>
+            <Button
+              variant="ghost"
+              appearance="outline"
+              size="xs"
+              disabled={markAll.isPending || !summaryData?.unread_count}
+              onClick={() => markAll.mutate()}
+              prefixIcon={<Check className="h-3.5 w-3.5"/>}
+              className="bg-slate-50 text-slate-700 border-slate-200 font-bold"
+            >
+              Tandai Dibaca
+            </Button>
+            <Button
+              variant="ghost"
+              appearance="outline"
+              size="xs"
+              iconOnly
+              onClick={() => { listing.refetch(); summary.refetch() }}
+              className="bg-slate-50 text-slate-700 border-slate-200"
+            >
+              <RefreshCw className="h-3.5 w-3.5"/>
+            </Button>
+            <Badge color="warning" size="sm" className="font-extrabold">
+              {summaryData?.unread_count || 0} baru
+            </Badge>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => setSavedOnly(!savedOnly)} className="flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 text-xs font-bold backdrop-blur"><Bookmark className="h-4 w-4"/>Tersimpan ({summaryData?.bookmarked_count || 0})</button>
-          <button disabled={markAll.isPending || !summaryData?.unread_count} onClick={() => markAll.mutate()} className="flex h-11 items-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 text-xs font-bold disabled:opacity-50"><Check className="h-4 w-4"/>Tandai Semua Dibaca</button>
-          <button onClick={() => { listing.refetch(); summary.refetch() }} aria-label="Refresh informasi" className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/30 bg-white/15"><RefreshCw className="h-4 w-4"/></button>
-          <span className="flex h-11 min-w-11 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-[#0E5C44]" aria-label={`${summaryData?.unread_count || 0} informasi belum dibaca`}>{summaryData?.unread_count || 0} baru</span>
-        </div>
-      </div>
-    </header>
+      </Card>
+    )}
 
-    {!!importantItems.length && <section aria-labelledby="important-title"><div className="mb-3 flex items-center gap-2"><Star className="h-5 w-5 text-amber-500"/><h2 id="important-title" className="text-base font-black">Informasi Penting Unit ({student?.unit_name || 'Sekolah'})</h2></div><div className="grid gap-3 lg:grid-cols-3">{importantItems.map((item) => <button key={item.id} onClick={() => openDetail(item)} className={`min-h-44 rounded-[18px] border p-5 text-left shadow-sm transition hover:-translate-y-0.5 ${priorityStyle[item.priority] || priorityStyle.umum}`}><div className="flex justify-between gap-3"><Badge className="border-current"><AlertCircle className="h-3 w-3"/>{item.priority}</Badge>{!item.is_read && <span className="h-2.5 w-2.5 rounded-full bg-blue-500" aria-label="Belum dibaca"/>}</div><h3 className="mt-4 text-sm font-black text-slate-900 dark:text-white">{item.title}</h3><p className="mt-2 line-clamp-2 text-xs leading-5 opacity-80">{item.summary}</p><p className="mt-3 text-[10px] font-bold uppercase">{item.education_unit} · {formatDate(item.published_at)}</p></button>)}</div></section>}
+    {!!importantItems.length && <section aria-labelledby="important-title"><div className="mb-3 flex items-center gap-2"><Star className="h-5 w-5 text-amber-500"/><h2 id="important-title" className="text-base font-black">Informasi Penting Unit ({student?.unit_name || 'Sekolah'})</h2></div><div className="grid gap-3 lg:grid-cols-3">{importantItems.map((item) => <button key={item.id} onClick={() => openDetail(item)} className={`min-h-44 rounded-[18px] border p-5 text-left shadow-sm transition hover:-translate-y-0.5 ${priorityStyle[item.priority] || priorityStyle.umum}`}><div className="flex justify-between gap-3"><span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide border-current"><AlertCircle className="h-3 w-3"/>{item.priority}</span>{!item.is_read && <span className="h-2.5 w-2.5 rounded-full bg-blue-500" aria-label="Belum dibaca"/>}</div><h3 className="mt-4 text-sm font-black text-slate-900 dark:text-white">{item.title}</h3><p className="mt-2 line-clamp-2 text-xs leading-5 opacity-80">{item.summary}</p><p className="mt-3 text-[10px] font-bold uppercase">{item.education_unit} · {formatDate(item.published_at)}</p></button>)}</div></section>}
 
-    <section className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-label="Filter informasi"><div className="flex flex-col gap-3 lg:flex-row"><label className="relative flex-1"><span className="sr-only">Cari informasi</span><Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400"/><input value={draftSearch} onChange={(e) => setDraftSearch(e.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-xs outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800" placeholder="Cari pengumuman, agenda, berita, atau surat edaran..."/></label><button onClick={() => setFiltersOpen(!filtersOpen)} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-xs font-bold dark:border-slate-700"><Filter className="h-4 w-4"/>Filter</button><button onClick={reset} className="h-11 rounded-xl px-4 text-xs font-bold text-slate-500">Reset</button></div>
+    <section className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-label="Filter informasi"><div className="flex flex-col gap-3 lg:flex-row"><label className="relative flex-1"><span className="sr-only">Cari informasi</span><Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400"/><input value={draftSearch} onChange={(e) => setDraftSearch(e.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-xs outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800" placeholder="Cari pengumuman, agenda, berita, atau surat edaran..."/></label><Button variant="ghost" appearance="outline" size="sm" onClick={() => setFiltersOpen(!filtersOpen)} prefixIcon={<Filter className="h-4 w-4"/>} className="border-slate-200 font-bold dark:border-slate-700">Filter</Button><Button variant="ghost" appearance="outline" size="sm" onClick={reset} className="text-slate-500 font-bold">Reset</Button></div>
       {filtersOpen && <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800"><select aria-label="Kategori" value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"><option value="">Semua kategori</option>{['Umum','Akademik','Keuangan','Kegiatan','Keamanan'].map((x) => <option key={x}>{x}</option>)}</select><select aria-label="Prioritas" value={filters.priority} onChange={(e) => setFilters({ ...filters, priority: e.target.value.toLowerCase() })} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"><option value="">Semua prioritas</option>{['Mendesak','Penting','Akademik','Umum'].map((x) => <option key={x}>{x}</option>)}</select><select aria-label="Status baca" value={filters.read_status} onChange={(e) => setFilters({ ...filters, read_status: e.target.value })} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs dark:border-slate-700 dark:bg-slate-800"><option value="">Semua status baca</option><option value="unread">Belum dibaca</option><option value="read">Sudah dibaca</option></select><label className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 text-xs dark:border-slate-700"><input type="checkbox" checked={filters.has_attachment === '1'} onChange={(e) => setFilters({ ...filters, has_attachment: e.target.checked ? '1' : '' })}/> Memiliki lampiran</label></div>}
     </section>
 
-    <nav className="flex gap-2 overflow-x-auto rounded-[20px] border border-slate-200/80 bg-slate-50/80 p-2 shadow-xs dark:border-slate-800 dark:bg-slate-900/80" aria-label="Kategori informasi">
+    <nav className="flex gap-2 overflow-x-auto rounded-[20px] border border-slate-200/80 bg-white p-2 shadow-xs dark:border-slate-800 dark:bg-slate-900" aria-label="Kategori informasi">
       {tabs.map(([id, label, Icon]) => {
         const isActive = tab === id
         const count = categoryCounts[id] ?? summaryData?.counts?.[id] ?? 0
+        const pastelColor = tabPastelColors[id] || tabPastelColors.all
         return (
-          <button
+          <Button
             key={id}
+            type="button"
+            variant={isActive ? 'primary' : 'ghost'}
+            appearance={isActive ? 'fill' : 'outline'}
+            size="xs"
             onClick={() => setTab(id)}
-            className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-xs font-bold transition-all duration-200 active:scale-[0.97] ${
+            prefixIcon={<Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : ''}`} />}
+            className={`cursor-pointer transition-all duration-200 font-bold shrink-0 ${
               isActive
-                ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20 ring-2 ring-emerald-700/30 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40'
-                : 'bg-white text-slate-600 border border-slate-200/70 hover:border-emerald-300 hover:bg-emerald-50/60 hover:text-emerald-800 dark:bg-slate-800/80 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-emerald-300'
+                ? '!bg-[#0E5C44] !text-white shadow-md shadow-emerald-900/20 ring-2 ring-emerald-500/40 scale-[1.02]'
+                : `${pastelColor} border-transparent`
             }`}
           >
-            <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
             <span>{label}</span>
             <span
-              className={`ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-black ${
+              className={`ml-1 flex h-4 min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-black ${
                 isActive
                   ? 'bg-white/20 text-white'
                   : count > 0
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                  : 'bg-slate-100 text-slate-400 dark:bg-slate-700/60 dark:text-slate-400'
+                  ? 'bg-white/60 text-slate-800 dark:bg-slate-950 dark:text-slate-200'
+                  : 'bg-black/10 text-slate-500 dark:bg-white/10 dark:text-slate-400'
               }`}
             >
               {count}
             </span>
-          </button>
+          </Button>
         )
       })}
     </nav>

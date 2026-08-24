@@ -5,6 +5,10 @@ import PersonAvatar from '../ui/PersonAvatar'
 import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../services/authService'
 import { educationUnitService } from '../../services/educationUnitService'
+import { Button } from '@/components/tailgrids/core/button'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
+import { Card, CardContent } from '@/components/tailgrids/core/card'
 
 export default function UserProfileCard() {
   const { user, setSession, token, loginTime } = useAuthStore()
@@ -203,7 +207,7 @@ export default function UserProfileCard() {
   }
 
   return (
-    <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 lg:p-8">
+    <Card className="w-full rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
       {/* Hidden File Input for Avatar Upload */}
       <input
         type="file"
@@ -214,59 +218,66 @@ export default function UserProfileCard() {
       />
 
       {/* Breadcrumb */}
-      <div className="flex items-center text-xs text-slate-400 mb-6 gap-2 border-b border-slate-100 pb-3">
+      <div className="flex items-center text-xs text-slate-400 mb-6 gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
         <span>Dashboard</span>
         <span>/</span>
-        <span className="text-emerald-700 font-semibold">Profil</span>
+        <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Profil</span>
       </div>
 
       {saved && (
-        <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-emerald-800 text-xs font-semibold flex items-center gap-2">
-          <FiCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Perubahan profil berhasil disimpan!</span>
-        </div>
+        <Alert status="success" className="mb-6 rounded-xl">
+          <AlertIndicator>
+            <FiCheck className="w-4 h-4" />
+          </AlertIndicator>
+          <AlertContent>
+            <AlertDescription>Perubahan profil berhasil disimpan!</AlertDescription>
+          </AlertContent>
+        </Alert>
       )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Avatar Card */}
-          <div className="lg:col-span-4 bg-slate-50/70 p-6 rounded-2xl border border-slate-200/80 flex flex-col items-center text-center">
+          <div className="lg:col-span-4 bg-slate-50/70 dark:bg-slate-800/40 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col items-center text-center">
             <div className="relative mb-4">
               <PersonAvatar src={profile.avatar} name={profile.fullName} size="profile" className="ring-4 ring-emerald-600/20" />
               <button
                 type="button"
                 onClick={handlePhotoClick}
-                className="absolute bottom-0 right-0 p-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-full shadow-md border-2 border-white transition-colors"
+                className="absolute bottom-0 right-0 p-2 bg-[#0E5C44] hover:bg-[#094331] text-white rounded-full shadow-md border-2 border-white transition-colors"
                 title="Ganti Foto Profil"
               >
                 <FiCamera className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <h3 className="text-base font-bold text-slate-800">{profile.fullName}</h3>
-            <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full mt-1">
-              {profile.role}
-            </span>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{profile.fullName}</h3>
+            <div className="mt-1">
+              <Badge color="emerald" size="sm">{profile.role}</Badge>
+            </div>
 
             {/* Session Info Badge */}
-            <div className="mt-3 w-full bg-white p-2.5 rounded-xl border border-emerald-100 shadow-xs text-[11px] text-slate-600 text-left space-y-1 font-mono">
-              <div className="flex items-center justify-between text-emerald-900 font-semibold border-b border-slate-100 pb-1">
+            <div className="mt-3 w-full bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-emerald-100 dark:border-slate-800 shadow-xs text-[11px] text-slate-600 dark:text-slate-400 text-left space-y-1 font-mono">
+              <div className="flex items-center justify-between text-emerald-900 dark:text-emerald-400 font-semibold border-b border-slate-100 dark:border-slate-800 pb-1">
                 <span>Waktu Login:</span>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-sans">Browser Sesi</span>
+                <Badge color="cyan" size="sm" className="text-[10px] py-0 font-sans">Browser Sesi</Badge>
               </div>
-              <p className="text-slate-800 font-medium">{formattedLoginTime}</p>
+              <p className="text-slate-800 dark:text-slate-200 font-medium">{formattedLoginTime}</p>
               <p className="text-[10px] text-slate-400 font-sans mt-0.5">Batas inaktivitas: 15 menit</p>
             </div>
 
-            <div className="mt-4 w-full pt-4 border-t border-slate-200/60 space-y-2">
-              <button
+            <div className="mt-4 w-full pt-4 border-t border-slate-200/60 dark:border-slate-800 space-y-2">
+              <Button
                 type="button"
+                variant="ghost"
+                appearance="outline"
+                size="sm"
                 onClick={handlePhotoClick}
-                className="w-full py-2 px-3 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-2"
               >
                 <FiCamera className="w-3.5 h-3.5 text-slate-500" />
                 <span>Ubah Foto</span>
-              </button>
+              </Button>
               <p className="text-[10px] text-slate-400">Maks. 2MB (JPG, PNG)</p>
             </div>
           </div>
@@ -276,76 +287,76 @@ export default function UserProfileCard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Nama Lengkap */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Nama Lengkap
                 </label>
                 <input
                   type="text"
                   value={profile.fullName}
                   onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs"
                   required
                 />
               </div>
 
               {/* NIP / ID User */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   NIP / ID User
                 </label>
                 <input
                   type="text"
                   value={profile.nip}
                   onChange={(e) => setProfile({ ...profile, nip: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-100 text-slate-600 text-sm rounded-xl border border-slate-200 cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-sm rounded-xl border border-slate-200 dark:border-slate-700 cursor-not-allowed"
                   disabled
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Email
                 </label>
                 <input
                   type="email"
                   value={profile.email}
                   onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs"
                   required
                 />
               </div>
 
               {/* No Handphone */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   No. Handphone
                 </label>
                 <input
                   type="text"
                   value={profile.phone}
                   onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-white text-slate-800 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm"
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs"
                   required
                 />
               </div>
 
               {/* Role / Jabatan */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
                   <span>Role / Jabatan</span>
                   {!canEditUnitAndRole && (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    <Badge color="warning" size="sm" className="py-0 px-2 text-[10px]">
                       Terkunci
-                    </span>
+                    </Badge>
                   )}
                 </label>
                 <select
                   value={profile.role}
                   onChange={(e) => setProfile({ ...profile, role: e.target.value })}
                   disabled={!canEditUnitAndRole}
-                  className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm ${
-                    !canEditUnitAndRole ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200/80' : 'bg-white text-slate-800'
+                  className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs ${
+                    !canEditUnitAndRole ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100'
                   }`}
                 >
                   <option value={profile.role}>{profile.role || 'Pilih Role'}</option>
@@ -371,20 +382,20 @@ export default function UserProfileCard() {
 
               {/* Unit Pendidikan */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
                   <span>Unit Pendidikan</span>
                   {!canEditUnitAndRole && (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    <Badge color="warning" size="sm" className="py-0 px-2 text-[10px]">
                       Terkunci
-                    </span>
+                    </Badge>
                   )}
                 </label>
                 <select
                   value={profile.unit}
                   onChange={(e) => setProfile({ ...profile, unit: e.target.value })}
                   disabled={!canEditUnitAndRole}
-                  className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm ${
-                    !canEditUnitAndRole ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200/80' : 'bg-white text-slate-800'
+                  className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs ${
+                    !canEditUnitAndRole ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100'
                   }`}
                 >
                   <option value={profile.unit}>{profile.unit || 'Pilih Unit'}</option>
@@ -404,26 +415,29 @@ export default function UserProfileCard() {
             </div>
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-              <button
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <Button
                 type="button"
+                variant="ghost"
+                appearance="outline"
+                size="sm"
                 onClick={handleReset}
-                className="py-2.5 px-5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl transition-all"
               >
                 Batal
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
+                variant="primary"
+                size="sm"
+                pending={saving}
                 disabled={saving}
-                className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all disabled:opacity-50"
               >
                 {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </form>
-    </div>
+    </Card>
   )
 }
-

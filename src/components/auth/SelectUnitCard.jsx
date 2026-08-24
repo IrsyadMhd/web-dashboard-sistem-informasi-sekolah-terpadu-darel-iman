@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { FiSearch, FiCheck } from 'react-icons/fi'
 import { FaGraduationCap, FaSchool, FaBookQuran, FaBuildingColumns } from 'react-icons/fa6'
+import { Button } from '@/components/tailgrids/core/button'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Card } from '@/components/tailgrids/core/card'
 
 export default function SelectUnitCard({ onNavigate, disabled = false }) {
   const [selectedUnit, setSelectedUnit] = useState('sdit')
@@ -62,18 +65,18 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
   }
 
   return (
-    <div className={`w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-emerald-100 p-6 lg:p-8 space-y-6 ${disabled ? 'opacity-70 pointer-events-none' : ''}`}>
+    <Card className={`w-full max-w-4xl mx-auto rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-6 ${disabled ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
           <span>Pilih Unit Pendidikan</span>
           {disabled && (
-            <span className="text-xs font-semibold px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full">
+            <Badge color="warning" size="sm">
               🔒 Terkunci (Non-Aktif)
-            </span>
+            </Badge>
           )}
         </h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           {disabled ? 'Pemilihan unit pendidikan tidak aktif untuk role akun ini.' : 'Pilih unit pendidikan yang akan Anda kelola.'}
         </p>
       </div>
@@ -89,7 +92,7 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
           disabled={disabled}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Cari unit pendidikan..."
-          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 text-slate-800 text-sm rounded-xl border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800"
         />
       </div>
 
@@ -103,18 +106,18 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
             <div
               key={unit.id}
               onClick={() => !disabled && setSelectedUnit(unit.id)}
-              className={`relative p-5 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${disabled ? 'cursor-not-allowed border-slate-200 bg-slate-50/80' : 'cursor-pointer'} ${
+              className={`relative p-5 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${disabled ? 'cursor-not-allowed border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40' : 'cursor-pointer'} ${
                 isSelected
-                  ? 'border-emerald-700 bg-emerald-50/40 shadow-md ring-2 ring-emerald-600/20'
-                  : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50/50 shadow-sm'
+                  ? 'border-[#0E5C44] dark:border-[#3FBF75] bg-emerald-50/40 dark:bg-emerald-950/30 shadow-xs ring-2 ring-emerald-600/20'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-slate-50/50 shadow-xs'
               }`}
             >
               {/* Icon Badge */}
               <div
                 className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 transition-colors ${
                   isSelected
-                    ? 'bg-emerald-700 text-amber-300 shadow-md shadow-emerald-700/20'
-                    : 'bg-emerald-100/70 text-emerald-800'
+                    ? 'bg-[#0E5C44] dark:bg-[#3FBF75] text-amber-300 dark:text-slate-900 shadow-md shadow-emerald-700/20'
+                    : 'bg-emerald-100/70 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
                 }`}
               >
                 <IconComp />
@@ -122,15 +125,15 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
 
               {/* Text */}
               <div className="flex-1 min-w-0">
-                <h4 className="text-base font-bold text-slate-800 truncate">
+                <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
                   {unit.name}
                 </h4>
-                <p className="text-xs text-slate-500">{unit.subtext}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{unit.subtext}</p>
               </div>
 
               {/* Selection Checkmark */}
               {isSelected && (
-                <div className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <div className="w-6 h-6 rounded-full bg-[#0E5C44] dark:bg-[#3FBF75] text-white dark:text-slate-900 flex items-center justify-center shrink-0 shadow-xs">
                   <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
               )}
@@ -140,16 +143,18 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
       </div>
 
       {/* Action Button */}
-      <div className="flex justify-end pt-4 border-t border-slate-100">
-        <button
+      <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+        <Button
           type="button"
+          variant="primary"
+          size="md"
           disabled={disabled}
           onClick={handleSelect}
-          className="py-2.5 px-6 bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white font-semibold text-sm rounded-xl shadow-md shadow-emerald-800/20 hover:shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Pilih Unit Ini
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   )
 }
+

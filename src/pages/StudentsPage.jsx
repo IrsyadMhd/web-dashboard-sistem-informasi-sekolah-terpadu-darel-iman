@@ -32,6 +32,7 @@ import ActionDropdown from '../components/app/ActionDropdown'
 import { Button } from '../components/tailgrids/core/button'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
+import { api } from '../services/api'
 import { useDaftarKelas } from '../hooks/useReferenceData'
 import { useAksiSiswa, useDaftarSiswa } from '../hooks/useStudents'
 import { educationUnitService } from '../services/educationUnitService'
@@ -226,6 +227,13 @@ export default function StudentsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
+  const extractArray = (input) => {
+    if (Array.isArray(input)) return input
+    if (input && Array.isArray(input.data)) return input.data
+    if (input && input.data && Array.isArray(input.data.data)) return input.data.data
+    return []
+  }
+
   // Hooks data API
   const { data: daftarSiswaData, isLoading, isError, refetch } = useDaftarSiswa({
     page: currentPage,
@@ -234,13 +242,32 @@ export default function StudentsPage() {
     unit_id: unitFilter || undefined,
   })
   const { data: daftarKelasData } = useDaftarKelas(
-    { per_page: 200 },
-    { enabled: showFormModal, staleTime: 5 * 60 * 1000 },
+    { per_page: 300 },
+    { staleTime: 5 * 60 * 1000 },
   )
   const { data: daftarUnitData } = useQuery({
-    queryKey: ['education-units', 'student-form'],
-    queryFn: () => educationUnitService.getDaftar({ per_page: 200 }),
-    enabled: showFormModal,
+    queryKey: ['education-units', 'student-filters-all'],
+    queryFn: async () => {
+      try {
+        const res1 = await educationUnitService.getDaftar({ per_page: 200 })
+        const list1 = extractArray(res1)
+        if (list1.length > 0) return list1
+      } catch (e) { /* quiet */ }
+
+      try {
+        const res2 = await api.get('/foundation/units')
+        const list2 = extractArray(res2.data || res2)
+        if (list2.length > 0) return list2
+      } catch (e) { /* quiet */ }
+
+      try {
+        const res3 = await api.get('/master/jenis-unit/dropdown')
+        const list3 = extractArray(res3.data || res3)
+        if (list3.length > 0) return list3
+      } catch (e) { /* quiet */ }
+
+      return []
+    },
     staleTime: 5 * 60 * 1000,
   })
   const { data: studentDashboardData, isLoading: isSummaryLoading } = useQuery({
@@ -249,16 +276,68 @@ export default function StudentsPage() {
   })
   const { tambah, ubah, hapus } = useAksiSiswa()
 
-  const extractArray = (input) => {
-    if (Array.isArray(input)) return input
-    if (input && Array.isArray(input.data)) return input.data
-    if (input && input.data && Array.isArray(input.data.data)) return input.data.data
-    return []
-  }
-
   const rawStudents = daftarSiswaData?.data || []
   const rawClasses = extractArray(daftarKelasData)
-  const rawUnits = extractArray(daftarUnitData)
+  const rawUnitsFromApi = extractArray(daftarUnitData)
+
+  const rawUnits = useMemo(() => {
+    const combined = [...rawUnitsFromApi]
+
+    // Fallback: extract unique units from loaded student data if any
+    if (rawStudents.length > 0) {
+      rawStudents.forEach((s) => {
+        const uName = s.unit_name || s.unit_nama || s.unit_pendidikan || s.unit?.name || s.unit?.nama || (typeof s.unit === 'string' ? s.unit : '') || ''
+        const uId = s.unit_id || s.education_unit_id || s.unit?.id || uName
+        if (uName && !combined.some((u) => String(u.id || u.nama_unit || u.name) === String(uId) || (u.name || u.nama_unit || u.nama) === uName)) {
+          combined.push({ id: uId, name: uName, nama_unit: uName, nama: uName })
+        }
+      })
+    }
+
+    return combined
+  }, [rawUnitsFromApi, rawStudents])
+
+  // ── Dynamic Available Classes per Selected Unit ─────────────────────────
+  const availableClasses = useMemo(() => {
+    if (!unitFilter) return rawClasses
+    const filterVal = String(unitFilter).toLowerCase().trim()
+    const selectedUnitObj = rawUnits.find((u) => {
+      const uName = (u.nama_unit || u.name || u.nama || u.unit_name || '').toLowerCase()
+      const uCode = (u.code || u.kode || '').toLowerCase()
+      const uId = String(u.id || '')
+      return uId === filterVal || (uName && (uName.includes(filterVal) || filterVal.includes(uName))) || (uCode && uCode === filterVal)
+    })
+
+    const targetUnitId = selectedUnitObj ? String(selectedUnitObj.id) : filterVal
+    const targetUnitName = selectedUnitObj
+      ? (selectedUnitObj.nama_unit || selectedUnitObj.name || selectedUnitObj.nama || '').toLowerCase()
+      : filterVal
+
+    const filtered = rawClasses.filter((c) => {
+      const cUnitId = String(c.unit_pendidikan_id || c.unit_id || c.unit?.id || c.education_unit_id || '')
+      const cUnitName = String(c.unit_name || c.unit_nama || c.unit?.name || c.unit_pendidikan || c.nama_unit || c.unit || '').toLowerCase()
+
+      if (cUnitId && cUnitId === targetUnitId) return true
+      if (cUnitName && targetUnitName && (cUnitName.includes(targetUnitName) || targetUnitName.includes(cUnitName))) return true
+
+      return false
+    })
+
+    // Fallback if API classes direct match is empty
+    if (filtered.length === 0) {
+      const studentClasses = Array.from(
+        new Set(
+          (daftarSiswaData?.data || [])
+            .map((s) => s.class_name || s.kelas || s.nama_kelas)
+            .filter(Boolean)
+        )
+      ).map((kName) => ({ id: kName, nama_kelas: kName, name: kName }))
+
+      if (studentClasses.length > 0) return studentClasses
+    }
+
+    return filtered
+  }, [rawClasses, rawUnits, unitFilter, daftarSiswaData])
   const studentPagination = {
     total: daftarSiswaData?.total || 0,
     from: daftarSiswaData?.from || 0,
@@ -1171,12 +1250,22 @@ export default function StudentsPage() {
               <MasterFilterSelect
                 aria-label="Filter unit pendidikan"
                 value={unitFilter}
-                onChange={(e) => { setUnitFilter(e.target.value); setCurrentPage(1) }}
+                onChange={(e) => {
+                  setUnitFilter(e.target.value)
+                  setKelasFilter('')
+                  setCurrentPage(1)
+                }}
               >
                 <option value="">Semua Unit Pendidikan</option>
-                {rawUnits.map((u) => (
-                  <option key={u.id || u.nama_unit} value={u.nama_unit || u.name || u.id}>{u.nama_unit || u.name}</option>
-                ))}
+                {rawUnits.map((u) => {
+                  const val = u.nama_unit || u.name || u.nama || u.id
+                  const label = u.nama_unit || u.name || u.nama || u.code || val
+                  return (
+                    <option key={u.id || val} value={val}>
+                      {label}
+                    </option>
+                  )
+                })}
               </MasterFilterSelect>
 
               <MasterFilterSelect
@@ -1185,9 +1274,15 @@ export default function StudentsPage() {
                 onChange={(e) => { setKelasFilter(e.target.value); setCurrentPage(1) }}
               >
                 <option value="">Semua Kelas</option>
-                {rawClasses.map((c) => (
-                  <option key={c.id || c.nama_kelas} value={c.nama_kelas || c.name || c.id}>{c.nama_kelas || c.name}</option>
-                ))}
+                {availableClasses.map((c) => {
+                  const val = c.nama_kelas || c.name || c.nama || c.id
+                  const label = c.nama_kelas || c.name || c.nama || val
+                  return (
+                    <option key={c.id || val} value={val}>
+                      {label}
+                    </option>
+                  )
+                })}
               </MasterFilterSelect>
 
               <MasterFilterSelect

@@ -7,11 +7,23 @@
 export function printCleanTable({ title, subtitle = '', headers = [], rows = [], columns = [], data = [] }) {
   const actualHeaders = headers.length > 0
     ? headers
-    : columns.map((c) => c.label || c.key || '')
+    : columns.map((c) => (typeof c === 'string' ? c : c.title || c.label || c.header || c.key || ''))
 
   const actualRows = rows.length > 0
     ? rows
-    : data.map((item) => columns.map((c) => item[c.key]))
+    : data.map((item, idx) =>
+        columns.map((c) => {
+          if (typeof c === 'object' && c !== null) {
+            if (typeof c.render === 'function') {
+              return c.render(item, idx)
+            }
+            if (c.key && item[c.key] !== undefined) {
+              return item[c.key]
+            }
+          }
+          return ''
+        })
+      )
 
   const headerHtml = actualHeaders.map((h) => `<th>${h}</th>`).join('')
   const rowsHtml = actualRows

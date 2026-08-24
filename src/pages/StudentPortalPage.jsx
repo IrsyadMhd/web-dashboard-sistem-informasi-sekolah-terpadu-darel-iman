@@ -21,24 +21,28 @@ import ExamGridsWorkspace from '../components/portal/ExamGridsWorkspace'
 import CbtExamsWorkspace from '../components/portal/CbtExamsWorkspace'
 import ExamResultsWorkspace from '../components/portal/ExamResultsWorkspace'
 import DashboardHeader from '../components/dashboard/DashboardHeader'
+import { Button } from '../components/tailgrids/core/button'
+import { Badge } from '../components/tailgrids/core/badge'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/tailgrids/core/card'
+import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '../components/tailgrids/core/alert'
 import { useAuthStore } from '../stores/authStore'
 import { isParentRole } from '../auth/portalResolver'
 
 const tabs = [
-  { id: 'ringkasan', label: 'Ringkasan', icon: LayoutDashboard },
-  { id: 'profile', label: 'Profil & Biodata', icon: UserRound },
-  { id: 'announcements', label: 'Informasi Sekolah', icon: Megaphone },
-  { id: 'schedules', label: 'Jadwal', icon: CalendarDays },
-  { id: 'materials', label: 'Materi', icon: BookOpen },
-  { id: 'assignments', label: 'Tugas', icon: ClipboardList },
-  { id: 'tahfizh', label: 'Tahfizh', icon: BookOpenCheck },
-  { id: 'grades', label: 'Nilai', icon: Award },
-  { id: 'student-notes', label: 'Komentar Guru', icon: MessageCircle },
-  { id: 'mutabaah', label: 'Mutabaah', icon: HeartHandshake },
-  { id: 'attendance', label: 'Absensi', icon: CalendarCheck },
-  { id: 'kisi', label: 'Kisi-kisi', icon: BookOpenCheck },
-  { id: 'ujian', label: 'Ujian CBT', icon: FileCheck2 },
-  { id: 'hasil', label: 'Hasil', icon: Award },
+  { id: 'ringkasan', label: 'Ringkasan', icon: LayoutDashboard, pastelColor: 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-500/20' },
+  { id: 'profile', label: 'Profil & Biodata', icon: UserRound, pastelColor: 'bg-sky-100/90 text-sky-700 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 hover:shadow-md hover:shadow-sky-500/20' },
+  { id: 'announcements', label: 'Informasi Sekolah', icon: Megaphone, pastelColor: 'bg-blue-100/90 text-blue-700 hover:bg-blue-600 hover:text-white dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-600 hover:shadow-md hover:shadow-blue-500/20' },
+  { id: 'schedules', label: 'Jadwal', icon: CalendarDays, pastelColor: 'bg-purple-100/90 text-purple-700 hover:bg-purple-600 hover:text-white dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-600 hover:shadow-md hover:shadow-purple-500/20' },
+  { id: 'materials', label: 'Materi', icon: BookOpen, pastelColor: 'bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 hover:shadow-md hover:shadow-amber-500/20' },
+  { id: 'assignments', label: 'Tugas', icon: ClipboardList, pastelColor: 'bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600 hover:shadow-md hover:shadow-rose-500/20' },
+  { id: 'tahfizh', label: 'Tahfizh', icon: BookOpenCheck, pastelColor: 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-500/20' },
+  { id: 'grades', label: 'Nilai', icon: Award, pastelColor: 'bg-cyan-100/90 text-cyan-700 hover:bg-cyan-600 hover:text-white dark:bg-cyan-950/60 dark:text-cyan-300 dark:hover:bg-cyan-600 hover:shadow-md hover:shadow-cyan-500/20' },
+  { id: 'student-notes', label: 'Komentar Guru', icon: MessageCircle, pastelColor: 'bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 hover:shadow-md hover:shadow-indigo-500/20' },
+  { id: 'mutabaah', label: 'Mutabaah', icon: HeartHandshake, pastelColor: 'bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 hover:shadow-md hover:shadow-amber-500/20' },
+  { id: 'attendance', label: 'Absensi', icon: CalendarCheck, pastelColor: 'bg-teal-100/90 text-teal-700 hover:bg-teal-600 hover:text-white dark:bg-teal-950/60 dark:text-teal-300 dark:hover:bg-teal-600 hover:shadow-md hover:shadow-teal-500/20' },
+  { id: 'kisi', label: 'Kisi-kisi', icon: BookOpenCheck, pastelColor: 'bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-950/60 dark:text-violet-300 dark:hover:bg-violet-600 hover:shadow-md hover:shadow-violet-500/20' },
+  { id: 'ujian', label: 'Ujian CBT', icon: FileCheck2, pastelColor: 'bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600 hover:shadow-md hover:shadow-rose-500/20' },
+  { id: 'hasil', label: 'Hasil', icon: Award, pastelColor: 'bg-cyan-100/90 text-cyan-700 hover:bg-cyan-600 hover:text-white dark:bg-cyan-950/60 dark:text-cyan-300 dark:hover:bg-cyan-600 hover:shadow-md hover:shadow-cyan-500/20' },
 ]
 
 const studentPortalPaths = {
@@ -474,32 +478,153 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
 
   if (loading) return <div className="portal-page animate-pulse space-y-5"><div className="h-36 rounded-[18px] bg-slate-200 dark:bg-slate-800" /><div className="h-12 rounded-2xl bg-slate-200 dark:bg-slate-800" /></div>
 
+const KpiCardPastelStyles = {
+  emerald: {
+    card: 'border-emerald-200/80 bg-emerald-50/40 hover:border-emerald-300 dark:border-emerald-950/60 dark:bg-emerald-950/20',
+    iconBg: 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+    title: 'text-emerald-800 dark:text-emerald-300',
+    val: 'text-emerald-950 dark:text-white',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    btn: 'text-emerald-700 hover:text-emerald-800 dark:text-emerald-400',
+  },
+  blue: {
+    card: 'border-blue-200/80 bg-blue-50/40 hover:border-blue-300 dark:border-blue-950/60 dark:bg-blue-950/20',
+    iconBg: 'bg-blue-100/80 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+    title: 'text-blue-800 dark:text-blue-300',
+    val: 'text-blue-950 dark:text-white',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    btn: 'text-blue-700 hover:text-blue-800 dark:text-blue-400',
+  },
+  amber: {
+    card: 'border-amber-200/80 bg-amber-50/40 hover:border-amber-300 dark:border-amber-950/60 dark:bg-amber-950/20',
+    iconBg: 'bg-amber-100/80 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+    title: 'text-amber-800 dark:text-amber-300',
+    val: 'text-amber-950 dark:text-white',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    btn: 'text-amber-700 hover:text-amber-800 dark:text-amber-400',
+  },
+  purple: {
+    card: 'border-purple-200/80 bg-purple-50/40 hover:border-purple-300 dark:border-purple-950/60 dark:bg-purple-950/20',
+    iconBg: 'bg-purple-100/80 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
+    title: 'text-purple-800 dark:text-purple-300',
+    val: 'text-purple-950 dark:text-white',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+    btn: 'text-purple-700 hover:text-purple-800 dark:text-purple-400',
+  },
+  rose: {
+    card: 'border-rose-200/80 bg-rose-50/40 hover:border-rose-300 dark:border-rose-950/60 dark:bg-rose-950/20',
+    iconBg: 'bg-rose-100/80 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+    title: 'text-rose-800 dark:text-rose-300',
+    val: 'text-rose-950 dark:text-white',
+    sub: 'text-rose-600/80 dark:text-rose-400/80',
+    btn: 'text-rose-700 hover:text-rose-800 dark:text-rose-400',
+  },
+  cyan: {
+    card: 'border-cyan-200/80 bg-cyan-50/40 hover:border-cyan-300 dark:border-cyan-950/60 dark:bg-cyan-950/20',
+    iconBg: 'bg-cyan-100/80 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300',
+    title: 'text-cyan-800 dark:text-cyan-300',
+    val: 'text-cyan-950 dark:text-white',
+    sub: 'text-cyan-600/80 dark:text-cyan-400/80',
+    btn: 'text-cyan-700 hover:text-cyan-800 dark:text-cyan-400',
+  },
+}
+
   const student = lms?.student || dashboard?.student
   const dashboardCards = [
-    ['profile', 'Profil & Biodata', student?.full_name || 'Profil siswa', 'Data identitas dan kelas aktif', UserRound],
-    ['announcements', 'Informasi Sekolah', dashboard?.announcements?.length || 0, 'informasi terbaru', Megaphone],
-    ['schedules', 'Jadwal', dashboard?.schedules_today?.length || 0, 'pelajaran hari ini', CalendarDays],
-    ['materials', 'Materi', dashboardModules.materials?.length || 0, 'materi dipublikasikan', BookOpen],
-    ['assignments', 'Tugas', dashboard?.active_assignments?.length || 0, 'tugas aktif', ClipboardList],
-    ['tahfizh', 'Tahfizh', dashboard?.kpi?.total_tahfizh_ayat || 0, 'total ayat tercatat', BookOpenCheck],
-    ['grades', 'Nilai', dashboard?.latest_grades?.length || dashboardModules.grades?.length || 0, 'nilai terbaru', Award],
-    ['student-notes', 'Komentar Guru', dashboardModules['student-notes']?.length || 0, 'komentar tersedia', MessageCircle],
-    ['mutabaah', 'Mutabaah', dashboard?.kpi?.mutabaah_status || 'Belum diisi', 'status hari ini', HeartHandshake],
-    ['attendance', 'Absensi', dashboard?.attendance_today || 'Belum diinput', 'kehadiran hari ini', CalendarCheck],
-    ['kisi', 'Kisi-kisi', blueprints.length, 'kisi-kisi tersedia', BookOpenCheck],
-    ['ujian', 'Ujian CBT', lms?.summary?.available || 0, 'siap dikerjakan', FileCheck2],
-    ['hasil', 'Hasil', exams.filter((exam) => exam.latest_result).length, 'hasil ujian tersedia', Award],
+    ['profile', 'Profil & Biodata', student?.full_name || 'Profil siswa', 'Data identitas dan kelas aktif', UserRound, 'emerald'],
+    ['announcements', 'Informasi Sekolah', dashboard?.announcements?.length || 0, 'informasi terbaru', Megaphone, 'blue'],
+    ['schedules', 'Jadwal', dashboard?.schedules_today?.length || 0, 'pelajaran hari ini', CalendarDays, 'purple'],
+    ['materials', 'Materi', dashboardModules.materials?.length || 0, 'materi dipublikasikan', BookOpen, 'amber'],
+    ['assignments', 'Tugas', dashboard?.active_assignments?.length || 0, 'tugas aktif', ClipboardList, 'rose'],
+    ['tahfizh', 'Tahfizh', dashboard?.kpi?.total_tahfizh_ayat || 0, 'total ayat tercatat', BookOpenCheck, 'emerald'],
+    ['grades', 'Nilai', dashboard?.latest_grades?.length || dashboardModules.grades?.length || 0, 'nilai terbaru', Award, 'cyan'],
+    ['student-notes', 'Komentar Guru', dashboardModules['student-notes']?.length || 0, 'komentar tersedia', MessageCircle, 'blue'],
+    ['mutabaah', 'Mutabaah', dashboard?.kpi?.mutabaah_status || 'Belum diisi', 'status hari ini', HeartHandshake, 'amber'],
+    ['attendance', 'Absensi', dashboard?.attendance_today || 'Belum diinput', 'kehadiran hari ini', CalendarCheck, 'emerald'],
+    ['kisi', 'Kisi-kisi', blueprints.length, 'kisi-kisi tersedia', BookOpenCheck, 'purple'],
+    ['ujian', 'Ujian CBT', lms?.summary?.available || 0, 'siap dikerjakan', FileCheck2, 'rose'],
+    ['hasil', 'Hasil', exams.filter((exam) => exam.latest_result).length, 'hasil ujian tersedia', Award, 'cyan'],
   ]
 
   return (
     <div className="portal-page min-w-0 space-y-5 pb-12 text-slate-800 dark:text-slate-100">
       {session && <ExamWorkspace session={session} onClose={() => setSession(null)} onFinished={finish} />}
-      <DashboardHeader
-        title={`Selamat datang, ${student?.full_name || 'Siswa'}`}
-        subtitle="Akses jadwal, tugas, materi, CBT, nilai, Tahfizh, dan Mutaba'ah dalam satu ruang belajar."
-        roleName="Siswa"
-        unitName={student?.unit?.name || student?.education_unit?.name}
-      />
+      {/* CARD UNIFIKASI HERO & NAVIGASI MENU PORTAL SISWA */}
+      <Card className="overflow-hidden border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 rounded-[22px]">
+        {/* HEADER HERO SECTION */}
+        <div className="bg-gradient-to-r from-[#0E5C44] via-[#0B4B37] to-[#083D2D] p-6 text-white sm:p-7 relative overflow-hidden">
+          <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <Badge color="cyan" size="sm" className="font-bold uppercase tracking-wider text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
+                  {student?.unit?.name || student?.education_unit?.name || 'TKIT 1 Dar el-Iman - Padang'}
+                </Badge>
+                <Badge color="success" size="sm" className="font-bold uppercase tracking-wider text-[10px]">
+                  Siswa
+                </Badge>
+                <Badge color="sky" size="sm" className="font-bold uppercase tracking-wider text-[10px]">
+                  PORTAL SISWA AKTIF
+                </Badge>
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight">
+                Selamat datang, {student?.full_name || 'Ahmad Zaky'}
+              </h1>
+              <p className="mt-1.5 text-xs sm:text-sm text-emerald-100/90 max-w-2xl leading-relaxed">
+                Akses jadwal, tugas, materi, CBT, nilai, Tahfizh, dan Mutaba'ah dalam satu ruang belajar.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* CARD CONTENT NAVIGASI MENU */}
+        <CardContent className="p-5 sm:p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 shadow-xs">
+                <LayoutDashboard className="h-4 w-4" />
+              </span>
+              <div>
+                <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                  Navigasi Menu Portal Siswa
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  Pemanggilan menu modul via tombol di bawah ini:
+                </p>
+              </div>
+            </div>
+            <Badge color="primary" size="sm" className="hidden sm:inline-flex font-bold uppercase tracking-wider text-[10px]">
+              {tabs.length} Menu Modul
+            </Badge>
+          </div>
+          {/* TOMBOL BUTTON GRID WITH TAILGRIDS PASTEL ACCENTS & HOVER TOOLTIP SYSTEM */}
+          <div className="flex flex-wrap items-center gap-2.5 pt-1">
+            {tabs.map(({ id, label, icon: Icon, pastelColor }) => {
+              const isActive = activeTab === id
+              return (
+                <div key={id} className="group relative inline-flex">
+                  <Button
+                    type="button"
+                    variant={isActive ? 'primary' : 'ghost'}
+                    appearance={isActive ? 'fill' : 'outline'}
+                    size="xs"
+                    onClick={() => selectTab(id)}
+                    prefixIcon={<Icon className="h-4 w-4 shrink-0 transition-transform duration-200" />}
+                    className={`cursor-pointer transition-all duration-200 font-bold ${
+                      isActive
+                        ? '!bg-[#0E5C44] !text-white shadow-md shadow-emerald-900/20 ring-2 ring-emerald-500/40 scale-[1.02]'
+                        : `${pastelColor} border-transparent`
+                    }`}
+                  >
+                    {label}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
         {error && (
           <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/30">
             <AlertCircle className="h-5 w-5" />
@@ -520,60 +645,91 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
 
         {activeTab === 'ringkasan' && (
           <section className="space-y-5">
-            <div className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="p-5 border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900 rounded-[20px]">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold">Dashboard Siswa</h2>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">Dashboard Siswa</h2>
                   <p className="mt-1 text-xs text-slate-500">Ringkasan baca-saja dari seluruh layanan portal. Pengelolaan data dilakukan oleh modul utama.</p>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                <Badge color="sky" size="sm" className="font-extrabold uppercase">
                   PORTAL SISWA AKTIF
-                </span>
+                </Badge>
               </div>
-            </div>
+            </Card>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {dashboardCards.map(([id, label, value, description, Icon]) => (
-                <article key={id} className="flex min-h-40 flex-col rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                      <Icon className="h-5 w-5" />
+              {dashboardCards.map(([id, label, value, description, Icon, tone = 'emerald']) => {
+                const pastel = KpiCardPastelStyles[tone] || KpiCardPastelStyles.emerald
+                return (
+                  <Card
+                    key={id}
+                    className={`flex min-h-44 flex-col rounded-[20px] border p-5 shadow-xs transition-all duration-200 hover:shadow-md cursor-pointer ${pastel.card}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold ${pastel.iconBg}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        appearance="outline"
+                        size="xs"
+                        onClick={() => selectTab(id)}
+                        className="!px-2.5 !py-1 text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-emerald-700"
+                      >
+                        Buka
+                      </Button>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-slate-500 dark:bg-slate-800">Buka</span>
-                  </div>
-                  <p className="mt-4 text-xs font-bold text-slate-500">{label}</p>
-                  <p className="mt-1 line-clamp-1 text-xl font-black text-slate-900 dark:text-white">{value}</p>
-                  <p className="mt-1 text-[11px] text-slate-400">{description}</p>
-                  <button type="button" onClick={() => selectTab(id)} className="mt-auto pt-4 text-left text-xs font-bold text-emerald-700 hover:text-emerald-600 dark:text-emerald-400">
-                    Buka halaman →
-                  </button>
-                </article>
-              ))}
+                    <p className={`mt-4 text-xs font-extrabold ${pastel.title}`}>{label}</p>
+                    <p className={`mt-1 line-clamp-1 text-xl font-black ${pastel.val}`}>{value}</p>
+                    <p className={`mt-1 text-[11px] ${pastel.sub}`}>{description}</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      appearance="outline"
+                      size="xs"
+                      onClick={() => selectTab(id)}
+                      className={`mt-auto pt-3 text-left text-xs font-bold !border-none !px-0 !justify-start ${pastel.btn}`}
+                    >
+                      Buka menu {label} →
+                    </Button>
+                  </Card>
+                )
+              })}
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
-              <div className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:col-span-2">
-                <h3 className="text-sm font-bold">Tugas terdekat</h3>
+              <Card className="p-5 border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-slate-900 rounded-[20px] lg:col-span-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Tugas Terdekat</h3>
                 <div className="mt-3 divide-y divide-slate-100 dark:divide-slate-800">
                   {(dashboard?.active_assignments || []).slice(0, 4).map((item) => (
                     <div key={item.id} className="flex items-center justify-between gap-3 py-3">
                       <div>
-                        <p className="text-xs font-bold">{item.judul}</p>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.judul}</p>
                         <p className="mt-1 text-[11px] text-slate-500">{item.subject?.name || 'Mata pelajaran'}</p>
                       </div>
-                      <span className="text-[10px] font-semibold text-amber-600">{formatDate(item.deadline)}</span>
+                      <Badge color="warning" size="sm" className="font-bold">
+                        {formatDate(item.deadline)}
+                      </Badge>
                     </div>
                   ))}
                   {!dashboard?.active_assignments?.length && <p className="py-8 text-center text-xs text-slate-400">Tidak ada tugas aktif.</p>}
                 </div>
-              </div>
+              </Card>
 
-              <aside className="rounded-[18px] bg-slate-900 p-5 text-white dark:bg-emerald-950">
-                <p className="text-xs text-slate-300">Kelas aktif</p>
-                <p className="mt-1 text-lg font-bold">{student?.kelas?.nama_kelas || student?.kelas?.name || 'Belum ditentukan'}</p>
-                <p className="mt-3 text-xs text-slate-400">NIS: {student?.nis || '-'}</p>
-                <p className="mt-5 text-xs text-slate-300">Portal Siswa memantau progres akademik, ibadah, tugas, dan ujian CBT secara terpadu.</p>
-              </aside>
+              <Card className="p-5 bg-gradient-to-br from-slate-900 to-slate-950 text-white dark:from-emerald-950 dark:to-slate-900 border border-slate-800 rounded-[20px] shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-300">Kelas Aktif</p>
+                  <Badge color="success" size="sm" className="font-bold uppercase">
+                    Aktif
+                  </Badge>
+                </div>
+                <p className="mt-1.5 text-lg font-black text-white">{student?.kelas?.nama_kelas || student?.kelas?.name || 'Belum ditentukan'}</p>
+                <p className="mt-2 text-xs text-emerald-200/80 font-mono">NIS: {student?.nis || '-'}</p>
+                <p className="mt-4 text-xs leading-relaxed text-slate-300/90 border-t border-slate-800/80 pt-3">
+                  Portal Siswa memantau progres akademik, ibadah, tugas, dan ujian CBT secara terpadu.
+                </p>
+              </Card>
             </div>
           </section>
         )}

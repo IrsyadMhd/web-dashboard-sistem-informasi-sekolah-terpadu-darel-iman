@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import {
   BookOpen,
   Search,
@@ -23,10 +24,69 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import {
   MasterActionButton,
   MasterDataPage,
-  MasterPageHeader,
+  MasterFilterSelect,
+  SquircleActionButton,
   MasterStatsGrid,
   MasterStatCard,
 } from '../components/master-data'
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-emerald-50/60 to-teal-50/40 hover:bg-emerald-100/90 hover:border-emerald-300 dark:border-emerald-800/80 dark:bg-emerald-950/40',
+      title: 'text-emerald-800 dark:text-emerald-300',
+      iconBox: 'bg-emerald-600 text-white shadow-xs',
+      val: 'text-emerald-950 dark:text-white',
+      sub: 'text-emerald-700/90 dark:text-emerald-400',
+    },
+    blue: {
+      card: 'border-sky-200/90 bg-gradient-to-br from-sky-50/90 via-sky-50/60 to-blue-50/40 hover:bg-sky-100/90 hover:border-sky-300 dark:border-sky-800/80 dark:bg-sky-950/40',
+      title: 'text-sky-800 dark:text-sky-300',
+      iconBox: 'bg-sky-600 text-white shadow-xs',
+      val: 'text-sky-950 dark:text-white',
+      sub: 'text-sky-700/90 dark:text-sky-400',
+    },
+    purple: {
+      card: 'border-purple-200/90 bg-gradient-to-br from-purple-50/90 via-purple-50/60 to-indigo-50/40 hover:bg-purple-100/90 hover:border-purple-300 dark:border-purple-800/80 dark:bg-purple-950/40',
+      title: 'text-purple-800 dark:text-purple-300',
+      iconBox: 'bg-purple-600 text-white shadow-xs',
+      val: 'text-purple-950 dark:text-white',
+      sub: 'text-purple-700/90 dark:text-purple-400',
+    },
+    amber: {
+      card: 'border-amber-200/90 bg-gradient-to-br from-amber-50/90 via-amber-50/60 to-yellow-50/40 hover:bg-amber-100/90 hover:border-amber-300 dark:border-amber-800/80 dark:bg-amber-950/40',
+      title: 'text-amber-800 dark:text-amber-300',
+      iconBox: 'bg-amber-500 text-white shadow-xs',
+      val: 'text-amber-950 dark:text-white',
+      sub: 'text-amber-700/90 dark:text-amber-400',
+    },
+  }
+
+  const t = tones[tone] || tones.emerald
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.03, y: -2 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+        {Icon && (
+          <div className={`p-2 rounded-xl ${t.iconBox} shrink-0 transition-transform group-hover:scale-110`}>
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+      </div>
+      <p className={`mt-2 text-3xl font-black ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-xs font-semibold ${t.sub}`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 const emptyDoa = {
   id: '',
@@ -258,86 +318,110 @@ export default function MasterDoaPage() {
 
   return (
     <PageContainer maxW="7xl">
-      <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Doa Harian' }]} />
+      <AppBreadcrumb className="mb-6" items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Doa Harian' }]} />
       <MasterDataPage className="education-unit-page doa-master-page" hideBreadcrumb>
-      {/* Master Canonical Page Header */}
-      <MasterPageHeader
-        tone="brand"
-        icon={BookOpen}
-        title="Kelola Data Do'a & Dzikir"
-        description="Kumpulan doa-doa harian, dzikir, dan referensi hadits terintegrasi dengan database EQuran.id."
-        actions={
-          <>
-            <MasterActionButton variant="secondary" icon={RefreshCw} disabled={syncing} onClick={handleSync}>
-              {syncing ? 'Menyinkronkan...' : 'Sync EQuran.id'}
-            </MasterActionButton>
-            <MasterActionButton icon={Plus} onClick={handleOpenAdd}>
-              Tambah Doa Manual
-            </MasterActionButton>
-          </>
-        }
-      />
+      {/* Summary Cards Grid (Desain KpiTintedCard persis seperti /dashboard/employees) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiTintedCard
+          label="Total Doa DB"
+          value={displayStats.totalDoa}
+          subtext="Tersimpan di database"
+          icon={Layers}
+          tone="emerald"
+        />
+        <KpiTintedCard
+          label="Kategori / Grup"
+          value={displayStats.totalGrup}
+          subtext="Grup doa harian"
+          icon={Bookmark}
+          tone="blue"
+        />
+        <KpiTintedCard
+          label="Total Tag Unik"
+          value={displayStats.totalTag}
+          subtext="Tag pencarian doa"
+          icon={Tag}
+          tone="purple"
+        />
+        <KpiTintedCard
+          label="Referensi Hadits"
+          value={displayStats.totalHadits}
+          subtext="Disertai sumber hadits"
+          icon={ShieldCheck}
+          tone="amber"
+        />
+      </div>
 
-      {/* Summary Cards */}
-      <MasterStatsGrid className="education-unit-kpis">
-        <MasterStatCard icon={Layers} label="Total Doa DB" value={displayStats.totalDoa} description="Tersimpan di database" variant="success" delay={40} />
-        <MasterStatCard icon={Bookmark} label="Kategori / Grup" value={displayStats.totalGrup} description="Grup doa harian" variant="info" delay={80} />
-        <MasterStatCard icon={Tag} label="Total Tag Unik" value={displayStats.totalTag} description="Tag pencarian doa" variant="warning" delay={120} />
-        <MasterStatCard icon={ShieldCheck} label="Referensi Hadits" value={displayStats.totalHadits} description="Disertai sumber hadits" variant="neutral" delay={160} />
-      </MasterStatsGrid>
-
-      {/* Toolbar Search & Filter */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* Toolbar Search, Filter & Squircle Action Buttons (TailGrids Report Page Style) */}
+      <div className="bg-white dark:bg-[#1B2433] p-4 sm:p-5 rounded-[18px] border border-slate-200/80 dark:border-slate-700/80 shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">
+        {/* Left Side: Search Bar */}
+        <div className="relative w-full lg:w-80 shrink-0">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari ID, judul, arab, latin, atau tag..."
-            className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+            className="w-full h-11 pl-9 pr-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-[14px] text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-3 focus:ring-emerald-600/15 transition-all"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">Grup/Kategori:</span>
-            <select
-              value={grupFilter}
-              onChange={(e) => setGrupFilter(e.target.value)}
-              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="all">Semua Grup</option>
-              {grupOptions.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Right Side: Filters & Soft Pastel Squircle Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
+          {/* Grup/Kategori Filter */}
+          <MasterFilterSelect
+            aria-label="Filter Grup Doa"
+            value={grupFilter}
+            onChange={(e) => setGrupFilter(e.target.value)}
+            className="!min-w-44"
+          >
+            <option value="all">Semua Grup</option>
+            {grupOptions.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </MasterFilterSelect>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">Tag:</span>
-            <select
-              value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 capitalize"
-            >
-              <option value="all">Semua Tag</option>
-              {tagOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+          {/* Tag Filter */}
+          <MasterFilterSelect
+            aria-label="Filter Tag Doa"
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            className="!min-w-40 capitalize"
+          >
+            <option value="all">Semua Tag</option>
+            {tagOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </MasterFilterSelect>
+
+          {/* Soft Pastel Squircle Action Buttons */}
+          <div className="flex items-center gap-2.5 shrink-0 ml-auto lg:ml-0">
+            <SquircleActionButton
+              variant="import"
+              icon={RefreshCw}
+              label="Sync EQuran.id"
+              disabled={syncing}
+              onClick={handleSync}
+            />
+
+            <SquircleActionButton
+              variant="primary"
+              icon={Plus}
+              label="Tambah Doa Manual"
+              onClick={handleOpenAdd}
+            />
           </div>
         </div>
       </div>

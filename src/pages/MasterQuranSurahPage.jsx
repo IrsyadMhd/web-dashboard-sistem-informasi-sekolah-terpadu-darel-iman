@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import {
   BookOpen,
   Search,
@@ -27,10 +28,67 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import {
   MasterActionButton,
   MasterDataPage,
-  MasterPageHeader,
   MasterStatsGrid,
   MasterStatCard,
 } from '../components/master-data'
+
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
+  const tones = {
+    emerald: {
+      card: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-emerald-50/60 to-teal-50/40 hover:bg-emerald-100/90 hover:border-emerald-300 dark:border-emerald-800/80 dark:bg-emerald-950/40',
+      title: 'text-emerald-800 dark:text-emerald-300',
+      iconBox: 'bg-emerald-600 text-white shadow-xs',
+      val: 'text-emerald-950 dark:text-white',
+      sub: 'text-emerald-700/90 dark:text-emerald-400',
+    },
+    blue: {
+      card: 'border-sky-200/90 bg-gradient-to-br from-sky-50/90 via-sky-50/60 to-blue-50/40 hover:bg-sky-100/90 hover:border-sky-300 dark:border-sky-800/80 dark:bg-sky-950/40',
+      title: 'text-sky-800 dark:text-sky-300',
+      iconBox: 'bg-sky-600 text-white shadow-xs',
+      val: 'text-sky-950 dark:text-white',
+      sub: 'text-sky-700/90 dark:text-sky-400',
+    },
+    purple: {
+      card: 'border-purple-200/90 bg-gradient-to-br from-purple-50/90 via-purple-50/60 to-indigo-50/40 hover:bg-purple-100/90 hover:border-purple-300 dark:border-purple-800/80 dark:bg-purple-950/40',
+      title: 'text-purple-800 dark:text-purple-300',
+      iconBox: 'bg-purple-600 text-white shadow-xs',
+      val: 'text-purple-950 dark:text-white',
+      sub: 'text-purple-700/90 dark:text-purple-400',
+    },
+    amber: {
+      card: 'border-amber-200/90 bg-gradient-to-br from-amber-50/90 via-amber-50/60 to-yellow-50/40 hover:bg-amber-100/90 hover:border-amber-300 dark:border-amber-800/80 dark:bg-amber-950/40',
+      title: 'text-amber-800 dark:text-amber-300',
+      iconBox: 'bg-amber-500 text-white shadow-xs',
+      val: 'text-amber-950 dark:text-white',
+      sub: 'text-amber-700/90 dark:text-amber-400',
+    },
+  }
+
+  const t = tones[tone] || tones.emerald
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.03, y: -2 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md group`}
+    >
+      <div className="flex items-center justify-between">
+        <p className={`text-xs font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+        {Icon && (
+          <div className={`p-2 rounded-xl ${t.iconBox} shrink-0 transition-transform group-hover:scale-110`}>
+            <Icon className="h-4 w-4" />
+          </div>
+        )}
+      </div>
+      <p className={`mt-2 text-3xl font-black ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-1.5 text-xs font-semibold ${t.sub}`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
+}
 
 const emptySurah = {
   nomor: '',
@@ -297,66 +355,88 @@ export default function MasterQuranSurahPage() {
 
   return (
     <PageContainer maxW="7xl">
-      <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Surah Al-Qur\'an' }]} />
+      <AppBreadcrumb className="mb-6" items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Surah Al-Qur\'an' }]} />
       <MasterDataPage className="education-unit-page quran-master-page" hideBreadcrumb>
-      {/* Master Canonical Page Header */}
-      <MasterPageHeader
-        tone="brand"
-        icon={BookOpen}
-        title="Kelola Data Surah & Rincian Ayat"
-        description="Master data 114 surah Al-Qur'an terpadu dengan rincian ayat, terjemahan, dan audio mp3."
-        actions={
-          <>
-            <MasterActionButton variant="secondary" icon={RefreshCw} disabled={syncing} onClick={handleSync}>
-              {syncing ? 'Menyinkronkan...' : 'Sync EQuran.id'}
-            </MasterActionButton>
-            <MasterActionButton icon={Plus} onClick={handleOpenAdd}>
-              Tambah Surah Manual
-            </MasterActionButton>
-          </>
-        }
-      />
+      {/* Summary Cards Grid (Desain KpiTintedCard persis seperti /dashboard/employees) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiTintedCard
+          label="Total Surah DB"
+          value={stats.count}
+          subtext="Surah tersimpan"
+          icon={Layers}
+          tone="emerald"
+        />
+        <KpiTintedCard
+          label="Total Ayat Al-Qur'an"
+          value={stats.totalAyat.toLocaleString('id-ID')}
+          subtext="Jumlah seluruh ayat"
+          icon={FileText}
+          tone="blue"
+        />
+        <KpiTintedCard
+          label="Surah Makkiyah"
+          value={stats.makkiyah}
+          subtext="Turun di Mekah"
+          icon={MapPin}
+          tone="purple"
+        />
+        <KpiTintedCard
+          label="Surah Madaniyah"
+          value={stats.madaniyah}
+          subtext="Turun di Madinah"
+          icon={CheckCircle}
+          tone="amber"
+        />
+      </div>
 
-      {/* Summary Cards */}
-      <MasterStatsGrid className="education-unit-kpis">
-        <MasterStatCard icon={Layers} label="Total Surah DB" value={stats.count} description="Surah tersimpan" variant="success" delay={40} />
-        <MasterStatCard icon={FileText} label="Total Ayat Al-Qur'an" value={stats.totalAyat.toLocaleString('id-ID')} description="Jumlah seluruh ayat" variant="info" delay={80} />
-        <MasterStatCard icon={MapPin} label="Surah Makkiyah" value={stats.makkiyah} description="Turun di Mekah" variant="warning" delay={120} />
-        <MasterStatCard icon={CheckCircle} label="Surah Madaniyah" value={stats.madaniyah} description="Turun di Madinah" variant="neutral" delay={160} />
-      </MasterStatsGrid>
-
-      {/* Toolbar Search & Filter */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* Toolbar Search & Filter & Actions */}
+      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-700 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3.5">
+        {/* Search Input */}
+        <div className="relative w-full xl:w-80 shrink-0">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nomor, nama surah, atau arti..."
-            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+            className="w-full h-10 pl-9 pr-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
           />
           {search && (
             <button
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">Tempat Turun:</span>
-          <select
-            value={tempatFilter}
-            onChange={(e) => setTempatFilter(e.target.value)}
-            className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="all">Semua Tempat</option>
-            <option value="mekah">Mekah (Makkiyah)</option>
-            <option value="madinah">Madinah (Madaniyah)</option>
-          </select>
+        {/* Filter Controls & Actions */}
+        <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto justify-start xl:justify-end">
+          {/* Tempat Turun Filter */}
+          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 h-10 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">Tempat:</span>
+            <select
+              value={tempatFilter}
+              onChange={(e) => setTempatFilter(e.target.value)}
+              className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="all">Semua Tempat</option>
+              <option value="mekah">Mekah (Makkiyah)</option>
+              <option value="madinah">Madinah (Madaniyah)</option>
+            </select>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 ml-auto xl:ml-0">
+            <MasterActionButton variant="secondary" icon={RefreshCw} disabled={syncing} onClick={handleSync}>
+              {syncing ? 'Menyinkronkan...' : 'Sync EQuran.id'}
+            </MasterActionButton>
+
+            <MasterActionButton icon={Plus} onClick={handleOpenAdd}>
+              Tambah Surah Manual
+            </MasterActionButton>
+          </div>
         </div>
       </div>
 
@@ -371,7 +451,7 @@ export default function MasterQuranSurahPage() {
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-2">
             <BookOpen className="w-10 h-10 text-gray-300" />
             <span className="text-base font-semibold text-gray-600">Tidak ada data surah ditemukan</span>
-            <p className="text-xs text-gray-400">Silakan klik "Sync 114 Surah" untuk menarik data dari EQuran.id</p>
+            <p className="text-xs text-gray-400">Silakan klik "Sync EQuran.id" untuk menarik data dari EQuran.id</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
