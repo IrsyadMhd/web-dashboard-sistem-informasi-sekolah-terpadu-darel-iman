@@ -307,7 +307,39 @@ export default function MasterJadwalSholatPage() {
   return (
     <PageContainer maxW="7xl">
       <AppBreadcrumb className="mb-6" items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Jadwal Sholat' }]} />
-      <MasterDataPage className="education-unit-page sholat-master-page" hideBreadcrumb>
+
+      {/* Modern Hero Header Banner */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6">
+        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <Compass className="size-6 sm:size-7 text-white" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                  <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                  Master Data Ibadah
+                </span>
+                <span className="inline-flex items-center rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                  Waktu Sholat
+                </span>
+              </div>
+              <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                Master Jadwal Sholat
+              </h1>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">
+                Pengelolaan data jadwal waktu sholat harian per kabupaten/kota seluruh Indonesia dari API EQuran.id.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <MasterDataPage className="education-unit-page sholat-master-page space-y-6" hideBreadcrumb>
       {/* Toast Notification */}
       {toastMessage && (
         <div
@@ -606,15 +638,15 @@ export default function MasterJadwalSholatPage() {
       </div>
 
       {/* Saved Master Data Table Section */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <div className="p-5 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 rounded-lg">
-              <Database className="w-5 h-5" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+              <Database className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Master Data Sholat Tersimpan di Database</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Master Data Sholat Tersimpan di Database</h2>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
                 Menampilkan daftar jadwal sholat harian yang tersimpan dan siap digunakan untuk sistem absensi/mutaba'ah.
               </p>
             </div>
@@ -630,13 +662,13 @@ export default function MasterJadwalSholatPage() {
                 value={filterSearch}
                 onChange={(e) => setFilterSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && loadMasterFromDb()}
-                className="pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 w-48"
+                className="pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 w-48 font-medium"
               />
             </div>
 
             <button
               onClick={loadMasterFromDb}
-              className="px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 rounded-xl hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 transition-all"
+              className="px-3.5 py-2 text-xs font-extrabold bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-md shadow-emerald-600/30 flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Search className="w-3.5 h-3.5" /> Filter Data
             </button>
@@ -655,21 +687,21 @@ export default function MasterJadwalSholatPage() {
         {/* Master Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700">
+            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
               <tr>
-                <th className="py-3 px-4">Provinsi</th>
-                <th className="py-3 px-4">Kab / Kota</th>
-                <th className="py-3 px-4">Tanggal</th>
-                <th className="py-3 px-4">Hari</th>
-                <th className="py-3 px-3 text-center text-slate-500">Imsak</th>
-                <th className="py-3 px-3 text-center text-emerald-600 dark:text-emerald-400">Subuh</th>
-                <th className="py-3 px-3 text-center text-slate-500">Terbit</th>
-                <th className="py-3 px-3 text-center text-amber-600 dark:text-amber-400">Dhuha</th>
-                <th className="py-3 px-3 text-center text-blue-600 dark:text-blue-400">Dzuhur</th>
-                <th className="py-3 px-3 text-center text-indigo-600 dark:text-indigo-400">Ashar</th>
-                <th className="py-3 px-3 text-center text-orange-600 dark:text-orange-400">Maghrib</th>
-                <th className="py-3 px-3 text-center text-purple-600 dark:text-purple-400">Isya</th>
-                <th className="py-3 px-4 text-center">Aksi</th>
+                <th className="py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A] text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Provinsi</th>
+                <th className="py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A] text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Kab / Kota</th>
+                <th className="py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A] text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Tanggal</th>
+                <th className="py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A] text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Hari</th>
+                <th className="py-3.5 px-3 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Imsak</th>
+                <th className="py-3.5 px-3 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Subuh</th>
+                <th className="py-3.5 px-3 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Terbit</th>
+                <th className="py-3.5 px-3 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Dhuha</th>
+                <th className="py-3.5 px-3 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Dzuhur</th>
+                <th className="py-3.5 px-3 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Ashar</th>
+                <th className="py-3.5 px-3 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Maghrib</th>
+                <th className="py-3.5 px-3 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Isya</th>
+                <th className="py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A] text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">

@@ -15,6 +15,7 @@ import {
   Hash,
   Bookmark,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react'
 import Swal from 'sweetalert2'
 import ActionDropdown from '../components/app/ActionDropdown'
@@ -319,8 +320,40 @@ export default function MasterDoaPage() {
   return (
     <PageContainer maxW="7xl">
       <AppBreadcrumb className="mb-6" items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Doa Harian' }]} />
-      <MasterDataPage className="education-unit-page doa-master-page" hideBreadcrumb>
-      {/* Summary Cards Grid (Desain KpiTintedCard persis seperti /dashboard/employees) */}
+
+      {/* Modern Hero Header Banner */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6">
+        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <BookOpen className="size-6 sm:size-7 text-white" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                  <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                  Master Data Doa & Dzikir
+                </span>
+                <span className="inline-flex items-center rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                  {displayStats.totalDoa} Doa
+                </span>
+              </div>
+              <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                Master Doa & Dzikir Yaumiyah
+              </h1>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">
+                Kumpulan doa harian santri/siswa beserta teks Arab, transliterasi Latin, terjemahan Indonesia, dan referensi hadits.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <MasterDataPage className="education-unit-page doa-master-page space-y-6" hideBreadcrumb>
+      {/* Summary Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiTintedCard
           label="Total Doa DB"
@@ -352,121 +385,122 @@ export default function MasterDoaPage() {
         />
       </div>
 
-      {/* Toolbar Search, Filter & Squircle Action Buttons (TailGrids Report Page Style) */}
-      <div className="bg-white dark:bg-[#1B2433] p-4 sm:p-5 rounded-[18px] border border-slate-200/80 dark:border-slate-700/80 shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">
-        {/* Left Side: Search Bar */}
-        <div className="relative w-full lg:w-80 shrink-0">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari ID, judul, arab, latin, atau tag..."
-            className="w-full h-11 pl-9 pr-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-[14px] text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-3 focus:ring-emerald-600/15 transition-all"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+      {/* Master Outer Container Datatable Emerald Zamrud Modern */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        {/* Toolbar Header */}
+        <div className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">
+          {/* Left Side: Search Bar */}
+          <div className="relative w-full lg:w-80 shrink-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari ID, judul, arab, latin, atau tag..."
+              className="w-full h-10 pl-9 pr-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Right Side: Filters & Soft Pastel Squircle Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
+            {/* Grup/Kategori Filter */}
+            <MasterFilterSelect
+              aria-label="Filter Grup Doa"
+              value={grupFilter}
+              onChange={(e) => setGrupFilter(e.target.value)}
+              className="!min-w-44"
             >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+              <option value="all">Semua Grup</option>
+              {grupOptions.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </MasterFilterSelect>
 
-        {/* Right Side: Filters & Soft Pastel Squircle Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
-          {/* Grup/Kategori Filter */}
-          <MasterFilterSelect
-            aria-label="Filter Grup Doa"
-            value={grupFilter}
-            onChange={(e) => setGrupFilter(e.target.value)}
-            className="!min-w-44"
-          >
-            <option value="all">Semua Grup</option>
-            {grupOptions.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </MasterFilterSelect>
+            {/* Tag Filter */}
+            <MasterFilterSelect
+              aria-label="Filter Tag Doa"
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="!min-w-40 capitalize"
+            >
+              <option value="all">Semua Tag</option>
+              {tagOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </MasterFilterSelect>
 
-          {/* Tag Filter */}
-          <MasterFilterSelect
-            aria-label="Filter Tag Doa"
-            value={tagFilter}
-            onChange={(e) => setTagFilter(e.target.value)}
-            className="!min-w-40 capitalize"
-          >
-            <option value="all">Semua Tag</option>
-            {tagOptions.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </MasterFilterSelect>
+            {/* Soft Pastel Squircle Action Buttons */}
+            <div className="flex items-center gap-2.5 shrink-0 ml-auto lg:ml-0">
+              <SquircleActionButton
+                variant="import"
+                icon={RefreshCw}
+                label="Sync EQuran.id"
+                disabled={syncing}
+                onClick={handleSync}
+              />
 
-          {/* Soft Pastel Squircle Action Buttons */}
-          <div className="flex items-center gap-2.5 shrink-0 ml-auto lg:ml-0">
-            <SquircleActionButton
-              variant="import"
-              icon={RefreshCw}
-              label="Sync EQuran.id"
-              disabled={syncing}
-              onClick={handleSync}
-            />
-
-            <SquircleActionButton
-              variant="primary"
-              icon={Plus}
-              label="Tambah Doa Manual"
-              onClick={handleOpenAdd}
-            />
+              <SquircleActionButton
+                variant="primary"
+                icon={Plus}
+                label="Tambah Doa Manual"
+                onClick={handleOpenAdd}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Table Data Doa */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Table Data Doa */}
         {loading ? (
-          <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-2">
+          <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-2">
             <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
             <span className="text-sm font-medium">Memuat data doa & dzikir dari database...</span>
           </div>
         ) : filteredDoas.length === 0 ? (
-          <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-2">
-            <BookOpen className="w-10 h-10 text-gray-300" />
-            <span className="text-base font-semibold text-gray-600">Tidak ada data doa ditemukan</span>
-            <p className="text-xs text-gray-400">Silakan klik "Sync Data Doa" untuk menarik daftar dari EQuran.id</p>
+          <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-2">
+            <BookOpen className="w-10 h-10 text-slate-300" />
+            <span className="text-base font-semibold text-slate-600 dark:text-slate-300">Tidak ada data doa ditemukan</span>
+            <p className="text-xs text-slate-400">Silakan klik "Sync Data Doa" untuk menarik daftar dari EQuran.id</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs uppercase tracking-wider">
+              <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
                 <tr>
-                  <th className="px-4 py-3 text-center w-14">ID</th>
-                  <th className="px-4 py-3">Nama Doa & Grup</th>
-                  <th className="px-4 py-3">Teks Arab, Transliterasi & Terjemahan</th>
-                  <th className="px-4 py-3">Tag Filtering</th>
-                  <th className="px-4 py-3 text-center w-40">Aksi</th>
+                  <th className="w-14 bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">ID</th>
+                  <th className="bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Nama Doa & Grup</th>
+                  <th className="bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Teks Arab, Transliterasi & Terjemahan</th>
+                  <th className="bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Tag Filtering</th>
+                  <th className="w-40 bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
                 {filteredDoas.map((doa) => (
-                  <tr key={doa.id} className="hover:bg-emerald-50/40 transition-colors group">
-                    <td className="px-4 py-3 font-extrabold text-emerald-800 text-center bg-gray-50/50">
+                  <tr key={doa.id} className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer" onClick={() => handleOpenDetail(doa)}>
+                    <td className="px-4 py-3 font-black text-emerald-700 dark:text-emerald-400 text-center">
                       #{doa.id}
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => handleOpenDetail(doa)}
-                        className="text-left font-bold text-gray-900 group-hover:text-emerald-700 flex flex-col hover:underline focus:outline-none"
+                        onClick={(e) => { e.stopPropagation(); handleOpenDetail(doa) }}
+                        className="text-left font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 flex flex-col hover:underline focus:outline-none"
                       >
-                        <span className="text-base flex items-center gap-1.5">
+                        <span className="text-sm flex items-center gap-1.5 font-extrabold">
                           {doa.nama}
                           <Eye className="w-3.5 h-3.5 text-emerald-600 opacity-60 group-hover:opacity-100 transition-opacity" />
                         </span>
-                        <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
                           <Bookmark className="w-3 h-3" />
                           {doa.grup || 'Doa Harian'}
                         </span>
@@ -474,17 +508,17 @@ export default function MasterDoaPage() {
                     </td>
                     <td className="px-4 py-3 max-w-md space-y-1.5">
                       {doa.ar && (
-                        <div className="text-right font-semibold text-xl text-emerald-800 font-serif leading-relaxed">
+                        <div className="text-right font-bold text-xl text-emerald-700 dark:text-emerald-400 font-serif leading-relaxed">
                           {doa.ar}
                         </div>
                       )}
                       {doa.tr && (
-                        <div className="text-xs text-emerald-950 font-semibold italic">
+                        <div className="text-xs text-slate-800 dark:text-slate-200 font-semibold italic">
                           "{doa.tr}"
                         </div>
                       )}
                       {doa.idn && (
-                        <div className="text-xs text-gray-600 line-clamp-2">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                           {doa.idn}
                         </div>
                       )}
@@ -495,17 +529,17 @@ export default function MasterDoaPage() {
                           doa.tag.map((t, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200/60"
+                              className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-extrabold border border-emerald-200/60 dark:border-emerald-800/60"
                             >
                               #{t}
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-gray-400">-</span>
+                          <span className="text-xs text-slate-400">-</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center">
                         <ActionDropdown
                           onView={() => handleOpenDetail(doa)}

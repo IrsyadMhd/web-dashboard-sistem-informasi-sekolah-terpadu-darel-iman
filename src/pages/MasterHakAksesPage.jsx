@@ -23,7 +23,10 @@ import {
   ArrowRight,
   Layers,
   ShieldCheck,
+  Sparkles,
+  ShieldAlert,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { hakAksesService } from '../services/hakAksesService'
 import { educationUnitService } from '../services/educationUnitService'
 import { getModulLabel, getPermissionLabel } from '../utils/permissionTranslations'
@@ -80,8 +83,43 @@ const SCOPE_LABEL = {
   external: { text: 'Eksternal',bg: 'bg-slate-100',  textCls: 'text-slate-600',  border: 'border-slate-200'  },
 }
 
+const applyRoleDefaultPermissions = (targetRoleName, availablePermList = []) => {
+  if (!targetRoleName) return []
+  if (targetRoleName === 'Super Admin') return availablePermList
+
+  const roleKeywordMap = {
+    'Admin': ['hak_akses', 'master', 'pegawai', 'siswa', 'unit', 'laporan', 'user', 'role'],
+    'Pengurus Yayasan': ['yayasan', 'divisi', 'laporan', 'berita', 'pegawai', 'siswa', 'unit', 'rekap'],
+    'Kepala Sekolah': ['dashboard', 'laporan', 'absensi', 'akademik', 'tahfizh', 'mutabaah', 'pegawai', 'siswa', 'rapor'],
+    'Divisi Pendidikan': ['dashboard', 'laporan', 'kurikulum', 'lms', 'akademik', 'siswa', 'pegawai', 'capaian'],
+    'Guru': ['dashboard', 'absensi', 'akademik', 'lms', 'tahfizh', 'mutabaah', 'siswa'],
+    'Musyrif': ['dashboard', 'absensi', 'asrama', 'mutabaah', 'pelanggaran', 'kedisiplinan'],
+    'Musyrif Asrama': ['dashboard', 'absensi', 'asrama', 'mutabaah', 'pelanggaran', 'kedisiplinan'],
+    'Wali Kelas': ['dashboard', 'absensi', 'akademik', 'rapor', 'siswa', 'laporan'],
+    'Tata Usaha': ['dashboard', 'siswa', 'pegawai', 'surat', 'laporan', 'administrasi'],
+    'Guru Tahfizh': ['dashboard', 'tahfizh', 'hafalan', 'setoran', 'mutabaah', 'laporan'],
+    'Konselor / BK': ['dashboard', 'konseling', 'pelanggaran', 'bk', 'siswa'],
+    'Pustakawan': ['dashboard', 'perpustakaan', 'buku', 'pinjam', 'katalog'],
+    'Operator LMS': ['dashboard', 'lms', 'materi', 'tugas', 'ujian', 'soal'],
+    'Kasir / Keuangan': ['dashboard', 'keuangan', 'spp', 'bayar', 'transaksi', 'laporan'],
+    'Siswa': ['portal', 'siswa', 'absensi', 'akademik', 'lms', 'mutabaah'],
+    'Orang Tua': ['portal', 'ortu', 'absensi', 'akademik', 'keuangan', 'tahfizh'],
+  }
+
+  const keywords = roleKeywordMap[targetRoleName] || [targetRoleName.toLowerCase()]
+  const matched = availablePermList.filter((p) => {
+    const pLower = p.toLowerCase()
+    return keywords.some((kw) => pLower.includes(kw.toLowerCase()))
+  })
+
+  if (matched.length === 0) {
+    return availablePermList.slice(0, 5)
+  }
+  return matched
+}
+
 // ─────────────────────────────────────────────────────────────────
-// MODAL ROLE FORM
+// MODAL ROLE FORM (CREATE & EDIT ROLE AKSES)
 // ─────────────────────────────────────────────────────────────────
 function RoleFormModal({ isOpen, onClose, onSubmit, initialData = null, allPermissions = [], isSubmitting = false }) {
   const isEdit = Boolean(initialData?.id)
@@ -91,13 +129,32 @@ function RoleFormModal({ isOpen, onClose, onSubmit, initialData = null, allPermi
 
   React.useEffect(() => {
     if (isOpen) {
-      setName(initialData?.name || '')
-      setSelectedPerms(initialData?.permissions || [])
+      const initialRoleName = initialData?.name || ''
+      setName(initialRoleName)
       setError('')
+      if (isEdit && Array.isArray(initialData?.permissions) && initialData.permissions.length > 0) {
+        setSelectedPerms(initialData.permissions)
+      } else if (initialRoleName) {
+        setSelectedPerms(applyRoleDefaultPermissions(initialRoleName, allPermissions))
+      } else {
+        setSelectedPerms([])
+      }
     }
-  }, [isOpen, initialData])
+  }, [isOpen, initialData, isEdit, allPermissions])
 
   if (!isOpen) return null
+
+  const handleApplyDefaultPreset = () => {
+    if (!name.trim()) {
+      setError('Masukkan atau pilih nama role terlebih dahulu.')
+      return
+    }
+    const preset = applyRoleDefaultPermissions(name.trim(), allPermissions)
+    setSelectedPerms(preset)
+  }
+
+  const handleSelectAll = () => setSelectedPerms([...allPermissions])
+  const handleClearAll = () => setSelectedPerms([])
 
   const togglePerm = (perm) => {
     setSelectedPerms((prev) =>
@@ -132,10 +189,16 @@ function RoleFormModal({ isOpen, onClose, onSubmit, initialData = null, allPermi
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
       <div className="my-6 w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-          <h2 className="text-xl font-black text-[#0f172a]">
-            {isEdit ? 'Edit Role Akses' : 'Tambah Role Akses Baru'}
-          </h2>
+        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
+          <div>
+            <h2 className="text-xl font-black text-[#0f172a] flex items-center gap-2">
+              <Shield className="text-emerald-700 w-5 h-5" />
+              <span>{isEdit ? 'Edit Matriks Role Akses' : 'Tambah Role Akses Baru'}</span>
+            </h2>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">
+              Atur hak akses default untuk role ini. Anda dapat mengetikkan nama role atau memilih preset bawaan.
+            </p>
+          </div>
           <button type="button" onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
             <X className="w-4 h-4" />
           </button>
@@ -145,12 +208,16 @@ function RoleFormModal({ isOpen, onClose, onSubmit, initialData = null, allPermi
           {/* Nama Role */}
           <div>
             <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-              Nama Role <span className="text-rose-500">*</span>
+              Nama Role Akses <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               value={name}
-              onChange={(e) => { setName(e.target.value); setError('') }}
+              onChange={(e) => {
+                const newName = e.target.value
+                setName(newName)
+                setError('')
+              }}
               placeholder="Contoh: Kepala Sekolah, Divisi Pendidikan, Tata Usaha, Guru"
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm transition-all placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
@@ -159,9 +226,38 @@ function RoleFormModal({ isOpen, onClose, onSubmit, initialData = null, allPermi
 
           {/* Permission Checklist dikelompokkan per modul */}
           <div>
-            <label className="block text-xs font-bold text-[#0f172a] mb-2">
-              Izin Akses <span className="text-slate-400 font-normal">({selectedPerms.length} dipilih)</span>
-            </label>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+              <label className="block text-xs font-bold text-[#0f172a]">
+                Matriks Izin Akses Role <span className="text-emerald-700 font-extrabold">({selectedPerms.length} dari {allPermissions.length} dipilih)</span>
+              </label>
+              
+              {/* Quick Actions Preset */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleApplyDefaultPreset}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-600 hover:text-white text-[11px] font-extrabold transition-all cursor-pointer"
+                  title="Terapkan preset izin default untuk role ini"
+                >
+                  ⚡ Preset Default Role
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="px-2 py-1 rounded-lg bg-sky-100 text-sky-800 hover:bg-sky-600 hover:text-white text-[11px] font-bold transition-all cursor-pointer"
+                >
+                  ✓ Pilih Semua
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-300 text-[11px] font-bold transition-all cursor-pointer"
+                >
+                  ✕ Hapus Semua
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-3 max-h-72 overflow-y-auto rounded-2xl border border-slate-200/90 p-4 bg-[#f8fafc]">
               {Object.entries(grouped).map(([modul, perms]) => {
                 const allModulSelected = perms.every((p) => selectedPerms.includes(p))
@@ -221,7 +317,7 @@ function RoleFormModal({ isOpen, onClose, onSubmit, initialData = null, allPermi
             </button>
             <button type="submit" disabled={isSubmitting} className="flex items-center gap-1.5 rounded-xl bg-emerald-800 px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-800/20 transition-all hover:bg-emerald-900 disabled:opacity-50">
               <Save className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Tambah Role'}</span>
+              <span>{isSubmitting ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan Role' : 'Tambah Role Akses'}</span>
             </button>
           </div>
         </form>
@@ -291,20 +387,71 @@ function PermissionFormModal({ isOpen, onClose, onSubmit, isSubmitting = false }
   )
 }
 
+const PROJECT_DEFAULT_ROLES = [
+  'Super Admin',
+  'Admin',
+  'Pengurus Yayasan',
+  'Kepala Sekolah',
+  'Divisi Pendidikan',
+  'Guru',
+  'Musyrif',
+  'Wali Kelas',
+  'Tata Usaha',
+  'Guru Tahfizh',
+  'Musyrif Asrama',
+  'Konselor / BK',
+  'Pustakawan',
+  'Operator LMS',
+  'Kasir / Keuangan',
+  'Siswa',
+  'Orang Tua',
+]
+
+const getSmartDefaultRole = (emp, roleList = PROJECT_DEFAULT_ROLES) => {
+  if (emp?.primary_role && emp.primary_role !== 'Belum Ada Role' && roleList.includes(emp.primary_role)) {
+    return emp.primary_role
+  }
+  const pos = (emp?.position?.nama || emp?.jabatan || emp?.nama_lengkap || '').toLowerCase()
+  if (pos.includes('super admin') || pos.includes('superadmin')) return 'Super Admin'
+  if (pos.includes('admin')) return 'Admin'
+  if (pos.includes('kepala sekolah') || pos.includes('kepsek')) return roleList.find((r) => r === 'Kepala Sekolah') || 'Kepala Sekolah'
+  if (pos.includes('tahfizh')) return roleList.find((r) => r === 'Guru Tahfizh') || 'Guru Tahfizh'
+  if (pos.includes('musyrif') || pos.includes('asrama')) return roleList.find((r) => r === 'Musyrif') || 'Musyrif'
+  if (pos.includes('guru') || pos.includes('pendidik') || pos.includes('pengajar')) return roleList.find((r) => r === 'Guru') || 'Guru'
+  if (pos.includes('keuangan') || pos.includes('bendahara') || pos.includes('kasir')) return roleList.find((r) => r === 'Kasir / Keuangan') || 'Kasir / Keuangan'
+  if (pos.includes('bk') || pos.includes('konselor')) return roleList.find((r) => r === 'Konselor / BK') || 'Konselor / BK'
+  if (pos.includes('pustakawan') || pos.includes('perpustakaan')) return roleList.find((r) => r === 'Pustakawan') || 'Pustakawan'
+  if (pos.includes('tu') || pos.includes('tata usaha') || pos.includes('staf')) return roleList.find((r) => r === 'Tata Usaha') || 'Tata Usaha'
+  return roleList.find((r) => r === 'Guru') || roleList[0] || 'Guru'
+}
+
 // ─────────────────────────────────────────────────────────────────
 // MODAL PEGAWAI ROLE & HAK AKSES FORM
 // ─────────────────────────────────────────────────────────────────
-function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availableRoles = [], allPermissions = [], isSubmitting = false }) {
+function PegawaiRoleModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  employee = null,
+  availableRoles = [],
+  allPermissions = [],
+  isSubmitting = false,
+  userIsSuperAdmin = false,
+}) {
   const [roleName, setRoleName] = useState('')
   const [selectedPerms, setSelectedPerms] = useState([])
   const [password, setPassword] = useState('')
 
+  // Check if current employee holds protected system roles
+  const isProtectedEmployee =
+    employee?.primary_role === 'Super Admin' ||
+    employee?.primary_role === 'Admin' ||
+    employee?.is_super_admin
+
   React.useEffect(() => {
     if (isOpen && employee) {
-      const currentRole = employee.primary_role !== 'Belum Ada Role' && availableRoles.includes(employee.primary_role)
-        ? employee.primary_role
-        : (availableRoles[0] || '')
-      setRoleName(currentRole)
+      const initialRole = getSmartDefaultRole(employee, availableRoles)
+      setRoleName(initialRole)
       setSelectedPerms((employee.direct_permissions || []).filter((permission) => allPermissions.includes(permission)))
       setPassword('')
     }
@@ -357,6 +504,19 @@ function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availabl
         </div>
 
         <form onSubmit={handleSubmit} className="p-7 space-y-5 max-h-[75vh] overflow-y-auto">
+          {/* Protected System Role Warning */}
+          {isProtectedEmployee && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex items-center gap-3 text-xs font-extrabold shadow-xs">
+              <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <p className="font-black text-amber-950">Role Proteksi Sistem ({employee.primary_role})</p>
+                <p className="text-[11px] font-medium text-amber-800 mt-0.5">
+                  Hak akses role Super Admin &amp; Admin dilindungi secara ketat oleh sistem dan tidak dapat diubah dari menu penetapan pegawai.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Status Akun */}
           <div className={`p-4 rounded-2xl border flex items-center justify-between ${employee.has_user ? 'bg-emerald-50/80 border-emerald-200' : 'bg-amber-50/80 border-amber-200'}`}>
             <div className="flex items-center gap-3">
@@ -391,22 +551,36 @@ function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availabl
 
           {/* Pilihan Role Utama */}
           <div>
-            <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-              Pilih Role Utama Pegawai <span className="text-rose-500">*</span>
+            <label className="block text-xs font-bold text-[#0f172a] mb-1.5 flex items-center justify-between">
+              <span>Pilih Role Utama Pegawai <span className="text-rose-500">*</span></span>
+              {isProtectedEmployee && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+                  <Lock className="w-3 h-3" /> Terkunci (Tidak Bisa Diubah)
+                </span>
+              )}
             </label>
             <select
               value={roleName}
               onChange={(e) => setRoleName(e.target.value)}
               required
-              disabled={availableRoles.length === 0}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={isProtectedEmployee || availableRoles.length === 0}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer"
             >
               <option value="">
                 {availableRoles.length === 0 ? 'Tidak ada role yang dapat ditetapkan' : 'Pilih role utama pegawai'}
               </option>
-              {availableRoles.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
+              {availableRoles.map((r) => {
+                const isProtectedRole = r === 'Super Admin' || r === 'Admin'
+                return (
+                  <option
+                    key={r}
+                    value={r}
+                    disabled={isProtectedRole && !userIsSuperAdmin}
+                  >
+                    {r} {isProtectedRole ? '🔒 (Proteksi Admin System)' : ''}
+                  </option>
+                )
+              })}
             </select>
             {availableRoles.length === 0 && (
               <p className="mt-1.5 text-[11px] text-amber-600 font-medium">
@@ -433,7 +607,8 @@ function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availabl
                           type="checkbox"
                           checked={selectedPerms.includes(perm)}
                           onChange={() => togglePerm(perm)}
-                          className="w-3.5 h-3.5 rounded text-[#054e3b] focus:ring-[#054e3b] border-slate-300"
+                          disabled={isProtectedEmployee}
+                          className="w-3.5 h-3.5 rounded text-[#054e3b] focus:ring-[#054e3b] border-slate-300 disabled:opacity-40"
                         />
                         <span
                           className={`text-[11px] px-2 py-0.5 rounded-full font-medium border ${
@@ -458,7 +633,7 @@ function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availabl
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
               Batal
             </button>
-            <button type="submit" disabled={isSubmitting} className="flex items-center gap-1.5 rounded-xl bg-emerald-800 px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-800/20 transition-all hover:bg-emerald-900 disabled:opacity-50">
+            <button type="submit" disabled={isSubmitting || isProtectedEmployee} className="flex items-center gap-1.5 rounded-xl bg-emerald-800 px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-emerald-800/20 transition-all hover:bg-emerald-900 disabled:opacity-50">
               <Save className="w-3.5 h-3.5" />
               <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Hak Akses Pegawai'}</span>
             </button>
@@ -467,6 +642,54 @@ function PegawaiRoleModal({ isOpen, onClose, onSubmit, employee = null, availabl
       </div>
     </div>
   )
+}
+
+const ROLE_GROUPS = {
+  executive: {
+    id: 'executive',
+    label: 'Manajemen & Eksekutif',
+    description: 'Akses tingkat pengambil keputusan & administrator',
+    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    roles: ['Super Admin', 'Admin', 'Pengurus Yayasan', 'Kepala Sekolah', 'Divisi Pendidikan'],
+  },
+  pendidik: {
+    id: 'pendidik',
+    label: 'Tenaga Pendidik & Pengajar',
+    description: 'Guru, wali kelas, guru tahfizh, dan pembina asrama',
+    badgeColor: 'bg-teal-100 text-teal-800 border-teal-300',
+    roles: ['Guru', 'Wali Kelas', 'Guru Tahfizh', 'Musyrif', 'Musyrif Asrama'],
+  },
+  kependidikan: {
+    id: 'kependidikan',
+    label: 'Staf & Tenaga Kependidikan',
+    description: 'Staf administrasi TU, keuangan, perpustakaan, BK, dan LMS',
+    badgeColor: 'bg-sky-100 text-sky-800 border-sky-300',
+    roles: ['Tata Usaha', 'Konselor / BK', 'Pustakawan', 'Operator LMS', 'Kasir / Keuangan'],
+  },
+  portal: {
+    id: 'portal',
+    label: 'Portal Pengguna (Siswa & Ortu)',
+    description: 'Akses portal mandiri untuk siswa dan orang tua murid',
+    badgeColor: 'bg-violet-100 text-violet-800 border-violet-300',
+    roles: ['Siswa', 'Orang Tua'],
+  },
+  custom: {
+    id: 'custom',
+    label: 'Role Custom / Tambahan',
+    description: 'Role kustom yang ditambahkan secara khusus oleh administrator',
+    badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+    roles: [],
+  },
+}
+
+const getRoleCategoryGroup = (roleName) => {
+  if (!roleName) return ROLE_GROUPS.custom
+  for (const groupObj of Object.values(ROLE_GROUPS)) {
+    if (groupObj.roles.includes(roleName)) {
+      return groupObj
+    }
+  }
+  return ROLE_GROUPS.custom
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -489,6 +712,7 @@ export default function MasterHakAksesPage() {
   )
 
   const [activeTab, setActiveTab] = useState('roles')
+  const [roleCategoryFilter, setRoleCategoryFilter] = useState('semua')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [selectedUnitId, setSelectedUnitId] = useState('')
@@ -576,18 +800,48 @@ export default function MasterHakAksesPage() {
   })
 
 
-  const roles = rolesData?.data || []
-  const allRoleRecords = allRolesData?.data || roles
-  const availableRoleNames = allRoleRecords.map((r) => r.name)
+  const backendRoles = rolesData?.data || []
+  const allRoleRecords = allRolesData?.data || backendRoles
+  const backendRoleNames = allRoleRecords.map((r) => (typeof r === 'string' ? r : r?.name || '')).filter(Boolean)
+  const availableRoleNames = Array.from(new Set([...PROJECT_DEFAULT_ROLES, ...backendRoleNames]))
   const assignableRoleNames = canManageGlobalAccess
     ? availableRoleNames
     : availableRoleNames.filter((name) => !hasAnyRole([name], GLOBAL_ROLE_NAMES))
+
   const permissionsGrouped = permData?.data || []
   const allPerms = permData?.flat_list || allPermData?.flat_list || []
   const allPermsForAssignment = allPermData?.flat_list || allPerms
   const assignablePerms = canManageGlobalAccess
     ? allPermsForAssignment
     : allPermsForAssignment.filter((permission) => !GLOBAL_ACCESS_PERMISSIONS.includes(permission))
+
+  // Construct complete roles list combining backend DB roles & pre-seeded default project roles
+  const dbRoleNamesSet = new Set(backendRoles.map((r) => r.name))
+  const defaultSeededRoles = PROJECT_DEFAULT_ROLES.filter(
+    (name) => !dbRoleNamesSet.has(name)
+  ).map((name) => {
+    const defaultPerms = applyRoleDefaultPermissions(name, allPerms)
+    return {
+      id: `default-${name}`,
+      name,
+      guard_name: 'web',
+      permissions: defaultPerms,
+      jumlah_izin: defaultPerms.length,
+      jumlah_pengguna: 0,
+      is_default_preset: true,
+    }
+  })
+
+  const mergedAllRoles = [...backendRoles, ...defaultSeededRoles]
+
+  const filteredRoles = mergedAllRoles.filter((r) => {
+    if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (roleCategoryFilter !== 'semua') {
+      const cat = getRoleCategoryGroup(r.name)
+      if (cat.id !== roleCategoryFilter) return false
+    }
+    return true
+  })
 
   const listPegawai = pegawaiData?.data || []
   const metaPegawai = pegawaiData?.meta || {}
@@ -674,14 +928,35 @@ export default function MasterHakAksesPage() {
     setIsRoleModalOpen(true)
   }
 
+  const handleRoleSubmit = (formData) => {
+    if (!canManageGlobalAccess) return
+    setPendingRoleData(formData)
+    setShowSaveRoleConfirmModal(true)
+  }
+
+  const handleConfirmSaveRole = () => {
+    if (!pendingRoleData) return
+    if (selectedRole?.id && !String(selectedRole.id).startsWith('default-')) {
+      ubahRoleMutation.mutate({ id: selectedRole.id, payload: pendingRoleData })
+    } else {
+      tambahRoleMutation.mutate(pendingRoleData)
+    }
+    setShowSaveRoleConfirmModal(false)
+  }
+
   const handleOpenEditRole = async (role) => {
     const { allowed } = canEditRole(userRoles, role.name)
     if (!allowed) return
-    try {
-      const detail = await hakAksesService.getDetailRole(role.id)
-      setSelectedRole(detail)
-      setIsRoleModalOpen(true)
-    } catch {
+    if (role?.id && !String(role.id).startsWith('default-')) {
+      try {
+        const detail = await hakAksesService.getDetailRole(role.id)
+        setSelectedRole(detail)
+        setIsRoleModalOpen(true)
+      } catch {
+        setSelectedRole(role)
+        setIsRoleModalOpen(true)
+      }
+    } else {
       setSelectedRole(role)
       setIsRoleModalOpen(true)
     }
@@ -715,21 +990,6 @@ export default function MasterHakAksesPage() {
     }
   }
 
-  const handleRoleSubmit = (formData) => {
-    if (!canManageGlobalAccess) return
-    setPendingRoleData(formData)
-    setShowSaveRoleConfirmModal(true)
-  }
-
-  const handleConfirmSaveRole = () => {
-    if (!pendingRoleData) return
-    if (selectedRole?.id) {
-      ubahRoleMutation.mutate({ id: selectedRole.id, payload: pendingRoleData })
-    } else {
-      tambahRoleMutation.mutate(pendingRoleData)
-    }
-    setShowSaveRoleConfirmModal(false)
-  }
   const handleOpenPegawaiModal = (employee) => {
     setSelectedEmployee(employee)
     setIsPegawaiModalOpen(true)
@@ -741,32 +1001,40 @@ export default function MasterHakAksesPage() {
 
   const tabConfig = {
     roles: {
-      label: 'Role',
+      label: 'Role Access',
       description: 'Kelompok akses pengguna',
       icon: Shield,
       count: stats.total_role ?? 0,
       search: 'Cari nama role...',
+      activeColor: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30',
+      inactiveColor: 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white hover:shadow-md hover:shadow-emerald-600/30',
     },
     permissions: {
-      label: 'Izin akses',
+      label: 'Izin Akses',
       description: 'Aksi yang dapat dilakukan',
       icon: Key,
       count: stats.total_permission ?? 0,
       search: 'Cari modul atau izin akses...',
+      activeColor: 'bg-sky-600 text-white shadow-md shadow-sky-600/30',
+      inactiveColor: 'bg-sky-100/90 text-sky-700 hover:bg-sky-600 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white hover:shadow-md hover:shadow-sky-600/30',
     },
     pegawai: {
-      label: 'Akses pegawai',
+      label: 'Akses Pegawai',
       description: 'Role setiap anggota tim',
       icon: UserCheck,
       count: metaPegawai.total ?? '—',
       search: 'Cari nama, NIY, atau email pegawai...',
+      activeColor: 'bg-violet-600 text-white shadow-md shadow-violet-600/30',
+      inactiveColor: 'bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-950/60 dark:text-violet-300 dark:hover:bg-violet-600 dark:hover:text-white hover:shadow-md hover:shadow-violet-600/30',
     },
     akun: {
-      label: 'Akun login',
+      label: 'Akun Login',
       description: 'CRUD akun, role, status, dan password',
       icon: UserCog,
       count: '—',
       search: 'Pencarian tersedia pada tabel akun...',
+      activeColor: 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30',
+      inactiveColor: 'bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white hover:shadow-md hover:shadow-indigo-600/30',
     },
   }
 
@@ -775,35 +1043,61 @@ export default function MasterHakAksesPage() {
 
   return (
     <PageContainer maxW="7xl">
-      <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Hak Akses & Role' }]} />
-      <MasterDataPage>
-      {/* Page Header */}
-      <MasterPageHeader
-        tone="brand"
-        icon={ShieldCheck}
-        title="Manajemen Hak Akses & Matriks Role"
-        description="Atur hak akses pengguna, role penugasan pegawai, serta kontrol permission sistem secara terpusat."
-        actions={canManageGlobalAccess ? (
-          <>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('permissions'); setIsPermModalOpen(true) }}
-              className="inline-flex h-12 items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              <Key className="h-4 w-4 text-emerald-700" />
-              <span>Tambah Izin</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('roles'); handleOpenCreateRole() }}
-              className="inline-flex h-12 items-center gap-2 rounded-[14px] bg-emerald-800 px-5 text-xs font-semibold text-white shadow-lg shadow-emerald-800/20 transition hover:bg-emerald-900"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tambah Role</span>
-            </button>
-          </>
-        ) : null}
-      />
+      <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Hak Akses & Role' }]} className="mb-4" />
+      <MasterDataPage hideBreadcrumb>
+      {/* MODERN HERO CARD HEADER (MATCHING PORTAL STYLE) */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="mb-6">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <ShieldCheck className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Manajemen Hak Akses & Matriks Role
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    {stats.total_role ?? 0} Role / {stats.total_permission ?? 0} Izin
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Manajemen Hak Akses & Matriks Role
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Atur hak akses pengguna, role penugasan pegawai, serta kontrol permission sistem secara terpusat.
+                </p>
+              </div>
+            </div>
+
+            {canManageGlobalAccess && (
+              <div className="flex items-center gap-2.5 shrink-0 z-10">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('permissions'); setIsPermModalOpen(true) }}
+                  className="flex items-center gap-2 rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-600 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white px-4 py-2.5 text-xs font-extrabold transition-all duration-200 hover:shadow-md hover:shadow-sky-600/30 cursor-pointer"
+                >
+                  <Key className="size-4" />
+                  <span>Tambah Izin</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('roles'); handleOpenCreateRole() }}
+                  className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 px-4 py-2.5 text-xs font-extrabold transition-all duration-200 shadow-md shadow-emerald-600/30 cursor-pointer"
+                >
+                  <Plus className="size-4" />
+                  <span>Tambah Role</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
 
       {/* Stats Grid */}
       <MasterStatsGrid>
@@ -813,34 +1107,37 @@ export default function MasterHakAksesPage() {
         <MasterStatCard icon={Users} label="BELUM DIGUNAKAN" value={stats.role_tanpa_user ?? 0} description="Role tanpa pengguna" variant="neutral" />
       </MasterStatsGrid>
 
-      {/* ───── Tabs ───── */}
-      <section className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-2 shadow-xs">
+      {/* ───── Soft Pastel Tab Bar ───── */}
+      <nav className="rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] mb-6">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           {Object.entries(tabConfig).map(([key, tab]) => {
             const TabIcon = tab.icon
             const isActive = activeTab === key
             return (
-              <button
+              <motion.button
                 key={key}
                 type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => { setActiveTab(key); setSearch(''); setPage(1) }}
-                className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-                  isActive
-                    ? 'bg-emerald-800 text-white shadow-md shadow-emerald-800/20'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer ${
+                  isActive ? tab.activeColor : tab.inactiveColor
                 }`}
               >
-                <TabIcon className={`h-4 w-4 ${isActive ? 'text-amber-300' : 'text-slate-400'}`} />
+                <TabIcon className="size-4 shrink-0" />
                 <span>{tab.label}</span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
                   {tab.count}
                 </span>
-              </button>
+              </motion.button>
             )
           })}
-      </section>
+        </div>
+      </nav>
 
       {/* ───── Content toolbar ───── */}
-      {activeTab !== 'akun' && <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+      {activeTab !== 'akun' && (
+        <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <ActiveTabIcon className="h-4 w-4 text-emerald-700" />
@@ -897,144 +1194,199 @@ export default function MasterHakAksesPage() {
             </div>
           </div>
         </div>
-      </section>}
+      </section>
+      )}
 
       {/* ───── TAB: ROLES ───── */}
       {activeTab === 'roles' && (
-        <div className="w-full overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-          <table className="w-full min-w-[780px] border-collapse text-left text-slate-800">
-            <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
-                <th className="py-3.5 px-4 w-10 text-center">NO</th>
-                <th className="py-3.5 px-4">NAMA ROLE</th>
-                <th className="py-3.5 px-4 text-center">TIER & SCOPE</th>
-                <th className="py-3.5 px-4 text-center">JUMLAH IZIN</th>
-                <th className="py-3.5 px-4 text-center">PENGGUNA</th>
-                <th className="py-3.5 px-4">IZIN AKSES (PREVIEW)</th>
-                <th className="py-3.5 px-4 text-center w-28">AKSI</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {isLoadingRoles ? (
-                <tr><td colSpan={6} className="py-16 text-center text-slate-400 text-xs font-medium">Memuat daftar role...</td></tr>
-              ) : roles.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><Shield className="h-5 w-5" /></div>
-                    <p className="mt-3 text-sm font-extrabold text-slate-800">{search ? 'Role tidak ditemukan' : 'Belum ada role'}</p>
-                    <p className="mt-1 text-xs text-slate-400">{search ? 'Coba gunakan kata kunci yang berbeda.' : 'Buat role pertama untuk mulai mengatur akses pengguna.'}</p>
-                    {!search && canManageGlobalAccess && <button type="button" onClick={handleOpenCreateRole} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#064e3b] px-4 py-2 text-xs font-bold text-white"><Plus className="h-3 w-3" />Tambah role</button>}
-                  </td>
+        <div className="space-y-4">
+          {/* Sub-Nav Filter Kelompok Role */}
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200 mr-1 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-emerald-600" />
+              Kelompok Role:
+            </span>
+            <button
+              type="button"
+              onClick={() => setRoleCategoryFilter('semua')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                roleCategoryFilter === 'semua'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              Semua Role ({mergedAllRoles.length})
+            </button>
+            {Object.entries(ROLE_GROUPS).map(([key, group]) => {
+              const count = mergedAllRoles.filter((r) => getRoleCategoryGroup(r.name).id === key).length
+              if (count === 0 && key === 'custom') return null
+              const isSelected = roleCategoryFilter === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setRoleCategoryFilter(key)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  {group.label} ({count})
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Table Container */}
+          <div className="w-full overflow-x-auto rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+            <table className="w-full min-w-[780px] border-collapse text-left text-slate-800">
+              <thead>
+                <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  <th className="py-3.5 px-4 w-10 text-center">NO</th>
+                  <th className="py-3.5 px-4">NAMA ROLE &amp; KELOMPOK</th>
+                  <th className="py-3.5 px-4 text-center">TIER &amp; SCOPE</th>
+                  <th className="py-3.5 px-4 text-center">JUMLAH IZIN</th>
+                  <th className="py-3.5 px-4 text-center">PENGGUNA</th>
+                  <th className="py-3.5 px-4">IZIN AKSES (PREVIEW)</th>
+                  <th className="py-3.5 px-4 text-center w-28">AKSI</th>
                 </tr>
-              ) : roles.map((role, idx) => (
-                <tr key={role.id} className="group hover:bg-emerald-50/30 transition-colors">
-                  <td className="py-3.5 px-4 text-center text-xs font-bold text-slate-500">{idx + 1}</td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-2.5">
-                      {(() => {
-                        const tier = getTierForRole(role.name)
-                        const colors = tier ? (TIER_COLOR_MAP[tier.color] || TIER_COLOR_MAP.gray) : TIER_COLOR_MAP.gray
-                        return (
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${colors.bg}`}>
-                            <Shield className={`w-3.5 h-3.5 ${colors.text}`} />
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {isLoadingRoles ? (
+                  <tr><td colSpan={7} className="py-16 text-center text-slate-400 text-xs font-medium">Memuat daftar role...</td></tr>
+                ) : filteredRoles.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-16 text-center">
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><Shield className="h-5 w-5" /></div>
+                      <p className="mt-3 text-sm font-extrabold text-slate-800">{search || roleCategoryFilter !== 'semua' ? 'Role tidak ditemukan' : 'Belum ada role'}</p>
+                      <p className="mt-1 text-xs text-slate-400">Coba atur filter pencarian atau kelompok role yang berbeda.</p>
+                    </td>
+                  </tr>
+                ) : filteredRoles.map((role, idx) => {
+                  const categoryGroup = getRoleCategoryGroup(role.name)
+                  return (
+                    <tr key={role.id || role.name} className="group hover:bg-emerald-50/30 transition-colors">
+                      <td className="py-3.5 px-4 text-center text-xs font-bold text-slate-500">{idx + 1}</td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          {(() => {
+                            const tier = getTierForRole(role.name)
+                            const colors = tier ? (TIER_COLOR_MAP[tier.color] || TIER_COLOR_MAP.gray) : TIER_COLOR_MAP.gray
+                            return (
+                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${colors.bg}`}>
+                                <Shield className={`w-3.5 h-3.5 ${colors.text}`} />
+                              </div>
+                            )
+                          })()}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-extrabold text-slate-900 text-sm">{role.name}</p>
+                              {role.is_default_preset && (
+                                <span className="inline-flex items-center text-[9px] font-extrabold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded-md">
+                                  Default Project
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-0.5">
+                              <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${categoryGroup.badgeColor}`}>
+                                {categoryGroup.label}
+                              </span>
+                            </div>
                           </div>
-                        )
-                      })()}
-                      <div>
-                        <p className="font-extrabold text-slate-900 text-sm">{role.name}</p>
-                        <p className="text-[10px] text-slate-400">Guard: {role.guard_name}</p>
-                      </div>
-                    </div>
-                  </td>
-                  {/* KOLOM TIER & SCOPE */}
-                  <td className="py-3.5 px-4 text-center">
-                    {(() => {
-                      const tier = getTierForRole(role.name)
-                      if (!tier) return <span className="text-[10px] italic text-slate-400">–</span>
-                      const colors = TIER_COLOR_MAP[tier.color] || TIER_COLOR_MAP.gray
-                      const scopeInfo = SCOPE_LABEL[tier.scope] || SCOPE_LABEL.global
-                      return (
-                        <div className="flex flex-col items-center gap-1">
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}>
-                            {tier.label}
-                          </span>
-                          <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${scopeInfo.bg} ${scopeInfo.textCls} ${scopeInfo.border}`}>
-                            {scopeInfo.text}
-                          </span>
-                          {tier.isProtected && (
-                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">
-                              <Lock className="w-2.5 h-2.5" /> Dilindungi
+                        </div>
+                      </td>
+                      {/* KOLOM TIER & SCOPE */}
+                      <td className="py-3.5 px-4 text-center">
+                        {(() => {
+                          const tier = getTierForRole(role.name)
+                          if (!tier) return <span className="text-[10px] italic text-slate-400">–</span>
+                          const colors = TIER_COLOR_MAP[tier.color] || TIER_COLOR_MAP.gray
+                          const scopeInfo = SCOPE_LABEL[tier.scope] || SCOPE_LABEL.global
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}>
+                                {tier.label}
+                              </span>
+                              <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${scopeInfo.bg} ${scopeInfo.textCls} ${scopeInfo.border}`}>
+                                {scopeInfo.text}
+                              </span>
+                              {tier.isProtected && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">
+                                  <Lock className="w-2.5 h-2.5" /> Dilindungi
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className="inline-flex items-center gap-1 font-extrabold text-xs text-[#1d4ed8] bg-[#dbeafe] border border-blue-200 px-2.5 py-1 rounded-lg">
+                          <Key className="w-3 h-3" />
+                          {role.permissions?.length ?? role.jumlah_izin ?? 0}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className="inline-flex items-center gap-1 font-extrabold text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
+                          <Users className="w-3 h-3 text-slate-400" />
+                          {role.jumlah_pengguna ?? 0}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {(role.permissions || []).slice(0, 4).map((p) => (
+                            <span key={p} className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full" title={p}>
+                              {getPermissionLabel(p)}
+                            </span>
+                          ))}
+                          {(role.permissions || []).length > 4 && (
+                            <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">
+                              +{role.permissions.length - 4} lainnya
                             </span>
                           )}
+                          {(role.permissions || []).length === 0 && <span className="text-[11px] italic text-slate-400">Belum ada izin</span>}
                         </div>
-                      )
-                    })()}
-                  </td>
-                  <td className="py-3.5 px-4 text-center">
-                    <span className="inline-flex items-center gap-1 font-extrabold text-xs text-[#1d4ed8] bg-[#dbeafe] border border-blue-200 px-2.5 py-1 rounded-lg">
-                      <Key className="w-3 h-3" />
-                      {role.jumlah_izin ?? 0}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-center">
-                    <span className="inline-flex items-center gap-1 font-extrabold text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
-                      <Users className="w-3 h-3 text-slate-400" />
-                      {role.jumlah_pengguna ?? 0}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex flex-wrap gap-1">
-                      {(role.permissions || []).slice(0, 4).map((p) => (
-                        <span key={p} className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full" title={p}>
-                          {getPermissionLabel(p)}
-                        </span>
-                      ))}
-                      {(role.permissions || []).length > 4 && (
-                        <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">
-                          +{role.permissions.length - 4} lainnya
-                        </span>
-                      )}
-                      {(role.permissions || []).length === 0 && <span className="text-[11px] italic text-slate-400">Belum ada izin</span>}
-                    </div>
-                  </td>
-                   <td className="py-3.5 px-4 text-center">
-                     {(() => {
-                       const { allowed } = canEditRole(userRoles, role.name)
-                       const tier = getTierForRole(role.name)
-                       const isProtected = tier?.isProtected || false
-                       if (!allowed) {
-                         return (
-                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400">
-                             <Lock className="w-3 h-3" /> Hanya lihat
-                           </span>
-                         )
-                       }
-                       return (
-                         <div className="flex items-center justify-center gap-1.5">
-                           <button
-                             onClick={() => handleOpenEditRole(role)}
-                             className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 bg-[#fffbe6] text-[#d97706] hover:bg-amber-100 transition-colors"
-                             title="Edit Permission Role"
-                           >
-                             <Pencil className="w-3.5 h-3.5" />
-                           </button>
-                           {!isProtected && (
-                             <button
-                               onClick={() => handleDeleteRole(role)}
-                               className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-[#fef2f2] text-[#dc2626] hover:bg-red-100 transition-colors"
-                               title="Hapus Role"
-                             >
-                               <Trash2 className="w-3.5 h-3.5" />
-                             </button>
-                           )}
-                         </div>
-                       )
-                     })()}
-                   </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        {(() => {
+                          const { allowed } = canEditRole(userRoles, role.name)
+                          const tier = getTierForRole(role.name)
+                          const isProtected = tier?.isProtected || false
+                          if (!allowed) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400">
+                                <Lock className="w-3 h-3" /> Hanya lihat
+                              </span>
+                            )
+                          }
+                          return (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenEditRole(role)}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200 bg-[#fffbe6] text-[#d97706] hover:bg-amber-100 transition-colors"
+                                title="Edit Permission Matriks Role ini"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              {!isProtected && !role.is_default_preset && (
+                                <button
+                                  onClick={() => handleDeleteRole(role)}
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-[#fef2f2] text-[#dc2626] hover:bg-red-100 transition-colors"
+                                  title="Hapus Role"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -1155,10 +1507,25 @@ export default function MasterHakAksesPage() {
                       )}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1 font-extrabold text-xs text-[#054e3b] bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-xl">
-                        <Shield className="w-3 h-3 text-[#054e3b]" />
-                        {emp.primary_role}
-                      </span>
+                      {(() => {
+                        const displayRole = getSmartDefaultRole(emp, availableRoleNames)
+                        const isDefault = !emp.primary_role || emp.primary_role === 'Belum Ada Role'
+                        const isProtected = displayRole === 'Super Admin' || displayRole === 'Admin'
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 font-extrabold text-xs px-3 py-1 rounded-xl border ${
+                              isProtected
+                                ? 'bg-amber-100 border-amber-300 text-amber-900'
+                                : isDefault
+                                ? 'bg-sky-50 border-sky-200 text-sky-800'
+                                : 'bg-emerald-100 border-emerald-300 text-[#054e3b]'
+                            }`}
+                          >
+                            {isProtected ? <Lock className="w-3 h-3 text-amber-700" /> : <Shield className="w-3 h-3" />}
+                            {displayRole} {isDefault ? '(Default)' : ''}
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td className="py-3.5 px-4 text-center">
                       {canManageAccess && (
@@ -1264,6 +1631,7 @@ export default function MasterHakAksesPage() {
         availableRoles={assignableRoleNames}
         allPermissions={assignablePerms}
         isSubmitting={isPegawaiSubmitting}
+        userIsSuperAdmin={canManageGlobalAccess}
       />
 
       {/* Role Save Confirmation */}

@@ -11,7 +11,54 @@ import { MasterStatCard, MasterStatsGrid } from '../master-data'
 
 const angka = (nilai) => new Intl.NumberFormat('id-ID').format(Number(nilai || 0))
 
-export function ReportHeader({ title, description, onRefresh, onExport, eyebrow = 'Pusat Laporan' }) {
+export function ReportHeader({ title, description, onRefresh, onExport, eyebrow = 'Pusat Laporan', variant = 'default' }) {
+  if (variant === 'white') {
+    return (
+      <header className="relative overflow-hidden rounded-[18px] border border-slate-200/80 bg-white p-6 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] transition-all">
+        <div className="flex flex-wrap items-start justify-between gap-4 relative z-10">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+              <FileText size={14} /> {eyebrow}
+            </div>
+            <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+              {title}
+            </h1>
+            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+              {description}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {onRefresh && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                onClick={onRefresh}
+              >
+                <RefreshCw size={15} /> Muat Ulang
+              </button>
+            )}
+            {onExport && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                onClick={onExport}
+              >
+                <Download size={15} /> Export Excel
+              </button>
+            )}
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+              onClick={() => window.print()}
+            >
+              <Printer size={15} /> Cetak / PDF
+            </button>
+          </div>
+        </div>
+      </header>
+    )
+  }
+
   return (
     <header className="laporan-header">
       <div className="laporan-heading-copy">

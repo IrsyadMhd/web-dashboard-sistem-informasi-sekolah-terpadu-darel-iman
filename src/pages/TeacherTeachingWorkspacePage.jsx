@@ -1438,6 +1438,48 @@ export default function TeacherTeachingWorkspacePage() {
         ]}
       />
 
+      {/* ── MODERN HERO CARD HEADER ───────────────────────────────── */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <GraduationCap className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Portal Guru Terpadu
+                  </span>
+                  {selectedClassName && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                      Rombel {selectedClassName}
+                    </span>
+                  )}
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Workspace Pembelajaran Guru
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Pusat kendali aktivitas mengajar Ustadz/Ustadzah — Kelola jadwal, presensi, materi, tugas, nilai, &amp; jurnal tahfizh terpadu.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <span className="hidden md:inline-flex items-center gap-2 rounded-xl bg-white/80 dark:bg-slate-800/80 px-4 py-2.5 text-xs font-extrabold text-slate-700 dark:text-slate-200 border border-emerald-500/20 shadow-xs backdrop-blur-md">
+                <User className="size-4 text-emerald-600 dark:text-emerald-400" />
+                {teacherProfile?.name || user?.name || 'Ustadz / Ustadzah'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
       {/* ── TOAST NOTIFICATION LAYER ────────────────────────────────────── */}
       <div className="fixed bottom-5 right-5 z-[9999] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2.5 pointer-events-none" aria-live="polite" aria-atomic="true">
         {toasts.map((toast) => (

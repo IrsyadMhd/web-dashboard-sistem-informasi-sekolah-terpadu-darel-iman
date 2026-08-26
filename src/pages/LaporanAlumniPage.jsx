@@ -703,6 +703,54 @@ export default function LaporanAlumniPage() {
           />
         </motion.div>
 
+        {/* MODERN HERO CARD HEADER */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <GraduationCap className="size-6 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Laporan Alumni & Kelulusan
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                      {angka(totalAlumniVal)} Total Alumni
+                    </span>
+                  </div>
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Laporan Rekap Data Alumni, Kelulusan & Mutasi
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Pusat penelusuran kelulusan siswa: statistik alumni, pemindahan masuk/keluar, tracer studi universitas/karir, dan rekap per tahun.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0 z-10">
+                <Button
+                  type="button"
+                  variant="primary"
+                  appearance="fill"
+                  size="sm"
+                  onClick={muatData}
+                  disabled={loading}
+                  prefixIcon={<RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />}
+                  className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+                >
+                  Segarkan Data
+                </Button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* ── Print Option Modal Integration ───────────────────────────────────── */}
         <PrintOptionModal
           isOpen={isPrintModalOpen}
@@ -1421,9 +1469,9 @@ export default function LaporanAlumniPage() {
 
         {/* ── Main Master Datatable Card ─────────────────────────────────────── */}
         <motion.div variants={itemVariants}>
-          <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
             {/* Toolbar Header 3-Baris Terstruktur */}
-            <div className="p-4 sm:p-6 space-y-4 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="p-4 sm:p-6 space-y-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20">
               {/* Baris 1: Title & Toolbar Squircle Action Buttons */}
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -1436,6 +1484,20 @@ export default function LaporanAlumniPage() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-nowrap shrink-0 py-1">
+                  <SquircleActionButton
+                    variant="import"
+                    label="Import Data"
+                    onClick={() => {
+                      const input = document.createElement('input')
+                      input.type = 'file'
+                      input.accept = '.csv, .xlsx, .xls'
+                      input.onchange = (e) => {
+                        const file = e.target.files?.[0]
+                        if (file) alert(`Berkas "${file.name}" siap di-import ke data alumni & kelulusan!`)
+                      }
+                      input.click()
+                    }}
+                  />
                   <SquircleActionButton
                     variant="export"
                     label="Export CSV"

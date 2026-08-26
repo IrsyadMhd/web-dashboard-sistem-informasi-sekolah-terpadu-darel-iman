@@ -62,32 +62,32 @@ const STATUS_MAP = {
 function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
   const tones = {
     emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+      card: 'border-2 border-emerald-300/90 bg-gradient-to-br from-emerald-100/90 via-teal-50/70 to-emerald-50/40 hover:border-emerald-500 dark:border-emerald-700/90 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 shadow-xs shadow-emerald-500/10',
+      title: 'text-emerald-900 dark:text-emerald-300 font-extrabold',
+      icon: 'text-emerald-600 dark:text-emerald-400',
+      val: 'text-emerald-800 dark:text-emerald-200',
+      sub: 'text-emerald-800/90 dark:text-emerald-300/90',
     },
     blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
+      card: 'border-2 border-blue-200/80 bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-white hover:border-blue-300 dark:border-blue-800/60 dark:from-blue-950/40 dark:via-slate-900 dark:to-slate-900',
+      title: 'text-blue-800 dark:text-blue-300 font-extrabold',
+      icon: 'text-blue-600 dark:text-blue-400',
+      val: 'text-blue-700 dark:text-blue-200',
+      sub: 'text-blue-700/80 dark:text-blue-400/80',
     },
     amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
+      card: 'border-2 border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-white hover:border-amber-300 dark:border-amber-800/60 dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900',
+      title: 'text-amber-800 dark:text-amber-300 font-extrabold',
+      icon: 'text-amber-600 dark:text-amber-400',
+      val: 'text-amber-700 dark:text-amber-200',
+      sub: 'text-amber-700/80 dark:text-amber-400/80',
     },
     rose: {
-      card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
-      title: 'text-rose-700 dark:text-rose-400',
-      icon: 'text-rose-500',
-      val: 'text-rose-600 dark:text-rose-300',
-      sub: 'text-rose-600/70 dark:text-rose-400/70',
+      card: 'border-2 border-rose-200/80 bg-gradient-to-br from-rose-50/90 via-pink-50/40 to-white hover:border-rose-300 dark:border-rose-800/60 dark:from-rose-950/40 dark:via-slate-900 dark:to-slate-900',
+      title: 'text-rose-800 dark:text-rose-300 font-extrabold',
+      icon: 'text-rose-600 dark:text-rose-400',
+      val: 'text-rose-700 dark:text-rose-200',
+      sub: 'text-rose-700/80 dark:text-rose-400/80',
     },
   }
 
@@ -952,28 +952,65 @@ export default function MonitoringDivisiPage() {
   )
 
   const containerVariants = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 0, y: 15 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.05, delayChildren: 0.02 },
+      y: 0,
+      transition: { duration: 0.35, staggerChildren: 0.08 },
     },
   }
 
   const itemVariants = {
     hidden: { opacity: 0, y: 12 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
   }
 
   return (
     <PageContainer maxW="7xl">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 print:space-y-1 pb-12 print:pb-0">
         {/* Breadcrumb Navigation */}
-        <div className="print:hidden">
+        <motion.div variants={itemVariants} className="print:hidden">
           <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Monitoring Divisi' }]} />
-        </div>
+        </motion.div>
+
+        {/* Header Halaman Modern Hero Card */}
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <Layers className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Monitoring Divisi Sekolah
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {isUnitRestricted ? currentUserUnit : 'Seluruh Unit SIT'}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Pemantauan terpadu ketercapaian target divisi (Al-Qur'an, Kesiswaan/BPI, Kurikulum, Sarpras, dan Keuangan) di seluruh unit pendidikan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <Zap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Supervisi Divisi</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Role Access Scope Info Alert */}
-        <div className="print:hidden">
+        <motion.div variants={itemVariants} className="print:hidden">
           {!isUnitRestricted ? (
             <Alert status="info" className="rounded-2xl border-sky-200 bg-sky-50/90 dark:border-sky-900/60 dark:bg-sky-950/40">
               <ShieldCheck className="h-5 w-5 text-sky-600 dark:text-sky-400 shrink-0" />
@@ -999,10 +1036,10 @@ export default function MonitoringDivisiPage() {
               </AlertContent>
             </Alert>
           )}
-        </div>
+        </motion.div>
 
         {/* Quick Preset Filter Tabs (SIT Specific) with Soft Pastel Squircle Pills */}
-        <div className="flex flex-wrap items-center gap-2 pb-1 overflow-x-auto print:hidden">
+        <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-2 pb-1 overflow-x-auto print:hidden">
           <button
             type="button"
             onClick={() => setFilterDivisi('')}
@@ -1086,10 +1123,10 @@ export default function MonitoringDivisiPage() {
             <FileText className="h-4 w-4 text-pink-500" />
             <span>Keasramaan / Musyrif</span>
           </button>
-        </div>
+        </motion.div>
 
         {/* KPI Stats Grid Complying with TAILGRIDS_CARD_COMPONENT */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+        <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <KpiTintedCard
             label="Total Laporan Monitoring"
             value={totalCount}
@@ -1118,20 +1155,21 @@ export default function MonitoringDivisiPage() {
             icon={AlertTriangle}
             tone="rose"
           />
-        </div>
+        </motion.div>
 
         {/* AppDataTable complying with TailGrids Benchmark */}
-        <AppDataTable
-          printableHeader={
-            <div className="flex items-end justify-between border-b border-slate-400 pb-1.5 text-slate-900">
-              <div>
-                <h1 className="text-base font-extrabold uppercase tracking-tight text-slate-900 leading-tight">
-                  Laporan Monitoring & Supervisi Divisi Operasional SIT
-                </h1>
-                <p className="text-[11px] text-slate-700 font-semibold mt-0.5 leading-tight">
-                  Sekolah Islam Terpadu — Unit: {filterUnit || 'Semua Unit Pendidikan'} {filterDivisi ? `| Divisi: ${filterDivisi}` : ''}
-                </p>
-              </div>
+        <motion.div variants={itemVariants}>
+          <AppDataTable
+            printableHeader={
+              <div className="flex items-end justify-between border-b border-slate-400 pb-1.5 text-slate-900">
+                <div>
+                  <h1 className="text-base font-extrabold uppercase tracking-tight text-slate-900 leading-tight">
+                    Laporan Monitoring & Supervisi Divisi Operasional SIT
+                  </h1>
+                  <p className="text-[11px] text-slate-700 font-semibold mt-0.5 leading-tight">
+                    Sekolah Islam Terpadu — Unit: {filterUnit || 'Semua Unit Pendidikan'} {filterDivisi ? `| Divisi: ${filterDivisi}` : ''}
+                  </p>
+                </div>
               <div className="text-right text-[9px] text-slate-600 font-medium leading-tight space-y-0.5">
                 <p>Tanggal Cetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 <p>Total Data: {filteredItems.length} Catatan Laporan</p>
@@ -1158,6 +1196,7 @@ export default function MonitoringDivisiPage() {
           onPageChange={setPage}
           renderMobileCard={renderMobileCard}
         />
+      </motion.div>
 
         {/* Form Modal Add / Edit */}
         <PemantauanDivisiFormModal

@@ -60,32 +60,32 @@ const STORAGE_KEY = 'school_news_announcements_db'
 function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
   const tones = {
     emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+      card: 'border-2 border-emerald-300/90 bg-gradient-to-br from-emerald-100/90 via-teal-50/70 to-emerald-50/40 hover:border-emerald-500 dark:border-emerald-700/90 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 shadow-xs shadow-emerald-500/10',
+      title: 'text-emerald-900 dark:text-emerald-300 font-extrabold',
+      icon: 'text-emerald-600 dark:text-emerald-400',
+      val: 'text-emerald-800 dark:text-emerald-200',
+      sub: 'text-emerald-800/90 dark:text-emerald-300/90',
     },
     blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
+      card: 'border-blue-200/80 bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-white hover:border-blue-300 dark:border-blue-800/60 dark:from-blue-950/40 dark:via-slate-900 dark:to-slate-900',
+      title: 'text-blue-800 dark:text-blue-300',
+      icon: 'text-blue-600 dark:text-blue-400',
+      val: 'text-blue-700 dark:text-blue-200',
+      sub: 'text-blue-700/80 dark:text-blue-400/80',
     },
     amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
+      card: 'border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-white hover:border-amber-300 dark:border-amber-800/60 dark:from-amber-950/40 dark:via-slate-900 dark:to-slate-900',
+      title: 'text-amber-800 dark:text-amber-300',
+      icon: 'text-amber-600 dark:text-amber-400',
+      val: 'text-amber-700 dark:text-amber-200',
+      sub: 'text-amber-700/80 dark:text-amber-400/80',
     },
     purple: {
-      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
-      title: 'text-purple-700 dark:text-purple-400',
-      icon: 'text-purple-500',
-      val: 'text-purple-600 dark:text-purple-300',
-      sub: 'text-purple-600/70 dark:text-purple-400/70',
+      card: 'border-purple-200/80 bg-gradient-to-br from-purple-50/90 via-indigo-50/40 to-white hover:border-purple-300 dark:border-purple-800/60 dark:from-purple-950/40 dark:via-slate-900 dark:to-slate-900',
+      title: 'text-purple-800 dark:text-purple-300',
+      icon: 'text-purple-600 dark:text-purple-400',
+      val: 'text-purple-700 dark:text-purple-200',
+      sub: 'text-purple-700/80 dark:text-purple-400/80',
     },
   }
 
@@ -623,6 +623,44 @@ export default function NewsManagementPage() {
           <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Berita & Pengumuman' }]} />
         </motion.div>
 
+        {/* Header Halaman Modern Hero Card */}
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <Megaphone className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Berita & Pengumuman Sekolah
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {roleAnalysis.isGlobalAdmin ? 'Lintas Unit Yayasan' : `Unit: ${roleAnalysis.assignedUnitName}`}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  {roleAnalysis.isGlobalAdmin
+                    ? 'Pusat pengumuman dan publikasi berita resmi terpadu seluruh unit sekolah dan lembaga yayasan.'
+                    : `Pusat pengumuman dan berita resmi khusus untuk unit ${roleAnalysis.assignedUnitName}.`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Publikasi Resmi</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* KPI STATS CARDS (TAILGRIDS_CARD_COMPONENT) */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <KpiTintedCard
@@ -659,23 +697,21 @@ export default function NewsManagementPage() {
           />
         </motion.div>
 
-        {/* 1. SINGLE UNIFIED DATATABLE CARD CONTAINER (FILTER BAR & DATATABLE DIGABUNGKAN) */}
-        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+        {/* 1. SINGLE UNIFIED DATATABLE CARD CONTAINER (FILTER BAR & DATATABLE DIGABUNGKAN DENGAN GRADASI ZAMRUD) */}
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
         {/* BARIS 1: HEADER CARD TITLE + SOFT PASTEL SQUIRCLE ACTION BUTTONS */}
-        <div className="flex flex-col gap-4 border-b border-slate-100 p-6 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-5 sm:p-6 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl">
-                Berita & Pengumuman Sekolah
-              </h1>
-              <Badge color={roleAnalysis.isGlobalAdmin ? 'amber' : 'emerald'} size="md" prefixIcon={ShieldCheck}>
-                {roleAnalysis.isGlobalAdmin ? 'Akses Lintas Unit Yayasan' : `Unit: ${roleAnalysis.assignedUnitName}`}
-              </Badge>
+              <h2 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
+                Daftar Publikasi Berita
+              </h2>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                {filteredList.length} Berita
+              </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {roleAnalysis.isGlobalAdmin
-                ? 'Kelola pengumuman dan berita sekolah untuk seluruh unit pendidikan atau unit spesifik yang langsung tampil di portal orang tua dan siswa.'
-                : `Kelola pengumuman dan berita sekolah resmi khusus untuk unit ${roleAnalysis.assignedUnitName}.`}
+              Riwayat publikasi berita dan pengumuman yang dapat difilter berdasarkan target unit sekolah.
             </p>
           </div>
 
@@ -734,7 +770,7 @@ export default function NewsManagementPage() {
         </div>
 
         {/* BARIS 2: CARD FILTER (DILENGKAPI DENGAN SEARCH, DROPDOWN UNIT DARI DATABASE & PERPAGE SELECTOR) */}
-        <div className="flex flex-col gap-3 bg-slate-50/60 p-4 dark:bg-slate-800/40 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col gap-3 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 p-4 dark:bg-emerald-950/20 lg:flex-row lg:items-center lg:justify-between border-b border-emerald-500/15 dark:border-emerald-900/40">
           {/* Search Input */}
           <div className="relative min-w-[240px] flex-1 sm:w-72">
             <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -822,19 +858,19 @@ export default function NewsManagementPage() {
         {/* TAILGRIDS TABLE ROOT & ROWS WITH RICH COLOR STYLING */}
         <div className="overflow-x-auto">
           <TableRoot fullBleed={false}>
-            <TableHeader>
-              <TableRow className="bg-gradient-to-r from-slate-100 via-emerald-50/40 to-slate-100 border-b border-slate-200/90 dark:from-slate-800 dark:via-slate-800/90 dark:to-slate-800 dark:border-slate-700">
-                <TableHead className="font-extrabold text-slate-900 dark:text-slate-100 py-3.5">
+            <TableHeader className="bg-[#F8FAFB] dark:bg-[#202B3A]">
+              <TableRow className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
+                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">
                   <div className="flex items-center gap-1.5 cursor-pointer">
-                    <span className="text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 font-black">Judul Berita & Kategori</span>
+                    <span className="font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1]">Judul Berita & Kategori</span>
                     <ArrowBothDirectionHorizontal2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                 </TableHead>
-                <TableHead className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Target Unit Sekolah</TableHead>
-                <TableHead className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Penerbit & Peran</TableHead>
-                <TableHead className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Tanggal Publikasi</TableHead>
-                <TableHead className="font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Status</TableHead>
-                <TableHead className="text-center font-black text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 py-3.5">Aksi</TableHead>
+                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Target Unit Sekolah</TableHead>
+                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Penerbit & Peran</TableHead>
+                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Tanggal Publikasi</TableHead>
+                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Status</TableHead>
+                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] text-center font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Aksi</TableHead>
               </TableRow>
             </TableHeader>
 

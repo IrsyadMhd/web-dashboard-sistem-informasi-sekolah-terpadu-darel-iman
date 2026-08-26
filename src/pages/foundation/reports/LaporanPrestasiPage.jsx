@@ -204,6 +204,18 @@ export function LaporanPrestasiPage() {
 
   return (
     <div className="laporan-page-content space-y-6 pb-12 px-4 py-6 sm:px-6 md:px-8">
+      {/* 🧭 TailGrids Breadcrumbs Navigation */}
+      <div className="print:hidden">
+        <Breadcrumbs
+          dividerType="chevron"
+          items={[
+            { href: '/dashboard/yayasan', label: 'Yayasan' },
+            { href: '/dashboard/yayasan/laporan', label: 'Laporan Eksekutif' },
+            { label: 'Laporan Rekapitulasi Prestasi Siswa' },
+          ]}
+        />
+      </div>
+
       {/* 1. Header Laporan */}
       <ReportHeader
         title={report?.title || "Laporan Rekapitulasi Prestasi Siswa"}

@@ -16,6 +16,7 @@ import {
   Printer,
   Search,
   ShieldAlert,
+  Sparkles,
   Users,
   X,
 } from 'lucide-react'
@@ -877,48 +878,66 @@ export default function HomeroomAttendanceDashboardPage() {
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Main Dashboard Workspace (Hidden on Print so only Modal Report prints) */}
       <motion.div variants={itemVariants} className="space-y-6 print:hidden">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* BREADCRUMB NAV */}
         <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi' }, { label: 'Dashboard Wali Kelas' }]} />
 
-        <div className="flex items-center gap-2.5 flex-nowrap shrink-0 py-1">
-          <div className="group relative inline-flex">
-            <button
-              type="button"
-              title="Rekap Presensi Siswa"
-              aria-label="Rekap Presensi Siswa"
-              className="relative flex items-center justify-center rounded-2xl bg-sky-100/90 p-2.5 text-sky-700 transition-colors duration-200 hover:bg-sky-500 hover:text-white hover:shadow-md hover:shadow-sky-500/30 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white cursor-pointer shadow-2xs"
-              onClick={() => handleOpenRombelRecap()}
-            >
-              <FileText className="size-4 transition-colors" />
-            </button>
-            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-              Rekap Presensi Siswa
-            </div>
-          </div>
+        {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
 
-          <div className="group relative inline-flex">
-            <button
-              type="button"
-              title={`Verifikasi Izin (${pendingPermissions.length})`}
-              aria-label="Verifikasi Izin"
-              className="relative flex items-center justify-center rounded-2xl bg-amber-100/90 p-2.5 text-amber-700 transition-colors duration-200 hover:bg-amber-500 hover:text-white hover:shadow-md hover:shadow-amber-500/30 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white cursor-pointer shadow-2xs"
-              onClick={handleOpenPermissionModal}
-            >
-              <FileCheck2 className="size-4 transition-colors" />
-              {pendingPermissions.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-xs">
-                  {pendingPermissions.length}
-                </span>
-              )}
-            </button>
-            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-              Kelola Verifikasi Surat Izin / Sakit ({pendingPermissions.length})
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <CalendarCheck className="size-6 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Manajemen Presensi Rombel
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                      Wali Kelas: {user?.name || user?.username || 'Wali Kelas SIT'}
+                    </span>
+                  </div>
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Dashboard Presensi Wali Kelas
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Monitoring kehadiran siswa rombel binaan, verifikasi surat izin/sakit, rekapitulasi presensi, dan tindak lanjut siswa.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/25 transition-all hover:scale-[1.02] cursor-pointer"
+                  onClick={() => handleOpenRombelRecap()}
+                >
+                  <FileText className="size-4" />
+                  <span>Rekap Presensi</span>
+                </button>
+                <button
+                  type="button"
+                  className="relative inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-800 shadow-sm border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-white transition-all cursor-pointer"
+                  onClick={handleOpenPermissionModal}
+                >
+                  <FileCheck2 className="size-4 text-emerald-600" />
+                  <span>Verifikasi Izin</span>
+                  {pendingPermissions.length > 0 && (
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-black text-white shadow-xs">
+                      {pendingPermissions.length}
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
       {/* KPI STATS CARDS */}
       <motion.div variants={itemVariants} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTintedCard
@@ -1042,8 +1061,8 @@ export default function HomeroomAttendanceDashboardPage() {
       </motion.div>
 
       {isKepsekOrDivisi && (
-        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] p-5 space-y-4">
+          <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent -mx-5 -mt-5 p-5 border-b border-emerald-500/20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-emerald-600" /> Monitoring Seluruh Kelas & Wali Kelas
@@ -1060,7 +1079,7 @@ export default function HomeroomAttendanceDashboardPage() {
                 placeholder="Cari kelas, wali kelas, mapel..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-1.5 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-emerald-500"
+                className="w-full rounded-xl border border-emerald-500/30 bg-white pl-9 pr-3 py-1.5 text-xs font-medium text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-emerald-600/40 dark:bg-slate-900 dark:text-white"
               />
             </div>
           </div>
@@ -1072,16 +1091,16 @@ export default function HomeroomAttendanceDashboardPage() {
               Tidak ada data kelas yang sesuai dengan pencarian.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto rounded-xl border border-emerald-500/20 dark:border-emerald-900/40">
               <TableRoot fullBleed={false}>
                 <TableHeader>
-                  <TableRow className="bg-slate-50/90 dark:bg-slate-900/80">
-                    <TableHead className="w-12 text-center text-xs font-bold text-slate-700 dark:text-slate-300">No</TableHead>
-                    <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Kelas & Unit</TableHead>
-                    <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Wali Kelas</TableHead>
-                    <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Mata Pelajaran</TableHead>
-                    <TableHead className="text-center text-xs font-bold text-slate-700 dark:text-slate-300">Jumlah Siswa / Rombel</TableHead>
-                    <TableHead className="w-16 text-center text-xs font-bold text-slate-700 dark:text-slate-300">Aksi</TableHead>
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                    <TableHead className="w-12 text-center text-xs font-bold text-slate-800 dark:text-slate-200">No</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-800 dark:text-slate-200">Kelas & Unit</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-800 dark:text-slate-200">Wali Kelas</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-800 dark:text-slate-200">Mata Pelajaran</TableHead>
+                    <TableHead className="text-center text-xs font-bold text-slate-800 dark:text-slate-200">Jumlah Siswa / Rombel</TableHead>
+                    <TableHead className="w-16 text-center text-xs font-bold text-slate-800 dark:text-slate-200">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

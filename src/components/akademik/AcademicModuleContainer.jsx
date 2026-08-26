@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { GraduationCap, Sparkles } from 'lucide-react'
 import AppBreadcrumb from '../app/AppBreadcrumb'
 
 export default function AcademicModuleContainer({ title, description, tabs, hideHeader = false, tabsBelowKpi = false, breadcrumbItems = [], children }) {
@@ -85,14 +86,27 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
         </motion.div>
       )}
       {!hideHeader && (
-        <motion.header variants={itemVariants} className="overflow-hidden rounded-[22px] bg-gradient-to-br from-[#0E5C44] via-[#167856] to-[#1E8E5A] p-6 text-white shadow-xl md:p-8">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-emerald-400/20 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.22em] text-emerald-100 backdrop-blur-md border border-emerald-400/30">
-              Akademik &amp; LMS
-            </span>
+        <motion.header variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <GraduationCap className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Akademik &amp; LMS
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">{title}</h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-3xl leading-relaxed">{description}</p>
+              </div>
+            </div>
           </div>
-          <h1 className="mt-3 text-2xl font-black md:text-3xl tracking-tight text-white">{title}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-emerald-50/90">{description}</p>
         </motion.header>
       )}
 

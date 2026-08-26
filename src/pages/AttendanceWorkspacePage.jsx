@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, BookOpenCheck, Clock3, FilePlus2, HeartPulse, Lock, PlayCircle, Printer, Save, ShieldCheck, Sliders, Square, XCircle } from 'lucide-react'
+import { AlertCircle, BookOpenCheck, Clock3, FilePlus2, HeartPulse, Lock, PlayCircle, Printer, Save, ShieldCheck, Sliders, Sparkles, Square, XCircle } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -12,6 +12,7 @@ import { AttendanceCapturePanel, AttendanceMethodSelector } from '../components/
 import { WorkflowStepBar } from '../components/common/WorkflowStepBar'
 import { SquircleActionButton, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 
 const today = new Date().toLocaleDateString('en-CA')
 const unwrapPage = (response) => {
@@ -503,7 +504,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
         </div>
       )}
 
-      <div className="grid gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs md:grid-cols-3 dark:border-slate-800 dark:bg-[#1B2433]">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 p-6 md:grid-cols-3 dark:border-emerald-600/35 dark:bg-[#1B2433] grid gap-4">
         <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tanggal
           <input disabled={activeLogin} type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-2 w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3 text-sm text-slate-900 outline-none focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 disabled:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/60 dark:text-white dark:focus:bg-[#111827] dark:disabled:bg-slate-800/80" />
         </label>
@@ -862,12 +863,41 @@ export default function AttendanceWorkspacePage() {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      <motion.header variants={itemVariants} className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Absensi Kelas & Mata Pelajaran</h1>
-          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">Pencatatan presensi siswa sesuai jadwal mata pelajaran aktif dengan pengawasan keamanan jam mengajar.</p>
+      {/* BREADCRUMB NAV */}
+      <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Absensi Kelas & Mata Pelajaran' }]} />
+
+      {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <BookOpenCheck className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Presensi Jam Mengajar Active
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    Sistem Validasi Server
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Absensi Kelas & Mata Pelajaran
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Pencatatan presensi siswa sesuai jadwal mata pelajaran aktif dengan pengawasan keamanan jam mengajar.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </motion.header>
+      </motion.div>
 
       <motion.div variants={itemVariants} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Metric icon={FilePlus2} label="Izin Membutuhkan Verifikasi" subtext="Pengajuan izin/sakit siswa" value={counts.permissions} tone="blue" />

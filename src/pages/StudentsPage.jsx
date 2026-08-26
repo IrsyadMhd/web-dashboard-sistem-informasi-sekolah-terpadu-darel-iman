@@ -32,6 +32,7 @@ import ActionDropdown from '../components/app/ActionDropdown'
 import { Button } from '../components/tailgrids/core/button'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
+import AppDataTable from '../components/app/AppDataTable'
 import { api } from '../services/api'
 import { useDaftarKelas } from '../hooks/useReferenceData'
 import { useAksiSiswa, useDaftarSiswa } from '../hooks/useStudents'
@@ -42,7 +43,7 @@ import PersonIdentityCell from '../components/ui/PersonIdentityCell'
 import { hasAnyRole } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
 import PageContainer from '../components/app/PageContainer'
-import { Printer } from 'lucide-react'
+import { Printer, ShieldCheck, Sparkles } from 'lucide-react'
 import { OverlayWrapper, Backdrop } from '../components/tailgrids/core/overlay'
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/tailgrids/core/dialog'
 import { Download1, Upload1, Plus as PlusIcon } from '@tailgrids/icons'
@@ -1081,6 +1082,42 @@ export default function StudentsPage() {
           <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Data Siswa' }]} />
         </div>
 
+        {/* Header Halaman Modern Hero Card */}
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden mb-6">
+          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <FaUserGraduate className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Master Data Siswa Terpadu
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Manajemen Kesiswaan
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Pengelolaan terpadu direktori peserta didik (TK, SD, SMP, SMA, Ponpes, Ma'had), status akademis, cetak kartu NISN, dan analisis kesiswaan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Direktori Siswa</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Quick Summary Cards (TAILGRIDS_CARD_COMPONENT) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
           <KpiTintedCard
@@ -1160,7 +1197,8 @@ export default function StudentsPage() {
         )}
 
         {/* Unified Master Data Section */}
-        <MasterDataSection
+        {/* Unified Master Data Container */}
+        <AppDataTable
           title="Daftar Siswa"
           description="Data siswa sesuai filter dan kewenangan pengguna."
           countLabel={`${Number(studentPagination.total || filteredStudents.length).toLocaleString('id-ID')} siswa`}
@@ -1239,12 +1277,9 @@ export default function StudentsPage() {
               )}
             </div>
           }
-          search={{
-            value: searchInput,
-            onValueChange: (value) => setSearchInput(value),
-            placeholder: 'Cari NIS, NISN, atau nama siswa...',
-            'aria-label': 'Cari siswa',
-          }}
+          search={searchInput}
+          onSearchChange={(value) => setSearchInput(value)}
+          searchPlaceholder="Cari NIS, NISN, atau nama siswa..."
           filters={
             <>
               <MasterFilterSelect
@@ -1298,14 +1333,14 @@ export default function StudentsPage() {
               </MasterFilterSelect>
             </>
           }
-          onReset={() => {
+          onResetFilters={() => {
             setSearchInput('')
             setUnitFilter('')
             setKelasFilter('')
             setStatusFilter('')
             setCurrentPage(1)
           }}
-          resetDisabled={!searchInput && !unitFilter && !kelasFilter && !statusFilter}
+          hasActiveFilters={Boolean(searchInput || unitFilter || kelasFilter || statusFilter)}
           isLoading={isLoading}
           isError={isError}
           errorTitle="Data siswa gagal dimuat"
@@ -1314,77 +1349,80 @@ export default function StudentsPage() {
           isEmpty={!isLoading && !isError && paginatedStudents.length === 0}
           emptyTitle="Siswa tidak ditemukan"
           emptyDescription="Tidak ada data siswa yang cocok dengan kriteria filter."
-          pagination={{
-            meta: {
-              total: studentPagination.total || filteredStudents.length,
-              from: studentPagination.from || 1,
-              to: studentPagination.to || filteredStudents.length,
-              last_page: studentPagination.lastPage || 1,
-              current_page: currentPage,
-            },
-            page: currentPage,
-            onPageChange: setCurrentPage,
+          page={currentPage}
+          totalPages={studentPagination.lastPage || 1}
+          totalItems={studentPagination.total || filteredStudents.length}
+          itemsPerPage={studentPagination.perPage || 10}
+          onPageChange={setCurrentPage}
+          meta={{
+            total: studentPagination.total || filteredStudents.length,
+            from: studentPagination.from || 1,
+            to: studentPagination.to || filteredStudents.length,
+            last_page: studentPagination.lastPage || 1,
+            current_page: currentPage,
           }}
-        >
-          <table className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar siswa">
-            <thead className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
-              <tr>
-                <th className="w-[6%] px-2 py-3 text-center">No</th>
-                <th className="w-[34%] px-3 py-3 font-bold">Identitas Siswa</th>
-                <th className="hidden w-[29%] px-3 py-3 font-bold md:table-cell">Orang Tua / Wali</th>
-                <th className="hidden w-[11%] px-2 py-3 text-center font-bold sm:table-cell">Status</th>
-                <th className="w-[20%] px-2 py-3 text-center font-bold">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">
-              {paginatedStudents.map((item, idx) => (
-                <tr key={item.id} className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50" style={{ animationDelay: `${Math.min(idx, 8) * 35}ms` }}>
-                  <td className="px-2 py-3 text-center text-xs font-bold text-slate-400">
-                    {(studentPagination.from || 1) + idx}
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="min-w-0">
-                      <PersonIdentityCell src={item.foto} name={item.nama} subtitle={`NIS ${item.nis} · NISN ${item.nisn || '-'}`} />
-                      <span className="mt-1 block min-w-0 pl-11">
-                        <small className="mt-0.5 block truncate text-[9px] font-semibold text-emerald-700 dark:text-emerald-300" title={`${item.unit} · Kelas ${item.kelas}`}>
-                          {item.unit} · Kelas {item.kelas}
-                        </small>
-                        <small className="mt-0.5 block truncate text-[9px] font-medium text-slate-500 md:hidden" title={item.orangTua}>Ortu: {item.orangTua} ({item.noHp || '-'})</small>
-                        <small className={`mt-0.5 text-[9px] font-bold sm:hidden ${(item.status || '').toLowerCase() === 'aktif' ? 'text-emerald-700' : 'text-amber-600'}`}>• {item.status}</small>
-                      </span>
-                    </div>
-                  </td>
-                  <td className="hidden px-3 py-3 md:table-cell">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">{(item.orangTua || 'W').split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span>
-                      <span className="min-w-0">
-                        <strong className="block truncate text-xs text-slate-800 dark:text-slate-100" title={item.orangTua}>{item.orangTua}</strong>
-                        <small className="mt-1 block whitespace-nowrap text-[10px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
-                          {item.noHp || '-'}
-                        </small>
-                      </span>
-                    </div>
-                  </td>
-                  <td className="hidden whitespace-nowrap px-3 py-3 text-center sm:table-cell">{renderStatusBadge(item.status)}</td>
-                  <td className="px-3 py-3 text-center">
-                    <div className="flex items-center justify-center">
-                      <ActionDropdown
-                        onView={() => handleOpenDetail(item)}
-                        onEdit={canUpdateStudent ? () => handleOpenEdit(item) : undefined}
-                        onDelete={canDeleteStudent ? () => handleDelete(item) : undefined}
-                        extraItems={[{
-                          label: 'Cetak Kartu',
-                          icon: <FaPrint className="h-4 w-4 text-emerald-600" />,
-                          onClick: () => { setStudentToPrint(item); setShowCetakModal(true) },
-                        }]}
-                      />
-                    </div>
-                  </td>
+          serverControlled
+          renderTable={() => (
+            <table className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar siswa">
+              <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
+                <tr>
+                  <th className="w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
+                  <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa</th>
+                  <th className="hidden w-[29%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Orang Tua / Wali</th>
+                  <th className="hidden w-[11%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
+                  <th className="w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </MasterDataSection>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">
+                {paginatedStudents.map((item, idx) => (
+                  <tr key={item.id} className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50" style={{ animationDelay: `${Math.min(idx, 8) * 35}ms` }}>
+                    <td className="px-2 py-3 text-center text-xs font-bold text-slate-400">
+                      {(studentPagination.from || 1) + idx}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="min-w-0">
+                        <PersonIdentityCell src={item.foto} name={item.nama} subtitle={`NIS ${item.nis} · NISN ${item.nisn || '-'}`} />
+                        <span className="mt-1 block min-w-0 pl-11">
+                          <small className="mt-0.5 block truncate text-[9px] font-semibold text-emerald-700 dark:text-emerald-300" title={`${item.unit} · Kelas ${item.kelas}`}>
+                            {item.unit} · Kelas {item.kelas}
+                          </small>
+                          <small className="mt-0.5 block truncate text-[9px] font-medium text-slate-500 md:hidden" title={item.orangTua}>Ortu: {item.orangTua} ({item.noHp || '-'})</small>
+                          <small className={`mt-0.5 text-[9px] font-bold sm:hidden ${(item.status || '').toLowerCase() === 'aktif' ? 'text-emerald-700' : 'text-amber-600'}`}>• {item.status}</small>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-3 md:table-cell">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">{(item.orangTua || 'W').split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span>
+                        <span className="min-w-0">
+                          <strong className="block truncate text-xs text-slate-800 dark:text-slate-100" title={item.orangTua}>{item.orangTua}</strong>
+                          <small className="mt-1 block whitespace-nowrap text-[10px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+                            {item.noHp || '-'}
+                          </small>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="hidden whitespace-nowrap px-3 py-3 text-center sm:table-cell">{renderStatusBadge(item.status)}</td>
+                    <td className="px-3 py-3 text-center">
+                      <div className="flex items-center justify-center">
+                        <ActionDropdown
+                          onView={() => handleOpenDetail(item)}
+                          onEdit={canUpdateStudent ? () => handleOpenEdit(item) : undefined}
+                          onDelete={canDeleteStudent ? () => handleDelete(item) : undefined}
+                          extraItems={[{
+                            label: 'Cetak Kartu',
+                            icon: <FaPrint className="h-4 w-4 text-emerald-600" />,
+                            onClick: () => { setStudentToPrint(item); setShowCetakModal(true) },
+                          }]}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        />
 
         {/* POP UP MODAL 1: DETAIL SISWA */}
         {showDetailModal && selectedStudent && (

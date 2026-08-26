@@ -5,13 +5,13 @@ import AppBadge from '../app/AppBadge'
 export default function TahunAjaranTable({ data = [], page = 1, perPage = 15, onDetail, onEdit, onSetAktif, onDelete, onRestore }) {
   return (
     <table className="w-full min-w-155 table-fixed text-left text-xs text-slate-600 dark:text-slate-300" aria-label="Daftar tahun ajaran">
-      <thead className="border-b border-slate-200/80 bg-slate-50/90 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+      <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
         <tr>
-          <th className="w-11 px-3 py-3 text-center">No</th>
-          <th className="px-3 py-3">Identitas Periode</th>
-          <th className="hidden w-1/4 px-3 py-3 md:table-cell">Rentang Tanggal</th>
-          <th className="w-28 px-3 py-3 text-center">Status</th>
-          <th className="w-20 px-3 py-3 text-center">Aksi</th>
+          <th className="w-11 bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
+          <th className="bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Identitas Periode</th>
+          <th className="hidden w-1/4 bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Rentang Tanggal</th>
+          <th className="w-28 bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Status</th>
+          <th className="w-20 bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100 dark:divide-slate-700">

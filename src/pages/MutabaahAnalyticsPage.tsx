@@ -473,23 +473,69 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
 
   return (
     <MasterDataPage className="education-unit-page mutabaah-page" hideBreadcrumb>
-      {/* 🧭 BREADCRUMB HEADER */}
-      <div className="mb-4 flex items-center justify-between">
-        <AppBreadcrumb
-          items={[
-            { label: 'Dashboard', href: '/dashboard' },
-            { label: 'Mutaba’ah Yaumiyyah', href: '/dashboard/mutabaah' },
-            {
-              label:
-                view === 'rekap'
-                  ? 'Laporan Rekap Mutaba’ah'
-                  : view === 'evaluasi'
-                  ? 'Evaluasi Target Mutaba’ah'
-                  : 'Dashboard Monitoring Mutaba’ah',
-            },
-          ]}
-        />
-      </div>
+      {/* BREADCRUMB NAV */}
+      <AppBreadcrumb
+        items={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Mutaba’ah Yaumiyyah', href: '/dashboard/mutabaah' },
+          {
+            label:
+              view === 'rekap'
+                ? 'Laporan Rekap Mutaba’ah'
+                : view === 'evaluasi'
+                ? 'Evaluasi Target Mutaba’ah'
+                : 'Dashboard Monitoring Mutaba’ah',
+          },
+        ]}
+      />
+
+      {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="my-4">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <BookOpenCheck className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Mutaba'ah Yaumiyyah
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    {view === 'rekap' ? 'Rekap Laporan' : view === 'evaluasi' ? 'Evaluasi Target' : 'Monitoring Realtime'}
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  {view === 'rekap' ? 'Laporan Rekap Mutaba’ah Yaumiyyah' : view === 'evaluasi' ? 'Evaluasi Target Mutaba’ah Santri' : 'Dashboard Monitoring Mutaba’ah Yaumiyyah'}
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Pusat pemantauan amalan yaumiyyah santri: shalat 5 waktu, dzikir, tilawah Al-Qur'an, dan pembiasaan ibadah harian.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0 z-10">
+              <Button
+                type="button"
+                variant="primary"
+                appearance="fill"
+                size="sm"
+                onClick={() => analytics.refetch()}
+                disabled={analytics.isFetching}
+                prefixIcon={<RefreshCw className={`h-4 w-4 ${analytics.isFetching ? 'animate-spin' : ''}`} />}
+                className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+              >
+                Segarkan
+              </Button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
       {/* 📊 KPI CARDS GRID */}
       <MasterStatsGrid>
@@ -691,9 +737,9 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
       )}
 
       {/* 🟢 MAIN TABLE & FILTER CARD (Data Mutabaah Santri) */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
         {/* Header Baris 1: Title & Soft Pastel Squircle Action Buttons */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 -mx-5 -mt-5 p-5 mb-4">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
               {view === 'evaluasi' ? 'Target & Evaluasi Mutabaah' : 'Data Mutabaah Santri'}
@@ -703,8 +749,7 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
             </p>
           </div>
 
-          {view !== 'rekap' && (
-            <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-visible py-1">
+          <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-visible py-1">
               {/* Button: Import Data (Upload1 - Sky Blue) */}
               <div className="group relative inline-flex">
                 <button
@@ -835,7 +880,6 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
                 </div>
               </div>
             </div>
-          )}
         </div>
 
         {/* Filter Baris 2: Filter Global Mutabaah (Placed above datatable) */}

@@ -65,7 +65,7 @@ export default function ActivityLoginCard() {
   })
 
   return (
-    <Card className="w-full max-w-5xl mx-auto rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-6">
+    <Card className="w-full rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-6">
       {/* Header & Export Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -1330,7 +1330,7 @@ export const router = createBrowserRouter([
           {
             path: 'pengaturan',
             element: (
-              <PermissionElement deniedRoles={ROLES.TATA_USAHA} any={['sistem.pengaturan', 'setting.manage', 'sekolah.informasi_sekolah']}>
+              <PermissionElement roles={['Super Admin', 'SuperAdmin', 'super_admin', 'superadmin', 'Admin', 'admin']}>
                 <BungkusLazy><PengaturanPage /></BungkusLazy>
               </PermissionElement>
             ),

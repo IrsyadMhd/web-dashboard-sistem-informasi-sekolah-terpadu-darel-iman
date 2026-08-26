@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { isParentRole, isStudentRole } from '../auth/portalResolver'
 import {
@@ -732,6 +733,53 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           />
         </div>
 
+        {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <BookHeart className="size-6 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Monitoring Lintas Sekolah
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                      Siswa Non-Ponpes
+                    </span>
+                  </div>
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Monitoring Tahfizh & Mutaba'ah Siswa Non-Pesantren
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Pusat pemantauan terpadu setoran tahfizh, amalan ibadah yaumiyyah, kedisiplinan shalat 5 waktu, dan verifikasi guru unit sekolah non-ponpes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0 z-10">
+                <Button
+                  type="button"
+                  variant="primary"
+                  appearance="fill"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  prefixIcon={<RefreshCcw className="h-4 w-4" />}
+                  className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+                >
+                  Segarkan
+                </Button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
 
 
         {/* Global Feedback Alert */}
@@ -1068,9 +1116,9 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
         </div>
 
         {/* Toolbar 2 Baris Sesuai Gold Standard Project Rules */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-4 sm:p-5 space-y-4 dark:border-emerald-600/35 dark:bg-[#1B2433]">
           {/* Baris 1: Navigation Tabs & Soft Pastel Action Buttons (Dalam 1 Baris Sejajar) */}
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 border-b border-slate-100 pb-3.5">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 p-4 sm:p-5 mb-4">
             {/* Tabs (Daftar Monitoring Siswa, Grafik & Analisis Capaian, Verifikasi Log Guru) */}
             <div className="flex items-center space-x-1 rounded-xl bg-slate-100 p-1 shrink-0 overflow-x-auto">
               <button

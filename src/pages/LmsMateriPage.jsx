@@ -726,35 +726,41 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
         {/* HERO BANNER */}
         {!hidePageHeader && (
           <motion.div variants={itemVariants}>
-          <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 md:p-8 text-white shadow-xl">
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-medium mb-3 border border-white/20">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
-                  LMS Terpadu Modul &amp; Materi Pembelajaran
+            <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6">
+              <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+              <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                    <BookOpen className="size-6 sm:size-7 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                        <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                        Modul &amp; Materi Pembelajaran
+                      </span>
+                    </div>
+                    <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                      Materi Pembelajaran
+                    </h1>
+                    <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                      Kelola dokumen, video, link referensi, ringkasan, dan teks bahan ajar terstruktur per Modul Ajar.
+                    </p>
+                  </div>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-                  Materi Pembelajaran
-                </h1>
-                <p className="mt-1 text-emerald-50 text-sm md:text-base max-w-2xl">
-                  Kelola dokumen, video, link referensi, ringkasan, dan teks bahan ajar terstruktur per Modul Ajar (1 : N Materi).
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleOpenCreateModal}
-                  variant="primary"
-                  className="bg-white text-[#0E5C44] font-semibold text-sm hover:bg-emerald-50 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-none"
-                >
-                  <Plus className="w-4 h-4 mr-1.5" />
-                  Tambah Materi
-                </Button>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <SquircleActionButton
+                    variant="primary"
+                    icon={Plus}
+                    label="Tambah Materi"
+                    onClick={handleOpenCreateModal}
+                  />
+                </div>
               </div>
             </div>
-            <div className="absolute -right-10 -bottom-10 opacity-10 pointer-events-none">
-              <BookOpen className="w-64 h-64 text-white" />
-            </div>
-          </div>
           </motion.div>
         )}
 
@@ -820,6 +826,13 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
             onClick={() => handleOpenKpiModal('aktif')}
           />
         </motion.div>
+
+        {/* Tab Navigation Card (below KPI grid, above filter) */}
+        {tabNav && (
+          <motion.div variants={itemVariants}>
+            {typeof tabNav === 'function' ? tabNav() : tabNav}
+          </motion.div>
+        )}
 
         {/* SEARCH & FILTER BAR (2-Row Layout) */}
         <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
@@ -929,27 +942,27 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
 
         {/* DATA TABLE CONTAINER */}
         <motion.div variants={itemVariants}>
-        <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="materi-table-title">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+        <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]" aria-labelledby="materi-table-title">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
             <div>
-              <h2 id="materi-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Materi Pembelajaran</h2>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Daftar bahan ajar terstruktur per modul ajar.</p>
+              <h2 id="materi-table-title" className="text-base font-extrabold text-slate-900 dark:text-white">Data Materi Pembelajaran</h2>
+              <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Daftar bahan ajar terstruktur per modul ajar.</p>
             </div>
             {pageActions}
           </div>
 
           <MasterDataTable className="!rounded-none !border-0 !shadow-none">
             <table className="w-full table-fixed text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
-                  <th className="w-[6%] px-5 sm:px-6 md:px-8 py-4 text-center">No</th>
-                  <th className="w-[8%] px-3 py-4 text-center">Urutan</th>
-                  <th className="w-[34%] px-3 py-4">Judul Materi</th>
-                  <th className="hidden w-[24%] px-3 py-4 md:table-cell">Modul Ajar &amp; Mapel</th>
-                  <th className="hidden w-[12%] px-3 py-4 text-center lg:table-cell">Tipe</th>
-                  <th className="hidden w-[10%] px-3 py-4 text-center sm:table-cell">Status</th>
-                  <th className="hidden w-[16%] px-3 py-4 text-center sm:table-cell">Lampiran / Link</th>
-                  <th className="w-[10%] px-3 py-4 text-center">Aksi</th>
+              <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
+                <tr>
+                  <th className="w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
+                  <th className="w-[8%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
+                  <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Judul Materi</th>
+                  <th className="hidden w-[24%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Modul Ajar &amp; Mapel</th>
+                  <th className="hidden w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Tipe</th>
+                  <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
+                  <th className="hidden w-[16%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Lampiran / Link</th>
+                  <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">

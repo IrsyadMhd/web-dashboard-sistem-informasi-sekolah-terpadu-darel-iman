@@ -14,6 +14,7 @@ import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
 
 export function LaporanLintasUnitPage() {
   const [filters, setFilters] = useState({ period: 'year' })
@@ -109,6 +110,18 @@ export function LaporanLintasUnitPage() {
 
   return (
     <div className="laporan-page-content space-y-6 pb-12">
+      {/* 🧭 TailGrids Breadcrumbs Navigation */}
+      <div className="print:hidden">
+        <Breadcrumbs
+          dividerType="chevron"
+          items={[
+            { href: '/dashboard/yayasan', label: 'Yayasan' },
+            { href: '/dashboard/yayasan/laporan', label: 'Laporan Eksekutif' },
+            { label: 'Laporan Lintas Unit (Eksekutif)' },
+          ]}
+        />
+      </div>
+
       {/* 1. Header Laporan */}
       <ReportHeader
         title={report.title}

@@ -10,7 +10,10 @@ import {
   Eye,
   Layers,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Button } from '@/components/tailgrids/core/button'
 import {
   ResponsiveContainer,
   PieChart,
@@ -37,6 +40,10 @@ import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
 import ErrorState from '../components/dashboard/ErrorState'
 import KpiQuickViewModal from '../components/KpiQuickViewModal'
 import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
+import {
+  MasterStatsGrid,
+  MasterStatCard,
+} from '../components/master-data'
 
 import { managementDashboardService } from '../services/managementDashboardService'
 
@@ -127,110 +134,165 @@ export default function GuruTahfizhDashboardPage() {
       {/* Breadcrumb Navigation */}
       <AppBreadcrumb items={[{ label: 'Dashboard Guru Tahfizh' }]} />
 
-      {/* Header */}
-      <AppPageHeader
-        variant="brand"
-        title="Dashboard Guru Tahfizh / Musyrif"
-        eyebrow="Tahfizh Management & Al-Qur'an Monitoring"
-        description="Monitor setoran hafalan Al-Qur'an, murajaah harian, dan capaian target santri/siswa binaan."
-        welcomeName="Guru Tahfizh"
-        chips={[
-          context.tahun_ajaran ? `TA ${context.tahun_ajaran.nama}` : 'TBA 2026/2027',
-          context.semester ? `Semester ${context.semester.nama}` : 'Semester Ganjil',
-          'Scope: Halaqah Tahfizh',
-        ]}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <AppButton variant="accent" size="sm" icon={Plus} onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}>
-              Input Setoran
-            </AppButton>
-            <AppButton variant="outline" size="sm" icon={RefreshCw} onClick={fetchDashboard} className="border-white/30 text-white hover:bg-white/10">
-              Segarkan Data
-            </AppButton>
+      {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <BookOpen className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Workspace Guru Tahfizh
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    {context.tahun_ajaran ? `TA ${context.tahun_ajaran.nama}` : 'Halaqah Tahfizh'}
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Dashboard Guru Tahfizh / Musyrif
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Monitor setoran hafalan Al-Qur'an, murajaah harian, dan capaian target santri/siswa binaan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0 z-10">
+              <Button
+                type="button"
+                variant="primary"
+                appearance="fill"
+                size="sm"
+                onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}
+                prefixIcon={<Plus className="h-4 w-4" />}
+                className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+              >
+                Input Setoran
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                appearance="outline"
+                size="sm"
+                onClick={fetchDashboard}
+                disabled={loading}
+                prefixIcon={<RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />}
+                className="font-bold cursor-pointer"
+              >
+                Segarkan Data
+              </Button>
+            </div>
           </div>
-        }
-      />
+        </div>
+      </motion.div>
 
       {/* Filter Bar */}
       <AppFilterBar label="Filter Halaqah & Setoran" onReset={fetchDashboard} />
 
-      {/* Primary KPI Grid */}
+      {/* Primary KPI Grid (Color-Tinted MasterStatCard) */}
       <section className="space-y-3">
         <SectionHeader title="Metrik Setoran & Capaian Hafalan" subtitle="Ringkasan santri binaan, setoran hari ini, dan progres murajaah" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            title="Siswa Binaan"
+        <MasterStatsGrid cols={4}>
+          <MasterStatCard
+            label="Siswa Binaan"
             value={formatNumber(kpis.total_siswa_binaan?.total)}
+            description="Total santri binaan halaqah"
             icon={BookOpen}
-            colorScheme="emerald"
-            badge="Binaan"
-            badgeVariant="success"
+            variant="info"
             onClick={() => setActiveModal('total_siswa_binaan')}
           />
-          <KpiCard
-            title="Setoran Hari Ini"
+          <MasterStatCard
+            label="Setoran Hari Ini"
             value={formatNumber(kpis.setoran_hari_ini?.total)}
+            description="Total setoran tercatat"
             icon={CheckCircle2}
-            colorScheme="blue"
-            badge="Tercatat"
-            badgeVariant="info"
+            variant="success"
           />
-          <KpiCard
-            title="Siswa Sudah Setor"
+          <MasterStatCard
+            label="Siswa Sudah Setor"
             value={formatNumber(kpis.siswa_sudah_setor?.total)}
+            description="Santri yang telah menyetor"
             icon={Award}
-            colorScheme="violet"
-            badge="Sudah Setor"
-            badgeVariant="purple"
+            variant="purple"
           />
-          <KpiCard
-            title="Siswa Belum Setor"
+          <MasterStatCard
+            label="Siswa Belum Setor"
             value={formatNumber(kpis.siswa_belum_setor?.total)}
+            description="Perlu ditindaklanjuti"
             icon={UserX}
-            colorScheme="rose"
-            badge="Belum Setor"
-            badgeVariant="danger"
+            variant="danger"
           />
-        </div>
+        </MasterStatsGrid>
       </section>
 
       {/* Secondary Volume KPIs */}
       <section className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <KpiCard
-            title="Total Baris Setoran Hafalan"
+        <MasterStatsGrid cols={2}>
+          <MasterStatCard
+            label="Total Baris Setoran Hafalan"
             value={formatNumber(kpis.total_setoran_baris?.total)}
+            description="Total baris hafalan baru"
             icon={Layers}
-            colorScheme="emerald"
-            badge="Baris Hafalan"
+            variant="success"
           />
-          <KpiCard
-            title="Total Murajaah (Lembar)"
+          <MasterStatCard
+            label="Total Murajaah (Lembar)"
             value={formatNumber(kpis.total_murajaah_lembar?.total)}
+            description="Total lembar murajaah"
             icon={BookOpen}
-            colorScheme="indigo"
-            badge="Lembar Murajaah"
+            variant="warning"
           />
-        </div>
+        </MasterStatsGrid>
       </section>
 
-      {/* Quick Action Navigation */}
-      <section className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
+      {/* Quick Action Navigation (TailGrids Button Styled) */}
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Aksi Cepat Guru Tahfizh</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">Pintas input setoran hafalan, monitoring target, dan rekap harian</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <AppButton variant="secondary" size="sm" icon={Plus} onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              type="button"
+              variant="primary"
+              appearance="fill"
+              size="sm"
+              prefixIcon={<Plus className="h-4 w-4" />}
+              onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}
+              className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+            >
               Input Setoran
-            </AppButton>
-            <AppButton variant="secondary" size="sm" icon={BookOpen} onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              appearance="outline"
+              size="sm"
+              prefixIcon={<BookOpen className="h-4 w-4 text-emerald-600" />}
+              onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}
+              className="font-bold cursor-pointer"
+            >
               Monitoring Target
-            </AppButton>
-            <AppButton variant="primary" size="sm" icon={FileText} onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              appearance="outline"
+              size="sm"
+              prefixIcon={<FileText className="h-4 w-4 text-teal-600" />}
+              onClick={() => navigate('/portal-guru/workspace?tab=tahfizh')}
+              className="font-bold cursor-pointer"
+            >
               Rekap Harian
-            </AppButton>
+            </Button>
           </div>
         </div>
       </section>

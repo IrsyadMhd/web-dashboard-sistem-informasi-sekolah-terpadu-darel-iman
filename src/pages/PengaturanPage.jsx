@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import {
   AppWindow,
   Bell,
@@ -58,30 +59,24 @@ export default function PengaturanPage() {
     return []
   }, [user])
 
-  const isParentOrStudent = useMemo(() => {
+  const isSuperAdminOrAdmin = useMemo(() => {
     const rolesLower = userRoles.map((r) => String(r).toLowerCase().replace(/[\s_-]+/g, ''))
-    return rolesLower.some((r) =>
-      ['orangtua', 'walimurid', 'parent', 'siswa', 'student'].includes(r)
-    )
+    return rolesLower.some((r) => ['superadmin', 'admin'].includes(r))
   }, [userRoles])
 
-  // Tabs Konfigurasi
+  // Karena halaman Pengaturan khusus Super Admin & Admin, isParentOrStudent selalu false
+  const isParentOrStudent = false
+
+  // Tabs Konfigurasi (Pengaturan Sistem hanya untuk Superadmin & Admin)
   const tabs = useMemo(() => {
-    if (isParentOrStudent) {
-      return [
-        { id: 'profil_pengguna', label: 'Pengaturan Profil Orang Tua & Siswa', icon: UserCheck },
-        { id: 'keamanan', label: 'Kata Sandi & Keamanan', icon: KeyRound },
-        { id: 'notifikasi', label: 'Preferensi Notifikasi', icon: Bell },
-      ]
-    }
     return [
       { id: 'identitas', label: 'Identitas Sekolah & Situs', icon: Image },
       { id: 'layout', label: 'Header & Sidebar', icon: LayoutPanelLeft },
       { id: 'tema', label: 'Template & Warna', icon: Palette },
     ]
-  }, [isParentOrStudent])
+  }, [])
 
-  const [activeTab, setActiveTab] = useState(() => (isParentOrStudent ? 'profil_pengguna' : 'identitas'))
+  const [activeTab, setActiveTab] = useState('identitas')
   const [form, setForm] = useState(settings)
   const [files, setFiles] = useState({})
   const [previews, setPreviews] = useState({})
@@ -217,65 +212,118 @@ export default function PengaturanPage() {
     }
   }
 
-  return (
-    <form onSubmit={isParentOrStudent ? submitParentStudentProfile : submitSchoolSettings} className="space-y-6">
-      {/* Header Banner Pengaturan */}
-      <div className="flex flex-col gap-4 rounded-[18px] border border-slate-200 bg-white p-5 shadow-xs md:flex-row md:items-center md:justify-between dark:border-slate-800 dark:bg-[#1B2433]">
-        <div>
-          <div className="flex items-center gap-2">
-            {isParentOrStudent ? (
-              <UserCheck className="h-5 w-5 text-emerald-600" />
-            ) : (
-              <AppWindow className="h-5 w-5 text-emerald-600" />
-            )}
-            <h2 className="text-lg font-black text-slate-900 dark:text-white">
-              {isParentOrStudent ? 'Pengaturan Profil Orang Tua & Siswa' : 'Pengaturan Situs & Profil Sekolah'}
-            </h2>
+  if (!isSuperAdminOrAdmin) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto space-y-4">
+        <div className="p-6 bg-rose-50 border border-rose-200 rounded-2xl dark:bg-rose-950/40 dark:border-rose-900/60 text-rose-800 dark:text-rose-200 space-y-3">
+          <div className="flex items-center gap-3">
+            <Shield className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+            <div>
+              <h2 className="text-lg font-bold">Akses Ditolak (403 Forbidden)</h2>
+              <p className="text-sm text-rose-600 dark:text-rose-300">
+                Fitur Pengaturan Sistem HANYA dapat diakses oleh pengguna dengan role <strong>Super Admin</strong> dan <strong>Admin</strong>.
+              </p>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            {isParentOrStudent
-              ? 'Kelola data pribadi, nomor WhatsApp, alamat tinggal, kata sandi, dan notifikasi aktivitas anak.'
-              : 'Kelola identitas sekolah, logo, tata letak sidebar & header, template, dan warna aplikasi.'}
-          </p>
+          <div className="pt-2">
+            <Button variant="ghost" onClick={() => window.location.href = '/dashboard'}>
+              Kembali ke Dashboard
+            </Button>
+          </div>
         </div>
+      </div>
+    )
+  }
 
-        <div className="flex items-center gap-2">
-          {!isParentOrStudent && (
+  return (
+    <form onSubmit={submitSchoolSettings} className="space-y-6 pb-12">
+      {/* 1. App Breadcrumb Navigation */}
+      <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Pengaturan Tampilan & Identitas' }]} />
+
+      {/* 2. TailGrids Modern Hero Card Header (Vivid Emerald Gradient Standard) */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+        {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+        <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left Side: Icon Badge, Title, Role Tag & Description */}
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <AppWindow className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Pengaturan Tampilan & Identitas Sistem
+                </h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Khusus Super Admin & Admin
+                </span>
+              </div>
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                Kelola identitas sekolah, logo situs, tata letak header & sidebar, serta skema warna aplikasi secara terpusat.
+              </p>
+            </div>
+          </div>
+
+          {/* Right Side: Action Buttons */}
+          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
             <Button
               type="button"
-              variant="primary"
-              appearance="outline"
+              variant="ghost"
               size="sm"
               onClick={reset}
-              className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="rounded-xl border border-slate-300/80 bg-white/80 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700 shadow-2xs transition-all"
             >
-              <RotateCcw className="h-4 w-4" /> Reset
+              <RotateCcw className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+              <span>Reset</span>
             </Button>
-          )}
-          <Button type="submit" variant="primary" appearance="fill" size="sm" disabled={saving} pending={saving}>
-            <Save className="h-4 w-4" /> {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
-          </Button>
+
+            <Button
+              type="submit"
+              variant="primary"
+              appearance="fill"
+              size="sm"
+              disabled={saving}
+              pending={saving}
+              className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-black text-white shadow-md shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 transition-all border border-emerald-400/40"
+            >
+              <Save className="h-4 w-4" />
+              <span>{saving ? 'Menyimpan...' : 'Simpan Pengaturan'}</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className={isParentOrStudent ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[1fr_340px]'}>
-        <section className="overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          {/* Navigation Tabs */}
-          <div className="flex overflow-x-auto border-b border-slate-200 px-3 dark:border-slate-800">
-            {tabs.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setActiveTab(id)}
-                className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-4 text-xs font-bold transition ${
-                  activeTab === id
-                    ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                }`}
-              >
-                <Icon className="h-4 w-4" /> {label}
-              </button>
-            ))}
+      {/* 3. TailGrids Modern Soft Pastel Squircle Tab Navigation & Content Container */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <section className="overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+          {/* Navigation Tabs Bar */}
+          <div className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-3 sm:p-4">
+            <div className="flex items-center gap-2 overflow-x-auto rounded-2xl bg-slate-100/90 p-1.5 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 backdrop-blur-xs">
+              {tabs.map(({ id, label, icon: Icon }) => {
+                const isActive = activeTab === id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTab(id)}
+                    className={`flex shrink-0 items-center gap-2.5 rounded-xl px-4 py-2.5 text-xs transition-all duration-200 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black shadow-md shadow-emerald-600/25 scale-[1.01]'
+                        : 'font-bold text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className={`flex h-6 w-6 items-center justify-center rounded-lg ${isActive ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
+                      <Icon className="h-3.5 w-3.5" />
+                    </div>
+                    <span>{label}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <div className="p-6">
@@ -462,12 +510,12 @@ export default function PengaturanPage() {
         </section>
 
         {!isParentOrStudent && (
-          <aside className="h-fit rounded-[18px] border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+          <aside className="h-fit rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
             <h3 className="text-sm font-black text-slate-900 dark:text-white">Preview Tampilan Sidebar</h3>
             <p className="mb-4 mt-1 text-[11px] text-slate-500 dark:text-slate-400">Pratinjau otomatis mengikuti konfigurasi sidebar & header pilihan Anda.</p>
             <div style={previewStyle} className="overflow-hidden rounded-2xl border border-slate-200 bg-[var(--preview-body)] shadow-inner">
               <div className={`flex h-52 ${form.sidebar_position === 'right' ? 'flex-row-reverse' : ''}`}>
-                <div className="w-24 p-2 text-white" style={{ background: form.sidebar_style === 'gradient' ? `linear-gradient(180deg, ${form.sidebar_color}, ${form.sidebar_color}CC)` : form.sidebar_style === 'light' ? '#FFFFFF' : form.sidebar_color, color: form.sidebar_style === 'light' ? '#334155' : '#fff' }}>
+                <div className="w-24 p-2 text-slate-800 relative overflow-hidden border-r border-slate-200" style={{ background: form.sidebar_style === 'light' ? '#FFFFFF' : form.sidebar_style === 'gradient' ? `linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%)` : form.sidebar_color, color: '#334155' }}>
                   <div className="mb-4 flex items-center gap-1.5">
                     {previewLogo ? <img src={previewLogo} className="h-6 w-6 rounded object-contain" alt="" /> : <span className="flex h-6 w-6 items-center justify-center rounded bg-[var(--preview-accent)] text-[7px] font-black">{form.logo_text}</span>}
                     <span className="truncate text-[6px] font-bold">{form.school_name}</span>

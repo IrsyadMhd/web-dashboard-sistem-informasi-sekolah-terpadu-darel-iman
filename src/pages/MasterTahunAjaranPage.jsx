@@ -13,6 +13,8 @@ import {
   Star,
   Upload,
   X,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react'
 import { tahunAjaranService } from '../services/tahunAjaranService'
 import TahunAjaranTable from '../components/tahun-ajaran/TahunAjaranTable'
@@ -22,6 +24,7 @@ import TahunAjaranImportModal from '../components/tahun-ajaran/TahunAjaranImport
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ConfirmDialog from '../components/app/ConfirmDialog'
+import AppDataTable from '../components/app/AppDataTable'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterActionButton,
@@ -274,13 +277,40 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
       {!shouldHideBreadcrumb && <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Tahun Ajaran' }]} />}
       <MasterDataPage className="education-unit-page academic-year-page" hideBreadcrumb>
       {!shouldHideHeader && (
-        <MasterPageHeader
-          tone="brand"
-          title="Master Tahun Ajaran"
-          description="Kelola periode akademik, rentang tanggal, dan tahun ajaran aktif sekolah."
-          icon={CalendarDays}
-          actions={pageActions}
-        />
+        <motion.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden mb-6">
+          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <CalendarDays className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Master Tahun Ajaran
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Periode Akademik
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Pengelolaan periode akademik, rentang tanggal, tahun ajaran aktif, dan rincian semester seluruh unit sekolah.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Kalender Akademik</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-2">
@@ -289,17 +319,15 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
         <KpiTintedCard icon={Archive} label="Tidak Aktif" value={statsValue(inactiveCount)} subtext="Periode lampau atau mendatang" tone="amber" />
       </div>
 
-      <MasterDataSection
+      {/* AppDataTable Unified Emerald Container */}
+      <AppDataTable
         title="Daftar Tahun Ajaran"
         description="Periode akademik sesuai filter aktif."
         countLabel={`${Number(meta.total ?? listData.length).toLocaleString('id-ID')} periode`}
         actions={pageActions}
-        search={{
-          value: search,
-          onValueChange: (value) => { setSearch(value); setPage(1) },
-          placeholder: 'Cari nama tahun ajaran...',
-          'aria-label': 'Cari tahun ajaran',
-        }}
+        search={search}
+        onSearchChange={(value) => { setSearch(value); setPage(1) }}
+        searchPlaceholder="Cari nama tahun ajaran..."
         filters={(
           <>
             <MasterFilterSelect aria-label="Filter status periode" value={selectedStatusFilter} onChange={(event) => { setSelectedStatusFilter(event.target.value); setPage(1) }}>
@@ -313,8 +341,8 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
             </MasterFilterSelect>
           </>
         )}
-        onReset={resetFilters}
-        resetDisabled={filtersAreClear}
+        onResetFilters={resetFilters}
+        hasActiveFilters={!filtersAreClear}
         isLoading={tableIsLoading}
         isError={query.isError}
         errorTitle="Data tahun ajaran gagal dimuat"
@@ -323,30 +351,33 @@ export default function MasterTahunAjaranPage({ embedded = false, hidePageHeader
         isEmpty={!tableIsLoading && !query.isError && listData.length === 0}
         emptyTitle="Tahun ajaran tidak ditemukan"
         emptyDescription="Ubah pencarian atau filter, lalu coba kembali."
-        pagination={{
-          meta: {
-            total: meta.total ?? listData.length,
-            from: meta.from ?? (listData.length ? (page - 1) * perPage + 1 : 0),
-            to: meta.to ?? ((page - 1) * perPage + listData.length),
-            last_page: meta.last_page ?? 1,
-            current_page: meta.current_page ?? page,
-            per_page: meta.per_page ?? perPage,
-          },
-          page,
-          onPageChange: setPage,
+        page={page}
+        totalPages={meta.last_page ?? 1}
+        totalItems={meta.total ?? listData.length}
+        itemsPerPage={perPage}
+        onPageChange={setPage}
+        meta={{
+          total: meta.total ?? listData.length,
+          from: meta.from ?? (listData.length ? (page - 1) * perPage + 1 : 0),
+          to: meta.to ?? ((page - 1) * perPage + listData.length),
+          last_page: meta.last_page ?? 1,
+          current_page: meta.current_page ?? page,
+          per_page: meta.per_page ?? perPage,
         }}
-      >
-        <TahunAjaranTable
-          data={listData}
-          page={page}
-          perPage={perPage}
-          onDetail={setSelectedForDetail}
-          onEdit={(item) => { setSelectedForEdit(item); setIsFormModalOpen(true) }}
-          onSetAktif={(item) => setAktifMutation.mutate(item.id)}
-          onDelete={setDeleteTarget}
-          onRestore={(item) => pulihkanMutation.mutate(item.id)}
-        />
-      </MasterDataSection>
+        serverControlled
+        renderTable={() => (
+          <TahunAjaranTable
+            data={listData}
+            page={page}
+            perPage={perPage}
+            onDetail={setSelectedForDetail}
+            onEdit={(item) => { setSelectedForEdit(item); setIsFormModalOpen(true) }}
+            onSetAktif={(item) => setAktifMutation.mutate(item.id)}
+            onDelete={setDeleteTarget}
+            onRestore={(item) => pulihkanMutation.mutate(item.id)}
+          />
+        )}
+      />
 
       {showExportModal && <SimpleModal title="Export Tahun Ajaran" description="Format yang didukung oleh modul saat ini adalah CSV." onClose={() => setShowExportModal(false)} icon={FileText}><div className="p-5"><button type="button" className="flex w-full items-center gap-3 rounded-xl border-2 border-emerald-600 bg-emerald-50 p-4 text-left dark:bg-emerald-950/30" onClick={exportCsv}><FileSpreadsheet className="h-6 w-6 text-emerald-700" /><span><b className="block text-sm dark:text-white">CSV (.csv)</b><small className="text-slate-500">Data mengikuti pencarian dan filter status aktif.</small></span></button></div><footer className="flex justify-end gap-2 border-t border-slate-100 p-4 dark:border-slate-700"><button onClick={() => setShowExportModal(false)} className="h-11 rounded-xl border border-slate-200 px-4 text-xs font-semibold dark:border-slate-700 dark:text-white">Batal</button><button onClick={exportCsv} className="h-11 rounded-xl bg-emerald-800 px-5 text-xs font-semibold text-white">Export CSV</button></footer></SimpleModal>}
 

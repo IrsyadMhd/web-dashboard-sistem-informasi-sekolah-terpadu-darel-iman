@@ -46,6 +46,7 @@ export default function AppDataTable({
   filters,
   actions,
   title,
+  countLabel,
   description,
   bulkActions,
   serverControlled = false,
@@ -163,19 +164,28 @@ export default function AppDataTable({
         'app-data-table min-w-0',
         embedded
           ? 'app-data-table--embedded'
-          : 'overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-[#1B2433]',
+          : 'relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]',
         className
       )}
     >
       {/* Toolbar: search + filter + action */}
       {showToolbar && (onSearchChange || search !== undefined || hasFilters || actions || title) && (
-        <div className={cn('flex flex-col gap-3.5 border-b border-slate-100 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-800 print:hidden', toolbarClassName)}>
+        <div className={cn('flex flex-col gap-3.5 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent print:hidden', toolbarClassName)}>
           {/* Row 1: Title / Description on Left, Action Buttons (Import, Export, Tambah Unit) on Right */}
           {(title || description || actions) && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100/80 pb-3 dark:border-slate-800/60">
               {(title || description) && (
                 <div className="min-w-0">
-                  {title && <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h3>}
+                  {title && (
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h3>
+                      {countLabel && (
+                        <span className="inline-flex items-center rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                          {countLabel}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {description && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{description}</p>}
                 </div>
               )}
@@ -311,10 +321,10 @@ export default function AppDataTable({
               </div>
             )}
             <TableRoot fullBleed={false} className="w-full min-w-[850px] border-collapse print:min-w-0 print:m-0">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent border-y border-slate-200/90 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-800/90">
+              <TableHeader className="bg-[#F8FAFB] dark:bg-[#202B3A]">
+                <TableRow className="hover:bg-transparent border-b border-[#EDF0F4] dark:border-[#354153] bg-[#F8FAFB] dark:bg-[#202B3A]">
                   {onToggleSelect && (
-                    <TableHead className="w-10 px-4 print:hidden bg-slate-100/90 dark:bg-slate-800/90">
+                    <TableHead className="w-10 px-4 print:hidden bg-[#F8FAFB] dark:bg-[#202B3A]">
                       <input
                         type="checkbox"
                         aria-label="Pilih semua"
@@ -334,7 +344,7 @@ export default function AppDataTable({
                     <TableHead
                       key={col.key || col.label}
                       className={cn(
-                        'whitespace-nowrap text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 bg-slate-100/90 dark:bg-slate-800/90',
+                        'whitespace-nowrap text-[11px] font-extrabold uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4',
                         col.hideOnMobile && 'hidden lg:table-cell print:table-cell',
                         col.className,
                         col.headerProps?.className
@@ -344,10 +354,10 @@ export default function AppDataTable({
                         <button
                           type="button"
                           onClick={() => handleSort(col.key)}
-                          className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white text-xs font-bold"
+                          className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white text-[11px] font-extrabold"
                         >
                           <span>{col.label}</span>
-                          <ArrowBothDirectionHorizontal2 className={cn('h-3 w-3 shrink-0 transition-transform duration-200 print:hidden', sortKey === col.key ? 'text-[#0E5C44] dark:text-[#3FBF75] rotate-180' : 'text-slate-400')} />
+                          <ArrowBothDirectionHorizontal2 className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200 print:hidden', sortKey === col.key ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400 dark:text-slate-500')} />
                         </button>
                       ) : (
                         col.label
@@ -355,7 +365,7 @@ export default function AppDataTable({
                     </TableHead>
                   ))}
                   {hasActionColumn && (
-                    <TableHead className="w-[88px] min-w-[88px] text-center font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 print:hidden">
+                    <TableHead className="w-[88px] min-w-[88px] text-center font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 print:hidden">
                       AKSI
                     </TableHead>
                   )}

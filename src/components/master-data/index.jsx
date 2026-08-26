@@ -435,7 +435,7 @@ export function MasterDataSection({
 
 export function MasterDataTable({ children, className = '' }) {
   return (
-    <AppCard noPadding className={`master-table ui-enter overflow-hidden ${className}`}>
+    <AppCard noPadding className={`master-table ui-enter relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] ${className}`}>
       <div className="overflow-x-auto">{children}</div>
     </AppCard>
   )

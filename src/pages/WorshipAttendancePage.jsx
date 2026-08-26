@@ -64,6 +64,8 @@ import {
   MasterStatCard,
   MasterStatsGrid,
 } from '../components/master-data'
+import { Button } from '@/components/tailgrids/core/button'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 
 
 
@@ -128,6 +130,82 @@ function useToast() {
   }
   const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
   return { toasts, dismiss, success: (t, m) => add('success', t, m), error: (t, m) => add('error', t, m), warning: (t, m) => add('warning', t, m), info: (t, m) => add('info', t, m) }
+}
+
+// ─── KPI TINTED CARD COMPONENT (DECLARED OUTSIDE TO PREVENT RE-ANIMATION ON 1S CLOCK TICK) ───
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
+  const tones = {
+    blue: {
+      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      title: 'text-blue-700 dark:text-blue-400',
+      icon: 'text-blue-500',
+      val: 'text-blue-600 dark:text-blue-300',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+    },
+    emerald: {
+      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      icon: 'text-emerald-500',
+      val: 'text-emerald-600 dark:text-emerald-300',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+    },
+    sky: {
+      card: 'border-sky-100 bg-sky-50/50 hover:border-sky-200 dark:border-sky-950/50 dark:bg-sky-950/20',
+      title: 'text-sky-700 dark:text-sky-400',
+      icon: 'text-sky-500',
+      val: 'text-sky-600 dark:text-sky-300',
+      sub: 'text-sky-600/70 dark:text-sky-400/70',
+    },
+    amber: {
+      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      title: 'text-amber-700 dark:text-amber-400',
+      icon: 'text-amber-500',
+      val: 'text-amber-600 dark:text-amber-300',
+      sub: 'text-amber-600/70 dark:text-amber-400/70',
+    },
+    rose: {
+      card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
+      title: 'text-rose-700 dark:text-rose-400',
+      icon: 'text-rose-500',
+      val: 'text-rose-600 dark:text-rose-300',
+      sub: 'text-rose-600/70 dark:text-rose-400/70',
+    },
+    purple: {
+      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      title: 'text-purple-700 dark:text-purple-400',
+      icon: 'text-purple-500',
+      val: 'text-purple-600 dark:text-purple-300',
+      sub: 'text-purple-600/70 dark:text-purple-400/70',
+    },
+    teal: {
+      card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
+      title: 'text-teal-700 dark:text-teal-400',
+      icon: 'text-teal-500',
+      val: 'text-teal-600 dark:text-teal-300',
+      sub: 'text-teal-600/70 dark:text-teal-400/70',
+    },
+  }
+  const t = tones[tone] || tones.emerald
+  return (
+    <motion.div
+      whileHover={{ scale: 1.04, y: -2 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`text-left rounded-2xl border ${t.card} p-3.5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group min-w-0`}
+    >
+      <div className="flex items-center justify-between gap-1 min-w-0">
+        <p className={`text-[11px] font-semibold ${t.title} truncate`}>{label}</p>
+        <Icon className={`h-4 w-4 shrink-0 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      </div>
+      <p className={`mt-1.5 text-xl font-black ${t.val}`}>{value ?? 0}</p>
+      {subtext && (
+        <p className={`mt-0.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          {subtext}
+        </p>
+      )}
+    </motion.div>
+  )
 }
 
 // ─── MAIN PAGE COMPONENT ──────────────────────────────────────────────────
@@ -486,139 +564,79 @@ export default function WorshipAttendancePage() {
     visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
   }
 
-  function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
-    const tones = {
-      blue: {
-        card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-        title: 'text-blue-700 dark:text-blue-400',
-        icon: 'text-blue-500',
-        val: 'text-blue-600 dark:text-blue-300',
-        sub: 'text-blue-600/70 dark:text-blue-400/70',
-      },
-      emerald: {
-        card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-        title: 'text-emerald-700 dark:text-emerald-400',
-        icon: 'text-emerald-500',
-        val: 'text-emerald-600 dark:text-emerald-300',
-        sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-      },
-      sky: {
-        card: 'border-sky-100 bg-sky-50/50 hover:border-sky-200 dark:border-sky-950/50 dark:bg-sky-950/20',
-        title: 'text-sky-700 dark:text-sky-400',
-        icon: 'text-sky-500',
-        val: 'text-sky-600 dark:text-sky-300',
-        sub: 'text-sky-600/70 dark:text-sky-400/70',
-      },
-      amber: {
-        card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-        title: 'text-amber-700 dark:text-amber-400',
-        icon: 'text-amber-500',
-        val: 'text-amber-600 dark:text-amber-300',
-        sub: 'text-amber-600/70 dark:text-amber-400/70',
-      },
-      rose: {
-        card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
-        title: 'text-rose-700 dark:text-rose-400',
-        icon: 'text-rose-500',
-        val: 'text-rose-600 dark:text-rose-300',
-        sub: 'text-rose-600/70 dark:text-rose-400/70',
-      },
-      purple: {
-        card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
-        title: 'text-purple-700 dark:text-purple-400',
-        icon: 'text-purple-500',
-        val: 'text-purple-600 dark:text-purple-300',
-        sub: 'text-purple-600/70 dark:text-purple-400/70',
-      },
-      teal: {
-        card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
-        title: 'text-teal-700 dark:text-teal-400',
-        icon: 'text-teal-500',
-        val: 'text-teal-600 dark:text-teal-300',
-        sub: 'text-teal-600/70 dark:text-teal-400/70',
-      },
-    }
-    const t = tones[tone] || tones.emerald
-    return (
-      <motion.div
-        variants={itemVariants}
-        whileHover={{ scale: 1.04, y: -2 }}
-        whileTap={{ scale: 0.96 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-        onClick={onClick}
-        className={`text-left rounded-2xl border ${t.card} p-3.5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group min-w-0`}
-      >
-        <div className="flex items-center justify-between gap-1 min-w-0">
-          <p className={`text-[11px] font-semibold ${t.title} truncate`}>{label}</p>
-          <Icon className={`h-4 w-4 shrink-0 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
-        </div>
-        <p className={`mt-1.5 text-xl font-black ${t.val}`}>{value ?? 0}</p>
-        {subtext && (
-          <p className={`mt-0.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
-            {subtext}
-          </p>
-        )}
-      </motion.div>
-    )
-  }
+
 
   return (
     <MasterDataPage className="education-unit-page academic-year-page" hideBreadcrumb>
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
 
-      {/* ── HERO CARD HEADER (Matching Student Worship Page Layout & Style) ── */}
-      <motion.div variants={itemVariants} className="mb-4 rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#111827]">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
-              <Moon className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+      {/* BREADCRUMB NAV */}
+      <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Presensi & Absensi Ibadah Santri' }]} />
+
+      {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <Moon className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Ibadah Santri Pesantren
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    Pondok Pesantren
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Presensi & Absensi Ibadah Santri Pesantren
                 </h1>
-                <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300">
-                  Pondok Pesantren
-                </span>
-              </div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-                Monitoring presensi shalat 5 waktu berjamaah di masjid pesantren, tahajud, dzikir, dan program asrama santri mukim.
-              </p>
-            </div>
-          </div>
-
-          {/* Live Clock & Date Controls */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Real-Time Live Clock Badge */}
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/40">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                  {formattedDayName}, {formattedFullDate}
-                </p>
-                <p className="text-xs font-black font-mono text-emerald-900 dark:text-emerald-200">
-                  {formattedLiveClock} WIB
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Monitoring presensi shalat 5 waktu berjamaah di masjid pesantren, tahajud, dzikir, dan program asrama santri mukim.
                 </p>
               </div>
             </div>
 
-            {/* Date Picker Input */}
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            />
+            {/* Live Clock & Date Controls */}
+            <div className="flex flex-wrap items-center gap-2.5 z-10">
+              <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-white/80 px-3 py-1.5 dark:border-emerald-600/40 dark:bg-slate-900/80 backdrop-blur-sm">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 leading-none">
+                    {formattedDayName}, {formattedFullDate}
+                  </p>
+                  <p className="text-xs font-black font-mono text-emerald-900 dark:text-emerald-200 leading-tight mt-0.5">
+                    {formattedLiveClock} WIB
+                  </p>
+                </div>
+              </div>
 
-            <button
-              onClick={() => { setShowTemplateModal(true); setTemplateStep(1) }}
-              className="group flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-all hover:bg-emerald-700 hover:scale-105 active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Template Baru</span>
-            </button>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="h-9 rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm outline-none focus:border-emerald-500 dark:border-emerald-600/40 dark:bg-slate-900 dark:text-slate-200"
+              />
+
+              <Button
+                type="button"
+                variant="primary"
+                appearance="fill"
+                size="sm"
+                onClick={() => { setShowTemplateModal(true); setTemplateStep(1) }}
+                prefixIcon={<Plus className="h-4 w-4" />}
+                className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+              >
+                Template Baru
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>

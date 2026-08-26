@@ -4,28 +4,54 @@ import { tahunAjaranService } from '../../services/tahunAjaranService'
 import { Button } from '@/components/tailgrids/core/button'
 import { Badge } from '@/components/tailgrids/core/badge'
 import { Card } from '@/components/tailgrids/core/card'
+import Swal from 'sweetalert2'
+
+const DEFAULT_ACADEMIC_YEARS = [
+  { id: '1', nama: '2024/2025', tahun_ajaran: '2024/2025' },
+  { id: '2', nama: '2025/2026', tahun_ajaran: '2025/2026' },
+  { id: '3', nama: '2023/2024', tahun_ajaran: '2023/2024' },
+  { id: '4', nama: '2022/2023', tahun_ajaran: '2022/2023' },
+  { id: '5', nama: '2021/2022', tahun_ajaran: '2021/2022' },
+]
 
 export default function SelectAcademicYearCard({ onNavigate, disabled = false }) {
-  const [year, setYear] = useState('')
+  const [year, setYear] = useState('2024/2025')
   const [semester, setSemester] = useState('Genap')
-  const [academicYears, setAcademicYears] = useState([])
+  const [academicYears, setAcademicYears] = useState(DEFAULT_ACADEMIC_YEARS)
 
   useEffect(() => {
-    tahunAjaranService.getDaftar().then((res) => {
-      const data = res?.data?.data || res?.data || []
-      if (Array.isArray(data) && data.length > 0) {
-        setAcademicYears(data)
-        setYear(data[0].nama || data[0].tahun_ajaran || '')
-      }
-    }).catch(() => {})
+    tahunAjaranService
+      .getDaftar()
+      .then((res) => {
+        const data = res?.data?.data || res?.data || []
+        if (Array.isArray(data) && data.length > 0) {
+          setAcademicYears(data)
+          setYear(data[0].nama || data[0].tahun_ajaran || '2024/2025')
+        }
+      })
+      .catch((err) => {
+        console.error('Gagal memuat tahun ajaran:', err)
+      })
   }, [])
 
   const handleContinue = () => {
-    if (!disabled && onNavigate) onNavigate(8) // Navigate to Session Login or Dashboard
+    if (disabled) return
+    Swal.fire({
+      icon: 'success',
+      title: 'Tahun Ajaran Disimpan',
+      html: `Tahun Ajaran Aktif: <b>${year}</b> (${semester})`,
+      timer: 1800,
+      showConfirmButton: false,
+    })
+    if (onNavigate) onNavigate(8)
   }
 
   return (
-    <Card className={`w-full max-w-4xl mx-auto rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-6 ${disabled ? 'opacity-70 pointer-events-none' : ''}`}>
+    <Card
+      className={`w-full rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-6 ${
+        disabled ? 'opacity-70 pointer-events-none' : ''
+      }`}
+    >
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
@@ -37,7 +63,9 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
           )}
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          {disabled ? 'Tahun ajaran aktif terikat pada sistem dan tidak dapat diubah.' : 'Tentukan tahun ajaran dan semester aktif.'}
+          {disabled
+            ? 'Tahun ajaran aktif terikat pada sistem dan tidak dapat diubah.'
+            : 'Tentukan tahun ajaran dan semester aktif yang digunakan untuk rekapitulasi data.'}
         </p>
       </div>
 
@@ -54,7 +82,7 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
             className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
           >
             {academicYears.map((ay) => (
-              <option key={ay.id} value={ay.nama || ay.tahun_ajaran}>
+              <option key={ay.id || ay.nama} value={ay.nama || ay.tahun_ajaran}>
                 {ay.nama || ay.tahun_ajaran}
               </option>
             ))}
@@ -113,17 +141,10 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
 
       {/* Action Button */}
       <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          disabled={disabled}
-          onClick={handleContinue}
-        >
-          Lanjutkan
+        <Button type="button" variant="primary" size="md" disabled={disabled} onClick={handleContinue}>
+          Simpan &amp; Lanjutkan
         </Button>
       </div>
     </Card>
   )
 }
-

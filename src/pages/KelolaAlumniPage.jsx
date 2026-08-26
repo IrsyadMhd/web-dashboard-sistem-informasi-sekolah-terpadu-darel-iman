@@ -20,13 +20,17 @@ import {
   MapPin,
   Calendar,
   Building,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react'
+import { Upload1, Download1 } from '@tailgrids/icons'
 import { FaGraduationCap, FaSchool, FaExchangeAlt, FaUserSlash } from 'react-icons/fa'
 import Swal from 'sweetalert2'
 
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
+import AppDataTable from '../components/app/AppDataTable'
 import { ActionDropdown } from '../components/app'
 import ConfirmDialog from '../components/app/ConfirmDialog'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
@@ -1087,6 +1091,42 @@ export default function KelolaAlumniPage() {
           />
         </div>
 
+        {/* Header Halaman Modern Hero Card */}
+        <motion.div variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden mb-6">
+          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <GraduationCap className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Pengolahan Data Alumni & Mutasi
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Manajemen Kelulusan
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Pemantauan terpadu data lulusan alumni, riwayat tujuan studi/kerja, mutasi internal unit, dan pindah keluar sekolah.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Direktori Alumni</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Quick Summary Cards (KpiTintedCard identik dengan StudentsPage) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
           <KpiTintedCard
@@ -1299,12 +1339,39 @@ export default function KelolaAlumniPage() {
         </div>
 
         {/* MasterDataSection Identik Halaman StudentsPage */}
-        <MasterDataSection
+        {/* AppDataTable Unified Emerald Container */}
+        <AppDataTable
           title="Daftar Pengolahan Alumni & Mutasi"
           description="Data alumni dan mutasi siswa sesuai filter dan unit pendidikan."
           countLabel={`${filteredList.length} alumni`}
           actions={
             <div className="flex items-center gap-2.5 flex-nowrap shrink-0 py-1">
+              {/* Import Data Button */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Import Data (Excel/CSV)"
+                  aria-label="Import Data"
+                  className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-600 hover:bg-sky-600 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-600/30 cursor-pointer shadow-2xs"
+                  onClick={() => {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = '.csv, .xlsx, .xls'
+                    input.onchange = (e) => {
+                      const file = e.target.files?.[0]
+                      if (file) alert(`Berkas "${file.name}" siap di-import ke direktori alumni!`)
+                    }
+                    input.click()
+                  }}
+                >
+                  <Upload1 className="size-5 transition-colors" />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Import Data
+                </div>
+              </div>
+
               {/* Tambah Alumni Button (Soft Emerald -> Solid Emerald Stationary Hover) */}
               <div className="group relative inline-flex">
                 <button
@@ -1374,12 +1441,9 @@ export default function KelolaAlumniPage() {
               </div>
             </div>
           }
-          search={{
-            value: search,
-            onValueChange: (val) => { setSearch(val); setPage(1) },
-            placeholder: 'Cari NIS, NISN, nama siswa, atau perguruan tinggi...',
-            'aria-label': 'Cari alumni',
-          }}
+          search={search}
+          onSearchChange={(val) => { setSearch(val); setPage(1) }}
+          searchPlaceholder="Cari NIS, NISN, nama siswa, atau perguruan tinggi..."
           filters={
             <>
               <MasterFilterSelect
@@ -1418,8 +1482,8 @@ export default function KelolaAlumniPage() {
               </MasterFilterSelect>
             </>
           }
-          onReset={handleResetFilter}
-          resetDisabled={!search && selectedUnit === 'all' && statusLanjutanFilter === 'all' && tahunLulusFilter === 'all'}
+          onResetFilters={handleResetFilter}
+          hasActiveFilters={Boolean(search || selectedUnit !== 'all' || statusLanjutanFilter !== 'all' || tahunLulusFilter !== 'all')}
           isLoading={loading}
           isError={Boolean(error)}
           errorTitle="Gagal memuat data alumni"
@@ -1428,120 +1492,123 @@ export default function KelolaAlumniPage() {
           isEmpty={!loading && paginatedList.length === 0}
           emptyTitle="Data alumni tidak ditemukan"
           emptyDescription="Tidak ada data alumni yang sesuai dengan filter yang dipilih."
-          pagination={{
-            meta: {
-              total: filteredList.length,
-              from: (page - 1) * perPage + 1,
-              to: Math.min(page * perPage, filteredList.length),
-              last_page: totalPages,
-              current_page: page,
-            },
-            page: page,
-            onPageChange: setPage,
+          page={page}
+          totalPages={totalPages}
+          totalItems={filteredList.length}
+          itemsPerPage={perPage}
+          onPageChange={setPage}
+          meta={{
+            total: filteredList.length,
+            from: (page - 1) * perPage + 1,
+            to: Math.min(page * perPage, filteredList.length),
+            last_page: totalPages,
+            current_page: page,
           }}
-        >
-          <table className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar alumni">
-            <thead className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
-              <tr>
-                <th className="w-[6%] px-2 py-3 text-center">No</th>
-                <th className="w-[34%] px-3 py-3 font-bold">Identitas Siswa / Alumni</th>
-                <th className="hidden w-[18%] px-3 py-3 font-bold sm:table-cell">Unit Asal</th>
-                <th className="hidden w-[12%] px-3 py-3 font-bold md:table-cell">Tahun Lulus</th>
-                <th className="hidden w-[20%] px-3 py-3 font-bold lg:table-cell">Tujuan Lanjut Sekolah / PTN</th>
-                <th className="w-[10%] px-2 py-3 text-center font-bold">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">
-              {paginatedList.map((row, idx) => {
-                const meta = row.metadata || {}
-                const tujuan = meta.perguruan_tinggi || meta.tujuan_kelulusan || meta.status_lanjutan || 'Belum Diisi'
-                const mutasiType = meta.mutasi_type || (row.is_active ? 'aktif' : 'alumni')
+          serverControlled
+          renderTable={() => (
+            <table className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar alumni">
+              <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
+                <tr>
+                  <th className="w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
+                  <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa / Alumni</th>
+                  <th className="hidden w-[18%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Unit Asal</th>
+                  <th className="hidden w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Tahun Lulus</th>
+                  <th className="hidden w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Tujuan Lanjut Sekolah / PTN</th>
+                  <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">
+                {paginatedList.map((row, idx) => {
+                  const meta = row.metadata || {}
+                  const tujuan = meta.perguruan_tinggi || meta.tujuan_kelulusan || meta.status_lanjutan || 'Belum Diisi'
+                  const mutasiType = meta.mutasi_type || (row.is_active ? 'aktif' : 'alumni')
 
-                return (
-                  <tr
-                    key={row.id}
-                    onClick={() => handleOpenDetail(row)}
-                    className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 cursor-pointer"
-                  >
-                    <td className="px-2 py-3 text-center text-xs font-bold text-slate-400">
-                      {(page - 1) * perPage + idx + 1}
-                    </td>
-                    <td className="px-3 py-3">
-                      <AlumniHoverCard row={row} meta={meta} tujuan={tujuan} />
-                    </td>
-                    <td className="hidden px-3 py-3 font-medium sm:table-cell">
-                      <AppBadge variant="info" dot className="rounded-lg">
-                        {row.education_unit?.name || row.unit?.name || 'Unit Utama'}
-                      </AppBadge>
-                    </td>
-                    <td className="hidden px-3 py-3 font-semibold text-slate-800 dark:text-slate-200 text-xs md:table-cell">
-                      {meta.tahun_lulus || row.tahun_masuk || '-'}
-                    </td>
-                    <td className="hidden px-3 py-3 lg:table-cell">
-                      <div className="flex flex-col gap-0.5">
-                        <div>
-                          <AppBadge
-                            variant={
-                              tujuan.toLowerCase().includes('ptn') || tujuan.toLowerCase().includes('universitas') || tujuan.toLowerCase().includes('kuliah')
-                                ? 'success'
-                                : tujuan.toLowerCase().includes('kerja')
-                                ? 'warning'
-                                : 'purple'
-                            }
-                            dot
-                            className="rounded-lg"
-                          >
-                            {tujuan}
-                          </AppBadge>
+                  return (
+                    <tr
+                      key={row.id}
+                      onClick={() => handleOpenDetail(row)}
+                      className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 cursor-pointer"
+                    >
+                      <td className="px-2 py-3 text-center text-xs font-bold text-slate-400">
+                        {(page - 1) * perPage + idx + 1}
+                      </td>
+                      <td className="px-3 py-3">
+                        <AlumniHoverCard row={row} meta={meta} tujuan={tujuan} />
+                      </td>
+                      <td className="hidden px-3 py-3 font-medium sm:table-cell">
+                        <AppBadge variant="info" dot className="rounded-lg">
+                          {row.education_unit?.name || row.unit?.name || 'Unit Utama'}
+                        </AppBadge>
+                      </td>
+                      <td className="hidden px-3 py-3 font-semibold text-slate-800 dark:text-slate-200 text-xs md:table-cell">
+                        {meta.tahun_lulus || row.tahun_masuk || '-'}
+                      </td>
+                      <td className="hidden px-3 py-3 lg:table-cell">
+                        <div className="flex flex-col gap-0.5">
+                          <div>
+                            <AppBadge
+                              variant={
+                                tujuan.toLowerCase().includes('ptn') || tujuan.toLowerCase().includes('universitas') || tujuan.toLowerCase().includes('kuliah')
+                                  ? 'success'
+                                  : tujuan.toLowerCase().includes('kerja')
+                                  ? 'warning'
+                                  : 'purple'
+                              }
+                              dot
+                              className="rounded-lg"
+                            >
+                              {tujuan}
+                            </AppBadge>
+                          </div>
+                          {meta.pekerjaan && <div className="text-[10px] text-slate-400 mt-0.5">Karir: {meta.pekerjaan}</div>}
                         </div>
-                        {meta.pekerjaan && <div className="text-[10px] text-slate-400 mt-0.5">Karir: {meta.pekerjaan}</div>}
-                      </div>
-                    </td>
-                    <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      <ActionDropdown
-                        item={row}
-                        customActions={[
-                          {
-                            label: 'Lihat Detail Alumni',
-                            icon: Eye,
-                            onClick: () => handleOpenDetail(row),
-                          },
-                          {
-                            label: 'Ubah Tujuan Lanjut Sekolah / PTN',
-                            icon: School,
-                            onClick: () => handleOpenUbahTujuan(row),
-                          },
-                          {
-                            label: 'Edit Data Alumni',
-                            icon: Edit3,
-                            onClick: () => handleOpenEdit(row),
-                          },
-                          {
-                            label: 'Pindah Unit (Internal)',
-                            icon: ArrowRightLeft,
-                            onClick: () => handleOpenPindahUnit(row),
-                          },
-                          {
-                            label: 'Pindah Keluar (Lain Sekolah)',
-                            icon: UserX,
-                            isDanger: true,
-                            onClick: () => handleOpenPindahKeluar(row),
-                          },
-                          {
-                            label: 'Hapus Data Alumni',
-                            icon: Trash2,
-                            isDanger: true,
-                            onClick: () => handleOpenDelete(row),
-                          },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </MasterDataSection>
+                      </td>
+                      <td className="px-2 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <ActionDropdown
+                          item={row}
+                          customActions={[
+                            {
+                              label: 'Lihat Detail Alumni',
+                              icon: Eye,
+                              onClick: () => handleOpenDetail(row),
+                            },
+                            {
+                              label: 'Ubah Tujuan Lanjut Sekolah / PTN',
+                              icon: School,
+                              onClick: () => handleOpenUbahTujuan(row),
+                            },
+                            {
+                              label: 'Edit Data Alumni',
+                              icon: Edit3,
+                              onClick: () => handleOpenEdit(row),
+                            },
+                            {
+                              label: 'Pindah Unit (Internal)',
+                              icon: ArrowRightLeft,
+                              onClick: () => handleOpenPindahUnit(row),
+                            },
+                            {
+                              label: 'Pindah Keluar (Lain Sekolah)',
+                              icon: UserX,
+                              isDanger: true,
+                              onClick: () => handleOpenPindahKeluar(row),
+                            },
+                            {
+                              label: 'Hapus Data Alumni',
+                              icon: Trash2,
+                              isDanger: true,
+                              onClick: () => handleOpenDelete(row),
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        />
       </MasterDataPage>
 
       {/* ── 1. MODAL TAMBAH DATA ALUMNI BARU (TailGrids Dialog) ───────────────────── */}

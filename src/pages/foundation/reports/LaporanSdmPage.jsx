@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Users, UserCheck, GraduationCap, Briefcase, UserX, Award, Heart, PlusCircle, LogOut } from 'lucide-react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts'
+import { motion } from 'framer-motion'
 import { reportService } from '../../../services/reportService'
 import { ReportHeader } from '../../../components/reports/ReportHeader'
 import { ReportPeriodFilter } from '../../../components/reports/ReportPeriodFilter'
@@ -17,14 +18,37 @@ import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.04,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: 'easeOut' },
+  },
+}
 
 export function LaporanSdmPage() {
   const [filters, setFilters] = useState({ period: 'year', page: 1, per_page: 15, search: '' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [reportData, setReportData] = useState(null)
+
+  const [allDetails, setAllDetails] = useState([])
 
   // Modals state
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -38,6 +62,14 @@ export function LaporanSdmPage() {
     try {
       const res = await reportService.getFoundationSdmReport(filters)
       setReportData(res)
+
+      // Fetch unpaginated report dataset for modals so modals contain ALL records matching KPI cards
+      const fullRes = await reportService.getFoundationSdmReport({ ...filters, page: 1, per_page: 1000 })
+      if (fullRes && Array.isArray(fullRes.details)) {
+        setAllDetails(fullRes.details)
+      } else if (res && Array.isArray(res.details)) {
+        setAllDetails(res.details)
+      }
     } catch (err) {
       console.error('Failed to fetch SDM report', err)
       setError(true)
@@ -87,15 +119,17 @@ export function LaporanSdmPage() {
 
   const { summary, charts, unit_recaps, unit_recaps_total, details, insights, meta, report } = reportData
 
+  const activeDetails = allDetails.length > 0 ? allDetails : (details || [])
+
   const kpiItems = [
-    { title: 'Total SDM Pegawai', value: summary.total_sdm, unit: 'Pegawai', icon: Users, iconBg: 'bg-emerald-50 text-[#0E5C44] dark:bg-emerald-950/40 dark:text-emerald-300' },
-    { title: 'Total Guru / Pendidik', value: summary.total_guru, unit: 'Guru', icon: GraduationCap, iconBg: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300' },
-    { title: 'Pegawai Non-Guru', value: summary.total_non_guru, unit: 'Tendik', icon: Briefcase, iconBg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300' },
-    { title: 'SDM Aktif', value: summary.sdm_aktif, unit: 'Aktif', icon: UserCheck, iconBg: 'bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300' },
-    { title: 'Guru Tetap', value: summary.guru_tetap, unit: 'Tetap', icon: Award, iconBg: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' },
-    { title: 'Laki-Laki', value: summary.laki_laki, unit: 'SDM', icon: Heart, iconBg: 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300' },
-    { title: 'Perempuan', value: summary.perempuan, unit: 'SDM', icon: Heart, iconBg: 'bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300' },
-    { title: 'SDM Baru (Periode)', value: summary.sdm_baru, unit: 'Baru', icon: PlusCircle, iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300' },
+    { key: 'total_sdm', title: 'Total SDM Pegawai', value: summary.total_sdm, unit: 'Pegawai', icon: Users, iconBg: 'bg-emerald-50 text-[#0E5C44] dark:bg-emerald-950/40 dark:text-emerald-300' },
+    { key: 'guru', title: 'Total Guru / Pendidik', value: summary.total_guru, unit: 'Guru', icon: GraduationCap, iconBg: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300' },
+    { key: 'non_guru', title: 'Pegawai Non-Guru', value: summary.total_non_guru, unit: 'Tendik', icon: Briefcase, iconBg: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300' },
+    { key: 'aktif', title: 'SDM Aktif', value: summary.sdm_aktif, unit: 'Aktif', icon: UserCheck, iconBg: 'bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300' },
+    { key: 'guru_tetap', title: 'Guru Tetap', value: summary.guru_tetap, unit: 'Tetap', icon: Award, iconBg: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' },
+    { key: 'laki_laki', title: 'Laki-Laki', value: summary.laki_laki, unit: 'SDM', icon: Heart, iconBg: 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300' },
+    { key: 'perempuan', title: 'Perempuan', value: summary.perempuan, unit: 'SDM', icon: Heart, iconBg: 'bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-300' },
+    { key: 'sdm_baru', title: 'SDM Baru (Periode)', value: summary.sdm_baru, unit: 'Baru', icon: PlusCircle, iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300' },
   ]
 
   const recapColumns = [
@@ -117,49 +151,72 @@ export function LaporanSdmPage() {
   ]
 
   return (
-    <div className="laporan-page-content space-y-6 pb-12">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="laporan-page-content space-y-6 pb-12"
+    >
+      {/* 🧭 TailGrids Breadcrumbs Navigation */}
+      <motion.div variants={itemVariants} className="print:hidden">
+        <Breadcrumbs
+          dividerType="chevron"
+          items={[
+            { href: '/dashboard/yayasan', label: 'Yayasan' },
+            { href: '/dashboard/yayasan/laporan', label: 'Laporan Eksekutif' },
+            { label: 'Laporan SDM' },
+          ]}
+        />
+      </motion.div>
+
       {/* 1. Header Laporan */}
-      <ReportHeader
-        title={report.title}
-        description={report.description}
-        periodLabel={report.period?.label}
-        generatedAt={report.generated_at}
-      />
+      <motion.div variants={itemVariants}>
+        <ReportHeader
+          title={report.title}
+          description={report.description}
+          periodLabel={report.period?.label}
+          generatedAt={report.generated_at}
+        />
+      </motion.div>
 
       {/* 2. Ringkasan Analisis Laporan (Di bawah Header) */}
-      <div className="print:hidden">
-        <ReportInsightCard insights={insights} />
-      </div>
+      <motion.div variants={itemVariants} className="print:hidden">
+        <ReportInsightCard insights={insights} unitRecaps={unit_recaps} summary={summary} details={activeDetails} />
+      </motion.div>
 
       {/* 3. Catatan & Identitas Laporan */}
-      <div className="print:hidden">
+      <motion.div variants={itemVariants} className="print:hidden">
         <ReportNotesCard
           periodLabel={report.period?.label}
           generatedAt={report.generated_at}
         />
-      </div>
+      </motion.div>
 
       {/* 4. Filter Periode & Aksi Laporan */}
-      <ReportPeriodFilter
-        period={filters.period}
-        startDate={filters.tanggal_mulai}
-        endDate={filters.tanggal_selesai}
-        onChange={handlePeriodChange}
-        onReset={handleResetFilter}
-        onRefresh={fetchReport}
-        onOpenPreview={() => setIsPreviewOpen(true)}
-        onPrint={() => window.print()}
-        onExportPdf={handleExportPdf}
-        onExportExcel={handleExportExcel}
-        loading={loading}
-      />
+      <motion.div variants={itemVariants}>
+        <ReportPeriodFilter
+          period={filters.period}
+          startDate={filters.tanggal_mulai}
+          endDate={filters.tanggal_selesai}
+          onChange={handlePeriodChange}
+          onReset={handleResetFilter}
+          onRefresh={fetchReport}
+          onOpenPreview={() => setIsPreviewOpen(true)}
+          onPrint={() => window.print()}
+          onExportPdf={handleExportPdf}
+          onExportExcel={handleExportExcel}
+          loading={loading}
+        />
+      </motion.div>
 
       {/* 5. KPI Ringkasan */}
-      <ReportKpiGrid items={kpiItems} />
+      <motion.div variants={itemVariants}>
+        <ReportKpiGrid items={kpiItems} details={activeDetails} />
+      </motion.div>
 
       {/* 6. Grafik & Visualisasi */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 print:hidden">
-        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-6 md:grid-cols-2 print:hidden">
+        <Card className="border border-slate-200/80 bg-white shadow-xs transition-all hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Distribusi Guru vs Pegawai per Unit</CardTitle>
           </CardHeader>
@@ -179,7 +236,7 @@ export function LaporanSdmPage() {
           </CardContent>
         </Card>
 
-        <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+        <Card className="border border-slate-200/80 bg-white shadow-xs transition-all hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Status Kepegawaian SDM</CardTitle>
           </CardHeader>
@@ -199,32 +256,36 @@ export function LaporanSdmPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* 6. Rekap Per Unit */}
-      <ReportRecapTable
-        title="Rekapitulasi SDM per Unit Pendidikan"
-        columns={recapColumns}
-        data={unit_recaps}
-        totalRow={unit_recaps_total}
-      />
+      <motion.div variants={itemVariants}>
+        <ReportRecapTable
+          title="Rekapitulasi SDM per Unit Pendidikan"
+          columns={recapColumns}
+          data={unit_recaps}
+          totalRow={unit_recaps_total}
+        />
+      </motion.div>
 
       {/* 7. Data Rinci & Action Popup */}
-      <ReportDetailTable
-        title="Rincian Data SDM Pegawai"
-        description="Daftar rincian data pembentuk angka laporan. Hanya aksi Lihat Detail yang tersedia."
-        columns={detailColumns}
-        data={details}
-        meta={meta}
-        search={filters.search}
-        perPage={filters.per_page}
-        onSearchChange={(val) => setFilters((prev) => ({ ...prev, search: val, page: 1 }))}
-        onPerPageChange={(perPage) => setFilters((prev) => ({ ...prev, per_page: perPage, page: 1 }))}
-        onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
-        onViewDetail={handleViewDetail}
-        filters={filters}
-        onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }))}
-      />
+      <motion.div variants={itemVariants}>
+        <ReportDetailTable
+          title="Rincian Data SDM Pegawai"
+          description="Daftar rincian data pembentuk angka laporan. Hanya aksi Lihat Detail yang tersedia."
+          columns={detailColumns}
+          data={details}
+          meta={meta}
+          search={filters.search}
+          perPage={filters.per_page}
+          onSearchChange={(val) => setFilters((prev) => ({ ...prev, search: val, page: 1 }))}
+          onPerPageChange={(perPage) => setFilters((prev) => ({ ...prev, per_page: perPage, page: 1 }))}
+          onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
+          onViewDetail={handleViewDetail}
+          filters={filters}
+          onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }))}
+        />
+      </motion.div>
 
       {/* Modals */}
       <ReportPreviewModal
@@ -248,6 +309,6 @@ export function LaporanSdmPage() {
         title="Detail Data SDM Pegawai"
         data={detailModalData}
       />
-    </div>
+    </motion.div>
   )
 }

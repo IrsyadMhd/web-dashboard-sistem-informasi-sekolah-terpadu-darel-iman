@@ -73,8 +73,7 @@ export default function ChatGuruWorkspace({
     setError('')
     try {
       if (mode === 'parent') {
-        if (!childId) return
-        const res = await familyPortalService.chatContacts(childId)
+        const res = await familyPortalService.chatContacts(childId).catch(() => ({ data: [] }))
         const list = res.data || []
         setContacts(list)
         if (list.length > 0 && !selectedContact) {
@@ -121,7 +120,7 @@ export default function ChatGuruWorkspace({
     try {
       if (mode === 'parent') {
         const targetUserId = selectedContact.user_id || selectedContact.id
-        const res = await familyPortalService.chatMessages(targetUserId, childId)
+        const res = await familyPortalService.chatMessages(targetUserId, childId).catch(() => ({ data: [] }))
         setMessages(res.data || [])
       } else if (mode === 'employee') {
         const targetUserId = selectedContact.user_id || selectedContact.id

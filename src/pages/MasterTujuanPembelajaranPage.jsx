@@ -117,7 +117,7 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) 
   )
 }
 
-export default function MasterTujuanPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
+export default function MasterTujuanPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataTp, setDataTp] = useState([])
   const [stats, setStats] = useState({
     total_tp: 0,
@@ -606,6 +606,13 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
         <KpiTintedCard icon={Layers} label="CP Memiliki TP" value={stats.cp_ber_tp ?? 0} subtext="Sudah dilengkapi TP" tone="purple" />
       </motion.div>
 
+      {/* Tab Navigation Card (below KPI grid, above filter) */}
+      {tabNav && (
+        <motion.div variants={itemVariants}>
+          {typeof tabNav === 'function' ? tabNav() : tabNav}
+        </motion.div>
+      )}
+
       {/* Notifications */}
       {successMsg && (
         <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 flex items-center justify-between">
@@ -687,25 +694,25 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
 
       {/* Main Table */}
       <motion.div variants={itemVariants}>
-      <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Data Tujuan Pembelajaran</h2>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data sesuai filter dan kewenangan pengguna.</p>
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Data Tujuan Pembelajaran</h2>
+            <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Data sesuai filter dan kewenangan pengguna.</p>
           </div>
           {pageActions}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full table-fixed text-left text-sm border-collapse">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
-                <th className="w-[8%] px-5 sm:px-6 md:px-8 py-4 text-center">Urutan</th>
-                <th className="w-[15%] px-3 py-4">Kode TP</th>
-                <th className="hidden w-[23%] px-3 py-4 md:table-cell">Capaian Pembelajaran</th>
-                <th className="w-[34%] px-3 py-4">Deskripsi TP</th>
-                <th className="hidden w-[10%] px-3 py-4 text-center lg:table-cell">Alokasi</th>
-                <th className="hidden w-[10%] px-3 py-4 text-center sm:table-cell">Status</th>
-                <th className="w-[16%] px-5 sm:px-6 md:px-8 py-4 text-center">Aksi</th>
+            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
+              <tr>
+                <th className="w-[8%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
+                <th className="w-[15%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Kode TP</th>
+                <th className="hidden w-[23%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Capaian Pembelajaran</th>
+                <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Deskripsi TP</th>
+                <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Alokasi</th>
+                <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
+                <th className="w-[16%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">

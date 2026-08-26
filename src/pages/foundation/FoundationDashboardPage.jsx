@@ -1,5 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, staggerChildren: 0.08 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+}
 import {
   Building2,
   Users,
@@ -341,12 +356,50 @@ export function FoundationDashboardPage() {
   const isFiltered = selectedUnitFilter !== 'all' || selectedPeriodFilter !== 'year'
 
   return (
-    <div className="space-y-6 pb-12">
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
       {/* Breadcrumb Navigation */}
-      <AppBreadcrumb items={[{ label: isKepalaSekolah ? 'Dashboard Kepala Sekolah' : 'Dashboard Pengurus Yayasan' }]} />
+      <motion.div variants={itemVariants}>
+        <AppBreadcrumb items={[{ label: isKepalaSekolah ? 'Dashboard Kepala Sekolah' : 'Dashboard Pengurus Yayasan' }]} />
+      </motion.div>
+
+      {/* Header Halaman Modern Hero Card */}
+      <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+        {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+        <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <Building2 className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  {isKepalaSekolah ? 'Dashboard Kepala Sekolah' : 'Dashboard Pengurus Yayasan'}
+                </h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {isKepalaSekolah ? 'Kepala Sekolah' : 'Pengurus Yayasan'}
+                </span>
+              </div>
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                Monitoring terpadu indikator kinerja eksekutif, rekapitulasi siswa, SDM pegawai, dan analisis unit pendidikan di bawah yayasan.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Realtime Analytics</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Informasi Resmi & Aktivitas Terbaru */}
-      <section className="space-y-3">
+      <motion.section variants={itemVariants} className="space-y-3">
         {/* <SectionHeader
           title="Informasi Resmi & Aktivitas Terbaru"
           subtitle="Pengumuman resmi yayasan dan log aktivitas sistem terkini"
@@ -436,10 +489,10 @@ export function FoundationDashboardPage() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Filter Global Unit & Periode & Akses Cepat Modul Eksekutif */}
-      <section className="space-y-3">
+      <motion.section variants={itemVariants} className="space-y-3">
         <AppFilterBar
           label="Filter Monitoring"
           activeCount={isFiltered ? (selectedUnitFilter !== 'all' ? 1 : 0) + (selectedPeriodFilter !== 'year' ? 1 : 0) : 0}
@@ -571,10 +624,10 @@ export function FoundationDashboardPage() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* KPI Cards Grid (Canonical KpiCard Session 3) */}
-      <section className="space-y-3">
+      <motion.section variants={itemVariants} className="space-y-3">
         <SectionHeader
           title="Kinerja Eksekutif Yayasan"
           subtitle="Ringkasan agregat real-time dari PostgreSQL seluruh unit pendidikan"
@@ -686,10 +739,10 @@ export function FoundationDashboardPage() {
             onClick={() => setActiveModal('total_rombel')}
           />
         </div>
-      </section>
+      </motion.section>
 
       {/* Ringkasan Operasional & Monitoring Akademik */}
-      <section className="space-y-3">
+      <motion.section variants={itemVariants} className="space-y-3">
         <SectionHeader
           title="Monitoring Operasional & Akademik"
           subtitle="Kondisi presensi, input nilai, tahfizh, dan mutaba'ah ibadah harian"
@@ -771,10 +824,10 @@ export function FoundationDashboardPage() {
             colorScheme="indigo"
           />
         </div>
-      </section>
+      </motion.section>
 
       {/* Visual Analytics & Charts */}
-      <section className="space-y-3">
+      <motion.section variants={itemVariants} className="space-y-3">
         <SectionHeader
           title="Analitik Capaian & Distribusi Lintas Unit"
           subtitle="Visualisasi grafik distribusi SDM, capaian prestasi, dan mutaba'ah ibadah"
@@ -873,10 +926,10 @@ export function FoundationDashboardPage() {
             </div>
           </ChartCard>
         </div>
-      </section>
+      </motion.section>
 
       {/* Cross-Unit Comparison & Performance Ranking */}
-      <section className="space-y-3">
+      <motion.section variants={itemVariants} className="space-y-3">
         <SectionHeader
           title="Perbandingan Kinerja Unit Pendidikan"
           subtitle="Daftar unit pendidikan beserta statistik jumlah siswa, guru, pegawai, dan rombel"
@@ -999,7 +1052,7 @@ export function FoundationDashboardPage() {
             </div>
           )}
         </div>
-      </section>
+      </motion.section>
 
 
 
@@ -1021,7 +1074,7 @@ export function FoundationDashboardPage() {
         isOpen={detailDrawer.isOpen}
         onClose={() => setDetailDrawer({ isOpen: false, type: null, id: null })}
       />
-    </div>
+    </motion.div>
   )
 }
 

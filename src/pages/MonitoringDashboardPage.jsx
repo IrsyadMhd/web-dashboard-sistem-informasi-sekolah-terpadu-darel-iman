@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { AlertTriangle, RefreshCw, Users, UserRoundCheck, Clock3, UserX, Printer } from 'lucide-react'
+import { Activity, AlertTriangle, RefreshCw, Sparkles, Users, UserRoundCheck, Clock3, UserX, Printer } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { api } from '../services/api'
 import { printCleanTable } from '../utils/printHelper'
@@ -28,7 +27,7 @@ export default function MonitoringDashboardPage() {
   const [teacherMonitoring, setTeacherMonitoring] = useState(null)
   const [teacherMonitoringError, setTeacherMonitoringError] = useState('')
   const [teacherMonitoringLoading, setTeacherMonitoringLoading] = useState(true)
-  
+
   const todayStr = new Date().toISOString().split('T')[0]
   const [filters, setFilters] = useState({
     period: 'harian',
@@ -90,7 +89,7 @@ export default function MonitoringDashboardPage() {
     else setLoading(false)
     if (canLoadTeacherMonitoring) loadTeacherMonitoring(filters)
     else setTeacherMonitoringLoading(false)
-    
+
     const timer = window.setInterval(() => {
       if (canLoadTeacherMonitoring && filters.period === 'harian' && document.visibilityState !== 'hidden') {
         loadTeacherMonitoring(filters)

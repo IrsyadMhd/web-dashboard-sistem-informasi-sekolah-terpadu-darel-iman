@@ -51,7 +51,7 @@ const CONTAINERS = {
   pengaturan: {
     title: 'Pengaturan Akademik',
     description: 'Kelola periode, kurikulum, kelas, mata pelajaran, dan jadwal tanpa mengubah alur CRUD masing-masing modul.',
-    hideHeaderCard: true,
+    hideHeaderCard: false,
     tabs: [
       {
         key: 'tahun-ajaran',
@@ -106,7 +106,8 @@ const CONTAINERS = {
   perencanaan: {
     title: 'Perencanaan Pembelajaran',
     description: 'Susun CP, TP, dan Modul Ajar dalam alur yang ringkas dengan data dan relasi dari API yang sudah tersedia.',
-    hideHeaderCard: true,
+    hideHeaderCard: false,
+    tabsBelowKpi: true,
     tabs: [
       {
         key: 'cp',
@@ -138,6 +139,7 @@ const CONTAINERS = {
     title: 'Pembelajaran',
     description: 'Akses konten pembelajaran, aktivitas, dan diskusi dari satu ruang kerja.',
     hideHeaderCard: true,
+    tabsBelowKpi: true,
     tabs: [
       {
         key: 'materi',
@@ -184,7 +186,7 @@ const CONTAINERS = {
   evaluasi: {
     title: 'Tugas & Evaluasi',
     description: 'Kelola alur penugasan, pengumpulan, kisi-kisi, bank soal, dan CBT dengan CRUD lama yang tetap utuh.',
-    hideHeaderCard: true,
+    hideHeaderCard: false,
     tabsBelowKpi: true,
     tabs: [
       {
@@ -232,7 +234,7 @@ const CONTAINERS = {
   'nilai-rapor': {
     title: 'Nilai & Rapor',
     description: 'Buku nilai, rekap, rapor digital, dan keluaran PDF tersedia dalam satu area.',
-    hideHeaderCard: true,
+    hideHeaderCard: false,
     tabsBelowKpi: true,
     tabs: [
       {

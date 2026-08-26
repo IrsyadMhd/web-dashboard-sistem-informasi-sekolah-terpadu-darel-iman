@@ -1,9 +1,8 @@
 import React from 'react'
-import { FileText, Database, Calendar, UserCheck } from 'lucide-react'
+import { FileText, Calendar, UserCheck } from 'lucide-react'
 import { Card } from '@/components/tailgrids/core/card'
 
 export function ReportNotesCard({
-  source = 'Database Utama Sistem Manajemen Sekolah Terpadu (PostgreSQL 17)',
   periodLabel = 'Periode Aktif',
   generatedAt,
   creator = 'Pengurus Yayasan',
@@ -23,19 +22,9 @@ export function ReportNotesCard({
         </h3>
       </div>
 
-      {/* Grid with Generous Padding */}
+      {/* Grid with 3 columns */}
       <div className="px-5 py-5 sm:px-6 sm:py-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 text-xs">
-          <div className="flex items-start gap-3.5 rounded-2xl bg-slate-50/70 p-4 border border-slate-100 dark:border-slate-800 dark:bg-slate-900/50">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shrink-0 mt-0.5 shadow-2xs">
-              <Database className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div className="min-w-0 flex-1 space-y-1">
-              <span className="font-extrabold text-slate-400 block text-[10px] uppercase tracking-wider">SUMBER DATA</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200 leading-relaxed block">{source}</span>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 text-xs">
           <div className="flex items-start gap-3.5 rounded-2xl bg-slate-50/70 p-4 border border-slate-100 dark:border-slate-800 dark:bg-slate-900/50">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white dark:bg-slate-800 shrink-0 mt-0.5 shadow-2xs">
               <Calendar className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />

@@ -708,11 +708,7 @@ export default function DashboardLayout() {
     if (to.includes('/profil-akun') || to.includes('/profil-saya') || to === '/dashboard/profil-akun') return true
     if (to.includes('/hak-akses')) return can('sistem.hak_akses', 'permission.manage', 'role.manage')
     if (to.includes('/pengaturan')) {
-      if (isTataUsaha && !hasFullMenuAccess) return false
-      if ((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess && !hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Kepala Sekolah')) {
-        return false
-      }
-      return can('sistem.pengaturan', 'setting.manage', 'sekolah.informasi_sekolah')
+      return hasRole('Super Admin', 'SuperAdmin', 'super_admin', 'superadmin', 'Admin', 'admin')
     }
 
     return can('sistem.master_data')
@@ -1105,48 +1101,50 @@ export default function DashboardLayout() {
       )}
 
       <div className={`flex flex-1 min-h-screen ${pengaturan.sidebar_position === 'right' ? 'md:flex-row-reverse' : ''}`}>
-        {/* Left Sidebar (Sticky & Collapsible - Deep Emerald Green #064E3B) */}
+        {/* Left Sidebar (Sticky & Collapsible - Clean White Theme) */}
         <aside
-          className={`site-sidebar fixed inset-y-0 z-50 flex flex-col justify-between border-white/10 text-slate-100 transition-all duration-300 ease-in-out md:sticky md:top-0 md:h-screen ${pengaturan.sidebar_position === 'right' ? 'right-0 border-l' : 'left-0 border-r'} ${pengaturan.sidebar_style === 'light' ? 'site-sidebar-light' : ''} ${collapsed ? 'w-20' : 'w-64'
+          className={`site-sidebar relative overflow-visible fixed inset-y-0 z-50 flex flex-col justify-between border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#1B2433] transition-all duration-300 ease-in-out md:sticky md:top-0 md:h-screen ${pengaturan.sidebar_position === 'right' ? 'right-0 border-l' : 'left-0 border-r'} ${collapsed ? 'w-20' : 'w-64'
             } ${mobileMenuOpen ? 'translate-x-0 w-64' : pengaturan.sidebar_position === 'right' ? 'translate-x-full md:translate-x-0' : '-translate-x-full md:translate-x-0'}`}
           style={{
-            background: pengaturan.sidebar_style === 'gradient'
-              ? `linear-gradient(180deg, ${pengaturan.sidebar_color || '#064E3B'}, color-mix(in srgb, ${pengaturan.sidebar_color || '#064E3B'} 72%, #000))`
-              : pengaturan.sidebar_style === 'light' ? '#FFFFFF' : (pengaturan.sidebar_color || '#064E3B'),
+            background: pengaturan.sidebar_style === 'light'
+              ? '#FFFFFF'
+              : pengaturan.sidebar_style === 'gradient'
+                ? `linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%)`
+                : (pengaturan.sidebar_color || '#FFFFFF'),
           }}
         >
-          {/* Header Sidebar: Logo & Collapsible Toggle */}
-          <div className="p-4 border-b border-white/10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 overflow-hidden">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white shadow-md bg-[#064E3B] border border-emerald-400/30" style={{ backgroundColor: pengaturan.sidebar_accent_color || '#064E3B' }}>
-                  {pengaturan.logo_url ? <img src={pengaturan.logo_url} alt="Logo Yayasan Darel Iman" className="h-full w-full bg-white object-contain p-1" /> : <span className="text-[10px] font-black">{pengaturan.logo_text || <Sparkles className="h-5 w-5 text-emerald-200" />}</span>}
+          {/* Desktop Floating Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            className="hidden md:flex absolute -right-3 top-4 z-30 h-6.5 w-6.5 items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 shadow-md border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 hover:text-emerald-700 transition-all active:scale-95 cursor-pointer"
+            title={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
+          >
+            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+          </button>
+
+          {/* Header Sidebar: Logo & Title */}
+          <div className={`relative z-10 ${collapsed ? 'p-3' : 'p-4'} border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs`}>
+            <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+              <div className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center w-full' : ''}`}>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white shadow-md shadow-emerald-600/20 bg-gradient-to-br from-emerald-600 to-teal-700 border border-emerald-500/30" style={{ backgroundColor: pengaturan.sidebar_accent_color || '#064E3B' }}>
+                  {pengaturan.logo_url ? <img src={pengaturan.logo_url} alt="Logo Yayasan Darel Iman" className="h-full w-full bg-white object-contain p-1" /> : <span className="text-[10px] font-black">{pengaturan.logo_text || <Sparkles className="h-5 w-5 text-white" />}</span>}
                 </div>
                 {!collapsed && (
                   <div className="min-w-0">
-                    <h1 className="text-xs font-black tracking-wider text-white uppercase truncate font-sans">
+                    <h1 className="text-xs font-black tracking-wider text-slate-900 dark:text-white uppercase truncate font-sans">
                       {namaSekolah}
                     </h1>
-                    <p className="text-[10px] font-bold tracking-widest text-emerald-300">{pengaturan.application_name || 'Sistem Manajemen Sekolah'}</p>
+                    <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{pengaturan.application_name || 'Sistem Manajemen Sekolah'}</p>
                   </div>
                 )}
               </div>
-
-              {/* Desktop Toggle Button */}
-              <button
-                type="button"
-                onClick={() => setCollapsed(!collapsed)}
-                className="hidden md:flex h-7 w-7 items-center justify-center rounded-xl bg-white/10 text-emerald-100 hover:bg-white/20 hover:text-white transition-all btn-master"
-                title={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
-              >
-                {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </button>
 
               {/* Mobile Close Button */}
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="md:hidden text-emerald-200 hover:text-white p-1"
+                className="md:hidden text-slate-600 hover:text-slate-900 dark:text-slate-400 p-1"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1154,27 +1152,37 @@ export default function DashboardLayout() {
           </div>
 
           {/* Navigation Items */}
-          <nav className="flex-1 space-y-1 overflow-y-auto p-3 text-xs custom-scrollbar">
+          <nav className={`relative z-10 flex-1 space-y-1.5 ${collapsed ? 'overflow-visible' : 'overflow-y-auto custom-scrollbar'} p-3 text-xs`}>
             {sidebarMenu.map((item) => {
               const Icon = item.icon
               if (!item.submenus) {
                 const isActive = normalizePath(location.pathname) === normalizePath(item.to)
                 return (
-                  <NavLink
-                    key={item.key}
-                    to={item.to}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 font-bold transition-all duration-200 ${isActive
-                      ? 'bg-white text-[#064E3B] shadow-md dark:bg-emerald-500 dark:text-slate-950'
-                      : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
-                      }`}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${isActive ? 'bg-[#064E3B]/10 text-[#064E3B] dark:bg-slate-900/30 dark:text-slate-900' : 'text-emerald-300'}`}>
-                      <Icon className="h-4 w-4 stroke-[2]" />
-                    </div>
-                    {!collapsed && <span>{item.label}</span>}
-                  </NavLink>
+                  <div key={item.key} className="relative group">
+                    <NavLink
+                      to={item.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`group/link relative flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-xl font-bold transition-all duration-200 ${isActive
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-500/40'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-400 border border-transparent hover:border-emerald-200/60 dark:hover:border-slate-700'
+                        }`}
+                    >
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${isActive ? 'bg-white/20 text-white' : 'text-emerald-600 dark:text-emerald-400 group-hover/link:text-emerald-700'}`}>
+                        <Icon className="h-4 w-4 stroke-[2]" />
+                      </div>
+                      {!collapsed && <span>{item.label}</span>}
+                    </NavLink>
+
+                    {/* Hover Tooltip when Collapsed */}
+                    {collapsed && (
+                      <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-150 z-50">
+                        <div className="relative rounded-xl bg-slate-900 dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-white shadow-xl shadow-slate-950/25 border border-slate-700/80 whitespace-nowrap">
+                          {item.label}
+                          <div className="absolute top-1/2 -left-1 -mt-1 h-2 w-2 rotate-45 bg-slate-900 dark:bg-slate-800 border-l border-b border-slate-700/80" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )
               }
 
@@ -1182,33 +1190,61 @@ export default function DashboardLayout() {
               const hasActiveChild = isOpen && item.submenus.some((sub) => isSubActive(sub.to, item.submenus, item.key))
 
               return (
-                <div key={item.key} className="space-y-1">
+                <div key={item.key} className="relative group space-y-1">
                   <button
                     type="button"
                     onClick={() => {
                       if (collapsed) setCollapsed(false)
                       toggleSection(item.key)
                     }}
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold transition-all duration-200 ${isOpen || hasActiveChild
-                      ? 'bg-white/15 text-white shadow-xs'
-                      : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
+                    className={`flex w-full items-center ${collapsed ? 'justify-center px-0' : 'justify-between px-3'} py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${isOpen || hasActiveChild
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-500/40'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-400 border border-transparent hover:border-emerald-200/60 dark:hover:border-slate-700'
                       }`}
-                    title={collapsed ? item.label : undefined}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Icon className="h-4 w-4 shrink-0 text-[#3FBF75] stroke-[1.8]" />
+                    <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
+                      <Icon className={`h-4 w-4 shrink-0 stroke-[1.8] ${isOpen || hasActiveChild ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
                       {!collapsed && <span className="truncate">{item.label}</span>}
                     </div>
                     {!collapsed && (
                       <span className="text-[10px]">
-                        {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-emerald-200" /> : <ChevronRight className="h-3.5 w-3.5 text-emerald-300" />}
+                        {isOpen ? <ChevronDown className={`h-3.5 w-3.5 ${isOpen || hasActiveChild ? 'text-white' : 'text-slate-500'}`} /> : <ChevronRight className={`h-3.5 w-3.5 ${isOpen || hasActiveChild ? 'text-white' : 'text-slate-500'}`} />}
                       </span>
                     )}
                   </button>
 
-                  {/* Submenu Accordion */}
+                  {/* Hover Flyout Menu when Collapsed */}
+                  {collapsed && (
+                    <div className="absolute left-full -top-1 pl-3 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 -translate-x-2 transition-all duration-150 z-50 min-w-[13.5rem]">
+                      <div className="relative rounded-2xl bg-white dark:bg-slate-900 p-2.5 shadow-xl shadow-slate-900/15 border border-slate-200/90 dark:border-slate-800 space-y-1">
+                        <div className="px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-slate-100 dark:border-slate-800 mb-1.5 flex items-center justify-between">
+                          <span>{item.label}</span>
+                          <span className="text-[9px] text-slate-400 font-normal">Submenu</span>
+                        </div>
+                        {item.submenus.map((sub, sIdx) => {
+                          const active = isSubActive(sub.to, item.submenus, item.key)
+                          return (
+                            <NavLink
+                              key={`flyout-${item.key}-${sub.to || sub.label}-${sIdx}`}
+                              to={sub.to}
+                              onClick={() => setMobileMenuOpen(false)}
+                              className={`block rounded-lg px-2.5 py-1.5 text-xs transition-colors ${active
+                                ? 'bg-emerald-50 text-emerald-800 font-bold dark:bg-emerald-950/80 dark:text-emerald-300'
+                                : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                                }`}
+                            >
+                              {sub.label}
+                            </NavLink>
+                          )
+                        })}
+                        <div className="absolute top-4 -left-1 -mt-1 h-2 w-2 rotate-45 bg-white dark:bg-slate-900 border-l border-b border-slate-200/90 dark:border-slate-800" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submenu Accordion when Expanded */}
                   {!collapsed && isOpen && (
-                    <div className="ml-5 space-y-1 border-l-2 border-[#3FBF75]/40 pl-3 pt-1 animate-[masterDropdownSlide_0.2s_ease-out]">
+                    <div className="ml-5 space-y-1 border-l-2 border-emerald-500/50 dark:border-emerald-600/50 pl-3 pt-1 animate-[masterDropdownSlide_0.2s_ease-out]">
                       {item.submenus.map((sub, sIdx) => {
                         const active = isSubActive(sub.to, item.submenus, item.key)
                         return (
@@ -1217,8 +1253,8 @@ export default function DashboardLayout() {
                             to={sub.to}
                             onClick={() => setMobileMenuOpen(false)}
                             className={`block rounded-lg px-2.5 py-1.5 text-xs transition-all duration-150 ${active
-                              ? 'bg-[#3FBF75] text-slate-900 font-bold shadow-xs'
-                              : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
+                              ? 'bg-emerald-50/90 text-emerald-800 font-bold shadow-2xs border border-emerald-200/80 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/50'
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200'
                               }`}
                           >
                             {sub.label}
@@ -1233,37 +1269,37 @@ export default function DashboardLayout() {
           </nav>
 
           {/* User Status Bar & Help Link at Sidebar Bottom */}
-          <div className="p-3.5 border-t border-white/10 bg-black/15 space-y-2.5">
+          <div className="relative z-10 p-3.5 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/80 space-y-2.5">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <PersonAvatar
                   src={user?.photo_url || user?.avatar_url || user?.avatar || user?.photo || user?.profile_photo_url}
                   name={namaTampil}
                   size="sm"
-                  className="border border-white/20 shadow-md"
+                  className="border border-slate-200 dark:border-slate-700 shadow-sm"
                 />
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-[#064E3B]" />
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
               </div>
               {!collapsed && (
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-white leading-tight">{namaTampil}</p>
+                  <p className="truncate text-xs font-bold text-slate-900 dark:text-white leading-tight">{namaTampil}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[9px] text-emerald-300 font-semibold">• Online</span>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold">• Online</span>
                   </div>
                 </div>
               )}
             </div>
 
             {!collapsed && (
-              <p className="truncate px-2 text-[9px] text-white/55">{pengaturan.footer_text || 'Yayasan Darel Iman © 2026'}</p>
+              <p className="truncate px-2 text-[9px] text-slate-400 dark:text-slate-500">{pengaturan.footer_text || 'Yayasan Darel Iman © 2026'}</p>
             )}
             {!collapsed && (
               <button
                 type="button"
                 onClick={() => navigate(bolehBukaMenu('/dashboard/pengaturan') ? '/dashboard/pengaturan' : '/dashboard/profil-akun')}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-emerald-100 text-[11px] font-semibold transition"
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-[11px] font-semibold transition border border-slate-200/90 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
               >
-                <HelpCircle className="h-3.5 w-3.5 text-[#3FBF75]" />
+                <HelpCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Bantuan & Panduan</span>
               </button>
             )}

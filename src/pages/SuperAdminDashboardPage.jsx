@@ -10,6 +10,7 @@ import {
   School,
   Layers,
   ShieldCheck,
+  Sparkles,
   UserX,
   Plus,
   Activity,
@@ -352,19 +353,50 @@ export default function SuperAdminDashboardPage() {
         variants={containerVariants}
         className="space-y-6 pb-12"
       >
-        {/* 1. Breadcrumbs Navigation & Quick Action */}
-        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* 1. Breadcrumbs Navigation & Modern Hero Card Header */}
+        <motion.div variants={itemVariants} className="space-y-4">
           <AppBreadcrumb items={[{ label: `Dashboard Utama ${welcomeRoleName}` }]} />
-          <div className="flex items-center gap-2">
-            <AppButton
-              variant="outline"
-              size="sm"
-              icon={RefreshCw}
-              onClick={fetchDashboard}
-              className="text-xs text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              Segarkan Data
-            </AppButton>
+
+          {/* Header Halaman Modern Hero Card */}
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+            <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4 min-w-0">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <ShieldCheck className="h-6 w-6" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                      Dashboard Utama {welcomeRoleName}
+                    </h1>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      {welcomeRoleName}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                    Pusat kendali dan pemantauan terpadu seluruh unit pendidikan, aktivitas operasional, dan metrik sistem sekolah.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <AppButton
+                  variant="outline"
+                  size="sm"
+                  icon={RefreshCw}
+                  pending={loading}
+                  onClick={fetchDashboard}
+                  className="text-xs font-bold text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/80"
+                >
+                  Segarkan Data
+                </AppButton>
+              </div>
+            </div>
           </div>
         </motion.div>
 
@@ -797,11 +829,11 @@ export default function SuperAdminDashboardPage() {
           </section>
         </motion.div>
 
-        {/* 7. Outer Datatable Container */}
+        {/* 7. Outer Datatable Container dengan Gradasi Zamrud */}
         <motion.div variants={itemVariants}>
-          <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-            {/* Toolbar Header 3-Baris Terstruktur */}
-            <div className="p-4 sm:p-6 space-y-4 border-b border-slate-100 dark:border-slate-800/80">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+            {/* Toolbar Header 3-Baris Terstruktur dengan Gradasi Zamrud */}
+            <div className="p-4 sm:p-6 space-y-4 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
               {/* Baris 1: Title & Actions */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -809,7 +841,7 @@ export default function SuperAdminDashboardPage() {
                     <Building2 className="size-5 text-emerald-600 dark:text-emerald-400" />
                     Ringkasan Master Unit Pendidikan
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">
                     Daftar unit sekolah Islam terpadu beserta status dan statistik kesiswaan & pendidik
                   </p>
                 </div>
@@ -821,7 +853,7 @@ export default function SuperAdminDashboardPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => navigate('/dashboard/master/unit-pendidikan')}
-                    className="text-xs text-emerald-600 dark:text-emerald-400 font-bold"
+                    className="rounded-xl border border-emerald-300 bg-emerald-50 text-xs font-bold text-emerald-800 shadow-2xs hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300"
                   >
                     Kelola Semua &rarr;
                   </Button>
@@ -856,24 +888,24 @@ export default function SuperAdminDashboardPage() {
             {/* Viewport Tabel dengan Horizontal Padding */}
             <div className="px-4 sm:px-6 md:px-8 overflow-x-auto">
               <TableRoot fullBleed={false}>
-                <TableHeader>
-                  <TableRow className="border-b border-slate-200 dark:border-slate-800">
-                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                <TableHeader className="bg-[#F8FAFB] dark:bg-[#202B3A]">
+                  <TableRow className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
+                    <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1]">
                       Nama Unit Pendidikan
                     </TableHead>
-                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                    <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1]">
                       Siswa Aktif
                     </TableHead>
-                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                    <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1]">
                       Guru Pendidik
                     </TableHead>
-                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                    <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1]">
                       Pegawai & Tendik
                     </TableHead>
-                    <TableHead className="py-3.5 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                    <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1]">
                       Status Operasional
                     </TableHead>
-                    <TableHead className="py-3.5 text-right text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                    <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 text-right font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1]">
                       Aksi
                     </TableHead>
                   </TableRow>

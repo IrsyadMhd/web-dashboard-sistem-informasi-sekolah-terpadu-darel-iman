@@ -8,6 +8,7 @@ import {
   Award,
   BookOpen,
   Calendar,
+  CalendarCheck,
   Clock,
   ExternalLink,
   FileCheck2,
@@ -22,6 +23,7 @@ import {
   RefreshCcw,
   Search,
   ShieldAlert,
+  Sparkles,
   UserCheck,
   UserMinus,
   UserPlus,
@@ -670,17 +672,58 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      {/* Header & Breadcrumb */}
-      <motion.div variants={itemVariants}>
-        <AppBreadcrumb items={[{ label: 'Absensi', href: '/dashboard/absensi/rekap-kehadiran' }, { label: 'Manajemen Kehadiran Siswa' }]} />
-        <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
-              Pusat Kehadiran Siswa
-            </h1>
-            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-              Monitoring terpadu rekapitulasi presensi, absensi per mata pelajaran &amp; guru pengajar, verifikasi izin, dan tindak lanjut siswa.
-            </p>
+      {/* BREADCRUMB NAV */}
+      <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi/rekap-kehadiran' }, { label: 'Manajemen Kehadiran Siswa' }]} />
+
+      {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <CalendarCheck className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Manajemen Presensi Terpadu
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    Rekapitulasi Kehadiran Siswa
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Rekapitulasi & Manajemen Kehadiran Siswa
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Kelola matriks rekapitulasi presensi bulanan, absensi per mata pelajaran & guru, verifikasi surat izin/sakit, koreksi presensi, serta tindak lanjut siswa.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/25 transition-all hover:scale-[1.02] cursor-pointer"
+                onClick={() => setPrintOptionModalOpen(true)}
+              >
+                <Printer className="size-4" />
+                <span>Cetak / PDF</span>
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-800 shadow-sm border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-white transition-all cursor-pointer"
+                onClick={loadData}
+              >
+                <RefreshCcw className="size-4 text-emerald-600" />
+                <span>Segarkan Data</span>
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -735,10 +778,9 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
       </motion.div>
 
       {/* Main Master Datatable Container Card (Gold Standard Architecture) */}
-      <motion.div variants={itemVariants} className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-        {/* Workspace Navigation Tabs - Soft Pastel Squircle Style without Labels (Floating Hover Tooltips) */}
-        {/* Workspace Navigation Tabs - Soft Pastel Squircle Style without Labels (Floating Hover Tooltips) */}
-        <div className="relative z-30 border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6 md:px-8">
+      <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        {/* Workspace Navigation Tabs Toolbar Header */}
+        <div className="relative z-30 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 px-4 py-3 sm:px-6 md:px-8">
           <nav className="flex items-center gap-2.5 flex-wrap py-1" aria-label="Tabs">
             {/* Tab 1: Rekapitulasi Kehadiran */}
             <div className="group relative inline-flex">
@@ -848,7 +890,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
         </div>
 
         {/* Standard Toolbar Structure (2-Baris Gold Standard) */}
-        <div className="space-y-3.5 p-4 sm:p-6 md:p-8 border-b border-slate-100 dark:border-slate-800">
+        <div className="space-y-3.5 p-4 sm:p-6 md:p-8 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-500/15 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20">
           {/* Baris 1: Tab Title + Soft Pastel Squircle Action Buttons with Floating Tooltips */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1083,7 +1125,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             {activeTab === 'rekap' && (
               <TableRoot fullBleed={false}>
                 <TableHeader>
-                  <TableRow className="bg-slate-50/70 dark:bg-slate-900/50">
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
                     <TableHead className="w-12 text-center">#</TableHead>
                     <TableHead>
                       <div className="flex items-center gap-1">Siswa <ArrowBothDirectionHorizontal2 className="size-3.5" /></div>
@@ -1156,7 +1198,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             {activeTab === 'sesi-pelajaran' && (
               <TableRoot fullBleed={false}>
                 <TableHeader>
-                  <TableRow className="bg-slate-50/70 dark:bg-slate-900/50">
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
                     <TableHead className="w-12 text-center">#</TableHead>
                     <TableHead>Mata Pelajaran</TableHead>
                     <TableHead>Guru Pengajar</TableHead>
@@ -1248,7 +1290,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             {activeTab === 'verifikasi' && (
               <TableRoot fullBleed={false}>
                 <TableHeader>
-                  <TableRow className="bg-slate-50/70 dark:bg-slate-900/50">
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
                     <TableHead className="w-12 text-center">#</TableHead>
                     <TableHead>Siswa & Kelas</TableHead>
                     <TableHead>Jenis Izin</TableHead>
@@ -1343,7 +1385,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             {activeTab === 'koreksi' && (
               <TableRoot fullBleed={false}>
                 <TableHeader>
-                  <TableRow className="bg-slate-50/70 dark:bg-slate-900/50">
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
                     <TableHead className="w-12 text-center">#</TableHead>
                     <TableHead>Siswa</TableHead>
                     <TableHead>Mata Pelajaran & Tanggal</TableHead>
@@ -1440,7 +1482,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             {activeTab === 'tindak-lanjut' && (
               <TableRoot fullBleed={false}>
                 <TableHeader>
-                  <TableRow className="bg-slate-50/70 dark:bg-slate-900/50">
+                  <TableRow className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
                     <TableHead className="w-12 text-center">#</TableHead>
                     <TableHead>Siswa & Rombel</TableHead>
                     <TableHead>Bentuk Tindak Lanjut</TableHead>

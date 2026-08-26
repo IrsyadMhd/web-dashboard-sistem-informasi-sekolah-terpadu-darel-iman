@@ -32,7 +32,7 @@ export function TableRoot({ className, fullBleed, ...props }: TableRootProps) {
 }
 
 const tableHeaderStyles = cva(
-  "[&_th]:border-base-200 text-title-50 [&_th]:border-b [&_th]:text-xs [&_th]:bg-slate-100 dark:[&_th]:bg-slate-800"
+  "[&_th]:border-base-200 text-title-50 [&_th]:border-b [&_th]:text-xs"
 );
 
 export function TableHeader({ className, ...props }: ComponentProps<"thead">) {

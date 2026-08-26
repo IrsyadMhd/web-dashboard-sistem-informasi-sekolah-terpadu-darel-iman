@@ -430,25 +430,25 @@ export default function StudentLeaderAnalyticsSection({
       </div>
 
       {/* Grid Row 2: Capaian Prestasi & Hafalan Tahfizh Siswa */}
-      <Card className="border border-slate-200/80 shadow-md dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 px-6 py-4.5">
+      <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <CardHeader className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-6 py-4.5 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3.5">
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 shadow-2xs">
-                <Award className="size-6" />
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <Award className="size-6 text-white" />
               </div>
               <div>
                 <CardTitle className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                   Capaian Prestasi & Hafalan Tahfizh Siswa
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <CardDescription className="text-xs font-medium text-slate-700 dark:text-slate-300 mt-0.5">
                   Peringkat hafalan Tahfizh per kelas dan 3 Terbaik Prestasi Akademik Sekolah. Klik kartu untuk melihat profil siswa.
                 </CardDescription>
               </div>
             </div>
 
             {/* Category Tabs Filter */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-slate-200/70 dark:bg-slate-800 p-1.5 rounded-2xl">
+            <div className="flex flex-wrap items-center gap-1.5 bg-emerald-900/10 dark:bg-emerald-950/60 p-1.5 rounded-2xl border border-emerald-500/20">
               {[
                 { id: 'tahfizh', label: '📖 Prestasi Tahfizh per Kelas (Unit)' },
                 { id: 'akademik', label: '🎓 3 Terbaik Prestasi Akademik Sekolah' },
@@ -458,10 +458,10 @@ export default function StudentLeaderAnalyticsSection({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
+                  className={`px-3.5 py-2 text-xs font-extrabold rounded-xl transition-all duration-200 cursor-pointer ${
                     activeTab === tab.id
-                      ? 'bg-white dark:bg-slate-700 text-emerald-800 dark:text-emerald-300 shadow-sm scale-[1.02]'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
+                      : 'text-slate-700 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400'
                   }`}
                 >
                   {tab.label}
@@ -601,16 +601,16 @@ export default function StudentLeaderAnalyticsSection({
             </div>
 
             {/* TailGrids Datatable Structure */}
-            <TableRoot className="mb-1 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-              <TableHeader>
-                <TableRow className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/70 dark:border-slate-700">
-                  <TableHead className="w-16 text-center text-xs font-extrabold text-slate-600 dark:text-slate-300">Rank</TableHead>
-                  <TableHead className="text-xs font-extrabold text-slate-600 dark:text-slate-300">Identitas Siswa</TableHead>
-                  <TableHead className="text-xs font-extrabold text-slate-600 dark:text-slate-300">Kelas & Unit</TableHead>
-                  <TableHead className="text-xs font-extrabold text-slate-600 dark:text-slate-300">Capaian / Hafalan</TableHead>
-                  <TableHead className="text-xs font-extrabold text-slate-600 dark:text-slate-300">Tingkat</TableHead>
-                  <TableHead className="text-xs font-extrabold text-slate-600 dark:text-slate-300">Status</TableHead>
-                  <TableHead className="w-12 text-center text-xs font-extrabold text-slate-600 dark:text-slate-300"></TableHead>
+            <TableRoot className="mb-1 relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+              <TableHeader className="bg-[#F8FAFB] dark:bg-[#202B3A]">
+                <TableRow className="hover:bg-transparent border-b border-[#EDF0F4] dark:border-[#354153] bg-[#F8FAFB] dark:bg-[#202B3A]">
+                  <TableHead className="w-16 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A]">Rank</TableHead>
+                  <TableHead className="text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A]">Identitas Siswa</TableHead>
+                  <TableHead className="text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A]">Kelas & Unit</TableHead>
+                  <TableHead className="text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A]">Capaian / Hafalan</TableHead>
+                  <TableHead className="text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A]">Tingkat</TableHead>
+                  <TableHead className="text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A]">Status</TableHead>
+                  <TableHead className="w-12 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider py-3.5 px-4 bg-[#F8FAFB] dark:bg-[#202B3A]"></TableHead>
                 </TableRow>
               </TableHeader>
 

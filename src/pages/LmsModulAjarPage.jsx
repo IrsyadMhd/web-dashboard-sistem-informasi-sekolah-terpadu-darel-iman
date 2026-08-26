@@ -113,7 +113,7 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) 
   )
 }
 
-export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
+export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const queryClient = useQueryClient()
 
   // State Filter & Paginasi
@@ -684,6 +684,13 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
         <KpiTintedCard icon={Layers} label="TP Ter-cover" value={stats.total_tp_tercover || 0} subtext="Terhubung ke modul" tone="purple" />
       </motion.div>
 
+      {/* Tab Navigation Card (below KPI grid, above filter) */}
+      {tabNav && (
+        <motion.div variants={itemVariants} className="print:hidden">
+          {typeof tabNav === 'function' ? tabNav() : tabNav}
+        </motion.div>
+      )}
+
       {/* Search & Filter Bar (2-Row Layout) */}
       <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5 print:hidden">
         {/* Baris 1: Field Pencarian Full-Width */}
@@ -793,12 +800,12 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
       {/* Main Card Data Table */}
       <motion.div variants={itemVariants}>
-      <div className="rounded-[18px] bg-white dark:bg-[#1B2433] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
         {/* Section Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Data Modul Ajar (RPP Digital)</h2>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data sesuai alur perencanaan dan kewenangan pengguna.</p>
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Data Modul Ajar (RPP Digital)</h2>
+            <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Data sesuai alur perencanaan dan kewenangan pengguna.</p>
           </div>
           {pageActions}
         </div>
@@ -806,14 +813,14 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
         {/* Table Content */}
         <div className="overflow-x-auto">
           <table className="w-full table-fixed text-left text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase tracking-wider">
+            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
               <tr>
-                <th className="w-[36%] px-5 sm:px-6 md:px-8 py-4">Kode & Judul Modul</th>
-                <th className="w-[24%] px-4 py-4">Mata Pelajaran & Guru</th>
-                <th className="hidden w-[16%] px-4 py-4 md:table-cell">Kelas & Fase</th>
-                <th className="hidden w-[10%] px-4 py-4 text-center lg:table-cell">Alokasi</th>
-                <th className="hidden w-[6%] px-4 py-4 text-center xl:table-cell">Versi</th>
-                <th className="w-[10%] px-5 sm:px-6 md:px-8 py-4 text-center">Status</th>
+                <th className="w-[36%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Kode &amp; Judul Modul</th>
+                <th className="w-[24%] bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Mata Pelajaran &amp; Guru</th>
+                <th className="hidden w-[16%] bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Kelas &amp; Fase</th>
+                <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Alokasi</th>
+                <th className="hidden w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider xl:table-cell">Versi</th>
+                <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

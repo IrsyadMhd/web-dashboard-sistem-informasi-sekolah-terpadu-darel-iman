@@ -12,7 +12,7 @@ export const defaultPengaturan = {
   footer_text: 'Jl. Pendidikan No. 1, Kota Padang',
   header_style: 'light',
   header_sticky: true,
-  sidebar_style: 'gradient',
+  sidebar_style: 'light',
   sidebar_position: 'left',
   sidebar_collapsed: false,
   template: 'modern',

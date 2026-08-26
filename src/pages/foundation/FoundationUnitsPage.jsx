@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import {
   ArrowRightLeft,
@@ -13,6 +14,7 @@ import {
   RefreshCcw,
   School,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   UserCheck,
@@ -29,6 +31,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
+import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import api from '../../services/api'
 import {
   MasterActionButton,
@@ -54,6 +57,20 @@ import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUn
 import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 
 const LEVEL_OPTIONS = ['TKIT', 'TAUD', 'SDIT', 'MIT', 'SMPIT', 'SMAIT', 'PONPES', 'Mahad']
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, staggerChildren: 0.08 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+}
 
 export function FoundationUnitsPage() {
   const [units, setUnits] = useState([])
@@ -254,8 +271,50 @@ export function FoundationUnitsPage() {
 
   return (
     <MasterDataPage hideBreadcrumb className="foundation-units-page">
-      {/* Soft Pastel Squircle KPI Buttons */}
-      <section className="mb-6">
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
+        {/* Breadcrumb Navigation */}
+        <motion.div variants={itemVariants} className="print:hidden">
+          <AppBreadcrumb items={[{ label: 'Yayasan', href: '/dashboard/yayasan' }, { label: 'Unit Pendidikan' }]} />
+        </motion.div>
+
+        {/* Header Halaman Modern Hero Card */}
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Unit Pendidikan Terpadu
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Unit Yayasan
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Pemantauan eksekutif dan manajemen seluruh unit pendidikan (TK, SD, SMP, SMA, Ponpes, Ma'had) di bawah naungan yayasan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Supervisi Eksekutif</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Soft Pastel Squircle KPI Buttons */}
+        <motion.section variants={itemVariants} className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* 1. Peningkatan Unit */}
           <button
@@ -329,10 +388,10 @@ export function FoundationUnitsPage() {
             <span className="shrink-0 rounded-lg bg-purple-100 px-2 py-1 text-[10px] font-extrabold text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">Juara</span>
           </button>
         </div>
-      </section>
+      </motion.section>
 
       {/* Grafik Analisis Siswa Masuk vs Siswa Keluar */}
-      <section className={`${masterStyles.card} p-5 sm:p-6 mb-6`}>
+      <motion.section variants={itemVariants} className={`${masterStyles.card} p-5 sm:p-6 mb-6`}>
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-200/80 pb-4 dark:border-slate-700">
           <div className="flex items-start sm:items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60">
@@ -404,9 +463,10 @@ export function FoundationUnitsPage() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </section>
+      </motion.section>
 
-      <MasterFilterBar
+      <motion.div variants={itemVariants}>
+        <MasterFilterBar
         search={<MasterSearchInput placeholder="Cari nama unit atau kode..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />}
         filters={
           <>
@@ -467,7 +527,7 @@ export function FoundationUnitsPage() {
             <div className="p-5"><MasterErrorState title="Data unit gagal dimuat" description="Periksa koneksi kemudian coba muat ulang." onRetry={handleRefresh} /></div>
           ) : (
             <table className="w-full text-left text-sm text-slate-600">
-              <thead className="border-b border-slate-200/80 bg-slate-50/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+              <thead className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-800 dark:text-slate-100">
                 <tr>
                   <th className="w-[5%] px-2 py-3 text-center">No</th>
                   <th className="w-[26%] px-3 py-3 font-bold">
@@ -609,6 +669,8 @@ export function FoundationUnitsPage() {
         rows={exportRows}
         filename="Unit_Pendidikan_Yayasan"
       />
+        </motion.div>
+      </motion.div>
     </MasterDataPage>
   )
 }

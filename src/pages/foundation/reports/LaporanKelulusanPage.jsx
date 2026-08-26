@@ -16,6 +16,7 @@ import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -116,6 +117,18 @@ export function LaporanKelulusanPage() {
 
   return (
     <div className="laporan-page-content space-y-6 pb-12">
+      {/* 🧭 TailGrids Breadcrumbs Navigation */}
+      <div className="print:hidden">
+        <Breadcrumbs
+          dividerType="chevron"
+          items={[
+            { href: '/dashboard/yayasan', label: 'Yayasan' },
+            { href: '/dashboard/yayasan/laporan', label: 'Laporan Eksekutif' },
+            { label: 'Laporan Kelulusan Siswa' },
+          ]}
+        />
+      </div>
+
       {/* 1. Header Laporan */}
       <ReportHeader
         title={report.title}

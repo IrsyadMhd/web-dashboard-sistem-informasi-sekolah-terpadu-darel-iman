@@ -30,6 +30,7 @@ import {
   CameraOff,
   Printer,
   FileText,
+  Building2,
 } from 'lucide-react'
 import { equranService } from '../services/equranService'
 import {
@@ -61,6 +62,7 @@ import {
 } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { Upload1, Download1 } from '@tailgrids/icons'
+import { Button } from '@/components/tailgrids/core/button'
 
 import ChartCard from '../components/dashboard/ChartCard'
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
@@ -817,30 +819,63 @@ export default function MusyrifDashboardPage() {
         {/* Breadcrumb Navigation matching Teacher Workspace Style */}
         <AppBreadcrumb items={[{ label: 'Workspace Musyrif Asrama' }]} />
 
-        {/* Master Page Header matching Teacher Workspace Style */}
-        <MasterPageHeader
-          badgeText="WORKSPACE KEASRAMAAN"
-          title="Dashboard Musyrif / Pembimbing Asrama"
-          subtitle="Workspace terpadu pengasuhan santri: presensi ibadah 24 jam, log ujian tasmi', kedisiplinan poin, klinik kesehatan, dan barang titipan."
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <MasterActionButton
-                variant="emerald"
-                icon={CalendarCheck}
-                onClick={() => navigate('/dashboard/absensi-ibadah')}
-              >
-                Presensi Ibadah Santri
-              </MasterActionButton>
-              <MasterActionButton
-                variant="outline"
-                icon={RefreshCw}
-                onClick={fetchDashboard}
-              >
-                Segarkan Data
-              </MasterActionButton>
+        {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <Building2 className="size-6 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Workspace Keasramaan
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                      Musyrif / Pembimbing Asrama
+                    </span>
+                  </div>
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Dashboard Musyrif & Pembimbing Asrama
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Workspace terpadu pengasuhan santri: presensi ibadah 24 jam, log ujian tasmi', kedisiplinan poin, klinik kesehatan, dan barang titipan.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0">
+                <Button
+                  type="button"
+                  variant="primary"
+                  appearance="fill"
+                  size="sm"
+                  onClick={() => navigate('/dashboard/absensi-ibadah')}
+                  prefixIcon={<CalendarCheck className="h-4 w-4" />}
+                  className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+                >
+                  Presensi Ibadah
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  appearance="outline"
+                  size="sm"
+                  onClick={fetchDashboard}
+                  prefixIcon={<RefreshCw className="h-4 w-4" />}
+                  className="font-bold cursor-pointer"
+                >
+                  Segarkan
+                </Button>
+              </div>
             </div>
-          }
-        />
+          </div>
+        </motion.div>
 
         {/* Master Stats Grid matching Teacher Workspace Pastel Cards */}
         <MasterStatsGrid cols={4}>
@@ -934,7 +969,7 @@ export default function MusyrifDashboardPage() {
         </section>
 
         {/* Quick Action Navigation Bar */}
-        <section className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
+        <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
@@ -990,7 +1025,7 @@ export default function MusyrifDashboardPage() {
         </section>
 
         {/* Datatable Processing Actions (Import, Export, Cetak) */}
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-4 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold shrink-0">
               <Printer className="w-5 h-5" />

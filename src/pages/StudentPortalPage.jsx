@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   AlertCircle, Award, BookOpen, BookOpenCheck, CalendarCheck, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
   CircleHelp, ClipboardList, Clock3, FileCheck2, GraduationCap, HeartHandshake, LayoutDashboard, Loader2, LockKeyhole,
-  Megaphone, MessageCircle, Play, RefreshCw, Save, Send, ShieldCheck, TimerReset, UserRound, X,
+  Megaphone, MessageCircle, Play, RefreshCw, Save, Send, ShieldCheck, Sparkles, TimerReset, UserRound, X,
 } from 'lucide-react'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import api from '../services/api'
 import { studentLmsService } from '../services/studentLmsService'
 import StudentProfileWorkspace from '../components/portal/StudentProfileWorkspace'
@@ -547,37 +549,53 @@ const KpiCardPastelStyles = {
   ]
 
   return (
-    <div className="portal-page min-w-0 space-y-5 pb-12 text-slate-800 dark:text-slate-100">
+    <div className="portal-page min-w-0 space-y-6 pb-12 text-slate-800 dark:text-slate-100">
       {session && <ExamWorkspace session={session} onClose={() => setSession(null)} onFinished={finish} />}
-      {/* CARD UNIFIKASI HERO & NAVIGASI MENU PORTAL SISWA */}
-      <Card className="overflow-hidden border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 rounded-[22px]">
-        {/* HEADER HERO SECTION */}
-        <div className="bg-gradient-to-r from-[#0E5C44] via-[#0B4B37] to-[#083D2D] p-6 text-white sm:p-7 relative overflow-hidden">
-          <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <Badge color="cyan" size="sm" className="font-bold uppercase tracking-wider text-[10px] bg-emerald-950/60 text-emerald-300 border border-emerald-500/30">
-                  {student?.unit?.name || student?.education_unit?.name || 'TKIT 1 Dar el-Iman - Padang'}
-                </Badge>
-                <Badge color="success" size="sm" className="font-bold uppercase tracking-wider text-[10px]">
-                  Siswa
-                </Badge>
-                <Badge color="sky" size="sm" className="font-bold uppercase tracking-wider text-[10px]">
-                  PORTAL SISWA AKTIF
-                </Badge>
+
+      {/* BREADCRUMB NAV */}
+      <AppBreadcrumb
+        items={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Portal Siswa', href: '/portal-siswa' },
+          ...(activeTab !== 'ringkasan' ? [{ label: tabs.find((t) => t.id === activeTab)?.label || activeTab }] : []),
+        ]}
+      />
+
+      {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA STYLE) */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <GraduationCap className="size-6 sm:size-7 text-white" />
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight">
-                Selamat datang, {student?.full_name || 'Ahmad Zaky'}
-              </h1>
-              <p className="mt-1.5 text-xs sm:text-sm text-emerald-100/90 max-w-2xl leading-relaxed">
-                Akses jadwal, tugas, materi, CBT, nilai, Tahfizh, dan Mutaba'ah dalam satu ruang belajar.
-              </p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                    Portal Peserta Didik Terpadu
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    Siswa: {student?.full_name || 'Ahmad Zaky'} ({student?.kelas?.nama_kelas || student?.unit?.name || 'Sekolah Terpadu'})
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  {activeTab === 'ringkasan' ? 'Portal Siswa / Peserta Didik' : tabs.find((t) => t.id === activeTab)?.label || 'Portal Siswa'}
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  Akses jadwal, tugas, materi, CBT, nilai, Tahfizh, dan Mutaba'ah dalam satu ruang belajar terpadu.
+                </p>
+              </div>
             </div>
           </div>
         </div>
+      </motion.div>
 
-        {/* CARD CONTENT NAVIGASI MENU */}
+      {/* CARD NAVIGASI MENU PORTAL SISWA */}
+      <Card className="overflow-hidden border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 rounded-[22px]">
         <CardContent className="p-5 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
@@ -597,7 +615,7 @@ const KpiCardPastelStyles = {
               {tabs.length} Menu Modul
             </Badge>
           </div>
-          {/* TOMBOL BUTTON GRID WITH TAILGRIDS PASTEL ACCENTS & HOVER TOOLTIP SYSTEM */}
+          {/* TOMBOL BUTTON GRID WITH TAILGRIDS PASTEL ACCENTS */}
           <div className="flex flex-wrap items-center gap-2.5 pt-1">
             {tabs.map(({ id, label, icon: Icon, pastelColor }) => {
               const isActive = activeTab === id
@@ -612,7 +630,7 @@ const KpiCardPastelStyles = {
                     prefixIcon={<Icon className="h-4 w-4 shrink-0 transition-transform duration-200" />}
                     className={`cursor-pointer transition-all duration-200 font-bold ${
                       isActive
-                        ? '!bg-[#0E5C44] !text-white shadow-md shadow-emerald-900/20 ring-2 ring-emerald-500/40 scale-[1.02]'
+                        ? '!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-500/40 scale-[1.02]'
                         : `${pastelColor} border-transparent`
                     }`}
                   >

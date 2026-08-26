@@ -43,20 +43,20 @@ const MONTHS = [
 ]
 
 const label = (value) =>
-  ({
-    online: 'Online',
-    offline: 'Offline',
-    hadir: 'Hadir',
-    tepat_waktu: 'Hadir',
-    terlambat: 'Terlambat',
-    belum_presensi: 'Belum Presensi',
-    izin: 'Izin',
-    sakit: 'Sakit',
-    absen: 'Absen',
-    ready: 'Siap Mengajar',
-    active: 'Sedang Mengajar',
-    completed: 'Selesai Mengajar',
-  }[value] || value || '-')
+({
+  online: 'Online',
+  offline: 'Offline',
+  hadir: 'Hadir',
+  tepat_waktu: 'Hadir',
+  terlambat: 'Terlambat',
+  belum_presensi: 'Belum Presensi',
+  izin: 'Izin',
+  sakit: 'Sakit',
+  absen: 'Absen',
+  ready: 'Siap Mengajar',
+  active: 'Sedang Mengajar',
+  completed: 'Selesai Mengajar',
+}[value] || value || '-')
 
 // Custom Color Badge Renderers:
 // Status Online: Hijau jika Online, Merah jika Offline
@@ -190,7 +190,7 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
             existing.period_stats.ketercapaian_persen = Math.round(
               ((existing.period_stats.total_hadir + existing.period_stats.total_terlambat) /
                 existing.period_stats.total_records) *
-                100
+              100
             )
           }
         }
@@ -371,11 +371,10 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
                     key={id}
                     type="button"
                     onClick={() => handlePeriodTabChange(id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                      activePeriod === id
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${activePeriod === id
                         ? 'bg-emerald-600 text-white shadow-sm dark:bg-emerald-500'
                         : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
                     <span>{labelText}</span>
@@ -701,29 +700,29 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
                   },
                   activePeriod !== 'harian'
                     ? {
-                        key: 'period_stats',
-                        label: 'Rekap Periode',
-                        render: (row) => (
-                          <div>
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                              Hadir: {row.period_stats?.total_hadir ?? 0} / Total: {row.period_stats?.total_records ?? 0}
-                            </p>
-                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                              Ketercapaian: {row.period_stats?.ketercapaian_persen ?? 0}%
-                            </span>
-                          </div>
-                        ),
-                      }
-                    : {
-                        key: 'last_activity_at',
-                        label: 'Aktivitas Terakhir',
-                        hideOnMobile: true,
-                        render: (row) => (
-                          <span className="text-xs font-semibold text-slate-500">
-                            {formatDateTime(row.last_activity_at)}
+                      key: 'period_stats',
+                      label: 'Rekap Periode',
+                      render: (row) => (
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            Hadir: {row.period_stats?.total_hadir ?? 0} / Total: {row.period_stats?.total_records ?? 0}
+                          </p>
+                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            Ketercapaian: {row.period_stats?.ketercapaian_persen ?? 0}%
                           </span>
-                        ),
-                      },
+                        </div>
+                      ),
+                    }
+                    : {
+                      key: 'last_activity_at',
+                      label: 'Aktivitas Terakhir',
+                      hideOnMobile: true,
+                      render: (row) => (
+                        <span className="text-xs font-semibold text-slate-500">
+                          {formatDateTime(row.last_activity_at)}
+                        </span>
+                      ),
+                    },
                 ]}
                 data={groupedTeacherRows}
                 searchableKeys={['teacher', 'unit', 'online_status', 'attendance_status']}

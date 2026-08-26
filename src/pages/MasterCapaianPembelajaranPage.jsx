@@ -108,7 +108,7 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) 
   )
 }
 
-export default function MasterCapaianPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
+export default function MasterCapaianPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataCp, setDataCp] = useState([])
   const [units, setUnits] = useState([])
   const [tahunAjarans, setTahunAjarans] = useState([])
@@ -595,13 +595,32 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
       {/* Hero Banner */}
       {!hidePageHeader && (
         <motion.div variants={itemVariants}>
-        <MasterPageHeader
-          tone="brand"
-          icon={BookOpen}
-          title="Master Capaian Pembelajaran (CP)"
-          description="Kelola Master Capaian Pembelajaran (CP) berbasis Kurikulum, Unit Pendidikan, dan Mata Pelajaran sebagai fondasi utama penyusunan Tujuan Pembelajaran (TP) & Modul Ajar."
-          actions={pageActions}
-        />
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6">
+            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <BookOpen className="size-6 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Capaian Pembelajaran
+                    </span>
+                  </div>
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Master Capaian Pembelajaran (CP)
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Kelola CP berbasis Kurikulum, Unit Pendidikan, dan Mapel sebagai fondasi utama TP &amp; Modul Ajar.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </motion.div>
       )}
 
@@ -616,6 +635,13 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
         <KpiTintedCard icon={CheckCircle} label="CP Status Aktif" value={stats.total_cp_aktif ?? 0} subtext="Siap digunakan" tone="blue" />
         <KpiTintedCard icon={AlertCircle} label="CP Nonaktif" value={stats.total_cp_nonaktif ?? 0} subtext="Arsip / Nonaktif" tone="amber" />
       </motion.div>
+
+      {/* Tab Navigation Card (below KPI grid, above filter) */}
+      {tabNav && (
+        <motion.div variants={itemVariants}>
+          {typeof tabNav === 'function' ? tabNav() : tabNav}
+        </motion.div>
+      )}
 
       {/* Notifications */}
       {successMsg && (
@@ -768,11 +794,11 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
       </motion.div>
 
       <motion.div variants={itemVariants}>
-      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]" aria-labelledby="cp-table-title">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 px-5 py-4 sm:px-6 md:px-8 dark:border-slate-700">
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]" aria-labelledby="cp-table-title">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
           <div>
-            <h2 id="cp-table-title" className="text-base font-bold text-slate-900 dark:text-white">Data Capaian Pembelajaran</h2>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Data sesuai filter dan kewenangan pengguna.</p>
+            <h2 id="cp-table-title" className="text-base font-extrabold text-slate-900 dark:text-white">Data Capaian Pembelajaran</h2>
+            <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Data sesuai filter dan kewenangan pengguna.</p>
           </div>
           {pageActions}
         </div>
@@ -780,15 +806,15 @@ export default function MasterCapaianPembelajaranPage({ embedded = false, hideBr
       {/* Main Table */}
       <MasterDataTable className="!rounded-none !border-0 !shadow-none">
           <table className="w-full table-fixed text-left text-sm border-collapse">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider font-semibold">
-                <th className="w-[8%] px-5 sm:px-6 md:px-8 py-4 text-center">Urutan</th>
-                <th className="w-[14%] px-3 py-4">Kode CP</th>
-                <th className="w-[32%] px-3 py-4">Nama & Deskripsi CP</th>
-                <th className="hidden w-[20%] px-3 py-4 md:table-cell">Kurikulum & Mapel</th>
-                <th className="hidden w-[12%] px-3 py-4 text-center lg:table-cell">Fase / Kelas</th>
-                <th className="hidden w-[10%] px-3 py-4 text-center sm:table-cell">Status</th>
-                <th className="w-[16%] px-5 sm:px-6 md:px-8 py-4 text-center">Aksi</th>
+            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
+              <tr>
+                <th className="w-[8%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
+                <th className="w-[14%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Kode CP</th>
+                <th className="w-[32%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Nama & Deskripsi CP</th>
+                <th className="hidden w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Kurikulum & Mapel</th>
+                <th className="hidden w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Fase / Kelas</th>
+                <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
+                <th className="w-[16%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">

@@ -68,6 +68,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { SquircleActionButton, PrintOptionModal } from '@/components/master-data'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 
 // Helper Toast Notifications
 function useToast() {
@@ -764,6 +765,9 @@ export default function StudentWorshipAttendancePage() {
   return (
     <div className="space-y-5">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-5">
+        <motion.div variants={itemVariants}>
+          <AppBreadcrumb items={[{ label: 'Absensi & Ibadah', href: '/dashboard' }, { label: 'Absensi Ibadah Siswa' }]} />
+        </motion.div>
       
       {/* ── TOAST NOTIFICATIONS ──────────────────────────────────────────── */}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
@@ -794,44 +798,53 @@ export default function StudentWorshipAttendancePage() {
       {/* ── TOP SECTION CONTAINER (HEADER HERO & CARDS LANDING AREA) ──────── */}
       <motion.header variants={itemVariants} className="space-y-5">
         
-        {/* HERO CARD HEADER WITH DYNAMICALLY RESOLVED USER UNIT NAME (STRICT 1 SINGLE ROW) */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-xs dark:border-slate-800 dark:bg-[#111827]">
-          <div className="flex items-center justify-between gap-3 flex-nowrap">
-            {/* Left Title & Unit Info */}
-            <div className="flex items-center gap-3 min-w-0 shrink">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white shadow-xs">
-                <School className="h-5.5 w-5.5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 truncate">
-                  <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white truncate">
+        {/* HERO CARD HEADER WITH DYNAMICALLY RESOLVED USER UNIT NAME */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <School className="size-6 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Manajemen Presensi Ibadah Siswa
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                      {userUnitName}
+                    </span>
+                  </div>
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Presensi & Absensi Ibadah Siswa
                   </h1>
-                  <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-700 dark:bg-sky-950/80 dark:text-sky-300">
-                    {userUnitName}
-                  </span>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Pencatatan & Verifikasi Ibadah Harian Siswa (Shalat Dhuha, Zhuhur & Ashar Berjamaah di {userUnitName}).
+                  </p>
                 </div>
-                <p className="hidden md:block truncate text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Pencatatan & Verifikasi Ibadah Harian Siswa (Shalat Dhuha, Zhuhur & Ashar Berjamaah di {userUnitName})
-                </p>
+              </div>
+
+              {/* Right Controls: Live Clock */}
+              <div className="flex items-center gap-2 shrink-0 flex-nowrap z-10">
+                <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-white/80 px-3.5 py-2 dark:border-emerald-600/40 dark:bg-slate-900/80 backdrop-blur-sm">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 leading-none">
+                      {formattedDayName}, {formattedFullDate}
+                    </p>
+                    <p className="text-xs font-black font-mono text-emerald-900 dark:text-emerald-200 leading-tight mt-0.5">
+                      {formattedLiveClock} WIB
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-
-            {/* Right Controls: Live Clock + Field Tanggal + Squircle Action Button (SINGLE ROW) */}
-            <div className="flex items-center gap-2 shrink-0 flex-nowrap">
-              
-              {/* Real-Time Live Clock Badge */}
-              <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/40">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 leading-none">
-                    {formattedDayName}, {formattedFullDate}
-                  </p>
-                  <p className="text-xs font-black font-mono text-emerald-900 dark:text-emerald-200 leading-tight mt-0.5">
-                    {formattedLiveClock} WIB
-                  </p>
-                </div>
-              </div>
+          </div>
+        </motion.div>
 
               {/* Date Picker Input (Field Tanggal) */}
               <input
@@ -905,7 +918,7 @@ export default function StudentWorshipAttendancePage() {
         </section>
 
         {/* CARD 2: METODE PRESENSI SISWA SELECTOR CARD WITH FRAMER MOTION ANIMATIONS */}
-        <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-[#111827]">
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#111827]">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -1064,7 +1077,7 @@ export default function StudentWorshipAttendancePage() {
         </motion.div>
 
         {/* CARD 3: SESI IBADAH SEKOLAH HORIZONTAL CARD */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6 shadow-xs dark:border-slate-800 dark:bg-[#111827]">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#111827]">
           <div className="mb-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 shadow-2xs">
@@ -1178,10 +1191,10 @@ export default function StudentWorshipAttendancePage() {
         <div className="space-y-4">
             
             {/* Toolbar Outer Container */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#111827] overflow-hidden">
+            <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#111827]">
               
               {/* Row 1: Section Title + Subtext + Action Buttons */}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 p-4 sm:p-6 dark:border-slate-800">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 p-4 sm:p-6">
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
