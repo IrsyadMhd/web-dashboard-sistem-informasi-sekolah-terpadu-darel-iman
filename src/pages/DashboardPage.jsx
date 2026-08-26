@@ -64,6 +64,28 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 
 const PRESTASI_COLORS = ['#10B981', '#0284C7', '#F59E0B', '#8B5CF6', '#EF4444']
 
+const CustomChartTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/95 text-xs">
+        {label && <p className="font-extrabold text-slate-900 dark:text-white mb-1.5 border-b border-slate-100 dark:border-slate-800 pb-1">{label}</p>}
+        <div className="space-y-1">
+          {payload.map((item, idx) => (
+            <div key={idx} className="flex items-center justify-between gap-4 text-[11px]">
+              <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
+                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color || item.fill }} />
+                {item.name}:
+              </span>
+              <span className="font-extrabold text-slate-900 dark:text-white">{item.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate()
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
@@ -190,7 +212,11 @@ export default function DashboardPage() {
       <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Ringkasan Yayasan' }]} />
       <div className="space-y-6 pb-12 bg-slate-50/50 dark:bg-transparent min-h-screen">
       {/* 1. HERO BANNER WITH ISLAMIC DOME SILHOUETTE & MONITORING BADGE */}
-      <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-[#083A2A] via-[#0E5C44] to-[#1E8E5A] p-6 md:p-8 text-white shadow-xl border border-emerald-500/20">
+      <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-[#083A2A] via-[#0E5C44] to-[#1E8E5A] p-6 md:p-8 text-white shadow-xl border border-emerald-500/20 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-[#06261c] dark:via-[#093d2d] dark:to-[#0f5437]">
+        {/* Dual Multi-Tone Ambient Glow */}
+        <div className="pointer-events-none absolute -right-12 -top-12 h-64 w-64 rounded-full bg-gradient-to-br from-emerald-400/25 via-teal-300/15 to-transparent blur-3xl dark:from-emerald-500/30 dark:via-teal-400/20" />
+        <div className="pointer-events-none absolute -left-12 -bottom-12 h-64 w-64 rounded-full bg-gradient-to-tr from-teal-400/20 via-emerald-300/10 to-transparent blur-3xl dark:from-teal-600/20 dark:via-emerald-500/10" />
+
         <div className="absolute inset-0 opacity-15 pointer-events-none">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -509,7 +535,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                   <XAxis dataKey="unit" fontSize={10} stroke="#94A3B8" />
                   <YAxis fontSize={10} stroke="#94A3B8" />
-                  <RechartsTooltip contentStyle={{ borderRadius: '10px', fontSize: '11px' }} />
+                  <RechartsTooltip content={<CustomChartTooltip />} />
                   <Bar dataKey="target" fill="#10B981" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="realisasi" fill="#6366F1" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -669,7 +695,7 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                   <XAxis dataKey="bulan" fontSize={10} stroke="#94A3B8" />
                   <YAxis domain={[90, 100]} fontSize={10} stroke="#94A3B8" />
-                  <RechartsTooltip contentStyle={{ borderRadius: '10px', fontSize: '11px' }} />
+                  <RechartsTooltip content={<CustomChartTooltip />} />
                   <Line type="monotone" dataKey="guru" stroke="#10B981" strokeWidth={2.5} dot={{ r: 4 }} />
                   <Line type="monotone" dataKey="siswa" stroke="#8B5CF6" strokeWidth={2.5} dot={{ r: 4 }} />
                 </LineChart>

@@ -59,6 +59,7 @@ import {
 import { UserCircle1, Gear1, Exit, Bell1 } from '@tailgrids/icons'
 import AuthToast, { showAuthToast } from '../components/ui/AuthToast'
 import AuthPopup from '../components/ui/AuthPopup'
+import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
 
 export default function DashboardLayout() {
   const location = useLocation()
@@ -133,6 +134,7 @@ export default function DashboardLayout() {
 
   const [dbUnits, setDbUnits] = useState([])
   const [serverNow, setServerNow] = useState(null)
+  const [isAcademicCalendarOpen, setIsAcademicCalendarOpen] = useState(false)
 
   const muatPengaturanRef = muatPengaturan
 
@@ -797,6 +799,38 @@ export default function DashboardLayout() {
     return false
   }
 
+const sidebarIconStyles = {
+  'dashboard': 'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs',
+  'dashboard-yayasan': 'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs',
+  'dashboard-yayasan-menu': 'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs',
+  'master-data': 'bg-purple-100/90 text-purple-600 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/60 shadow-2xs',
+  'akademik': 'bg-sky-100/90 text-sky-600 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/60 shadow-2xs',
+  'portal-guru': 'bg-indigo-100/90 text-indigo-600 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 shadow-2xs',
+  'portal-ortu-siswa': 'bg-rose-100/90 text-rose-600 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60 shadow-2xs',
+  'absensi': 'bg-teal-100/90 text-teal-600 dark:bg-teal-950/70 dark:text-teal-300 border border-teal-200/70 dark:border-teal-800/60 shadow-2xs',
+  'musyrif-asrama': 'bg-violet-100/90 text-violet-600 dark:bg-violet-950/70 dark:text-violet-300 border border-violet-200/70 dark:border-violet-800/60 shadow-2xs',
+  'mutabaah': 'bg-amber-100/90 text-amber-600 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/60 shadow-2xs',
+  'tahfizh': 'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs',
+  'rekap-data': 'bg-fuchsia-100/90 text-fuchsia-600 dark:bg-fuchsia-950/70 dark:text-fuchsia-300 border border-fuchsia-200/70 dark:border-fuchsia-800/60 shadow-2xs',
+  'pengaturan': 'bg-slate-100/90 text-slate-600 dark:bg-slate-800/90 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700 shadow-2xs',
+  'yayasan-monitoring': 'bg-sky-100/90 text-sky-600 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/60 shadow-2xs',
+  'yayasan-laporan': 'bg-fuchsia-100/90 text-fuchsia-600 dark:bg-fuchsia-950/70 dark:text-fuchsia-300 border border-fuchsia-200/70 dark:border-fuchsia-800/60 shadow-2xs',
+  'yayasan-pengaturan': 'bg-slate-100/90 text-slate-600 dark:bg-slate-800/90 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700 shadow-2xs',
+}
+
+const pastelPaletteCycle = [
+  'bg-sky-100/90 text-sky-600 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/60 shadow-2xs',
+  'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs',
+  'bg-purple-100/90 text-purple-600 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/60 shadow-2xs',
+  'bg-amber-100/90 text-amber-600 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/60 shadow-2xs',
+  'bg-fuchsia-100/90 text-fuchsia-600 dark:bg-fuchsia-950/70 dark:text-fuchsia-300 border border-fuchsia-200/70 dark:border-fuchsia-800/60 shadow-2xs',
+  'bg-rose-100/90 text-rose-600 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60 shadow-2xs',
+]
+
+const getSidebarIconBadgeClass = (key, idx) => {
+  return sidebarIconStyles[key] || pastelPaletteCycle[idx % pastelPaletteCycle.length]
+}
+
   const sidebarMenu = (isFoundationUser ? [
     {
       key: 'dashboard-yayasan',
@@ -1085,7 +1119,7 @@ export default function DashboardLayout() {
     <div
       className={`site-shell min-h-screen text-slate-800 flex flex-col font-sans antialiased dark:bg-slate-950 dark:text-slate-100 template-${pengaturan.template}`}
       style={{
-        '--site-sidebar': pengaturan.sidebar_color || '#064E3B',
+        '--site-sidebar': pengaturan.sidebar_color || '#0E5C44',
         '--site-accent': pengaturan.sidebar_accent_color || '#3FBF75',
         '--site-body': isDarkMode ? '#0F172A' : '#F7F9FC',
         '--site-header': isDarkMode ? '#0F172A' : '#FFFFFF',
@@ -1106,11 +1140,15 @@ export default function DashboardLayout() {
           className={`site-sidebar relative overflow-visible fixed inset-y-0 z-50 flex flex-col justify-between border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#1B2433] transition-all duration-300 ease-in-out md:sticky md:top-0 md:h-screen ${pengaturan.sidebar_position === 'right' ? 'right-0 border-l' : 'left-0 border-r'} ${collapsed ? 'w-20' : 'w-64'
             } ${mobileMenuOpen ? 'translate-x-0 w-64' : pengaturan.sidebar_position === 'right' ? 'translate-x-full md:translate-x-0' : '-translate-x-full md:translate-x-0'}`}
           style={{
-            background: pengaturan.sidebar_style === 'light'
-              ? '#FFFFFF'
-              : pengaturan.sidebar_style === 'gradient'
-                ? `linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%)`
-                : (pengaturan.sidebar_color || '#FFFFFF'),
+            background: isDarkMode
+              ? (pengaturan.sidebar_style === 'gradient'
+                ? 'linear-gradient(180deg, #1B2433 0%, #131B29 50%, #0F172A 100%)'
+                : undefined)
+              : (pengaturan.sidebar_style === 'light'
+                ? '#FFFFFF'
+                : (pengaturan.sidebar_style === 'solid'
+                  ? (pengaturan.sidebar_color || '#FFFFFF')
+                  : `linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%)`)),
           }}
         >
           {/* Desktop Floating Toggle Button */}
@@ -1124,7 +1162,7 @@ export default function DashboardLayout() {
           </button>
 
           {/* Header Sidebar: Logo & Title */}
-          <div className={`relative z-10 ${collapsed ? 'p-3' : 'p-4'} border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs`}>
+          <div className={`relative z-10 ${collapsed ? 'p-3' : 'p-4'} border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-[#1B2433]/90 backdrop-blur-xs`}>
             <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
               <div className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center w-full' : ''}`}>
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white shadow-md shadow-emerald-600/20 bg-gradient-to-br from-emerald-600 to-teal-700 border border-emerald-500/30" style={{ backgroundColor: pengaturan.sidebar_accent_color || '#064E3B' }}>
@@ -1153,7 +1191,7 @@ export default function DashboardLayout() {
 
           {/* Navigation Items */}
           <nav className={`relative z-10 flex-1 space-y-1.5 ${collapsed ? 'overflow-visible' : 'overflow-y-auto custom-scrollbar'} p-3 text-xs`}>
-            {sidebarMenu.map((item) => {
+            {sidebarMenu.map((item, idx) => {
               const Icon = item.icon
               if (!item.submenus) {
                 const isActive = normalizePath(location.pathname) === normalizePath(item.to)
@@ -1167,7 +1205,7 @@ export default function DashboardLayout() {
                         : 'text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-400 border border-transparent hover:border-emerald-200/60 dark:hover:border-slate-700'
                         }`}
                     >
-                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${isActive ? 'bg-white/20 text-white' : 'text-emerald-600 dark:text-emerald-400 group-hover/link:text-emerald-700'}`}>
+                      <div className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${isActive ? 'bg-white/20 text-white border border-white/30' : getSidebarIconBadgeClass(item.key, idx)}`}>
                         <Icon className="h-4 w-4 stroke-[2]" />
                       </div>
                       {!collapsed && <span>{item.label}</span>}
@@ -1203,7 +1241,9 @@ export default function DashboardLayout() {
                       }`}
                   >
                     <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
-                      <Icon className={`h-4 w-4 shrink-0 stroke-[1.8] ${isOpen || hasActiveChild ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                      <div className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${isOpen || hasActiveChild ? 'bg-white/20 text-white border border-white/30' : getSidebarIconBadgeClass(item.key, idx)}`}>
+                        <Icon className={`h-4 w-4 shrink-0 stroke-[2] ${isOpen || hasActiveChild ? 'text-white' : ''}`} />
+                      </div>
                       {!collapsed && <span className="truncate">{item.label}</span>}
                     </div>
                     {!collapsed && (
@@ -1269,7 +1309,7 @@ export default function DashboardLayout() {
           </nav>
 
           {/* User Status Bar & Help Link at Sidebar Bottom */}
-          <div className="relative z-10 p-3.5 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/80 space-y-2.5">
+          <div className="relative z-10 p-3.5 border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-[#131B29]/90 space-y-2.5">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <PersonAvatar
@@ -1296,8 +1336,8 @@ export default function DashboardLayout() {
             {!collapsed && (
               <button
                 type="button"
-                onClick={() => navigate(bolehBukaMenu('/dashboard/pengaturan') ? '/dashboard/pengaturan' : '/dashboard/profil-akun')}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-[11px] font-semibold transition border border-slate-200/90 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700"
+                onClick={() => navigate('/dashboard/bantuan')}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-[11px] font-semibold transition border border-slate-200/90 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 cursor-pointer"
               >
                 <HelpCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Bantuan & Panduan</span>
@@ -1311,6 +1351,13 @@ export default function DashboardLayout() {
           {/* Topbar Header (Clean White bg-white with subtle shadow shadow-sm) */}
           <header
             className={`${pengaturan.header_sticky ? 'sticky top-0' : 'relative'} z-30 flex min-h-[4rem] min-w-0 items-center justify-between overflow-visible border-b border-slate-200/80 px-3 sm:px-4 lg:px-6 gap-3 bg-white dark:bg-slate-900 shadow-sm backdrop-blur-md transition-colors duration-200 dark:border-slate-800/80`}
+            style={{
+              backgroundColor: isDarkMode
+                ? undefined
+                : (pengaturan.header_style === 'solid' || (pengaturan.header_color && pengaturan.header_color !== '#FFFFFF')
+                  ? pengaturan.header_color
+                  : undefined)
+            }}
           >
             {/* LEFT CONTROLS: Mobile Menu Toggle, Active Unit Switcher & Field Pencarian (Search Field moved to left near unit) */}
             <div className="flex flex-1 min-w-0 items-center gap-2 sm:gap-3">
@@ -1405,18 +1452,23 @@ export default function DashboardLayout() {
 
             {/* RIGHT CONTROLS: Tanggal (geser dekat notifikasi), Akses Role (Super Admin/Admin only, samping notifikasi), Notification Bell, Cache Reset, Dark Mode, Profile Avatar */}
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-              {/* 3. Tanggal Hari Ini (Soft Pastel Cyan/Teal, posisi dekat button notifikasi) */}
-              <div className="group relative hidden lg:flex items-center">
-                <div
-                  className="shrink-0 flex items-center gap-1.5 rounded-2xl border border-cyan-200/90 bg-cyan-50/80 px-3 py-2 shadow-xs dark:border-cyan-800/80 dark:bg-cyan-950/60 transition hover:scale-[1.02]"
+              {/* 3. Tanggal Hari Ini & Button Kalender Akademik (Soft Pastel Cyan/Teal, posisi dekat button notifikasi) */}
+              <div className="group relative hidden lg:flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsAcademicCalendarOpen(true)}
+                  className="shrink-0 flex items-center gap-1.5 rounded-2xl border border-cyan-200/90 bg-cyan-50/80 px-3 py-2 shadow-xs transition hover:scale-[1.02] hover:bg-cyan-100/90 active:scale-[0.98] dark:border-cyan-800/80 dark:bg-cyan-950/60 dark:hover:bg-cyan-900/60 cursor-pointer"
                 >
                   <CalendarDays className="h-4 w-4 text-cyan-600 dark:text-cyan-400 stroke-[2.2]" />
                   <span className="text-xs font-extrabold text-cyan-900 dark:text-cyan-200 whitespace-nowrap">{tanggalTampil}</span>
-                </div>
+                  <span className="ml-1 inline-flex items-center rounded-lg bg-cyan-200/70 px-1.5 py-0.5 text-[10px] font-black text-cyan-900 dark:bg-cyan-900 dark:text-cyan-200">
+                    Kalender
+                  </span>
+                </button>
                 {/* Instant Floating Tooltip */}
                 <div className="pointer-events-none absolute right-0 top-full mt-2.5 hidden group-hover:flex flex-col items-end z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
                   <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
-                    Tanggal sistem & kalender akademik hari ini
+                    Klik untuk membuka Kalender Akademik & Pengaturan Libur/Sekolah
                   </div>
                 </div>
               </div>
@@ -1707,6 +1759,10 @@ export default function DashboardLayout() {
       <GlobalSearchModal
         isOpen={isSearchModalOpen}
         onClose={() => setIsSearchModalOpen(false)}
+      />
+      <AcademicCalendarModal
+        isOpen={isAcademicCalendarOpen}
+        onClose={() => setIsAcademicCalendarOpen(false)}
       />
       <AuthPopup />
       <AuthToast />

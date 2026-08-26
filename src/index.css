@@ -14,6 +14,28 @@
   --card-dark: #1B2433;
   --radius-master: 18px;
   --shadow-soft-xl: 0 10px 30px -5px rgba(14, 92, 68, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --dropdown-background: #ffffff;
+  --dropdown-hover-background: #f1f5f9;
+}
+
+.dark {
+  --dropdown-background: #1b2433;
+  --dropdown-hover-background: #334155;
+}
+
+.bg-dropdown-background {
+  background-color: #ffffff !important;
+}
+.dark .bg-dropdown-background {
+  background-color: #1b2433 !important;
+}
+.focus\:bg-dropdown-hover-background:focus,
+.hover\:bg-dropdown-hover-background:hover {
+  background-color: #f1f5f9 !important;
+}
+.dark .focus\:bg-dropdown-hover-background:focus,
+.dark .hover\:bg-dropdown-hover-background:hover {
+  background-color: #334155 !important;
 }
 
 /* Shared report workspace — Akademik, Pegawai, LMS, dan Alumni. */

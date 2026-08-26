@@ -231,7 +231,7 @@ function SelectContent({ children, className, ...props }: SelectContentProps) {
     return (
       <Popover
         className={cn(
-          "bg-dropdown-background w-(--trigger-width) overflow-auto rounded-xl border border-base-100 shadow-md",
+          "bg-white dark:bg-[#1B2433] text-slate-800 dark:text-slate-100 w-(--trigger-width) overflow-auto rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl z-50 p-1",
           "entering:animate-in entering:fade-in-0 entering:zoom-in-95",
           "exiting:animate-out exiting:fade-out-0 exiting:zoom-out-95",
           className
@@ -239,7 +239,7 @@ function SelectContent({ children, className, ...props }: SelectContentProps) {
         {...props}
       >
         <ListBox
-          className="p-1 outline-none"
+          className="p-1 outline-none space-y-0.5"
           selectionMode={context.selectionMode}
           selectedKeys={
             context.value instanceof Set
@@ -262,14 +262,14 @@ function SelectContent({ children, className, ...props }: SelectContentProps) {
   return (
     <Popover
       className={cn(
-        "bg-dropdown-background w-(--trigger-width) overflow-auto rounded-xl border border-base-100 shadow-md",
+        "bg-white dark:bg-[#1B2433] text-slate-800 dark:text-slate-100 w-(--trigger-width) overflow-auto rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl z-50 p-1",
         "entering:animate-in entering:fade-in-0 entering:zoom-in-95",
         "exiting:animate-out exiting:fade-out-0 exiting:zoom-out-95",
         className
       )}
       {...props}
     >
-      <ListBox className="p-1 outline-none">{children}</ListBox>
+      <ListBox className="p-1 outline-none space-y-0.5">{children}</ListBox>
     </Popover>
   );
 }
@@ -281,8 +281,8 @@ function SelectItem({ className, children, ...props }: ListBoxItemProps) {
   return (
     <ListBoxItem
       className={cn(
-        "group/item text-text-50 focus:text-title-50 focus:bg-dropdown-hover-background relative flex w-full text-sm cursor-pointer items-center gap-3 rounded-md py-1 pl-1.5 pr-7 outline-hidden select-none",
-        "data-disabled:text-input-disabled-text data-disabled:pointer-events-none",
+        "group/item text-slate-700 dark:text-slate-200 focus:text-slate-900 dark:focus:text-white focus:bg-slate-100 dark:focus:bg-slate-800/90 relative flex w-full text-xs font-bold cursor-pointer items-center gap-3 rounded-lg py-2 pl-2.5 pr-7 outline-hidden select-none transition-colors",
+        "data-disabled:opacity-50 data-disabled:pointer-events-none",
         className
       )}
       {...props}
@@ -291,8 +291,8 @@ function SelectItem({ className, children, ...props }: ListBoxItemProps) {
         <>
           {typeof children === "function" ? children(renderProps) : children}
           {renderProps.isSelected && (
-            <span className="size-5 absolute right-1 flex items-center justify-center">
-              <Check className="size-5" />
+            <span className="size-4 absolute right-2 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Check className="size-3.5" />
             </span>
           )}
         </>

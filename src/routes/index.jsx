@@ -103,6 +103,7 @@ const StudentAttendancePage = lazy(() => import('../pages/attendance/StudentAtte
 const StudentAttendanceHistoryPage = lazy(() => import('../pages/attendance/StudentAttendanceHistoryPage'))
 const AcademicLmsContainerPage = lazy(() => import('../pages/AcademicLmsContainerPage'))
 const NewsManagementPage = lazy(() => import('../pages/NewsManagementPage'))
+const BantuanPage = lazy(() => import('../pages/BantuanPage'))
 
 const FoundationDashboardPage = lazy(() => import('../pages/foundation/FoundationDashboardPage').then(m => ({ default: m.FoundationDashboardPage })))
 const FoundationUnitsPage = lazy(() => import('../pages/foundation/FoundationUnitsPage').then(m => ({ default: m.FoundationUnitsPage })))
@@ -655,6 +656,14 @@ export const router = createBrowserRouter([
                 <BungkusLazy><MasterTahunAjaranPage /></BungkusLazy>
               </PermissionElement>
             ),
+          },
+          {
+            path: 'master/tahun-ajaran',
+            element: <Navigate to="/dashboard/master-tahun-ajaran" replace />,
+          },
+          {
+            path: 'master/kurikulum',
+            element: <Navigate to="/dashboard/master-kurikulum" replace />,
           },
           {
             path: 'master-quran-surah',
@@ -1333,6 +1342,14 @@ export const router = createBrowserRouter([
               <PermissionElement roles={['Super Admin', 'SuperAdmin', 'super_admin', 'superadmin', 'Admin', 'admin']}>
                 <BungkusLazy><PengaturanPage /></BungkusLazy>
               </PermissionElement>
+            ),
+          },
+          {
+            path: 'bantuan',
+            element: (
+              <BungkusLazy>
+                <BantuanPage />
+              </BungkusLazy>
             ),
           },
           {

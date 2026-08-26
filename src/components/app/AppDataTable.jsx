@@ -149,9 +149,11 @@ export default function AppDataTable({
   const resolvedBulkActions = typeof bulkActions === 'function' ? bulkActions(selectedKeys) : bulkActions
   const clientTotalPages = Math.max(1, Math.ceil(sortedData.length / clientPageSize))
   const resolvedClientPage = Math.min(clientPage, clientTotalPages)
-  const visibleData = clientPagination
-    ? sortedData.slice((resolvedClientPage - 1) * clientPageSize, resolvedClientPage * clientPageSize)
-    : sortedData
+  const visibleData = useMemo(() => {
+    return clientPagination
+      ? sortedData.slice((resolvedClientPage - 1) * clientPageSize, resolvedClientPage * clientPageSize)
+      : sortedData
+  }, [clientPagination, sortedData, resolvedClientPage, clientPageSize])
   const resolvedIsEmpty = typeof isEmpty === 'boolean' ? isEmpty : !hasCustomTable && sortedData.length === 0
   const isFilteredEmpty = typeof hasActiveFilters === 'boolean' ? hasActiveFilters : Boolean(searchValue)
   const customTable = typeof renderTable === 'function'
