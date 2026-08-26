@@ -59,4 +59,19 @@ export const studentService = {
     const { data } = await api.put(`/students/${studentId}`, payload)
     return data
   },
+
+  ekspor: async (params = {}) => {
+    const { data } = await api.get('/students/export', { params })
+    return data
+  },
+
+  prosesImport: async (rows) => {
+    const { data } = await api.post('/students/import', { data: rows })
+    return data
+  },
+
+  downloadTemplate: async () => {
+    const { data } = await api.get('/students/import-template')
+    return data
+  },
 }

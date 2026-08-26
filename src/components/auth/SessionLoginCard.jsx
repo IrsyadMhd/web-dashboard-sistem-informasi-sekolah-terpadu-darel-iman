@@ -66,7 +66,7 @@ export default function SessionLoginCard() {
   }
 
   return (
-    <Card className="w-full rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-6">
+    <Card className="w-full rounded-[22px] border-2 border-emerald-500/25 bg-white p-6 lg:p-8 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">

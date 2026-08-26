@@ -582,47 +582,8 @@ export default function TahfizhReportSummaryPage() {
         ) : null}
       </div>
 
-      {/* 📊 TOP MASTER STATS GRID (4 KPI Cards matching Mutabaah) */}
-      <MasterStatsGrid>
-        <MasterStatCard
-          icon={BookOpen}
-          label="Total Setoran Tahfizh"
-          value={metrics.totalCount}
-          description="Sesuai data log rekapan"
-          variant="info"
-          delay={40}
-        />
-        <MasterStatCard
-          icon={BookMarked}
-          label="Setoran Ziyadah"
-          value={metrics.ziyadahCount}
-          description="Hafalan ayat baru"
-          variant="success"
-          delay={80}
-        />
-        <MasterStatCard
-          icon={CheckCircle2}
-          label="Setoran Murajaah"
-          value={metrics.murajaahCount}
-          description="Pengulangan hafalan"
-          variant="success"
-          delay={120}
-        />
-        <MasterStatCard
-          icon={Sparkles}
-          label="Tasmi' & Ujian Juz"
-          value={metrics.tasmiCount + metrics.ujianCount}
-          description="Evaluasi & kelulusan"
-          variant="warning"
-          delay={160}
-        />
-      </MasterStatsGrid>
-
-      {/* 🧭 CARD TAHFIZH SUB-NAV (Positioned directly above Data Rekapan Tahfizh Santri Card) */}
-      <TahfizhSubNav />
-
       {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="my-5">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="mb-5">
         <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
           <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
           <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
@@ -668,6 +629,45 @@ export default function TahfizhReportSummaryPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* 🧭 CARD TAHFIZH SUB-NAV (Positioned directly above Data Rekapan Tahfizh Santri Card) */}
+      <TahfizhSubNav />
+
+      {/* 📊 TOP MASTER STATS GRID (4 KPI Cards matching Mutabaah) */}
+      <MasterStatsGrid>
+        <MasterStatCard
+          icon={BookOpen}
+          label="Total Setoran Tahfizh"
+          value={metrics.totalCount}
+          description="Sesuai data log rekapan"
+          variant="info"
+          delay={40}
+        />
+        <MasterStatCard
+          icon={BookMarked}
+          label="Setoran Ziyadah"
+          value={metrics.ziyadahCount}
+          description="Hafalan ayat baru"
+          variant="success"
+          delay={80}
+        />
+        <MasterStatCard
+          icon={CheckCircle2}
+          label="Setoran Murajaah"
+          value={metrics.murajaahCount}
+          description="Pengulangan hafalan"
+          variant="success"
+          delay={120}
+        />
+        <MasterStatCard
+          icon={Sparkles}
+          label="Tasmi' & Ujian Juz"
+          value={metrics.tasmiCount + metrics.ujianCount}
+          description="Evaluasi & kelulusan"
+          variant="warning"
+          delay={160}
+        />
+      </MasterStatsGrid>
 
       {/* 📊 SUMMARY STATUS CARDS (4 Equal Pastel Grid Cards matching Mutabaah) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-5">

@@ -86,6 +86,21 @@ import ErrorState from '../components/dashboard/ErrorState'
 import StudentAchievementRecapSection from '../components/dashboard/StudentAchievementRecapSection'
 import KpiQuickViewModal from '../components/KpiQuickViewModal'
 import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
+import { motion } from 'framer-motion'
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, staggerChildren: 0.08 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+}
 
 const DEFAULT_ONLINE_USERS = []
 const DEFAULT_ONLINE_LOGS = []
@@ -261,79 +276,90 @@ export default function KepalaSekolahDashboardPage() {
 
   return (
     <PageContainer maxW="7xl">
-      <div className="space-y-6 pb-12">
-      {/* Breadcrumb Navigation */}
-      <AppBreadcrumb items={[{ label: 'Dashboard Kepala Sekolah' }]} />
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
+        {/* Breadcrumb Navigation */}
+        <motion.div variants={itemVariants} className="print:hidden">
+          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Dashboard Kepala Sekolah' }]} />
+        </motion.div>
 
-      {/* Informasi Unit Sekolah & Profil Operasional */}
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800/80">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#0E5C44]/10 text-[#0E5C44] dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]">
-              <Building2 className="h-6 w-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                  {schoolInfo.nama}
-                </h2>
-                <AppBadge variant="success" dot>
-                  {schoolInfo.status}
-                </AppBadge>
+        {/* MODERN HERO CARD HEADER (MATCHING MONITORING & DIVISI PENDIDIKAN STYLE) */}
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-emerald-500/20 dark:border-emerald-800/40">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <Building2 className="size-6 sm:size-7 text-white" />
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                NPSN: {schoolInfo.npsn} • Kode Unit: {schoolInfo.kode} • Akreditasi: {schoolInfo.akreditasi}
-              </p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Dashboard Kepala Sekolah
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    {schoolInfo.status}
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  {schoolInfo.nama}
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
+                  NPSN: <span className="font-bold text-slate-900 dark:text-white">{schoolInfo.npsn}</span> • Kode Unit: <span className="font-bold text-slate-900 dark:text-white">{schoolInfo.kode}</span> • Akreditasi: <span className="font-bold text-slate-900 dark:text-white">{schoolInfo.akreditasi}</span>
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <AppBadge variant="info">TA {schoolInfo.tahun_ajaran}</AppBadge>
-            <AppBadge variant="purple">{schoolInfo.semester}</AppBadge>
-            {unitsList.length > 0 && (
-              <select
-                value={selectedUnitId || context.unit?.id || ''}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setSelectedUnitId(val)
-                  fetchDashboard(val)
-                }}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <option value="">-- Pilih Unit Sekolah --</option>
-                {unitsList.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.code} - {u.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs text-slate-600 dark:text-slate-300">
-          <div className="flex items-start gap-2.5">
-            <MapPin className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
-            <div>
-              <span className="font-extrabold text-slate-900 dark:text-white block">Lokasi & Alamat Unit</span>
-              <span className="text-slate-500 dark:text-slate-400">{schoolInfo.alamat}</span>
+            <div className="flex flex-wrap items-center gap-2 shrink-0 z-10">
+              <AppBadge variant="info" className="font-extrabold">TA {schoolInfo.tahun_ajaran}</AppBadge>
+              <AppBadge variant="purple" className="font-extrabold">{schoolInfo.semester}</AppBadge>
+              {unitsList.length > 0 && (
+                <select
+                  value={selectedUnitId || context.unit?.id || ''}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setSelectedUnitId(val)
+                    fetchDashboard(val)
+                  }}
+                  className="rounded-xl border border-emerald-500/30 bg-white/90 px-3.5 py-2 text-xs font-extrabold text-slate-800 shadow-sm focus:border-emerald-600 focus:outline-none dark:border-emerald-800 dark:bg-slate-900 dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="">-- Pilih Unit Sekolah --</option>
+                  {unitsList.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.code} - {u.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
-          <div className="flex items-start gap-2.5">
-            <UserCheck className="h-4 w-4 shrink-0 text-sky-600 mt-0.5" />
-            <div>
-              <span className="font-extrabold text-slate-900 dark:text-white block">Kepala Sekolah Unit</span>
-              <span className="text-slate-500 dark:text-slate-400">{schoolInfo.kepala_sekolah}</span>
+
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-xs text-slate-700 dark:text-slate-300">
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/60 dark:bg-slate-900/50 border border-emerald-500/20 dark:border-emerald-800/40">
+              <MapPin className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+              <div>
+                <span className="font-extrabold text-slate-900 dark:text-white block">Lokasi & Alamat Unit</span>
+                <span className="text-slate-600 dark:text-slate-400 font-medium">{schoolInfo.alamat}</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/60 dark:bg-slate-900/50 border border-emerald-500/20 dark:border-emerald-800/40">
+              <UserCheck className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400 mt-0.5" />
+              <div>
+                <span className="font-extrabold text-slate-900 dark:text-white block">Kepala Sekolah Unit</span>
+                <span className="text-slate-600 dark:text-slate-400 font-medium">{schoolInfo.kepala_sekolah}</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/60 dark:bg-slate-900/50 border border-emerald-500/20 dark:border-emerald-800/40">
+              <Phone className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div>
+                <span className="font-extrabold text-slate-900 dark:text-white block">Kontak Resepsionis / Admin</span>
+                <span className="text-slate-600 dark:text-slate-400 font-medium">{schoolInfo.kontak}</span>
+              </div>
             </div>
           </div>
-          <div className="flex items-start gap-2.5">
-            <Phone className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-            <div>
-              <span className="font-extrabold text-slate-900 dark:text-white block">Kontak Resepsionis / Admin</span>
-              <span className="text-slate-500 dark:text-slate-400">{schoolInfo.kontak}</span>
-            </div>
-          </div>
-        </div>
-      </section>
+        </motion.div>
 
       {/* Profil Pengurus Yayasan (Ketua, Sekretaris, Bendahara) */}
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-4 dark:border-slate-800 dark:bg-[#1B2433]">
@@ -1087,17 +1113,17 @@ export default function KepalaSekolahDashboardPage() {
               </div>
 
               {/* Data Table Presensi Siswa */}
-              <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
+              <div className="overflow-x-auto rounded-2xl border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#13221f]">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-900/60 font-extrabold text-slate-700 dark:text-slate-200 uppercase text-[10px]">
+                  <thead className="bg-gradient-to-r from-emerald-600 to-teal-600 font-extrabold text-white uppercase text-[10px] tracking-wider">
                     <tr>
-                      <th className="px-4 py-3 text-center w-16">Avatar</th>
-                      <th className="px-4 py-3">Siswa & NISN</th>
-                      <th className="px-4 py-3">Unit Pendidikan</th>
-                      <th className="px-4 py-3">Kelas / Rombel</th>
-                      <th className="px-4 py-3">Waktu Presensi</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Keterangan</th>
+                      <th className="px-4 py-3.5 text-center w-16 text-white font-extrabold">Avatar</th>
+                      <th className="px-4 py-3.5 text-white font-extrabold">Siswa & NISN</th>
+                      <th className="px-4 py-3.5 text-white font-extrabold">Unit Pendidikan</th>
+                      <th className="px-4 py-3.5 text-white font-extrabold">Kelas / Rombel</th>
+                      <th className="px-4 py-3.5 text-white font-extrabold">Waktu Presensi</th>
+                      <th className="px-4 py-3.5 text-white font-extrabold">Status</th>
+                      <th className="px-4 py-3.5 text-white font-extrabold">Keterangan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1113,7 +1139,7 @@ export default function KepalaSekolahDashboardPage() {
                         const sKet = st.keterangan || 'Hadir Tepat Waktu'
 
                         return (
-                          <tr key={i} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40">
+                          <tr key={i} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition-colors">
                             <td className="px-4 py-3 text-center">
                               <Avatar size="sm" className="mx-auto ring-2 ring-emerald-500/20">
                                 {photo && <AvatarImage src={photo} alt={sName} />}
@@ -1176,7 +1202,7 @@ export default function KepalaSekolahDashboardPage() {
           onClose={() => setActiveModal(null)}
         />
       </ModalErrorBoundary>
-    </div>
+      </motion.div>
     </PageContainer>
   )
 }

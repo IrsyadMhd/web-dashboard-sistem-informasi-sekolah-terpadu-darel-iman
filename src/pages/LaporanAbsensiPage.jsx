@@ -852,7 +852,7 @@ export default function LaporanAbsensiPage() {
                     Laporan Presensi Pembelajaran
                   </span>
                   <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
-                    {formatAngka(totalRecords)} Data Presensi
+                    {formatAngka(rows.length)} Data Presensi
                   </span>
                 </div>
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">

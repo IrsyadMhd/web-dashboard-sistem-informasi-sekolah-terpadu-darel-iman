@@ -256,16 +256,16 @@ export default function TataUsahaKpiModal({ type, isOpen, onClose }) {
         <SummaryPills summary={summary} keys={config.summaryKeys} labels={config.summaryLabels} />
 
         {config.tabs && (
-          <div className="flex flex-wrap items-center gap-2.5 border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-emerald-500/20 bg-emerald-50/50 p-2 dark:border-emerald-800/40 dark:bg-emerald-950/30">
             {config.tabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-2xl px-3.5 py-2 text-xs font-bold transition-colors duration-200 ${
+                className={`rounded-2xl px-4 py-2 text-xs font-extrabold transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                    : 'bg-slate-100/90 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25'
+                    : 'bg-white/80 text-slate-600 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-300'
                 }`}
               >
                 {tab.label}
@@ -274,7 +274,7 @@ export default function TataUsahaKpiModal({ type, isOpen, onClose }) {
           </div>
         )}
 
-        <div className="relative rounded-2xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+        <div className="relative rounded-2xl border border-emerald-500/20 bg-white p-3 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900">
           <Search className="absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -296,24 +296,24 @@ export default function TataUsahaKpiModal({ type, isOpen, onClose }) {
         ) : items.length === 0 ? (
           <EmptyState title="Tidak ada data" description="Belum ada record untuk ditampilkan." />
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="overflow-x-auto rounded-2xl border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#13221f]">
             <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60">
-                  <th className="px-3 py-2.5 w-10 text-center">No</th>
+              <thead className="bg-gradient-to-r from-emerald-600 to-teal-600 text-xs font-extrabold uppercase tracking-wider text-white border-b border-emerald-700">
+                <tr>
+                  <th className="px-4 py-3.5 w-12 text-center text-white font-extrabold">No</th>
                   {columns.map((col) => (
-                    <th key={col.key} className="px-3 py-2.5">{col.label}</th>
+                    <th key={col.key} className="px-4 py-3.5 text-white font-extrabold">{col.label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {items.map((row, idx) => (
-                  <tr key={row.id || idx} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20">
-                    <td className="px-3 py-2.5 text-center text-xs font-bold text-slate-400">
+                  <tr key={row.id || idx} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition-colors">
+                    <td className="px-4 py-3 text-center text-xs font-bold text-slate-400">
                       {((meta.current_page || 1) - 1) * (meta.per_page || 50) + idx + 1}
                     </td>
                     {columns.map((col) => (
-                      <td key={col.key} className="px-3 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200">
+                      <td key={col.key} className="px-4 py-3 text-xs font-medium text-slate-700 dark:text-slate-200">
                         {row[col.key] ?? '-'}
                       </td>
                     ))}

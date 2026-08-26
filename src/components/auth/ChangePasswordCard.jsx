@@ -80,10 +80,10 @@ export default function ChangePasswordCard() {
   }
 
   return (
-    <Card className="w-full rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+    <Card className="w-full rounded-[22px] border-2 border-emerald-500/25 bg-white p-6 lg:p-8 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Form: Ubah Password */}
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-800">
+        <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-xs border border-emerald-500/20 dark:border-slate-800">
           <div className="border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Ubah Password</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">

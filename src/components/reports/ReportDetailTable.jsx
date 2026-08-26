@@ -146,30 +146,30 @@ export function ReportDetailTable({
         <div className="overflow-hidden rounded-2xl border border-slate-200/90 shadow-2xs dark:border-slate-800">
           <div className="w-full overflow-hidden print:overflow-visible">
             <TableRoot className="w-full table-fixed border-collapse" fullBleed={false}>
-              <TableHeader className="bg-slate-50/90 text-slate-700 dark:bg-slate-900/90 dark:text-slate-300">
+              <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-800 dark:text-slate-100">
                 <TableRow>
                   {columns.map((col, idx) => (
                     <TableHead
                       key={idx}
-                      className={`px-4 py-3.5 text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 ${COLUMN_WIDTHS[col.accessor] || 'w-auto'} ${
+                      className={`px-4 py-3.5 text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100 ${COLUMN_WIDTHS[col.accessor] || 'w-auto'} ${
                         col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                       }`}
                     >
                       <div className="inline-flex items-center gap-1.5 truncate">
                         <span className="truncate">{col.header}</span>
                         {col.sortable !== false && (
-                          <ArrowBothDirectionHorizontal2 className="h-3.5 w-3.5 opacity-50 hover:opacity-100 transition cursor-pointer shrink-0" />
+                          <ArrowBothDirectionHorizontal2 className="h-3.5 w-3.5 opacity-50 hover:opacity-100 transition cursor-pointer shrink-0 text-emerald-600 dark:text-emerald-400" />
                         )}
                       </div>
                     </TableHead>
                   ))}
-                  <TableHead className="w-[10%] px-4 py-3.5 text-center text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200 print:hidden">
+                  <TableHead className="w-[10%] px-4 py-3.5 text-center text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100 print:hidden">
                     Aksi
                   </TableHead>
                 </TableRow>
               </TableHeader>
 
-              <TableBody className="divide-y divide-slate-100 bg-white dark:divide-slate-800/60 dark:bg-[#111827]">
+              <TableBody className="divide-y divide-slate-100/80 bg-white dark:divide-slate-800/60 dark:bg-[#111827]">
                 {data.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={columns.length + 1} className="p-8 text-center text-slate-500">
@@ -183,7 +183,7 @@ export function ReportDetailTable({
                   data.map((row, rIdx) => (
                     <TableRow
                       key={rIdx}
-                      className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-all duration-150 group"
+                      className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all duration-150 group"
                     >
                       {/* 1. Nama / Pegawai / Siswa */}
                       <TableCell className="px-4 py-3 text-xs font-medium text-slate-700 dark:text-slate-200 w-[34%]">

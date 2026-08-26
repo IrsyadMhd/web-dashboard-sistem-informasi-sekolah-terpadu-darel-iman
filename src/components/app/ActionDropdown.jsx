@@ -26,7 +26,7 @@ export default function ActionDropdown({
   trigger,
 }) {
   const user = useAuthStore((state) => state.user)
-  const roles = user?.roles || []
+  const roles = user?.roles || (user?.role ? [user.role] : [])
   const permissions = user?.permissions || []
   const isSuperAdmin = hasAnyRole(roles, ['Super Admin'])
 
@@ -48,7 +48,13 @@ export default function ActionDropdown({
 
   const hasAnyAction = canView || canEdit || canHistory || filteredExtraItems.length > 0 || canDelete
 
-  if (!hasAnyAction) return null
+  const exec = (fn) => {
+    if (typeof fn === 'function') {
+      setTimeout(() => {
+        fn()
+      }, 10)
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -61,7 +67,7 @@ export default function ActionDropdown({
       <DropdownMenuContent className="p-1.5 border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 min-w-36 shadow-lg rounded-xl">
         {canView && (
           <DropdownMenuItem
-            onAction={onView}
+            onAction={() => exec(onView)}
             className="cursor-pointer font-medium text-xs text-slate-700 hover:text-emerald-700 dark:text-slate-200"
           >
             <Eye className="size-4 text-sky-500" />
@@ -70,7 +76,7 @@ export default function ActionDropdown({
         )}
         {canEdit && (
           <DropdownMenuItem
-            onAction={onEdit}
+            onAction={() => exec(onEdit)}
             className="cursor-pointer font-medium text-xs text-slate-700 hover:text-emerald-700 dark:text-slate-200"
           >
             <Pencil1 className="size-4 text-amber-500" />
@@ -79,7 +85,7 @@ export default function ActionDropdown({
         )}
         {canHistory && (
           <DropdownMenuItem
-            onAction={onHistory}
+            onAction={() => exec(onHistory)}
             className="cursor-pointer font-medium text-xs text-slate-700 hover:text-emerald-700 dark:text-slate-200"
           >
             <ClockThree className="size-4 text-slate-400" />
@@ -89,7 +95,7 @@ export default function ActionDropdown({
         {filteredExtraItems.map((item, idx) => (
           <DropdownMenuItem
             key={idx}
-            onAction={item.onClick}
+            onAction={() => exec(item.onClick)}
             className="cursor-pointer font-medium text-xs text-slate-700 hover:text-emerald-700 dark:text-slate-200"
           >
             {item.icon}
@@ -102,7 +108,7 @@ export default function ActionDropdown({
               <DropdownMenuSeparator className="-mx-1.5 my-1.5 border-slate-200 dark:border-slate-800" />
             )}
             <DropdownMenuItem
-              onAction={onDelete}
+              onAction={() => exec(onDelete)}
               className="cursor-pointer font-medium text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400"
             >
               <Trash1 className="size-4 text-rose-500" />

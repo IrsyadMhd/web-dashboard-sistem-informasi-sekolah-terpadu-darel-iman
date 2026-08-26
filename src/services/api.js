@@ -16,7 +16,7 @@ api.interceptors.request.use((config) => {
     }
   }
 
-  const token = sessionStorage.getItem('school_erp_token') || localStorage.getItem('school_erp_token')
+  const token = localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
 
   if (token) {
     // Only check validity for protected endpoints (avoid infinite loop on login)
@@ -44,7 +44,7 @@ api.interceptors.response.use(
     const status = error?.response?.status
 
     if (status === 401) {
-      const token = sessionStorage.getItem('school_erp_token') || localStorage.getItem('school_erp_token')
+      const token = localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
       if (token && token.startsWith('dev-test-token')) {
         return Promise.reject(error)
       }

@@ -10,6 +10,9 @@ export const alumniService = {
   pindahUnitAlumni: async (id, data) => unwrap(await api.post(`/alumni/${id}/pindah-unit`, data)),
   pindahKeluarAlumni: async (id, data) => unwrap(await api.post(`/alumni/${id}/pindah-keluar`, data)),
   deleteAlumni: async (id) => unwrap(await api.delete(`/alumni/${id}`)),
+  ekspor: async (params = {}) => unwrap(await api.get('/alumni/export', { params })),
+  prosesImport: async (rows) => unwrap(await api.post('/alumni/import', { data: rows })),
+  downloadTemplate: async () => unwrap(await api.get('/alumni/import-template')),
 }
 
 export default alumniService

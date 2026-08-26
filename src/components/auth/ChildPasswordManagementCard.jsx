@@ -104,7 +104,7 @@ export default function ChildPasswordManagementCard() {
   }
 
   return (
-    <Card className="rounded-[18px] border border-slate-200/80 bg-white p-6 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+    <Card className="w-full rounded-[22px] border-2 border-emerald-500/25 bg-white p-6 lg:p-8 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">

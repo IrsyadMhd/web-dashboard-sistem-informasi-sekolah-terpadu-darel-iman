@@ -496,9 +496,9 @@ export default function StudentAchievementRecapSection({
       </div>
 
       {/* 2. TailGrids Master Data Table Container */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-[#1B2433] overflow-hidden">
+      <div className="rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] overflow-hidden">
         {/* Toolbar Baris 1: Title + Action Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 p-4 sm:p-6 dark:border-slate-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-6 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30">
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h3>
@@ -515,7 +515,7 @@ export default function StudentAchievementRecapSection({
               type="button"
               onClick={handleExportCSV}
               title="Ekspor Data Rekapitulasi CSV"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-amber-500/10 px-3.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/20 hover:scale-105 active:scale-95 dark:bg-amber-500/20 dark:text-amber-300"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-amber-500/10 px-3.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-500/20 hover:scale-105 active:scale-95 dark:bg-amber-500/20 dark:text-amber-300 cursor-pointer"
             >
               <Download1 className="h-4 w-4" />
               <span>Ekspor CSV</span>
@@ -527,7 +527,7 @@ export default function StudentAchievementRecapSection({
                 type="button"
                 onClick={onRefresh}
                 title="Segarkan Data Backend"
-                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-sky-500/10 px-3.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-500/20 hover:scale-105 active:scale-95 dark:bg-sky-500/20 dark:text-sky-300"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-sky-500/10 px-3.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-500/20 hover:scale-105 active:scale-95 dark:bg-sky-500/20 dark:text-sky-300 cursor-pointer"
               >
                 <RefreshCw className="h-4 w-4" />
                 <span>Segarkan</span>
@@ -561,7 +561,7 @@ export default function StudentAchievementRecapSection({
                 setCategoryFilter(e.target.value)
                 setCurrentPage(1)
               }}
-              className="rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
             >
               <option value="all">Semua Kategori</option>
               <option value="tahfizh">Tahfizh Al-Qur'an</option>
@@ -579,7 +579,7 @@ export default function StudentAchievementRecapSection({
                   setUnitFilter(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                className="rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
               >
                 <option value="all">Semua Unit</option>
                 {availableUnits.map((u) => (
@@ -600,7 +600,7 @@ export default function StudentAchievementRecapSection({
                 setPerPage(Number(e.target.value))
                 setCurrentPage(1)
               }}
-              className="rounded-xl border border-slate-200 bg-white py-2 px-2 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="rounded-xl border border-slate-200 bg-white py-2 px-2 text-xs text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -614,18 +614,18 @@ export default function StudentAchievementRecapSection({
         {/* TailGrids Table */}
         <div className="overflow-x-auto">
           <TableRoot fullBleed={false}>
-            <TableHeader>
-              <TableRow className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-slate-800">
-                <TableHead className="w-12 text-center text-xs font-bold text-slate-600 dark:text-slate-300">#</TableHead>
-                <TableHead className="w-16 text-center text-xs font-bold text-slate-600 dark:text-slate-300">Avatar</TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300">Nama Siswa & NIS</TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300">Unit & Kelas</TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300">Kategori</TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300">Nama Prestasi & Pencapaian</TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300">Tingkat</TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300">Tanggal</TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Skor/Nilai</TableHead>
-                <TableHead className="text-xs font-bold text-slate-600 dark:text-slate-300 text-right pr-6">Aksi</TableHead>
+            <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-800 dark:text-slate-100">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-12 text-center text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">#</TableHead>
+                <TableHead className="w-16 text-center text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Avatar</TableHead>
+                <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Nama Siswa & NIS</TableHead>
+                <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Unit & Kelas</TableHead>
+                <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Kategori</TableHead>
+                <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Nama Prestasi & Pencapaian</TableHead>
+                <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Tingkat</TableHead>
+                <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100">Tanggal</TableHead>
+                <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100 text-center">Skor/Nilai</TableHead>
+                <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-100 text-right pr-6">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -642,7 +642,7 @@ export default function StudentAchievementRecapSection({
                 paginatedData.map((item, idx) => (
                   <TableRow
                     key={item.id || idx}
-                    className="transition hover:bg-slate-50/90 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800/60"
+                    className="transition-all duration-150 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 border-b border-slate-100 dark:border-slate-800/60 group"
                   >
                     <TableCell className="text-center text-xs font-semibold text-slate-400">
                       {(currentPage - 1) * perPage + idx + 1}

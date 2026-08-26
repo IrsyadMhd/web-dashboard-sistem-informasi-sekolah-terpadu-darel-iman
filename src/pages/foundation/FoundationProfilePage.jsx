@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import {
   UserRound,
   Shield,
@@ -25,13 +26,30 @@ import {
   Check,
   Eye,
   EyeOff,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react'
+import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import { authService } from '../../services/authService'
 import { useAuthStore } from '../../stores/authStore'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { Skeleton } from '../../components/ui/skeleton'
 import Swal from 'sweetalert2'
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, staggerChildren: 0.08 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+}
 
 export function FoundationProfilePage() {
   const authUser = useAuthStore((state) => state.user)
@@ -282,24 +300,23 @@ export function FoundationProfilePage() {
   const userRoles = profile.roles || ['Pengurus Yayasan']
 
   return (
-    <div className="space-y-6 animate-fade-in pb-16">
-      {/* 1. Header Profil Banner */}
-      <div className="relative rounded-2xl bg-white dark:bg-[#13221f] border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-        {/* Background Gradient Decorative Strip */}
-        <div className="h-28 bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] relative">
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="absolute right-6 top-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold">
-            <Award className="w-3.5 h-3.5 text-amber-300" />
-            <span>Pengurus Yayasan</span>
-          </div>
-        </div>
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-16">
+      {/* 🧭 Breadcrumb Navigation */}
+      <motion.div variants={itemVariants} className="print:hidden">
+        <AppBreadcrumb items={[{ label: 'Yayasan', href: '/dashboard/yayasan' }, { label: 'Profil Pengurus' }]} />
+      </motion.div>
 
-        {/* Profile Identity Bar */}
-        <div className="px-6 pb-6 pt-0 flex flex-col md:flex-row items-start md:items-end justify-between gap-4 -mt-12 relative z-10">
-          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
+      {/* 1. Header Profil Modern Hero Card */}
+      <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+        {/* Ambient Glow Background Accent */}
+        <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 min-w-0">
             {/* Avatar Image with Edit Overlay */}
-            <div className="relative group">
-              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-slate-800 p-1.5 shadow-xl border-2 border-white dark:border-slate-700">
+            <div className="relative group shrink-0">
+              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-slate-800 p-1.5 shadow-xl border-2 border-emerald-300/50 dark:border-emerald-700/50 overflow-hidden">
                 {profile.foto ? (
                   <img
                     src={profile.foto}
@@ -307,7 +324,7 @@ export function FoundationProfilePage() {
                     className="w-full h-full object-cover rounded-xl"
                   />
                 ) : (
-                  <div className="w-full h-full rounded-xl bg-[#0E5C44] text-white font-black text-2xl flex items-center justify-center">
+                  <div className="w-full h-full rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-2xl flex items-center justify-center shadow-inner">
                     {namaLengkap.charAt(0)}
                   </div>
                 )}
@@ -315,7 +332,7 @@ export function FoundationProfilePage() {
               <button
                 type="button"
                 onClick={() => setAvatarModalOpen(true)}
-                className="absolute bottom-1 right-1 p-2 rounded-xl bg-amber-400 text-slate-950 shadow-lg hover:bg-amber-300 transition"
+                className="absolute -bottom-1 -right-1 p-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer border border-amber-200"
                 title="Ubah Foto Profil"
               >
                 <Camera className="w-4 h-4" />
@@ -323,105 +340,76 @@ export function FoundationProfilePage() {
             </div>
 
             {/* Name & Identity */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   {namaLengkap}
-                </h2>
+                </h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Pengurus Yayasan
+                </span>
                 <Badge variant="success" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold text-[10px]">
                   Aktif
                 </Badge>
               </div>
 
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                NIY/NIP: <span className="text-slate-700 dark:text-slate-200 font-bold">{niyNip}</span> • {jabatanName}
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                NIY/NIP: <span className="text-slate-900 dark:text-white font-bold">{niyNip}</span> • {jabatanName}
               </p>
 
-              <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-slate-600 dark:text-slate-300 pt-0.5">
-                <Building2 className="w-3.5 h-3.5 text-[#0E5C44] dark:text-emerald-400 shrink-0" />
-                <span>{unitName}</span>
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{unitName} • {divisionName}</span>
               </div>
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-            <Button
+          {/* Quick Action Button: Edit Profil */}
+          <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-center justify-end">
+            <button
+              type="button"
               onClick={() => setEditModalOpen(true)}
-              className="bg-[#0E5C44] text-white hover:bg-[#0A4331] font-bold text-xs"
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40 hover:from-emerald-700 hover:to-teal-700 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
             >
-              <Edit3 className="w-3.5 h-3.5 mr-1.5" />
-              Edit Profil
-            </Button>
+              <Edit3 className="h-4 w-4" />
+              <span>Edit Profil</span>
+            </button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* 2. Tabs Bar */}
-      <div className="bg-white dark:bg-[#13221f] p-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-        <button
-          onClick={() => setActiveTab('pribadi')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'pribadi'
-              ? 'bg-[#0E5C44] text-white shadow-md shadow-emerald-900/20'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <UserRound className="w-4 h-4" />
-          <span>Informasi Pribadi</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('jabatan')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'jabatan'
-              ? 'bg-[#0E5C44] text-white shadow-md shadow-emerald-900/20'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Briefcase className="w-4 h-4" />
-          <span>Informasi Jabatan</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('keamanan')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'keamanan'
-              ? 'bg-[#0E5C44] text-white shadow-md shadow-emerald-900/20'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Shield className="w-4 h-4" />
-          <span>Keamanan Akun</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('preferensi')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'preferensi'
-              ? 'bg-[#0E5C44] text-white shadow-md shadow-emerald-900/20'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          <span>Preferensi</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('aktivitas')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'aktivitas'
-              ? 'bg-[#0E5C44] text-white shadow-md shadow-emerald-900/20'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Activity className="w-4 h-4" />
-          <span>Aktivitas Akun</span>
-        </button>
-      </div>
+      <motion.div variants={itemVariants} className="rounded-[20px] border border-emerald-500/20 bg-emerald-50/50 p-2 shadow-xs dark:border-emerald-900/40 dark:bg-[#13221f] flex items-center gap-2 overflow-x-auto scrollbar-none">
+        {[
+          { id: 'pribadi', label: 'Informasi Pribadi', icon: UserRound },
+          { id: 'jabatan', label: 'Informasi Jabatan', icon: Briefcase },
+          { id: 'keamanan', label: 'Keamanan Akun', icon: Shield },
+          { id: 'preferensi', label: 'Preferensi', icon: Settings },
+          { id: 'aktivitas', label: 'Aktivitas Akun', icon: Activity },
+        ].map((tab) => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-200 whitespace-nowrap cursor-pointer ${
+                isActive
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-400/40'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-300'
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
+      </motion.div>
 
       {/* 3. Tab Content */}
-      <div className="bg-white dark:bg-[#13221f] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+      <motion.div variants={itemVariants} className="bg-white dark:bg-[#13221f] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
         {/* Tab 1: Informasi Pribadi */}
         {activeTab === 'pribadi' && (
           <div className="space-y-6">
@@ -746,7 +734,7 @@ export function FoundationProfilePage() {
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* MODAL EDIT PROFIL */}
       {editModalOpen && (
@@ -811,12 +799,27 @@ export function FoundationProfilePage() {
               </div>
 
               <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
-                <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition-all duration-200 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white cursor-pointer"
+                >
                   Batal
-                </Button>
-                <Button type="submit" disabled={savingEdit} className="bg-[#0E5C44] text-white font-bold">
-                  {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
-                </Button>
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40 hover:from-emerald-700 hover:to-teal-700 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                >
+                  {savingEdit ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <span>Simpan Perubahan</span>
+                  )}
+                </button>
               </div>
             </form>
           </div>
@@ -836,7 +839,7 @@ export function FoundationProfilePage() {
                   setSelectedFile(null)
                   setPreviewUrl(null)
                 }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 ✕
               </button>
@@ -863,38 +866,45 @@ export function FoundationProfilePage() {
 
               <label
                 htmlFor="avatar-input"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl cursor-pointer hover:bg-slate-200 transition"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs rounded-xl cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition"
               >
-                <Camera className="w-4 h-4" />
-                Pilih File Foto
+                <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Pilih File Foto</span>
               </label>
               <p className="text-[10px] text-slate-400">Format: JPG, JPEG, PNG, WebP. Ukuran maks 2MB.</p>
 
               <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
-                <Button
+                <button
                   type="button"
-                  variant="outline"
                   onClick={() => {
                     setAvatarModalOpen(false)
                     setSelectedFile(null)
                     setPreviewUrl(null)
                   }}
+                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition-all duration-200 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white cursor-pointer"
                 >
                   Batal
-                </Button>
-                <Button
+                </button>
+                <button
                   type="button"
                   disabled={!selectedFile || uploadingAvatar}
                   onClick={handleUploadAvatar}
-                  className="bg-[#0E5C44] text-white font-bold"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40 hover:from-emerald-700 hover:to-teal-700 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
                 >
-                  {uploadingAvatar ? 'Mengunggah...' : 'Unggah & Simpan'}
-                </Button>
+                  {uploadingAvatar ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Mengunggah...</span>
+                    </>
+                  ) : (
+                    <span>Unggah & Simpan</span>
+                  )}
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

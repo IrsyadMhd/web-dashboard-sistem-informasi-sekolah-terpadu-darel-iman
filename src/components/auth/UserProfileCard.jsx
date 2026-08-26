@@ -23,7 +23,21 @@ export default function UserProfileCard() {
     'kepala sekolah', 'kepala_sekolah', 'kepsek',
     'divisi pendidikan', 'divisi_pendidikan'
   ]
-  const canEditUnitAndRole = userRoles.some((r) => ALLOWED_ADMIN_ROLES.includes(String(r).toLowerCase()))
+  const canEditUnitAndRole = userRoles.some((r) => ALLOWED_ADMIN_ROLES.includes(String(typeof r === 'string' ? r : r?.name || r?.slug || '').toLowerCase()))
+  const isSuperAdminAdminOrYayasan = userRoles.some((r) => {
+    const roleStr = String(typeof r === 'string' ? r : r?.name || r?.slug || '').toLowerCase()
+    return (
+      roleStr.includes('super admin') ||
+      roleStr.includes('superadmin') ||
+      roleStr.includes('admin') ||
+      roleStr.includes('yayasan')
+    )
+  })
+  const isDivisiPendidikan = userRoles.some((r) => {
+    const roleStr = String(typeof r === 'string' ? r : r?.name || r?.slug || '').toLowerCase()
+    return roleStr.includes('divisi') || roleStr.includes('pendidikan')
+  })
+  const shouldHideRoleField = !isSuperAdminAdminOrYayasan && isDivisiPendidikan
 
   const formattedLoginTime = loginTime
     ? new Date(loginTime).toLocaleString('id-ID', {
@@ -207,7 +221,7 @@ export default function UserProfileCard() {
   }
 
   return (
-    <Card className="w-full rounded-[18px] border border-slate-200/80 bg-white p-6 lg:p-8 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+    <Card className="w-full rounded-[22px] border-2 border-emerald-500/25 bg-white p-6 lg:p-8 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
       {/* Hidden File Input for Avatar Upload */}
       <input
         type="file"
@@ -238,7 +252,7 @@ export default function UserProfileCard() {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Avatar Card */}
-          <div className="lg:col-span-4 bg-slate-50/70 dark:bg-slate-800/40 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col items-center text-center">
+          <div className="lg:col-span-4 bg-emerald-50/40 dark:bg-slate-800/40 p-6 rounded-2xl border border-emerald-500/20 dark:border-slate-800 flex flex-col items-center text-center">
             <div className="relative mb-4">
               <PersonAvatar src={profile.avatar} name={profile.fullName} size="profile" className="ring-4 ring-emerald-600/20" />
               <button
@@ -342,43 +356,45 @@ export default function UserProfileCard() {
               </div>
 
               {/* Role / Jabatan */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                  <span>Role / Jabatan</span>
+              {!shouldHideRoleField && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                    <span>Role / Jabatan</span>
+                    {!canEditUnitAndRole && (
+                      <Badge color="warning" size="sm" className="py-0 px-2 text-[10px]">
+                        Terkunci
+                      </Badge>
+                    )}
+                  </label>
+                  <select
+                    value={profile.role}
+                    onChange={(e) => setProfile({ ...profile, role: e.target.value })}
+                    disabled={!canEditUnitAndRole}
+                    className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs ${
+                      !canEditUnitAndRole ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100'
+                    }`}
+                  >
+                    <option value={profile.role}>{profile.role || 'Pilih Role'}</option>
+                    <option value="Super Admin">Super Admin</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Pengurus Yayasan">Pengurus Yayasan</option>
+                    <option value="Kepala Sekolah">Kepala Sekolah</option>
+                    <option value="Divisi Pendidikan">Divisi Pendidikan</option>
+                    <option value="Guru">Guru</option>
+                    <option value="Tata Usaha">Tata Usaha</option>
+                    <option value="Operator">Operator</option>
+                    <option value="Musyrif">Musyrif</option>
+                    <option value="Siswa">Siswa</option>
+                    <option value="Orang Tua">Orang Tua</option>
+                  </select>
                   {!canEditUnitAndRole && (
-                    <Badge color="warning" size="sm" className="py-0 px-2 text-[10px]">
-                      Terkunci
-                    </Badge>
+                    <p className="text-[11px] text-slate-400 mt-1 font-medium flex items-center gap-1">
+                      <span>🔒</span>
+                      <span>Hanya dapat diubah oleh Administrator / Kepala Sekolah.</span>
+                    </p>
                   )}
-                </label>
-                <select
-                  value={profile.role}
-                  onChange={(e) => setProfile({ ...profile, role: e.target.value })}
-                  disabled={!canEditUnitAndRole}
-                  className={`w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs ${
-                    !canEditUnitAndRole ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100'
-                  }`}
-                >
-                  <option value={profile.role}>{profile.role || 'Pilih Role'}</option>
-                  <option value="Super Admin">Super Admin</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Pengurus Yayasan">Pengurus Yayasan</option>
-                  <option value="Kepala Sekolah">Kepala Sekolah</option>
-                  <option value="Divisi Pendidikan">Divisi Pendidikan</option>
-                  <option value="Guru">Guru</option>
-                  <option value="Tata Usaha">Tata Usaha</option>
-                  <option value="Operator">Operator</option>
-                  <option value="Musyrif">Musyrif</option>
-                  <option value="Siswa">Siswa</option>
-                  <option value="Orang Tua">Orang Tua</option>
-                </select>
-                {!canEditUnitAndRole && (
-                  <p className="text-[11px] text-slate-400 mt-1 font-medium flex items-center gap-1">
-                    <span>🔒</span>
-                    <span>Hanya dapat diubah oleh Administrator / Kepala Sekolah.</span>
-                  </p>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Unit Pendidikan */}
               <div>

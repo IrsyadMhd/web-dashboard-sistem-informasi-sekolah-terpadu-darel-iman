@@ -1,11 +1,31 @@
 {
   "short_name": "SIMS Terpadu",
-  "name": "Sistem Manajemen Sekolah Terpadu - Dar El-Iman",
+  "name": "Sistem Manajemen Sekolah Terpadu - Yayasan Dar El-Iman",
+  "description": "Enterprise Islamic Education SaaS Dashboard & Portals",
   "icons": [
     {
       "src": "/favicon.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "start_url": "/dashboard",

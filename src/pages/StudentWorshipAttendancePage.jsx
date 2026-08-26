@@ -828,7 +828,7 @@ export default function StudentWorshipAttendancePage() {
                 </div>
               </div>
 
-              {/* Right Controls: Live Clock */}
+              {/* Right Controls: Live Clock & Actions */}
               <div className="flex items-center gap-2 shrink-0 flex-nowrap z-10">
                 <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-white/80 px-3.5 py-2 dark:border-emerald-600/40 dark:bg-slate-900/80 backdrop-blur-sm">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
@@ -841,29 +841,26 @@ export default function StudentWorshipAttendancePage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Date Picker Input (Field Tanggal) */}
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
+                />
+
+                {/* Squircle Action Button Icon-Only with Floating Tooltip on Hover */}
+                <SquircleActionButton
+                  variant="primary"
+                  icon={Plus}
+                  label="Tambah Jadwal Ibadah"
+                  onClick={() => setShowTemplateModal(true)}
+                />
               </div>
             </div>
           </div>
         </motion.div>
-
-              {/* Date Picker Input (Field Tanggal) */}
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
-              />
-
-              {/* Squircle Action Button Icon-Only with Floating Tooltip on Hover */}
-              <SquircleActionButton
-                variant="primary"
-                icon={Plus}
-                label="Tambah Jadwal Ibadah"
-                onClick={() => setShowTemplateModal(true)}
-              />
-            </div>
-          </div>
-        </div>
 
         {/* CARD 1: KPI STATS METRIC CARDS GRID */}
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

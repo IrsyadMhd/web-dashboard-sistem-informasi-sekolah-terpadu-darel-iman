@@ -953,16 +953,16 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
 
           <MasterDataTable className="!rounded-none !border-0 !shadow-none">
             <table className="w-full table-fixed text-left text-sm border-collapse">
-              <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
+              <thead className="bg-gradient-to-r from-emerald-600 to-teal-600 font-extrabold text-white uppercase text-[11px] tracking-wider border-b border-emerald-700">
                 <tr>
-                  <th className="w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
-                  <th className="w-[8%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
-                  <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Judul Materi</th>
-                  <th className="hidden w-[24%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Modul Ajar &amp; Mapel</th>
-                  <th className="hidden w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Tipe</th>
-                  <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
-                  <th className="hidden w-[16%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Lampiran / Link</th>
-                  <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
+                  <th className="w-[6%] bg-gradient-to-r from-emerald-600 to-teal-600 px-5 sm:px-6 md:px-8 py-3.5 text-center text-white font-extrabold uppercase tracking-wider">No</th>
+                  <th className="w-[8%] bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-3.5 text-center text-white font-extrabold uppercase tracking-wider">Urutan</th>
+                  <th className="w-[34%] bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-3.5 text-white font-extrabold uppercase tracking-wider">Judul Materi</th>
+                  <th className="hidden w-[24%] bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-3.5 text-white font-extrabold uppercase tracking-wider md:table-cell">Modul Ajar &amp; Mapel</th>
+                  <th className="hidden w-[12%] bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-3.5 text-center text-white font-extrabold uppercase tracking-wider lg:table-cell">Tipe</th>
+                  <th className="hidden w-[10%] bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-3.5 text-center text-white font-extrabold uppercase tracking-wider sm:table-cell">Status</th>
+                  <th className="hidden w-[16%] bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-3.5 text-center text-white font-extrabold uppercase tracking-wider sm:table-cell">Lampiran / Link</th>
+                  <th className="w-[10%] bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-3.5 text-center text-white font-extrabold uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -992,7 +992,7 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                     <tr
                       key={item.id}
                       onClick={() => handleOpenPreviewModal(item)}
-                      className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
                     >
                       <td className="py-3.5 px-5 sm:px-6 md:px-8 text-center font-medium text-slate-400">
                         {(pagination.current_page - 1) * pagination.per_page + idx + 1}

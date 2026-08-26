@@ -1,15 +1,19 @@
+import React, { useId } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   BookOpen,
   CalendarDays,
   Droplets,
+  Globe,
   IdCard,
   School,
   ShieldCheck,
+  Sparkles,
   UserRound,
 } from 'lucide-react'
 import { FaGraduationCap, FaQrcode } from 'react-icons/fa'
 import PersonAvatar from '../ui/PersonAvatar'
+import { getCardLogoUrl } from '../../utils/cardLogoHelper'
 
 export default function StudentCardHorizontal({
   data,
@@ -19,7 +23,17 @@ export default function StudentCardHorizontal({
   qrToken = '',
   formatDate,
   isPrint = false,
+  frameStyle = 'standard',
+  photoShape = 'rounded',
+  showPattern = true,
+  showWave = true,
+  headerMotto = 'Berilmu, Berakhlak, Beramal',
+  footerMotto = 'Sekolah Unggulan\nBerbasis Al-Qur\'an',
 }) {
+  const instanceId = useId().replace(/:/g, '')
+  const headerGradId = `headerGradH_${instanceId}`
+  const footerGradId = `footerGradH_${instanceId}`
+
   if (!data) return null
 
   const {
@@ -31,188 +45,287 @@ export default function StudentCardHorizontal({
     showClass = true,
     showRombel = true,
     showUnit = true,
-    showAcademicYear = false,
   } = config
 
   const sekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'YAYASAN DAR EL-IMAN'
-  const logo = pengaturan?.logo_url || pengaturan?.logoUrl || ''
+  const logo = getCardLogoUrl(pengaturan, data)
   const brandTitle = sekolah.replace(/^YAYASAN\s*/i, '').replace(/\s*-\s*/g, '-').trim()
 
-  const primaryColor = theme.primary || '#0E5C44'
-  const darkColor = theme.dark || '#064e3b'
-  const softColor = theme.soft || '#ecfdf5'
-  const accentColor = theme.accent || '#F6C143'
+  const primaryColor = theme.primary || '#004D32'
+  const darkColor = theme.dark || '#003822'
+  const accentColor = theme.accent || '#E5A93C'
 
   const formattedDateVal = formatDate ? formatDate(data.tanggalLahir) : (data.tanggalLahir || '-')
 
-  const BrandMark = () => (
-    <div className="flex items-center gap-2 text-left">
-      {showLogo && (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center" style={{ color: darkColor }}>
-          {logo ? (
-            <img src={logo} alt="Logo situs" className="h-full w-full object-contain" crossOrigin="anonymous" />
-          ) : (
-            <FaGraduationCap className="text-2xl" />
-          )}
-        </span>
-      )}
-      <span className="min-w-0">
-        <small className="block text-[6px] font-black uppercase leading-none tracking-[0.16em]" style={{ color: primaryColor }}>
-          Yayasan
-        </small>
-        <strong className="mt-0.5 block max-w-[220px] truncate text-[15px] font-black uppercase leading-none tracking-tight" style={{ color: darkColor }}>
-          {brandTitle}
-        </strong>
-        <small className="mt-1 block whitespace-nowrap text-[6px] font-semibold leading-none text-slate-400">
-          Islamic School
-        </small>
-      </span>
-    </div>
-  )
+  const photoShapeClass = photoShape === 'circle' ? 'rounded-full' : photoShape === 'square' ? 'rounded-sm' : photoShape === 'shield' ? 'rounded-b-3xl rounded-t-sm' : 'rounded-xl'
 
-  const StudentPhoto = () => (
-    <div
-      className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-slate-100 shadow-sm"
-      style={{ backgroundColor: data.foto ? undefined : primaryColor }}
-    >
-      <PersonAvatar
-        src={data.foto}
-        name={data.nama}
-        size="card"
-        className="h-full! w-full! border-0 shadow-none rounded-[12px]"
-      />
-    </div>
-  )
+  const frameClass = frameStyle === 'rounded'
+    ? 'rounded-3xl'
+    : frameStyle === 'double'
+    ? 'border-4 border-double border-slate-300'
+    : frameStyle === 'glow'
+    ? 'shadow-[0_0_25px_rgba(0,77,50,0.3)] rounded-2xl'
+    : 'rounded-2xl'
 
-  const AttendanceQr = () => (
-    <div className="student-card-qr rounded-lg bg-white p-1.5 shadow-sm ring-1 ring-slate-300">
-      {qrToken ? (
-        <QRCodeSVG value={qrToken} size={78} level="M" marginSize={4} />
-      ) : (
-        <FaQrcode style={{ width: 78, height: 78 }} className="text-slate-300" />
-      )}
-    </div>
-  )
+  const cardClass = `w-[560px] min-w-[560px] max-w-[560px] h-[353px] min-h-[353px] max-h-[353px] ${isPrint ? '' : frameClass} ${isPrint ? '' : 'shadow-2xl'}`
 
-  const DetailRow = ({ icon: Icon, label, value }) => (
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="flex shrink-0 items-center justify-center" style={{ color: primaryColor }}>
-        <Icon className="h-3.5 w-3.5" strokeWidth={2.4} />
-      </span>
-      <span className="grid min-w-0 flex-1 grid-cols-[62px_8px_minmax(0,1fr)] items-baseline text-slate-800">
-        <small className="text-[8px] font-medium">{label}</small>
-        <b className="text-[8px]">:</b>
-        <strong className="truncate text-[9px] font-black">{value}</strong>
-      </span>
-    </div>
-  )
+  const footerMottoLines = (footerMotto || 'Sekolah Unggulan\nBerbasis Al-Qur\'an').split('\n')
 
-  const cardClass = isPrint
-    ? 'student-card-print-canvas--horizontal aspect-[86/54] w-[560px] h-[351px]'
-    : 'aspect-[86/54] w-full max-w-[560px] rounded-2xl shadow-2xl'
+  const kelasDisplay = typeof data?.kelas === 'object' && data?.kelas !== null
+    ? (data.kelas.nama_kelas || data.kelas.name || '-')
+    : String(data?.kelas || '-')
+  const rombelDisplay = typeof data?.rombel === 'object' && data?.rombel !== null
+    ? (data.rombel.name || data.rombel.nama || '-')
+    : String(data?.rombel || '-')
 
   return (
     <article
       id={isPrint ? undefined : 'printable-student-card'}
-      className={`${cardClass} relative flex shrink-0 overflow-hidden bg-white`}
-      style={{ border: isPrint ? undefined : `1px solid ${primaryColor}40` }}
+      className={`${cardClass} relative block overflow-hidden bg-white text-slate-900 font-sans box-border ${isPrint ? 'border-0 rounded-none' : 'border border-slate-200'}`}
     >
-      <div className="relative z-10 h-full w-full">
+      {/* Background Subtle Pattern */}
+      {showPattern && (
         <span
-          className="absolute inset-0 opacity-[0.035]"
+          className="absolute inset-0 opacity-[0.03] pointer-events-none z-0"
           style={{
-            backgroundImage: `radial-gradient(${primaryColor} 1px, transparent 1px)`,
-            backgroundSize: '13px 13px',
+            backgroundImage: `radial-gradient(${primaryColor} 1.2px, transparent 1.2px)`,
+            backgroundSize: '12px 12px',
           }}
         />
-        <span className="absolute -right-20 -top-24 h-40 w-64 rounded-[50%]" style={{ background: softColor }} />
-        <div className="absolute left-[4%] top-[6%]">
-          <BrandMark />
-        </div>
-        <span
-          className="absolute right-0 top-0 rounded-bl-[28px] px-5 py-3 text-[9px] font-black tracking-wider text-white"
-          style={{ background: `linear-gradient(135deg, ${primaryColor}, ${darkColor})` }}
-        >
-          KARTU SISWA
-        </span>
+      )}
 
-        {showPhoto && (
-          <div className="absolute left-[5.8%] top-[31%] h-[45%] w-[25.8%]">
-            <StudentPhoto />
-          </div>
-        )}
-        {showUnit && (
-          <span
-            className="absolute left-[5.8%] top-[78.5%] w-[25.8%] truncate rounded-md px-2 py-1 text-center text-[7px] font-black text-white"
-            style={{ background: primaryColor }}
+      {/* Top Left Header Curved SVG Banner (Renders in print even if Background graphics is off) */}
+      {showWave && (
+        <div className="absolute top-0 left-0 w-[69%] h-[80px] z-10 flex items-center px-4">
+          <svg
+            viewBox="0 0 386 80"
+            className="absolute inset-0 w-full h-full z-0 pointer-events-none"
+            preserveAspectRatio="none"
           >
-            {data.unit}
-          </span>
-        )}
-
-        <div className={`absolute top-[31%] min-w-0 ${showPhoto ? 'left-[36%] right-[31%]' : 'left-[6%] right-[31%]'}`}>
-          <p className="text-[7px] font-medium text-slate-500">Nama</p>
-          <h4 className="truncate text-[13px] font-black uppercase leading-tight text-slate-950">{data.nama}</h4>
-          <div className="mt-2.5 space-y-2">
-            {showNis && <DetailRow icon={IdCard} label="NIS" value={data.nis} />}
-            {showNisn && <DetailRow icon={ShieldCheck} label="NISN" value={data.nisn} />}
-            {showClass && (
-              <DetailRow
-                icon={UserRound}
-                label="Kelas"
-                value={`${data.kelas}${showRombel && data.rombel !== '-' ? ` / ${data.rombel}` : ''}`}
-              />
-            )}
-            {!showClass && showRombel && <DetailRow icon={UserRound} label="Rombel" value={data.rombel} />}
-            <DetailRow icon={CalendarDays} label="Tanggal Lahir" value={formattedDateVal} />
-            <DetailRow icon={Droplets} label="Gol. Darah" value={data.golonganDarah} />
-            {showAcademicYear && <DetailRow icon={School} label="Tahun Ajaran" value={data.tahunAjaran} />}
-          </div>
-        </div>
-
-        {showQr && (
-          <div className="absolute right-[5%] top-[38%] flex w-[22%] flex-col items-center rounded-xl border border-slate-300 bg-white p-2 shadow-sm">
-            <AttendanceQr />
-            <b className="mt-1 w-full rounded py-1 text-center text-[7px] text-white" style={{ background: primaryColor }}>
-              ID CARD
-            </b>
-            <small className="mt-1 text-[6px] text-slate-500">Scan untuk verifikasi</small>
-          </div>
-        )}
-
-        <span
-          className="absolute -bottom-[26%] -left-[9%] h-[44%] w-[92%] -rotate-2 rounded-[50%]"
-          style={{
-            background: `linear-gradient(115deg, ${darkColor}, ${primaryColor})`,
-            borderTop: `4px solid ${accentColor}`,
-          }}
-        />
-        <span
-          className="absolute -bottom-[23%] right-[-9%] h-[39%] w-[43%] rotate-2 rounded-[58%_0_0_0]"
-          style={{ background: `linear-gradient(130deg, ${accentColor}, #d89b13)` }}
-        />
-        <div className="absolute bottom-[5%] left-[5%] flex items-center gap-2 text-white">
-          <BookOpen className="h-6 w-6" strokeWidth={1.5} />
-          <p className="text-[7px] font-semibold leading-tight">
-            Sekolah Unggulan
-            <br />
-            Berbasis Al-Qur'an
-          </p>
-        </div>
-        <p className="absolute bottom-[7%] left-[37%] text-[7px] font-medium text-white/90">www.dareliman.sch.id</p>
-        <div className="absolute bottom-[4%] right-[4%] w-[23%] text-center text-white">
-          <svg viewBox="0 0 120 34" className="mx-auto h-7 w-[86%]" aria-hidden="true">
             <path
-              d="M8 26C24 4 23 3 18 29C40 5 31 30 50 14C42 36 65 10 58 28C74 16 77 28 111 23"
+              d="M 0 0 L 386 0 C 386 48, 386 80, 320 80 L 0 80 Z"
+              fill={primaryColor}
+              style={{ fill: primaryColor }}
+            />
+            <path
+              d="M 0 78.5 L 320 78.5 C 384 78.5, 384 48, 384 0"
               fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
+              stroke={accentColor}
+              strokeWidth="3.5"
             />
           </svg>
-          <p className="text-[6.5px] font-bold uppercase">Kepala Sekolah</p>
+
+          <div className="relative z-10 flex items-center">
+            {showLogo && (
+              <div
+                className="w-12 h-12 rounded-full bg-white flex items-center justify-center p-0.5 overflow-hidden shrink-0 shadow-md mr-2.5"
+                style={{ border: `2px solid ${accentColor}` }}
+              >
+                {logo ? (
+                  <img
+                    src={logo}
+                    alt="Logo situs"
+                    className="h-full w-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                      if (e.currentTarget.nextElementSibling) {
+                        e.currentTarget.nextElementSibling.style.display = 'flex'
+                      }
+                    }}
+                  />
+                ) : null}
+                <span
+                  className="items-center justify-center font-black text-xs uppercase"
+                  style={{ display: logo ? 'none' : 'flex', color: primaryColor }}
+                >
+                  <FaGraduationCap className="text-2xl" />
+                </span>
+              </div>
+            )}
+            <div className="flex flex-col min-w-0 text-white">
+              <span className="text-[7.5px] font-black uppercase tracking-[0.2em] text-emerald-100/90 leading-tight">
+                YAYASAN
+              </span>
+              <h3 className="text-[16px] font-black uppercase tracking-tight text-white leading-none truncate my-0.5">
+                {brandTitle}
+              </h3>
+              <span className="text-[8px] font-semibold text-emerald-100/90 tracking-wide leading-tight">
+                Islamic School
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Right Header Badge & Motto */}
+      <div className="absolute top-0 right-0 left-[69%] h-[80px] z-10">
+        <div className="absolute top-0 right-5 px-4.5 py-1.5 z-10 flex items-center justify-center">
+          <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 130 30">
+            <path d="M 0 0 L 130 0 L 130 18 C 130 26, 122 30, 114 30 L 16 30 C 8 30, 0 26, 0 18 Z" fill={primaryColor} />
+          </svg>
+          <span className="relative z-10 text-white text-[10px] font-black uppercase tracking-widest">
+            KARTU PELAJAR
+          </span>
+        </div>
+        <div className="absolute top-[34px] right-5 text-right z-10">
+          <p className="text-[8.5px] font-bold italic" style={{ color: primaryColor }}>
+            {headerMotto || 'Berilmu, Berakhlak, Beramal'}
+          </p>
+          <div className="flex justify-end mt-0.5">
+            <Sparkles className="h-3 w-3" style={{ color: accentColor }} />
+          </div>
         </div>
       </div>
+
+      {/* Main Card Body (Below Top Header) */}
+      <div className="relative z-10 w-full h-full pt-[84px] pb-[52px] px-4 flex items-start">
+        {/* Left Side: Photo Frame & Education Unit Badge */}
+        {showPhoto && (
+          <div className="flex flex-col items-center shrink-0 w-[140px] mr-3">
+            <div
+              className={`w-[126px] h-[144px] bg-white p-1 rounded-2xl border-2 border-slate-200 shadow-md overflow-hidden flex items-center justify-center`}
+            >
+              <div
+                className={`w-full h-full overflow-hidden ${photoShapeClass} bg-slate-100 flex items-center justify-center`}
+                style={{ backgroundColor: data.foto ? undefined : primaryColor }}
+              >
+                <PersonAvatar
+                  src={data.foto}
+                  name={data.nama}
+                  size="card"
+                  className={`h-full! w-full! border-0 shadow-none ${photoShapeClass}`}
+                />
+              </div>
+            </div>
+            {showUnit && (
+              <div className="relative mt-1.5 w-[140px] h-[20px] flex items-center justify-center px-1">
+                <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 140 20">
+                  <rect x="0.75" y="0.75" width="138.5" height="18.5" rx="9.25" fill={primaryColor} stroke={accentColor} strokeWidth="1.5" style={{ fill: primaryColor }} />
+                </svg>
+                <span className={`relative z-10 text-white font-black uppercase tracking-tight truncate ${(data.unit || '').length > 22 ? 'text-[5.5px]' : (data.unit || '').length > 18 ? 'text-[6px]' : 'text-[6.8px]'}`}>
+                  {data.unit || 'DAR EL-IMAN - PADANG'}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Center: Student Name & Metadata Table */}
+        <div className="flex-1 min-w-0 pr-3 pt-0.5">
+          <h2 className="text-[18px] font-black uppercase tracking-tight truncate leading-none" style={{ color: primaryColor }}>
+            {data.nama}
+          </h2>
+
+          {/* Golden Ornament Line */}
+          <div className="flex items-center gap-2 my-2 w-[90%]">
+            <span className="h-[1.5px] flex-1 bg-gradient-to-r from-[#E5A93C] to-amber-200" />
+            <Sparkles className="h-3 w-3 shrink-0" style={{ color: accentColor }} />
+            <span className="h-[1.5px] flex-1 bg-gradient-to-l from-[#E5A93C] to-amber-200" />
+          </div>
+
+          {/* Details Table with Perfect Grid Alignment */}
+          <div className="space-y-1.5 text-slate-800">
+            {showNis && (
+              <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
+                <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+                  <IdCard className="h-3 w-3" strokeWidth={2.2} />
+                </span>
+                <span className="font-extrabold text-slate-700 text-[9.5px]">NIS</span>
+                <span className="font-bold text-slate-400 text-center">:</span>
+                <span className="font-black text-slate-900 text-[10px] truncate">{data.nis}</span>
+              </div>
+            )}
+
+            {showNisn && (
+              <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
+                <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+                  <ShieldCheck className="h-3 w-3" strokeWidth={2.2} />
+                </span>
+                <span className="font-extrabold text-slate-700 text-[9.5px]">NISN</span>
+                <span className="font-bold text-slate-400 text-center">:</span>
+                <span className="font-black text-slate-900 text-[10px] truncate">{data.nisn}</span>
+              </div>
+            )}
+
+            {showClass && (
+              <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
+                <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+                  <UserRound className="h-3 w-3" strokeWidth={2.2} />
+                </span>
+                <span className="font-extrabold text-slate-700 text-[9.5px]">Kelas</span>
+                <span className="font-bold text-slate-400 text-center">:</span>
+                <span className="font-black text-slate-900 text-[10px] truncate">
+                  {kelasDisplay}
+                  {showRombel && rombelDisplay && rombelDisplay !== '-' ? ` / ${rombelDisplay}` : ''}
+                </span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
+              <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+                <CalendarDays className="h-3 w-3" strokeWidth={2.2} />
+              </span>
+              <span className="font-extrabold text-slate-700 text-[9.5px]">Tanggal Lahir</span>
+              <span className="font-bold text-slate-400 text-center">:</span>
+              <span className="font-black text-slate-900 text-[10px] truncate">{formattedDateVal}</span>
+            </div>
+
+            <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
+              <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+                <Droplets className="h-3 w-3" strokeWidth={2.2} />
+              </span>
+              <span className="font-extrabold text-slate-700 text-[9.5px]">Gol. Darah</span>
+              <span className="font-bold text-slate-400 text-center">:</span>
+              <span className="font-black text-slate-900 text-[10px] truncate">{data.golonganDarah || '-'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Clean QR Code Box */}
+        {showQr && (
+          <div className="flex flex-col items-center shrink-0 w-[128px] pt-1">
+            <div className="w-[128px] h-[128px] bg-white rounded-2xl border border-slate-200 shadow-md p-2 flex items-center justify-center">
+              {qrToken ? (
+                <QRCodeSVG value={qrToken} size={106} level="M" marginSize={1} bgColor="#ffffff" fgColor="#0f172a" />
+              ) : (
+                <FaQrcode style={{ width: 94, height: 94 }} className="text-slate-300" />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Footer SVG Banner (Renders in print even if Background graphics is off) */}
+      <footer className="absolute bottom-0 left-0 right-0 h-[48px] flex items-center px-4 text-white z-20">
+        <svg
+          viewBox="0 0 560 48"
+          className="absolute inset-0 w-full h-full z-0 pointer-events-none"
+          preserveAspectRatio="none"
+        >
+          <rect x="0" y="0" width="560" height="48" fill={primaryColor} style={{ fill: primaryColor }} />
+          <line x1="0" y1="1.5" x2="560" y2="1.5" stroke={accentColor} strokeWidth="3" />
+        </svg>
+
+        <div className="relative z-10 grid grid-cols-[1fr_auto] w-full items-center gap-4 text-xs">
+          {/* Left: Custom School Slogan / Motto */}
+          <div className="flex items-center gap-2.5 min-w-0 pr-3 border-r border-white/20">
+            <BookOpen className="h-4.5 w-4.5 shrink-0" style={{ color: accentColor }} />
+            <div className="min-w-0">
+              {footerMottoLines.map((line, idx) => (
+                <p key={idx} className={`${idx === 0 ? 'text-[8.5px] font-extrabold text-white' : 'text-[7.8px] font-medium text-emerald-100'} leading-tight`}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: Website URL */}
+          <div className="flex items-center justify-end gap-1.5 text-right shrink-0">
+            <Globe className="h-4 w-4 shrink-0" style={{ color: accentColor }} />
+            <span className="text-[9px] font-bold text-emerald-50 whitespace-nowrap">www.dareliman.sch.id</span>
+          </div>
+        </div>
+      </footer>
     </article>
   )
 }

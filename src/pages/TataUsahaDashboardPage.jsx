@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   Users,
   UserCheck,
@@ -11,6 +12,9 @@ import {
   CalendarDays,
   BookOpen,
   Building2,
+  Sparkles,
+  ShieldCheck,
+  FileText,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -179,26 +183,64 @@ export default function TataUsahaDashboardPage() {
       <div className="space-y-6 pb-12">
         <AppBreadcrumb items={[{ label: 'Dashboard Tata Usaha' }]} />
 
-        <AppFilterBar label="Filter Administrasi" onReset={fetchDashboard}>
-          <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
-            <CalendarDays className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
-            {tahunAjaranLabel}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200">
-            <BookOpen className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
-            {semesterLabel}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
-            <Building2 className="h-3.5 w-3.5" />
-            Scope: Administrasi Unit
-          </span>
-        </AppFilterBar>
+        {/* MODERN HERO CARD HEADER (MATCHING MONITORING, KEPALA SEKOLAH, & YAYASAN DASHBOARD STYLE) */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900"
+        >
+          {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-        <section className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
+          <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <Building2 className="size-6 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+                    Pusat Administrasi &amp; Tata Usaha
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    <CalendarDays className="h-3.5 w-3.5 text-emerald-600" /> {tahunAjaranLabel}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-3 py-0.5 text-xs font-extrabold text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60">
+                    <BookOpen className="h-3.5 w-3.5 text-teal-600" /> {semesterLabel}
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Dashboard Tata Usaha &amp; Administrasi Sekolah
+                </h1>
+                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Pusat pengelolaan master data siswa, SDM pegawai &amp; guru, rekap presensi gerbang, dan pelaporan administrasi terpadu.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 z-10">
+              <SquircleActionButton
+                variant="restore"
+                icon={RefreshCw}
+                label="Segarkan Data"
+                onClick={fetchDashboard}
+              />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* QUICK ACTION CONTAINER */}
+        <section className="rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Aksi Cepat Tata Usaha</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                Aksi Cepat Tata Usaha
+              </h3>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Pintas administrasi data siswa, pegawai, dan pelaporan
               </p>
             </div>
@@ -233,12 +275,6 @@ export default function TataUsahaDashboardPage() {
                 icon={FileSpreadsheet}
                 label="Cetak Laporan Siswa"
                 onClick={() => navigate('/dashboard/laporan-siswa')}
-              />
-              <SquircleActionButton
-                variant="restore"
-                icon={RefreshCw}
-                label="Segarkan Data"
-                onClick={fetchDashboard}
               />
             </div>
           </div>

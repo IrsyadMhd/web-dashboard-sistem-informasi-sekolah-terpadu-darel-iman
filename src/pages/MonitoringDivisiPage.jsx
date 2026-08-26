@@ -116,118 +116,6 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', on
   )
 }
 
-// Rich SIT Dataset Fallback for School Management System
-const MOCK_SIT_ITEMS = [
-  {
-    id: 'md-101',
-    nama_divisi: 'Divisi Al-Qur\'an / Tahfidz',
-    unit_pendidikan: 'SD IT',
-    kategori_laporan: 'Target Program Harian/Mingguan',
-    aspek_pemantauan: 'Target Ziyadah 2 Juz & Murajaah Harian Kelas V & VI',
-    persentase_capaian: 88,
-    status_pemantauan: 'tercapai',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Ustadz Hamzah, S.Pd.I',
-    catatan: 'Sebagian besar santri telah menyelesaikan juz 29 dan konsisten murajaah harian.',
-  },
-  {
-    id: 'md-102',
-    nama_divisi: 'Divisi Kesiswaan & BPI',
-    unit_pendidikan: 'SD IT',
-    kategori_laporan: 'Pembiasaan Karakter Islami (Amal Yaumi)',
-    aspek_pemantauan: 'Monitoring Amal Yaumi, Shalat Dhuha & Puasa Sunnah',
-    persentase_capaian: 92,
-    status_pemantauan: 'tercapai',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Ustadz Abdullah, S.Pd',
-    catatan: 'Kehadiran shalat dhuha jamaah mencapai 92% dan buku mutabaah terisi rutin.',
-  },
-  {
-    id: 'md-103',
-    nama_divisi: 'Divisi Kurikulum / Akademik',
-    unit_pendidikan: 'SMP IT',
-    kategori_laporan: 'Integrasi Kurikulum & Rapor Diniyah',
-    aspek_pemantauan: 'Ketercapaian Modul Diniyah & Materi Integrasi Ujian',
-    persentase_capaian: 75,
-    status_pemantauan: 'proses',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Ustadzah Fatimah, M.Pd',
-    catatan: 'Perlu pendampingan khusus untuk penuntasan silabus bahasa Arab kelas VIII.',
-  },
-  {
-    id: 'md-104',
-    nama_divisi: 'Divisi Sarana & Prasarana',
-    unit_pendidikan: 'SD IT',
-    kategori_laporan: 'Pemeliharaan Aset & Logistik Sarpras',
-    aspek_pemantauan: 'Pemeliharaan Gedung, Servis AC & Inventaris Laboratorium',
-    persentase_capaian: 60,
-    status_pemantauan: 'terlambat',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Bpk. Ridwan (Ka. Sarpras)',
-    catatan: 'Pengadaan unit replacement AC lantai 2 terlambat karena vendor logistik.',
-  },
-  {
-    id: 'md-105',
-    nama_divisi: 'Divisi Keasramaan / Musyrif',
-    unit_pendidikan: 'Pondok Pesantren',
-    kategori_laporan: 'Kedisiplinan & Ketertiban',
-    aspek_pemantauan: 'Presensi Qiyamul Lail & Ketertiban Kebersihan Kamar Santri',
-    persentase_capaian: 85,
-    status_pemantauan: 'tercapai',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Ustadz Zulkifli, Lc',
-    catatan: 'Kedisiplinan bangun malam meningkat signifikan pasca evaluasi bulanan.',
-  },
-  {
-    id: 'md-106',
-    nama_divisi: 'Divisi Bahasa',
-    unit_pendidikan: 'SMP IT',
-    kategori_laporan: 'Target Program Harian/Mingguan',
-    aspek_pemantauan: 'Evaluasi Yaumul Lughah & Setoran Mufradat (Kosakata)',
-    persentase_capaian: 70,
-    status_pemantauan: 'proses',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Ustadz Ahmad Farhan',
-    catatan: 'Program percakapan bahasa Arab dan Inggris berjalan cukup baik di area sekolah.',
-  },
-  {
-    id: 'md-107',
-    nama_divisi: 'Tata Usaha & Administrasi',
-    unit_pendidikan: 'SD IT',
-    kategori_laporan: 'Administrasi & Arsip Surat',
-    aspek_pemantauan: 'Pengelolaan Dokumen Akademik, Mutasi Siswa & Kearsipan Sekolah',
-    persentase_capaian: 95,
-    status_pemantauan: 'tercapai',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Ibu Rahmawati, S.SE',
-    catatan: 'Seluruh berkas mutasi dan kearsipan surat masuk/keluar terdigitalisasi 100%.',
-  },
-  {
-    id: 'md-108',
-    nama_divisi: 'HRD & Kepegawaian',
-    unit_pendidikan: 'SMA IT',
-    kategori_laporan: 'Evaluasi Kedisiplinan & Kinerja SDM',
-    aspek_pemantauan: 'Presensi Kehadiran Guru/Pegawai & Evaluasi Pembinaan Bulanan',
-    persentase_capaian: 82,
-    status_pemantauan: 'tercapai',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Bpk. Handoko, S.Psi',
-    catatan: 'Evaluasi kinerja tenaga pendidik berjalan lancar dengan tingkat kehadiran 98%.',
-  },
-  {
-    id: 'md-109',
-    nama_divisi: 'Keuangan',
-    unit_pendidikan: 'SD IT',
-    kategori_laporan: 'Rekapitulasi SPP & Anggaran Operasional',
-    aspek_pemantauan: 'Monitoring Pelunasan SPP Siswa & Laporan Realisasi Kas Operasional',
-    persentase_capaian: 90,
-    status_pemantauan: 'tercapai',
-    tanggal_pemantauan: new Date().toISOString().split('T')[0],
-    petugas_supervisi: 'Ibu Maryam, S.Ak',
-    catatan: 'Target pencairan dan penerimaan pembayaran SPP bulanan memenuhi target 90%.',
-  },
-]
-
 export default function MonitoringDivisiPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(15)
@@ -236,15 +124,9 @@ export default function MonitoringDivisiPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterUnit, setFilterUnit] = useState('')
 
-  // Form Modal & Impor Modal States
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [isImportOpen, setIsImportOpen] = useState(false)
+  // Detail Modal State (Read-only Capability Compliance)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
-  const [localItems, setLocalItems] = useState([])
-
-  // Delete Modal State
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [deleteTargetId, setDeleteTargetId] = useState(null)
 
   // Auth & Role Context
   const user = useAuthStore((state) => state.user)
@@ -294,19 +176,13 @@ export default function MonitoringDivisiPage() {
 
   const rawApiItems = data?.data || []
   const combinedItems = useMemo(() => {
-    const map = new Map()
-    MOCK_SIT_ITEMS.forEach((item) => map.set(item.id, item))
-    localItems.forEach((item) => map.set(item.id, item))
-    rawApiItems.forEach((item) => {
-      map.set(item.id || `api_${Math.random()}`, {
-        unit_pendidikan: item.unit_pendidikan || 'SD IT',
-        petugas_supervisi: item.petugas_supervisi || 'Pengawas Sekolah',
-        kategori_laporan: item.kategori_laporan || 'Target Program Harian/Mingguan',
-        ...item,
-      })
-    })
-    return Array.from(map.values())
-  }, [rawApiItems, localItems])
+    return rawApiItems.map((item) => ({
+      unit_pendidikan: item.unit_pendidikan || 'SD IT',
+      petugas_supervisi: item.petugas_supervisi || 'Pengawas Sekolah',
+      kategori_laporan: item.kategori_laporan || 'Target Program Harian/Mingguan',
+      ...item,
+    }))
+  }, [rawApiItems])
 
   // Filter items by Unit scope, Divisi, Status, Search
   const filteredItems = useMemo(() => {
@@ -656,34 +532,27 @@ export default function MonitoringDivisiPage() {
     {
       key: 'aksi',
       label: 'AKSI',
-      headerProps: { className: 'text-right w-20' },
-      cellProps: { className: 'text-right w-20' },
+      headerProps: { className: 'text-right w-24' },
+      cellProps: { className: 'text-right w-24' },
       render: (row) => (
-        <ActionDropdown onEdit={() => handleOpenEdit(row)} onDelete={() => handleOpenDelete(row.id)} />
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedRecord(row)
+            setIsDetailOpen(true)
+          }}
+          className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-emerald-950 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          <span>Detail</span>
+        </button>
       ),
     },
   ]
 
-  // Soft Pastel Squircle Action Buttons (Toolbar Row 1 Header) - Exactly as depicted in user image!
+  // Soft Pastel Squircle Action Buttons (Toolbar Row 1 Header) - Compliant with Capability Lock
   const renderActionButtons = (
     <div className="flex items-center gap-2">
-      {/* Impor CSV Data Button - Soft Pastel Sky Blue Squircle */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Impor Data Laporan CSV/Excel"
-          aria-label="Impor Data Laporan CSV/Excel"
-          onClick={() => setIsImportOpen(true)}
-          className="flex size-10 items-center justify-center rounded-2xl bg-[#E0F2FE] text-[#0284C7] hover:bg-[#BAE6FD] dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
-        >
-          <Upload1 className="size-5" />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Impor Data (CSV/Excel)
-        </div>
-      </div>
-
       {/* Ekspor CSV/Excel Button - Soft Pastel Amber/Orange Squircle */}
       <div className="group relative inline-flex">
         <button
@@ -715,23 +584,6 @@ export default function MonitoringDivisiPage() {
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
           Segarkan Data Real-Time
-        </div>
-      </div>
-
-      {/* Tambah Monitoring Divisi Button - Soft Pastel Emerald/Green Squircle */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Input Monitoring Divisi Baru"
-          aria-label="Input Monitoring Divisi Baru"
-          onClick={handleOpenCreate}
-          className="flex size-10 items-center justify-center rounded-2xl bg-[#D1FAE5] text-[#059669] hover:bg-[#A7F3D0] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
-        >
-          <Plus className="size-5" />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Input Monitoring Divisi Baru
         </div>
       </div>
 
@@ -1198,63 +1050,69 @@ export default function MonitoringDivisiPage() {
         />
       </motion.div>
 
-        {/* Form Modal Add / Edit */}
-        <PemantauanDivisiFormModal
-          isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
-          onSubmit={handleFormSubmit}
-          initialData={selectedRecord}
-          isSubmitting={tambah.isPending || ubah.isPending}
-          currentUserUnit={currentUserUnit}
-          isUnitRestricted={isUnitRestricted}
-        />
+        {/* Detail Modal (Read-only Capability Compliance) */}
+        {isDetailOpen && selectedRecord && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#1B2433] dark:border dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-emerald-600" />
+                  <span>Detail Pemantauan Divisi</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailOpen(false)}
+                  className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
-        {/* Impor CSV Modal */}
-        <ImporDivisiModal
-          isOpen={isImportOpen}
-          onClose={() => setIsImportOpen(false)}
-          onImportSuccess={handleImportSuccess}
-        />
-
-        {/* TailGrids Delete Confirmation Alert Dialog */}
-        <OverlayWrapper isOpen={isDeleteOpen}>
-          <Backdrop onDismiss={() => setIsDeleteOpen(false)}>
-            <AlertDialog isOpen={isDeleteOpen} onOpenChange={(open) => !open && setIsDeleteOpen(false)}>
-              <DialogHeader>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/40">
-                  <Trash2 className="h-5 w-5" />
+              <div className="space-y-3 rounded-2xl bg-slate-50 dark:bg-slate-900/80 p-4 border border-slate-200/80 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-slate-900 dark:text-white text-sm">{selectedRecord.nama_divisi}</span>
+                  <Badge color={STATUS_MAP[selectedRecord.status_pemantauan]?.color || 'gray'} size="sm">
+                    {STATUS_MAP[selectedRecord.status_pemantauan]?.label || selectedRecord.status_pemantauan}
+                  </Badge>
                 </div>
-                <DialogTitle>Hapus Data Monitoring Divisi?</DialogTitle>
-                <DialogDescription>
-                  Tindakan ini tidak dapat dibatalkan. Catatan supervisi dan laporan divisi ini akan terhapus dari sistem.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="flex items-center justify-end gap-2 pt-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  appearance="outline"
-                  size="sm"
-                  onClick={() => setIsDeleteOpen(false)}
-                  className="cursor-pointer font-bold"
-                >
-                  Batal
+                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                  <div>
+                    <span className="text-slate-500 block font-medium">Unit Pendidikan</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{selectedRecord.unit_pendidikan || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block font-medium">Capaian Target</span>
+                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{selectedRecord.persentase_capaian || 0}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block font-medium">Petugas Supervisi</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{selectedRecord.petugas_supervisi || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block font-medium">Tanggal Supervisi</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{selectedRecord.tanggal_pemantauan || '-'}</span>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                  <span className="text-slate-500 text-xs block font-medium">Aspek & Indikator</span>
+                  <p className="font-bold text-slate-800 dark:text-slate-200 text-xs mt-0.5">{selectedRecord.aspek_pemantauan || '-'}</p>
+                </div>
+                {selectedRecord.catatan && (
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                    <span className="text-slate-500 text-xs block font-medium">Catatan Supervisor</span>
+                    <p className="text-slate-600 dark:text-slate-300 italic text-xs mt-0.5">"{selectedRecord.catatan}"</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button type="button" variant="ghost" onClick={() => setIsDetailOpen(false)}>
+                  Tutup
                 </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  appearance="fill"
-                  size="sm"
-                  onClick={handleConfirmDelete}
-                  pending={hapus.isPending}
-                  className="cursor-pointer font-bold"
-                >
-                  Hapus Data
-                </Button>
-              </DialogFooter>
-            </AlertDialog>
-          </Backdrop>
-        </OverlayWrapper>
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
     </PageContainer>
   )

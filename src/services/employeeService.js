@@ -60,7 +60,22 @@ export const employeeService = {
     return data
   },
 
+  prosesImport: async (rows) => {
+    const { data } = await api.post('/employees/import', { data: rows })
+    return data
+  },
+
+  downloadTemplate: async () => {
+    const { data } = await api.get('/employees/import-template')
+    return data
+  },
+
   exportData: async (params = {}) => {
+    const { data } = await api.get('/employees/export', { params })
+    return data
+  },
+
+  ekspor: async (params = {}) => {
     const { data } = await api.get('/employees/export', { params })
     return data
   },

@@ -536,13 +536,17 @@ export default function NewsManagementPage() {
 
   const handleSaveForm = async (e) => {
     e.preventDefault()
-    if (!form.judul.trim() || !form.ringkasan.trim()) return
+    const trimmedJudul = form.judul.trim().replace(/\s+/g, ' ')
+    const trimmedRingkasan = form.ringkasan.trim().replace(/\s+/g, ' ')
+    const trimmedIsi = form.isi.trim()
+
+    if (!trimmedJudul || !trimmedRingkasan) return
 
     const selectedU = unitOptions.find((u) => u.id === form.target_unit) || unitOptions[0]
 
     const payload = {
-      judul_pengumuman: form.judul,
-      isi_pengumuman: form.isi,
+      judul_pengumuman: trimmedJudul,
+      isi_pengumuman: trimmedIsi || trimmedRingkasan,
       target_peran: ['Orang Tua', 'Siswa'],
       status_aktif: form.status === 'Dipublikasikan',
       mulai_tampil: form.tanggal_publikasi,
@@ -551,7 +555,7 @@ export default function NewsManagementPage() {
         unit_name: selectedU.name,
         unit_code: selectedU.code,
         kategori: form.kategori,
-        ringkasan: form.ringkasan,
+        ringkasan: trimmedRingkasan,
         gambar_url: form.gambar_url,
       },
     }

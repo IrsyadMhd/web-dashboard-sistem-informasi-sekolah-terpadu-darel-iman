@@ -16,7 +16,7 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
   }), [location.pathname, searchParams, tabs])
 
   const renderNav = (extraActions = null) => (
-    <nav aria-label={`Tab ${title}`} className="rounded-[18px] border border-slate-200/80 bg-white p-2 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] flex flex-col sm:flex-row sm:items-center justify-between gap-2 overflow-hidden">
+    <nav aria-label={`Tab ${title}`} className="rounded-[20px] border border-emerald-500/20 bg-emerald-50/50 p-2 shadow-xs dark:border-emerald-900/40 dark:bg-[#13221f] flex flex-col sm:flex-row sm:items-center justify-between gap-2 overflow-hidden">
       <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none flex-1">
         {tabLinks.map((tab) => {
           const Icon = tab.icon
@@ -25,32 +25,33 @@ export default function AcademicModuleContainer({ title, description, tabs, hide
             <NavLink
               key={tab.key}
               to={tab.to}
-              className={`group relative flex shrink-0 items-center gap-2.5 rounded-xl border px-3 py-2 transition-colors duration-150 ${
+              className={`group relative flex shrink-0 items-center gap-2.5 rounded-xl border px-3.5 py-2 transition-all duration-200 ${
                 isSelected
-                  ? 'border-emerald-600/40 bg-emerald-50/80 shadow-xs dark:border-emerald-500/40 dark:bg-emerald-950/40'
-                  : 'border-slate-200/70 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-[#111827] dark:hover:bg-slate-800/80'
+                  ? 'border-emerald-400/40 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25'
+                  : 'border-slate-200/80 bg-white hover:border-emerald-300 hover:bg-emerald-50/60 dark:border-slate-800 dark:bg-[#111827] dark:hover:bg-slate-800/80'
               }`}
             >
               {Icon && (
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-xs ${tab.squircleStyle || 'bg-emerald-100 text-emerald-600'}`}>
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-xs ${
+                  isSelected ? 'bg-white/20 text-white' : (tab.squircleStyle || 'bg-emerald-100 text-emerald-600')
+                }`}>
                   <Icon className="h-4 w-4" />
                 </div>
               )}
               <div className="flex flex-col pr-0.5">
                 <span className={`text-xs font-extrabold tracking-tight transition-colors ${
-                  isSelected ? 'text-emerald-950 dark:text-emerald-200' : 'text-slate-700 dark:text-slate-200 group-hover:text-slate-900'
+                  isSelected ? 'text-white' : 'text-slate-700 dark:text-slate-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-300'
                 }`}>
                   {tab.label}
                 </span>
                 {tab.description && (
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-none mt-0.5">
+                  <span className={`text-[10px] font-medium leading-none mt-0.5 ${
+                    isSelected ? 'text-emerald-100' : 'text-slate-500 dark:text-slate-400'
+                  }`}>
                     {tab.description}
                   </span>
                 )}
               </div>
-              {isSelected && (
-                <span className="absolute -bottom-1 left-1/2 h-1 w-6 -translate-x-1/2 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-              )}
             </NavLink>
           )
         })}

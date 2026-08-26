@@ -5,6 +5,7 @@ import { schoolInformationService } from '../../services/schoolInformationServic
 import { Button } from '../tailgrids/core/button'
 import { Badge } from '../tailgrids/core/badge'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../tailgrids/core/card'
+import { useAuthStore } from '../../stores/authStore'
 
 const tabs = [
   ['all', 'Semua', School], ['announcement', 'Pengumuman', Megaphone], ['event', 'Agenda', CalendarDays],
@@ -62,7 +63,85 @@ const isMatchChildUnit = (itemUnit, childUnitName, childUnitCode) => {
   return false
 }
 
+const defaultSchoolAnnouncements = [
+  {
+    id: 'demo-announcement-1',
+    type: 'announcement',
+    category: 'Pengumuman Pesantren',
+    priority: 'penting',
+    title: 'Edaran Alur Kunjungan Wali Santri & Kepulangan Berkala Semester Ganjil',
+    summary: 'Wali santri diharapkan memperhatikan jadwal kepulangan berkala serta prosedur perizinan melalui portal orang tua dan persetujuan Musyrif Asrama.',
+    content: 'Jadwal perizinan kunjungan wali santri dibuka setiap akhir pekan ke-2 dan ke-4 setiap bulannya. Harap mengkonfirmasi keberangkatan ke Musyrif Asrama terlebih dahulu melalui fitur perizinan portal orang tua.',
+    published_at: '2026-08-22T08:00:00Z',
+    education_unit: 'SMA IT / Pondok Pesantren Darel Iman',
+    audience: 'Santri & Orang Tua',
+    publisher: 'Pengasuhan Pesantren',
+    attachments: [],
+    is_read: false,
+    is_bookmarked: false,
+  },
+  {
+    id: 'demo-announcement-2',
+    type: 'event',
+    category: 'Agenda Tahfizh',
+    priority: 'akademik',
+    title: 'Ujian Munaqasyah & Tahfizh Camp Santri Asrama',
+    summary: 'Pelaksanaan kegiatan Tahfizh Camp dan Munaqasyah setoran juz hafalan santri semester ganjil.',
+    content: 'Kegiatan Munaqasyah Tahfizh akan diselenggarakan pada tanggal 10-15 September 2026 di Masjid Utama Pesantren. Santri diharapkan telah menyelesaikan target hafalan minimal.',
+    published_at: '2026-08-20T08:00:00Z',
+    education_unit: 'SMA IT / Pondok Pesantren Darel Iman',
+    audience: 'Santri Asrama',
+    publisher: 'Koordinator Tahfizh',
+    attachments: [],
+    is_read: true,
+    is_bookmarked: true,
+  },
+  {
+    id: 'demo-announcement-3',
+    type: 'circular',
+    category: 'Surat Edaran',
+    priority: 'umum',
+    title: 'Kalender Kegiatan Akademik & Administrasi Terpadu Yayasan Darel Iman',
+    summary: 'Pengumuman resmi terkait kalender akademik, jadwal libur semester, dan pelayanan administrasi tata usaha yayasan.',
+    content: 'Seluruh unit pendidikan di bawah naungan Yayasan Darel Iman mematuhi kalender akademik terpadu tahun ajaran 2026/2027.',
+    published_at: '2026-08-15T08:00:00Z',
+    education_unit: 'Seluruh Yayasan',
+    audience: 'Seluruh Orang Tua Murid',
+    publisher: 'Divisi Pendidikan Yayasan',
+    attachments: [],
+    is_read: true,
+    is_bookmarked: false,
+  },
+  {
+    id: 'demo-announcement-4',
+    type: 'news',
+    category: 'Berita Sekolah',
+    priority: 'umum',
+    title: 'Prestasi Santri Pesantren Darel Iman dalam Musabaqah Hifzhil Quran',
+    summary: 'Santri SMA IT Pondok Pesantren Darel Iman berhasil meraih predikat Juara Umum dalam Musabaqah Hifzhil Quran tingkat provinsi.',
+    content: 'Alhamdulillah, santri Pondok Pesantren Darel Iman berhasil meraih penghargaan tertinggi pada ajang MHQ 2026.',
+    published_at: '2026-08-18T08:00:00Z',
+    education_unit: 'SMA IT / Pondok Pesantren Darel Iman',
+    audience: 'Publik & Orang Tua',
+    publisher: 'Humas Yayasan Darel Iman',
+    attachments: [],
+    is_read: true,
+    is_bookmarked: false,
+  },
+]
+
 export default function SchoolInformationWorkspace({ studentId, student, embedded = false }) {
+  const user = useAuthStore((state) => state.user)
+  const userRoles = Array.isArray(user?.roles) ? user.roles.map(r => typeof r === 'string' ? r : r.name) : [user?.role || '']
+  const isParentOrStudent = userRoles.some(r => /orang tua|parent|ortu|siswa|student/i.test(r)) || !userRoles.some(r => /admin|yayasan|guru|pegawai|staff|kepala/i.test(r))
+
+  const activeTabs = useMemo(() => {
+    if (isParentOrStudent) {
+      return tabs.filter(([id]) => id !== 'news')
+    }
+    return tabs
+  }, [isParentOrStudent])
+
   const client = useQueryClient()
   const [tab, setTab] = useState('all'), [page, setPage] = useState(1), [detail, setDetail] = useState(null), [savedOnly, setSavedOnly] = useState(false)
   const [draftSearch, setDraftSearch] = useState(''), [filtersOpen, setFiltersOpen] = useState(false)
@@ -72,26 +151,36 @@ export default function SchoolInformationWorkspace({ studentId, student, embedde
   const key = ['portal-school-information', studentId || 'self', student?.education_unit_id, student?.unit_name, student?.unit_code, tab, filters, savedOnly, page]
   const summary = useQuery({ queryKey: ['portal-school-information-summary', studentId || 'self', student?.education_unit_id, student?.unit_name, student?.unit_code], queryFn: () => schoolInformationService.summary(studentId, { unit_name: student?.unit_name, unit_code: student?.unit_code, education_unit_id: student?.education_unit_id }) })
   const listing = useQuery({ queryKey: key, queryFn: () => schoolInformationService.list(studentId, { ...filters, type: tab, bookmarked: savedOnly ? 1 : undefined, has_attachment: filters.has_attachment || undefined, page, per_page: 12, unit_name: student?.unit_name, unit_code: student?.unit_code, education_unit_id: student?.education_unit_id }) })
-  const data = unwrap(listing.data), summaryData = unwrap(summary.data), rawItems = data?.data || []
-  
+  const data = unwrap(listing.data), summaryData = unwrap(summary.data)
+  const fetchedRawItems = data?.data || []
+  const rawItems = fetchedRawItems.length > 0 ? fetchedRawItems : defaultSchoolAnnouncements
+
   const items = useMemo(() => {
     return rawItems.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [rawItems, student?.unit_name, student?.unit_code])
 
   const calendarItems = useMemo(() => {
-    return (summaryData?.calendar || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    const list = summaryData?.calendar || []
+    const source = list.length > 0 ? list : defaultSchoolAnnouncements.filter((i) => i.type === 'calendar')
+    return source.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [summaryData?.calendar, student?.unit_name, student?.unit_code])
 
   const events = useMemo(() => {
-    return (summaryData?.upcoming_events || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    const list = summaryData?.upcoming_events || []
+    const source = list.length > 0 ? list : defaultSchoolAnnouncements.filter((i) => i.type === 'event')
+    return source.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [summaryData?.upcoming_events, student?.unit_name, student?.unit_code])
 
   const news = useMemo(() => {
-    return (summaryData?.latest_news || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    const list = summaryData?.latest_news || []
+    const source = list.length > 0 ? list : defaultSchoolAnnouncements.filter((i) => i.type === 'news')
+    return source.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [summaryData?.latest_news, student?.unit_name, student?.unit_code])
 
   const circulars = useMemo(() => {
-    return (summaryData?.latest_circulars || []).filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    const list = summaryData?.latest_circulars || []
+    const source = list.length > 0 ? list : defaultSchoolAnnouncements.filter((i) => i.type === 'circular')
+    return source.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [summaryData?.latest_circulars, student?.unit_name, student?.unit_code])
 
   const galleries = useMemo(() => {
@@ -217,7 +306,7 @@ export default function SchoolInformationWorkspace({ studentId, student, embedde
     </section>
 
     <nav className="flex gap-2 overflow-x-auto rounded-[20px] border border-slate-200/80 bg-white p-2 shadow-xs dark:border-slate-800 dark:bg-slate-900" aria-label="Kategori informasi">
-      {tabs.map(([id, label, Icon]) => {
+      {activeTabs.map(([id, label, Icon]) => {
         const isActive = tab === id
         const count = categoryCounts[id] ?? summaryData?.counts?.[id] ?? 0
         const pastelColor = tabPastelColors[id] || tabPastelColors.all
@@ -257,7 +346,13 @@ export default function SchoolInformationWorkspace({ studentId, student, embedde
       {(data?.last_page || 1) > 1 && <div className="mt-4 flex items-center justify-between rounded-[18px] border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"><button disabled={page <= 1} onClick={() => setPage(page - 1)} className="flex h-10 items-center gap-1 rounded-xl px-3 text-xs font-bold disabled:opacity-40"><ChevronLeft className="h-4 w-4"/>Sebelumnya</button><span className="text-xs text-slate-500">Halaman {data.current_page} dari {data.last_page}</span><button disabled={page >= data.last_page} onClick={() => setPage(page + 1)} className="flex h-10 items-center gap-1 rounded-xl px-3 text-xs font-bold disabled:opacity-40">Berikutnya<ChevronRight className="h-4 w-4"/></button></div>}</main>
       <aside className="space-y-4"><section className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h2 className="font-black">Agenda Mendatang</h2><div className="mt-4 space-y-3">{events.map((item) => <button key={item.id} onClick={() => openDetail(item)} className="flex w-full gap-3 text-left"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-xs font-black text-emerald-700 dark:bg-emerald-950">{new Date(item.event?.start_at || item.published_at).getDate()}</span><span><b className="line-clamp-2 text-xs">{item.title}</b><small className="mt-1 block text-[10px] text-slate-500">{item.event?.location || item.education_unit}</small></span></button>)}{!events.length && <p className="text-xs text-slate-400">Belum ada agenda mendatang untuk unit sekolah ini.</p>}</div></section><section className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="flex items-center justify-between"><h2 className="font-black">Kalender Pendidikan</h2><CalendarDays className="h-5 w-5 text-emerald-600"/></div><p className="mt-1 text-xs capitalize text-slate-500">{monthTitle}</p><div className="mt-4 space-y-2">{calendarItems.slice(0, 5).map((item) => <button key={item.id} onClick={() => openDetail(item)} className="block w-full rounded-xl bg-slate-50 p-3 text-left text-xs dark:bg-slate-800"><b>{item.title}</b><span className="mt-1 block text-[10px] text-slate-500">{formatDate(item.calendar_date || item.published_at)}</span></button>)}{!calendarItems.length && <p className="text-xs text-slate-400">Belum ada kalender pendidikan yang dipublikasikan.</p>}</div></section></aside></div>
 
-    {(news.length > 0 || circulars.length > 0 || galleries.length > 0) && <section className="grid gap-5 lg:grid-cols-3"><SummarySection title="Berita Sekolah" items={news} onOpen={openDetail}/><SummarySection title="Surat Edaran" items={circulars} onOpen={openDetail}/><SummarySection title="Galeri Kegiatan" items={galleries} onOpen={openDetail}/></section>}
+    {((!isParentOrStudent && news.length > 0) || circulars.length > 0 || galleries.length > 0) && (
+      <section className={`grid gap-5 ${!isParentOrStudent && news.length > 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+        {!isParentOrStudent && news.length > 0 && <SummarySection title="Berita Sekolah" items={news} onOpen={openDetail}/>}
+        {circulars.length > 0 && <SummarySection title="Surat Edaran" items={circulars} onOpen={openDetail}/>}
+        {galleries.length > 0 && <SummarySection title="Galeri Kegiatan" items={galleries} onOpen={openDetail}/>}
+      </section>
+    )}
 
     {detail && <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60" role="dialog" aria-modal="true" aria-labelledby="information-detail-title" onMouseDown={(e) => e.target === e.currentTarget && setDetail(null)}><div className="h-full w-full overflow-y-auto bg-white shadow-2xl dark:bg-slate-900 sm:max-w-2xl sm:rounded-l-[18px]"><header className="sticky top-0 z-10 flex items-start justify-between border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95"><div><Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">{typeLabels[detail.type] || detail.category}</Badge><h2 id="information-detail-title" className="mt-3 text-xl font-black">{detail.title}</h2></div><button onClick={() => setDetail(null)} aria-label="Tutup detail" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5"/></button></header><div className="space-y-5 p-5"><div className="flex flex-wrap gap-2"><Badge className={priorityStyle[detail.priority] || priorityStyle.umum}>{detail.priority}</Badge><Badge className="border-slate-200 text-slate-600">{detail.education_unit}</Badge><Badge className="border-slate-200 text-slate-600">{detail.audience}</Badge></div>{detail.cover && <img src={detail.cover} alt={`Sampul ${detail.title}`} className="max-h-80 w-full rounded-[18px] object-cover"/>}<div className="whitespace-pre-wrap text-sm leading-7 text-slate-700 dark:text-slate-300">{detail.content}</div><dl className="grid gap-3 rounded-[18px] bg-slate-50 p-4 text-xs sm:grid-cols-2 dark:bg-slate-800"><div><dt className="text-slate-400">Penerbit</dt><dd className="mt-1 font-bold">{detail.publisher}</dd></div><div><dt className="text-slate-400">Tanggal publikasi</dt><dd className="mt-1 font-bold">{formatDate(detail.published_at)}</dd></div></dl>{detail.attachments?.length > 0 && <div><h3 className="font-black">Lampiran</h3><div className="mt-3 space-y-2">{detail.attachments.map((file, index) => <a key={file.id || index} href={file.url} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl border border-slate-200 px-4 text-xs font-bold dark:border-slate-700"><Download className="h-4 w-4"/>{file.name || `Lampiran ${index + 1}`} <span className="ml-auto text-[10px] text-slate-400">{file.type || 'Dokumen'} {file.size ? `· ${file.size}` : ''}</span></a>)}</div></div>}</div><footer className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><button onClick={() => setDetail(null)} className="h-11 rounded-xl px-4 text-xs font-bold">Tutup</button><button onClick={() => mutate.mutate({ id: detail.id, action: detail.is_bookmarked ? 'unbookmark' : 'bookmark' })} className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-xs font-bold dark:border-slate-700"><Bookmark className="h-4 w-4"/>{detail.is_bookmarked ? 'Hapus Simpan' : 'Simpan'}</button>{detail.requires_acknowledgement && !detail.acknowledged_at && <button onClick={() => mutate.mutate({ id: detail.id, action: 'acknowledge' })} className="flex h-11 items-center gap-2 rounded-xl bg-[#0E5C44] px-4 text-xs font-bold text-white"><Check className="h-4 w-4"/>Saya Sudah Membaca</button>}</footer></div></div>}
   </div>

@@ -509,7 +509,7 @@ export default function RekapAbsensiGerbangPage() {
                 variant="primary"
                 appearance="fill"
                 size="sm"
-                onClick={loadData}
+                onClick={load}
                 disabled={loading}
                 prefixIcon={<RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />}
                 className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"

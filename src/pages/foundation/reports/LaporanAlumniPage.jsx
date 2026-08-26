@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { GraduationCap, Heart, BookOpen, Briefcase, Building, HelpCircle, PhoneCall } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { GraduationCap, Heart, BookOpen, Briefcase, Building, HelpCircle, PhoneCall, ShieldCheck, Sparkles } from 'lucide-react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts'
 import { reportService } from '../../../services/reportService'
+import AppBreadcrumb from '../../../components/app/AppBreadcrumb'
 import { ReportHeader } from '../../../components/reports/ReportHeader'
 import { ReportPeriodFilter } from '../../../components/reports/ReportPeriodFilter'
 import { ReportKpiGrid } from '../../../components/reports/ReportKpiGrid'
@@ -16,9 +18,22 @@ import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
-import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
+
+const containerVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, staggerChildren: 0.08 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+}
 
 export function LaporanAlumniPage() {
   const [filters, setFilters] = useState({ period: 'year', page: 1, per_page: 15, search: '' })
@@ -125,60 +140,91 @@ export function LaporanAlumniPage() {
   ]
 
   return (
-    <div className="laporan-page-content space-y-6 pb-12">
-      {/* 🧭 TailGrids Breadcrumbs Navigation */}
-      <div className="print:hidden">
-        <Breadcrumbs
-          dividerType="chevron"
+    <motion.div initial="hidden" animate="visible" variants={containerVariants} className="laporan-page-content space-y-6 pb-12">
+      {/* 🧭 App Breadcrumbs Navigation */}
+      <motion.div variants={itemVariants} className="print:hidden">
+        <AppBreadcrumb
           items={[
             { href: '/dashboard/yayasan', label: 'Yayasan' },
             { href: '/dashboard/yayasan/laporan', label: 'Laporan Eksekutif' },
             { label: 'Laporan Data Alumni' },
           ]}
         />
-      </div>
+      </motion.div>
 
-      {/* 1. Header Laporan */}
-      <ReportHeader
-        title={report.title}
-        description={report.description}
-        periodLabel={report.period?.label}
-        generatedAt={report.generated_at}
-      />
+      {/* 1. Header Laporan Modern Hero Card */}
+      <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+        {/* Ambient Glow Background Accent */}
+        <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-      {/* 2. Ringkasan Analisis Laporan (Di bawah Header) */}
-      <div className="print:hidden">
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <GraduationCap className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  {report.title}
+                </h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Tracer Study Alumni
+                </span>
+              </div>
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                {report.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>{report.period?.label ?? 'Semua Angkatan'}</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 2. Ringkasan Analisis Laporan */}
+      <motion.div variants={itemVariants} className="print:hidden">
         <ReportInsightCard insights={insights} />
-      </div>
+      </motion.div>
 
       {/* 3. Catatan & Identitas Laporan */}
-      <div className="print:hidden">
+      <motion.div variants={itemVariants} className="print:hidden">
         <ReportNotesCard
           periodLabel={report.period?.label}
           generatedAt={report.generated_at}
         />
-      </div>
+      </motion.div>
 
       {/* 4. Filter Periode & Aksi Laporan */}
-      <ReportPeriodFilter
-        period={filters.period}
-        startDate={filters.tanggal_mulai}
-        endDate={filters.tanggal_selesai}
-        onChange={handlePeriodChange}
-        onReset={handleResetFilter}
-        onRefresh={fetchReport}
-        onOpenPreview={() => setIsPreviewOpen(true)}
-        onPrint={() => window.print()}
-        onExportPdf={handleExportPdf}
-        onExportExcel={handleExportExcel}
-        loading={loading}
-      />
+      <motion.div variants={itemVariants}>
+        <ReportPeriodFilter
+          period={filters.period}
+          startDate={filters.tanggal_mulai}
+          endDate={filters.tanggal_selesai}
+          onChange={handlePeriodChange}
+          onReset={handleResetFilter}
+          onRefresh={fetchReport}
+          onOpenPreview={() => setIsPreviewOpen(true)}
+          onPrint={() => window.print()}
+          onExportPdf={handleExportPdf}
+          onExportExcel={handleExportExcel}
+          loading={loading}
+        />
+      </motion.div>
 
       {/* 5. KPI Ringkasan */}
-      <ReportKpiGrid items={kpiItems} />
+      <motion.div variants={itemVariants}>
+        <ReportKpiGrid items={kpiItems} />
+      </motion.div>
 
       {/* 6. Visual Charts */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 print:hidden">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-6 md:grid-cols-2 print:hidden">
         <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">Alumni per Unit Asal & Karir</CardTitle>
@@ -219,41 +265,47 @@ export function LaporanAlumniPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* 7. Rekap Per Unit */}
-      <ReportRecapTable
-        title="Rekapitulasi Alumni per Unit Asal Pendidikan"
-        columns={recapColumns}
-        data={unit_recaps}
-        totalRow={unit_recaps_total}
-      />
+      <motion.div variants={itemVariants}>
+        <ReportRecapTable
+          title="Rekapitulasi Alumni per Unit Asal Pendidikan"
+          columns={recapColumns}
+          data={unit_recaps}
+          totalRow={unit_recaps_total}
+        />
+      </motion.div>
 
       {/* 7b. Rekap Per Angkatan */}
       {batch_recaps && batch_recaps.length > 0 && (
-        <ReportRecapTable
-          title="Rekapitulasi Alumni per Angkatan"
-          columns={batchColumns}
-          data={batch_recaps}
-        />
+        <motion.div variants={itemVariants}>
+          <ReportRecapTable
+            title="Rekapitulasi Alumni per Angkatan"
+            columns={batchColumns}
+            data={batch_recaps}
+          />
+        </motion.div>
       )}
 
       {/* 8. Data Rinci */}
-      <ReportDetailTable
-        title="Rincian Data Alumni"
-        description="Daftar rincian data pembentuk angka laporan. Hanya aksi Lihat Detail yang tersedia."
-        columns={detailColumns}
-        data={details}
-        meta={meta}
-        search={filters.search}
-        perPage={filters.per_page}
-        onSearchChange={(val) => setFilters((prev) => ({ ...prev, search: val, page: 1 }))}
-        onPerPageChange={(perPage) => setFilters((prev) => ({ ...prev, per_page: perPage, page: 1 }))}
-        onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
-        onViewDetail={handleViewDetail}
-        filters={filters}
-        onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }))}
-      />
+      <motion.div variants={itemVariants}>
+        <ReportDetailTable
+          title="Rincian Data Alumni"
+          description="Daftar rincian data pembentuk angka laporan. Hanya aksi Lihat Detail yang tersedia."
+          columns={detailColumns}
+          data={details}
+          meta={meta}
+          search={filters.search}
+          perPage={filters.per_page}
+          onSearchChange={(val) => setFilters((prev) => ({ ...prev, search: val, page: 1 }))}
+          onPerPageChange={(perPage) => setFilters((prev) => ({ ...prev, per_page: perPage, page: 1 }))}
+          onPageChange={(page) => setFilters((prev) => ({ ...prev, page }))}
+          onViewDetail={handleViewDetail}
+          filters={filters}
+          onFilterChange={(newFilters) => setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }))}
+        />
+      </motion.div>
 
       {/* Modals */}
       <ReportPreviewModal
@@ -277,6 +329,6 @@ export function LaporanAlumniPage() {
         title="Detail Profile & Karir Alumni"
         data={detailModalData}
       />
-    </div>
+    </motion.div>
   )
 }

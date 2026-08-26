@@ -32,6 +32,7 @@ import { gateAttendanceService } from '../services/gateAttendanceService'
 import { educationUnitService } from '../services/educationUnitService'
 import { studentService } from '../services/studentService'
 import { useAuthStore } from '../stores/authStore'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 
 export default function GateAttendancePage() {
   const storeUser = useAuthStore((state) => state.user)
@@ -587,67 +588,95 @@ export default function GateAttendancePage() {
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Absensi Gerbang Kedatangan & Pulang Sekolah
-          </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-            <span>Terminal pemindaian real-time kartu siswa, QR Code, RFID, dan verifikasi kepulangan.</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-              <Clock className="h-3 w-3" /> Jam Masuk: {scheduleConfig.jam_masuk} (Tol: {scheduleConfig.toleransi_menit}m) | Jam Pulang: {scheduleConfig.jam_pulang}
-            </span>
-          </div>
-        </div>
+      {/* Navigation Breadcrumb */}
+      <motion.div variants={itemVariants} className="print:hidden">
+        <AppBreadcrumb
+          items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Presensi & Kehadiran' },
+            { label: 'Absensi Digital Gerbang' },
+          ]}
+        />
+      </motion.div>
 
-        {/* Action Controls: Unit Filter & Schedule Config Button */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Unit Filter Field */}
-          <div className="relative inline-flex items-center">
-            <div className="pointer-events-none absolute left-3 flex items-center text-slate-400 dark:text-slate-500">
-              {isMultiUnitUser ? (
-                <Building2 className="h-4 w-4 text-slate-400" />
-              ) : (
-                <Lock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              )}
+      {/* MODERN HERO CARD HEADER (MATCHING MONITORING & YAYASAN DASHBOARD STYLE) */}
+      <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+        {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
+        <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <QrCode className="size-6 sm:size-7 text-white" />
             </div>
-            <select
-              disabled={!isMultiUnitUser}
-              className={`h-10 appearance-none rounded-2xl border pl-9 pr-8 text-xs font-semibold shadow-xs transition-all focus:outline-none ${
-                isMultiUnitUser
-                  ? 'border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 cursor-pointer'
-                  : 'border-emerald-200/80 bg-emerald-50/70 text-emerald-900 font-bold dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 cursor-not-allowed'
-              }`}
-              value={selectedUnit}
-              onChange={(e) => setSelectedUnit(e.target.value)}
-            >
-              {isMultiUnitUser && <option value="">Semua Unit Pendidikan</option>}
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nama || u.name}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute right-2.5 flex items-center text-slate-400 dark:text-slate-500">
-              <ChevronDown className="h-3.5 w-3.5" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Terminal Absensi Gerbang
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                  <Clock className="h-3.5 w-3.5 text-emerald-600" /> Jam Masuk: {scheduleConfig.jam_masuk} (Tol: {scheduleConfig.toleransi_menit}m) | Pulang: {scheduleConfig.jam_pulang}
+                </span>
+              </div>
+              <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                Absensi Gerbang Kedatangan &amp; Pulang Sekolah
+              </h1>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                Terminal pemindaian real-time kartu siswa, QR Code, RFID, dan verifikasi kepulangan siswa terpadu.
+              </p>
             </div>
           </div>
 
-          {/* Schedule Config Button (Soft Emerald Squircle with Floating Tooltip) */}
-          <div className="group relative inline-flex">
-            <button
-              type="button"
-              title="Pengaturan Jam per Unit"
-              aria-label="Pengaturan Jam per Unit"
-              className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-200/90 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer border border-emerald-200/50 dark:border-emerald-800/50 shadow-xs"
-              onClick={() => setShowScheduleModal(true)}
-            >
-              <Settings className="size-5" />
-            </button>
-            <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-              <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-              Pengaturan Jam per Unit
+          {/* Action Controls: Unit Filter & Schedule Config Button */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0 z-10">
+            {/* Unit Filter Field */}
+            <div className="relative inline-flex items-center">
+              <div className="pointer-events-none absolute left-3 flex items-center text-slate-400 dark:text-slate-500">
+                {isMultiUnitUser ? (
+                  <Building2 className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <Lock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                )}
+              </div>
+              <select
+                disabled={!isMultiUnitUser}
+                className={`h-10 appearance-none rounded-2xl border pl-9 pr-8 text-xs font-semibold shadow-xs transition-all focus:outline-none ${
+                  isMultiUnitUser
+                    ? 'border-emerald-500/30 bg-white/90 text-slate-800 hover:border-emerald-500 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-slate-900 dark:text-slate-100 cursor-pointer'
+                    : 'border-emerald-200/80 bg-emerald-50/70 text-emerald-900 font-bold dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300 cursor-not-allowed'
+                }`}
+                value={selectedUnit}
+                onChange={(e) => setSelectedUnit(e.target.value)}
+              >
+                {isMultiUnitUser && <option value="">Semua Unit Pendidikan</option>}
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nama || u.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-2.5 flex items-center text-slate-400 dark:text-slate-500">
+                <ChevronDown className="h-3.5 w-3.5" />
+              </div>
+            </div>
+
+            {/* Schedule Config Button */}
+            <div className="group relative inline-flex">
+              <button
+                type="button"
+                title="Pengaturan Jam per Unit"
+                aria-label="Pengaturan Jam per Unit"
+                className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer border border-emerald-300/40 shadow-md shadow-emerald-600/25"
+                onClick={() => setShowScheduleModal(true)}
+              >
+                <Settings className="size-5" />
+              </button>
+              <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                Pengaturan Jam per Unit
+              </div>
             </div>
           </div>
         </div>
@@ -1167,17 +1196,17 @@ export default function GateAttendancePage() {
               </button>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#13221f]">
               <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
+                <thead className="bg-gradient-to-r from-emerald-600 to-teal-600 text-xs uppercase font-extrabold text-white">
                   <tr>
-                    <th className="px-6 py-4">Siswa</th>
-                    <th className="px-6 py-4">Unit / Kelas</th>
-                    <th className="px-6 py-4">Jam Masuk</th>
-                    <th className="px-6 py-4">Status Masuk</th>
-                    <th className="px-6 py-4">Jam Pulang</th>
-                    <th className="px-6 py-4">Status Pulang</th>
-                    <th className="px-6 py-4">Metode</th>
+                    <th className="px-6 py-3.5 text-white font-extrabold">Siswa</th>
+                    <th className="px-6 py-3.5 text-white font-extrabold">Unit / Kelas</th>
+                    <th className="px-6 py-3.5 text-white font-extrabold">Jam Masuk</th>
+                    <th className="px-6 py-3.5 text-white font-extrabold">Status Masuk</th>
+                    <th className="px-6 py-3.5 text-white font-extrabold">Jam Pulang</th>
+                    <th className="px-6 py-3.5 text-white font-extrabold">Status Pulang</th>
+                    <th className="px-6 py-3.5 text-white font-extrabold">Metode</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1195,7 +1224,7 @@ export default function GateAttendancePage() {
                     </tr>
                   ) : (
                     logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                      <tr key={log.id} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 transition-colors">
                         <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">
                           {log.student?.nama_lengkap || 'Siswa'}
                           <span className="block text-xs font-normal text-slate-400">{log.student?.nisn}</span>

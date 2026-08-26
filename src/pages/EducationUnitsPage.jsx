@@ -740,23 +740,23 @@ export default function EducationUnitsPage() {
   const handleProcessImport = async () => {
     if (!importFile) return
     setIsImporting(true)
-    const results = []
-    for (const row of importPreviewData.filter(r => r.status === 'Valid')) {
-      try {
-        await educationUnitService.tambah({
-          code: row.kode, name: row.nama, level: row.tingkat, is_active: true,
-          metadata: { npsn: row.npsn, email: row.email, phone: row.telepon, principal_name: row.pimpinan },
-        })
-        results.push({ ...row, status: 'Berhasil' })
-      } catch {
-        results.push({ ...row, status: 'Gagal' })
-      }
+    const validRows = importPreviewData.filter(r => r.status === 'Valid')
+    try {
+      const res = await educationUnitService.prosesImport(validRows)
+      const resData = res?.data || res || {}
+      setIsImporting(false)
+      setImportPreviewData([])
+      setImportedData(validRows.map(r => ({ ...r, status: 'Berhasil' })))
+      queryClient.invalidateQueries({ queryKey: ['education-units'] })
+      pushToast(
+        'Import Selesai',
+        `Berhasil: ${resData.berhasil || 0}, Duplikat/Skip: ${resData.duplikat || 0}, Gagal: ${resData.gagal || 0}`
+      )
+    } catch (err) {
+      setIsImporting(false)
+      const msg = err?.response?.data?.message || 'Gagal memproses impor unit pendidikan.'
+      pushToast('Import Gagal', msg, 'danger')
     }
-    setIsImporting(false)
-    setImportedData(results)
-    setImportPreviewData([])
-    queryClient.invalidateQueries({ queryKey: ['education-units'] })
-    pushToast('Import Selesai', `${results.filter(r => r.status === 'Berhasil').length} unit berhasil diimpor.`)
   }
 
   // ── Export Handler ─────────────────────────────────────────────────────

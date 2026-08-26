@@ -30,6 +30,21 @@ export const educationUnitService = {
     const { data } = await api.delete(`/education-units/${id}`)
     return data
   },
+
+  ekspor: async (params = {}) => {
+    const { data } = await api.get('/education-units/export', { params })
+    return data?.data || []
+  },
+
+  prosesImport: async (dataRows) => {
+    const { data } = await api.post('/education-units/import', { data: dataRows })
+    return data
+  },
+
+  downloadTemplate: async () => {
+    const { data } = await api.get('/education-units/import-template')
+    return data
+  },
 }
 
 export default educationUnitService

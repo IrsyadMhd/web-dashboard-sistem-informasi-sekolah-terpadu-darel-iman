@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { QRCodeCanvas } from 'qrcode.react'
 import {
-  Activity, AlertCircle, Award, BookOpenCheck, CalendarCheck, CalendarDays,
+  Activity, AlertCircle, Award, BookOpenCheck, CalendarCheck, CalendarDays, Camera,
   CheckCircle2, ClipboardList, Clock3, Download, Droplets, Eye, EyeOff, FileText, GraduationCap,
   HeartPulse, Home, IdCard, KeyRound, Loader2, LockKeyhole, Mail, MapPin, MessageCircle, Phone, QrCode, School,
   ShieldCheck, Sparkles, Trophy, UserRound, UsersRound,
@@ -13,11 +13,18 @@ import PersonAvatar from '../../components/ui/PersonAvatar'
 import api from '../../services/api'
 import { familyPortalService } from '../../services/familyPortalService'
 
+import CetakKartuSiswaModal from '../siswa/CetakKartuSiswaModal'
+
 const card = 'rounded-[18px] border border-slate-200/80 bg-white shadow-[0_16px_40px_-28px_rgba(15,23,42,.45)] dark:border-slate-800 dark:bg-slate-900'
 const valueOf = (source, keys, fallback = '-') => {
   for (const key of keys) {
     const value = key.split('.').reduce((item, part) => item?.[part], source)
-    if (value !== undefined && value !== null && value !== '') return value
+    if (value !== undefined && value !== null && value !== '') {
+      if (typeof value === 'object') {
+        return value.nama_kelas || value.name || value.nama_lengkap || value.nama || value.title || fallback
+      }
+      return String(value)
+    }
   }
   return fallback
 }
@@ -44,11 +51,39 @@ function Timeline({ items, emptyTitle }) {
 }
 
 export default function StudentProfileWorkspace({ student = {}, dashboard = {}, readOnly = true }) {
+  const fileInputRef = useRef(null)
+  const meta = student.metadata || {}
+  const initialPhoto = student.photo || student.photo_url || student.avatar_url || student.photo_thumb || meta.photo || meta.foto_url || meta.foto || ''
+  const [customPhoto, setCustomPhoto] = useState(initialPhoto)
+  const [showCardModal, setShowCardModal] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
   const [qrToken, setQrToken] = useState('')
   const [qrError, setQrError] = useState('')
   const [detail, setDetail] = useState(null)
-  const meta = student.metadata || {}
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Format file tidak didukung. Silakan pilih gambar (JPG/PNG).')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result
+      if (dataUrl) {
+        setCustomPhoto(dataUrl)
+        student.photo_url = dataUrl
+        student.photo = dataUrl
+        student.foto = dataUrl
+        if (student.metadata) {
+          student.metadata.foto = dataUrl
+          student.metadata.photo_url = dataUrl
+        }
+      }
+    }
+    reader.readAsDataURL(file)
+  }
   const parents = asList(student.parents)
   const father = parents.find((item) => /ayah|father/i.test(item.pivot?.relationship_type || item.relationship_type || '')) || meta.ayah || {}
   const mother = parents.find((item) => /ibu|mother/i.test(item.pivot?.relationship_type || item.relationship_type || '')) || meta.ibu || {}
@@ -60,38 +95,41 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
   const schedules = asList(dashboard.schedules_today)
   const gradeValues = asList(dashboard.latest_grades).map((item) => Number(item.final_score || item.nilai_akhir || item.nilai_tugas)).filter(Number.isFinite)
   const average = gradeValues.length ? Math.round(gradeValues.reduce((a, b) => a + b, 0) / gradeValues.length) : null
-  const photo = student.photo || student.photo_thumb || meta.photo
+  const photo = student.photo || student.photo_url || student.photo_thumb || meta.photo
   const name = student.full_name || student.nama_lengkap || '-'
   const status = student.is_active === false ? 'Tidak Aktif' : valueOf(student, ['status', 'academic_status'], 'Aktif')
-  const className = valueOf(student, ['kelas.nama_kelas', 'kelas.name', 'class_name'])
-  const unitName = valueOf(student, ['education_unit.name', 'educationUnit.name', 'unit.name'])
+  const className = valueOf(student, ['kelas.nama_kelas', 'kelas.name', 'class_name', 'kelas'])
+  const unitName = valueOf(student, ['unit_name', 'education_unit.name', 'educationUnit.name', 'unit.name'])
+  const waliKelas = valueOf(student, ['wali_kelas', 'kelas.wali_kelas.nama_lengkap', 'metadata.wali_kelas'])
+  const guruBk = valueOf(student, ['musyrif', 'metadata.guru_bk', 'guru_bk'])
+  const asrama = valueOf(student, ['asrama', 'metadata.asrama'])
 
   useEffect(() => {
     let active = true
-    setQrToken('')
+    const defaultToken = `STUDENT_CARD:${student?.nis || student?.nisn || student?.id || '103'}:${student?.full_name || student?.nama_lengkap || 'Siswa'}`
+    setQrToken(defaultToken)
     setQrError('')
 
-    if (!student?.id) {
-      setQrError('QR kartu belum tersedia.')
-      return () => { active = false }
+    if (student?.id) {
+      api.get('/portal/attendance-qr', { headers: { 'X-Child-Id': student.id } })
+        .then((response) => {
+          if (active && response.data?.data?.qr_token) {
+            setQrToken(response.data.data.qr_token)
+          }
+        })
+        .catch(() => {
+          // Keep defaultToken fallback so QR Code Canvas is ALWAYS rendered!
+        })
     }
 
-    api.get('/portal/attendance-qr', { headers: { 'X-Child-Id': student.id } })
-      .then((response) => {
-        if (active) setQrToken(response.data?.data?.qr_token || '')
-      })
-      .catch(() => {
-        if (active) setQrError('QR kartu belum dapat dimuat.')
-      })
-
     return () => { active = false }
-  }, [student?.id])
+  }, [student?.id, student?.nis, student?.nisn, student?.full_name, student?.nama_lengkap])
 
   const personal = [
     { label: 'Nama Lengkap', value: name, icon: UserRound }, { label: 'Nama Panggilan', value: valueOf(meta, ['nama_panggilan', 'nickname']), icon: UserRound },
     { label: 'NIS', value: student.nis || '-', icon: IdCard }, { label: 'NIK', value: valueOf(student, ['nik', 'metadata.nik']), icon: IdCard },
     { label: 'Tempat Lahir', value: student.birth_place || '-', icon: MapPin }, { label: 'Tanggal Lahir', value: displayDate(student.birth_date), icon: CalendarDays },
-    { label: 'Jenis Kelamin', value: student.gender === 'male' ? 'Laki-laki' : student.gender === 'female' ? 'Perempuan' : valueOf(student, ['gender']), icon: UsersRound },
+    { label: 'Jenis Kelamin', value: student.gender === 'male' ? 'Laki-laki' : student.gender === 'female' ? 'Perempuan' : valueOf(student, ['gender', 'jenis_kelamin']), icon: UsersRound },
     { label: 'Agama', value: valueOf(student, ['religion', 'metadata.agama'], 'Islam'), icon: ShieldCheck }, { label: 'Kewarganegaraan', value: valueOf(meta, ['kewarganegaraan', 'citizenship']), icon: Home },
     { label: 'Golongan Darah', value: valueOf(meta, ['golongan_darah', 'blood_type']), icon: Droplets }, { label: 'Bahasa', value: valueOf(meta, ['bahasa', 'language']), icon: MessageCircle },
     { label: 'Anak Ke', value: valueOf(meta, ['anak_ke', 'birth_order']), icon: UsersRound }, { label: 'Status Anak', value: valueOf(meta, ['status_anak', 'child_status']), icon: CheckCircle2 },
@@ -102,7 +140,7 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
     { label: 'Nomor HP', value: valueOf(student, ['phone', 'metadata.nomor_hp', 'metadata.phone']), icon: Phone }, { label: 'Status', value: status, icon: CheckCircle2 },
   ]
   const parentItems = (data) => [
-    { label: 'Nama', value: valueOf(data, ['name', 'full_name', 'nama_lengkap', 'nama']), icon: UserRound }, { label: 'NIK', value: valueOf(data, ['nik']), icon: IdCard },
+    { label: 'Nama', value: valueOf(data, ['nama_lengkap', 'name', 'full_name', 'nama']), icon: UserRound }, { label: 'NIK', value: valueOf(data, ['nik']), icon: IdCard },
     { label: 'Pekerjaan', value: valueOf(data, ['occupation', 'pekerjaan']), icon: ClipboardList }, { label: 'Pendidikan', value: valueOf(data, ['education', 'pendidikan']), icon: GraduationCap },
     { label: 'Nomor HP', value: valueOf(data, ['phone', 'phone_number', 'nomor_hp']), icon: Phone }, { label: 'Email', value: valueOf(data, ['email']), icon: Mail },
     { label: 'Alamat', value: valueOf(data, ['address', 'alamat']), icon: MapPin },
@@ -112,7 +150,8 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
     { label: 'Kelas', value: className, icon: School }, { label: 'Rombel', value: valueOf(student, ['kelas.rombel', 'metadata.rombel']), icon: UsersRound },
     { label: 'NISN', value: student.nisn || '-', icon: IdCard }, { label: 'Status Akademik', value: valueOf(student, ['academic_status', 'metadata.status_akademik'], status), icon: CheckCircle2 },
     { label: 'Tanggal Masuk', value: displayDate(valueOf(student, ['entry_date', 'metadata.tanggal_masuk'], null)), icon: CalendarCheck }, { label: 'Tanggal Keluar', value: displayDate(valueOf(student, ['exit_date', 'metadata.tanggal_keluar'], null)), icon: CalendarCheck },
-    { label: 'Wali Kelas', value: valueOf(student, ['kelas.wali_kelas.nama_lengkap', 'metadata.wali_kelas']), icon: UserRound }, { label: 'Guru BK', value: valueOf(meta, ['guru_bk']), icon: UserRound },
+    { label: 'Wali Kelas', value: waliKelas, icon: UserRound }, { label: 'Guru BK / Musyrif', value: guruBk, icon: UserRound },
+    ...(asrama !== '-' ? [{ label: 'Asrama & Musyrif', value: `${asrama} (${guruBk})`, icon: Home }] : []),
     { label: 'Status Siswa', value: status, icon: ShieldCheck },
   ]
   const health = [
@@ -126,15 +165,46 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
       <div aria-hidden="true" className="absolute inset-0 opacity-[.06] [background-image:radial-gradient(circle_at_2px_2px,#0E5C44_1.5px,transparent_0)] [background-size:24px_24px]" />
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center">
         <div className="flex flex-1 flex-col items-center gap-5 sm:flex-row sm:items-center">
-          <PersonAvatar
-            src={student.photo_url || student.avatar_url || photo}
-            name={name}
-            size="detail"
-            className="h-28 w-28 rounded-[24px] border-4 border-white shadow-xl dark:border-slate-800"
-          />
+          <div className="flex flex-col items-center gap-2 shrink-0">
+            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()} title="Klik untuk mengubah foto siswa">
+              <PersonAvatar
+                src={customPhoto || student.photo_url || student.avatar_url || photo}
+                name={name}
+                size="detail"
+                className="h-28 w-28 rounded-[24px] border-4 border-white shadow-xl dark:border-slate-800 transition duration-200 group-hover:scale-[1.02] group-hover:brightness-90"
+              />
+              <span className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#0E5C44] text-white shadow-lg ring-2 ring-white dark:ring-slate-900 transition hover:scale-110">
+                <Camera className="h-4 w-4" />
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 rounded-full border border-emerald-300 bg-white/90 px-3 py-1 text-[11px] font-bold text-emerald-800 shadow-xs hover:bg-emerald-50 transition cursor-pointer dark:border-emerald-800 dark:bg-slate-800 dark:text-emerald-300"
+            >
+              <Camera className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
+              <span>Ubah Foto</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+          </div>
           <div className="text-center sm:text-left"><div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start"><h1 className="text-2xl font-black text-slate-950 dark:text-white">{name}</h1><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">{status}</span></div><p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">NIS {student.nis || '-'} · NISN {student.nisn || '-'}</p><div className="mt-3 flex flex-wrap justify-center gap-2 text-[11px] font-semibold text-slate-600 sm:justify-start dark:text-slate-300"><span className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm dark:bg-slate-800">{unitName}</span><span className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm dark:bg-slate-800">{className}</span><span className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm dark:bg-slate-800">{dashboard.academic_context?.academic_year || '-'}</span><span className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm dark:bg-slate-800">{dashboard.academic_context?.semester || '-'}</span></div></div>
         </div>
-        <button type="button" onClick={() => setQrOpen(true)} className="mx-auto flex min-h-11 items-center gap-3 rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 text-left shadow-lg transition hover:-translate-y-0.5 dark:border-emerald-900 dark:bg-slate-800 lg:mx-0"><QrCode className="h-8 w-8 text-emerald-700 dark:text-emerald-300" /><span><b className="block text-xs">QR Kartu Siswa</b><small className="text-[10px] text-slate-500">Klik untuk melihat</small></span></button>
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start lg:justify-end">
+          <button type="button" onClick={() => setShowCardModal(true)} className="flex min-h-11 items-center gap-3 rounded-2xl border border-emerald-300 bg-[#0E5C44] px-4 py-3 text-left text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0b4835]">
+            <IdCard className="h-7 w-7 text-emerald-200" />
+            <span><b className="block text-xs">Kartu Siswa (Pelajar)</b><small className="text-[10px] text-emerald-100">Menampilkan kartu siswa</small></span>
+          </button>
+          <button type="button" onClick={() => setQrOpen(true)} className="flex min-h-11 items-center gap-3 rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 text-left shadow-lg transition hover:-translate-y-0.5 dark:border-emerald-900 dark:bg-slate-800">
+            <QrCode className="h-7 w-7 text-emerald-700 dark:text-emerald-300" />
+            <span><b className="block text-xs">QR Kartu Siswa</b><small className="text-[10px] text-slate-500">Klik untuk melihat QR</small></span>
+          </button>
+        </div>
       </div>
       <p className="relative mt-5 border-t border-emerald-100 pt-4 text-[11px] text-slate-500 dark:border-emerald-900 dark:text-slate-400">{readOnly ? 'Biodata ditampilkan dalam mode baca-saja.' : 'Perubahan kontak mengikuti proses verifikasi tata usaha.'}</p>
     </section>
@@ -157,7 +227,7 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
     {!readOnly && <ChildPasswordSettingsSection student={student} />}
 
     <Modal isOpen={qrOpen} onClose={() => setQrOpen(false)} title="QR Kartu Siswa" maxWidth="max-w-md" footer={<button type="button" onClick={() => setQrOpen(false)} className="h-10 rounded-xl bg-[#0E5C44] px-5 text-xs font-bold text-white">Tutup</button>}><div className="flex flex-col items-center text-center"><div className="flex min-h-[252px] min-w-[252px] items-center justify-center rounded-[18px] bg-white p-4 shadow-inner">{qrToken ? <QRCodeCanvas value={qrToken} size={220} level="M" /> : <p className="max-w-[220px] text-xs font-semibold text-slate-500">{qrError || 'Memuat QR kartu...'}</p>}</div><h3 className="mt-5 font-black">{name}</h3><p className="mt-1 text-xs text-slate-500">QR hanya berisi identitas kartu opaque.</p></div></Modal>
-    <Modal isOpen={Boolean(detail)} onClose={() => setDetail(null)} title={detail?.type === 'document' ? 'Detail Dokumen' : 'Detail Prestasi'} maxWidth="max-w-2xl" footer={<button type="button" onClick={() => setDetail(null)} className="h-10 rounded-xl bg-[#0E5C44] px-5 text-xs font-bold text-white">Tutup</button>}>{detail && <div>{detail.type === 'document' ? <div className="space-y-4"><InfoGrid items={[{ label: 'Nama Dokumen', value: detail.item.name || detail.item.nama || detail.item.type || detail.item.jenis || 'Dokumen', icon: FileText }, { label: 'Status', value: detail.item.status || 'Tersimpan', icon: CheckCircle2 }]} />{(detail.item.url || detail.item.path) ? <a href={detail.item.url || detail.item.path} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#0E5C44] px-4 text-xs font-bold text-white"><Download className="h-4 w-4" />Buka dokumen</a> : <EmptyState title="Pratinjau belum tersedia" description="File dokumen tidak menyertakan URL yang dapat dibuka." />}</div> : <InfoGrid items={Object.entries(detail.item).filter(([, value]) => ['string', 'number'].includes(typeof value)).map(([key, value]) => ({ label: key.replaceAll('_', ' '), value, icon: Award }))} />}</div>}</Modal>
+    {showCardModal && <CetakKartuSiswaModal student={student} showSettings={false} onClose={() => setShowCardModal(false)} />}
   </div>
 }
 

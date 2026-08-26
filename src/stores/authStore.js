@@ -1,31 +1,31 @@
 import { create } from 'zustand'
+import { authService } from '../services/authService'
 
-export const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000 // 15 Menit
+export const SESSION_MAX_LIFETIME_MS = 24 * 60 * 60 * 1000 // 24 Jam (1440 Menit)
+export const PWA_INACTIVITY_MAX_MS = 3 * 24 * 60 * 60 * 1000 // 3 Hari (72 Jam)
+export const INACTIVITY_TIMEOUT_MS = SESSION_MAX_LIFETIME_MS // Backward compatibility export
 
-function getBrowserSessionId() {
-  try {
-    return sessionStorage.getItem('school_erp_browser_session')
-  } catch {
-    return null
-  }
+export function isPWAStandalone() {
+  if (typeof window === 'undefined') return false
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true ||
+    document.referrer.includes('android-app://')
+  )
 }
 
 function bacaSessionTersimpan() {
   try {
-    const browserSession = getBrowserSessionId()
-    if (!browserSession) {
-      return { token: null, user: null, loginTime: null, lastActivityTime: null }
-    }
-    const token = sessionStorage.getItem('school_erp_token') || localStorage.getItem('school_erp_token')
-    const rawUser = sessionStorage.getItem('school_erp_user') || localStorage.getItem('school_erp_user')
-    const loginTime = sessionStorage.getItem('school_erp_login_time') || localStorage.getItem('school_erp_login_time')
-    const rawLastActivity = sessionStorage.getItem('school_erp_last_activity') || localStorage.getItem('school_erp_last_activity')
+    const token = localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
+    const rawUser = localStorage.getItem('school_erp_user') || sessionStorage.getItem('school_erp_user')
+    const loginTime = localStorage.getItem('school_erp_login_time') || sessionStorage.getItem('school_erp_login_time')
+    const rawLastActivity = localStorage.getItem('school_erp_last_activity') || sessionStorage.getItem('school_erp_last_activity')
     const lastActivityTime = rawLastActivity ? parseInt(rawLastActivity, 10) : Date.now()
 
     return {
-      token,
+      token: token || null,
       user: rawUser ? JSON.parse(rawUser) : null,
-      loginTime: loginTime || new Date().toISOString(),
+      loginTime: loginTime || null,
       lastActivityTime,
     }
   } catch {
@@ -56,27 +56,40 @@ function normalizeUser(user) {
 }
 
 export function checkSessionValidity(state) {
-  const browserSession = getBrowserSessionId()
-  const token = state?.token || sessionStorage.getItem('school_erp_token') || localStorage.getItem('school_erp_token')
+  const token = state?.token || localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
 
   if (!token) {
     return { valid: false, reason: 'no_token', message: 'Silakan masuk untuk melanjutkan.' }
   }
 
-  if (!browserSession) {
-    return {
-      valid: false,
-      reason: 'browser_mismatch',
-      message: 'Status login memerlukan autentikasi baru saat berpindah browser/link. Silakan login kembali.',
+  const isPwa = isPWAStandalone()
+
+  // In PWA installed app mode, session persists indefinitely unless app is not used for 3 consecutive days (72 hours)
+  if (isPwa) {
+    const rawLastActivity = state?.lastActivityTime || localStorage.getItem('school_erp_last_activity') || sessionStorage.getItem('school_erp_last_activity')
+    const lastActivityTime = rawLastActivity ? parseInt(rawLastActivity, 10) : null
+    if (lastActivityTime && !isNaN(lastActivityTime)) {
+      if (Date.now() - lastActivityTime > PWA_INACTIVITY_MAX_MS) {
+        return {
+          valid: false,
+          reason: 'pwa_inactivity_expired',
+          message: 'Sesi aplikasi PWA telah berakhir karena tidak digunakan selama 3 hari. Silakan masuk kembali.',
+        }
+      }
     }
+    return { valid: true }
   }
 
-  const lastActivity = state?.lastActivityTime || parseInt(sessionStorage.getItem('school_erp_last_activity') || '0', 10)
-  if (lastActivity && Date.now() - lastActivity > INACTIVITY_TIMEOUT_MS) {
-    return {
-      valid: false,
-      reason: 'inactivity',
-      message: 'Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Silakan login kembali.',
+  // Normal browser tab session validation (24 hours max lifetime)
+  const loginTimeRaw = state?.loginTime || localStorage.getItem('school_erp_login_time') || sessionStorage.getItem('school_erp_login_time')
+  if (loginTimeRaw) {
+    const loginTimeMs = new Date(loginTimeRaw).getTime()
+    if (!isNaN(loginTimeMs) && Date.now() - loginTimeMs > SESSION_MAX_LIFETIME_MS) {
+      return {
+        valid: false,
+        reason: 'expired',
+        message: 'Sesi Anda telah berakhir (maksimal 24 jam). Silakan login kembali.',
+      }
     }
   }
 
@@ -90,24 +103,86 @@ export const useAuthStore = create((set, get) => ({
   user: initialSession.user,
   loginTime: initialSession.loginTime,
   lastActivityTime: initialSession.lastActivityTime,
-  browserSessionId: getBrowserSessionId(),
+  isInitializing: true,
+  isAuthenticated: !!(initialSession.token && initialSession.user),
+
+  initializeAuth: async () => {
+    const token = localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
+    if (!token) {
+      set({
+        token: null,
+        user: null,
+        isInitializing: false,
+        isAuthenticated: false,
+      })
+      return
+    }
+
+    const validity = checkSessionValidity({ token })
+    if (!validity.valid) {
+      clearAuthArtifacts()
+      set({
+        token: null,
+        user: null,
+        isInitializing: false,
+        isAuthenticated: false,
+      })
+      return
+    }
+
+    try {
+      const response = await authService.profile()
+      const normalizedUser = normalizeUser(response)
+
+      try {
+        localStorage.setItem('school_erp_user', JSON.stringify(normalizedUser))
+        sessionStorage.setItem('school_erp_user', JSON.stringify(normalizedUser))
+      } catch {
+        // Ignore
+      }
+
+      set({
+        token,
+        user: normalizedUser,
+        isInitializing: false,
+        isAuthenticated: true,
+      })
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        clearAuthArtifacts()
+        set({
+          token: null,
+          user: null,
+          isInitializing: false,
+          isAuthenticated: false,
+        })
+      } else {
+        const cachedUser = initialSession.user
+        set({
+          token,
+          user: cachedUser,
+          isInitializing: false,
+          isAuthenticated: !!cachedUser,
+        })
+      }
+    }
+  },
+
   setSession: ({ token, user, loginTime }) => {
     const normalizedUser = normalizeUser(user)
-    const sessionId = `bs_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
     const nowIso = loginTime || new Date().toISOString()
     const nowMs = Date.now()
 
     try {
-      sessionStorage.setItem('school_erp_browser_session', sessionId)
-      sessionStorage.setItem('school_erp_token', token)
-      sessionStorage.setItem('school_erp_user', JSON.stringify(normalizedUser))
-      sessionStorage.setItem('school_erp_login_time', nowIso)
-      sessionStorage.setItem('school_erp_last_activity', String(nowMs))
-
       localStorage.setItem('school_erp_token', token)
       localStorage.setItem('school_erp_user', JSON.stringify(normalizedUser))
       localStorage.setItem('school_erp_login_time', nowIso)
       localStorage.setItem('school_erp_last_activity', String(nowMs))
+
+      sessionStorage.setItem('school_erp_token', token)
+      sessionStorage.setItem('school_erp_user', JSON.stringify(normalizedUser))
+      sessionStorage.setItem('school_erp_login_time', nowIso)
+      sessionStorage.setItem('school_erp_last_activity', String(nowMs))
     } catch {
       // Ignore storage errors
     }
@@ -115,24 +190,28 @@ export const useAuthStore = create((set, get) => ({
     set({
       token,
       user: normalizedUser,
-      browserSessionId: sessionId,
       loginTime: nowIso,
       lastActivityTime: nowMs,
+      isInitializing: false,
+      isAuthenticated: true,
     })
   },
+
   touchActivity: () => {
     const nowMs = Date.now()
     try {
-      sessionStorage.setItem('school_erp_last_activity', String(nowMs))
       localStorage.setItem('school_erp_last_activity', String(nowMs))
+      sessionStorage.setItem('school_erp_last_activity', String(nowMs))
     } catch {
       // Ignore storage errors
     }
     set({ lastActivityTime: nowMs })
   },
+
   isSessionValid: () => {
     return checkSessionValidity(get())
   },
+
   clearSession: () => {
     clearAuthArtifacts()
     set({
@@ -140,8 +219,29 @@ export const useAuthStore = create((set, get) => ({
       user: null,
       loginTime: null,
       lastActivityTime: null,
-      browserSessionId: null,
+      isInitializing: false,
+      isAuthenticated: false,
     })
   },
 }))
+
+// Cross-tab logout and session sync listener
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'school_erp_token') {
+      if (!event.newValue) {
+        useAuthStore.getState().clearSession()
+      } else {
+        const saved = bacaSessionTersimpan()
+        useAuthStore.setState({
+          token: saved.token,
+          user: saved.user,
+          loginTime: saved.loginTime,
+          lastActivityTime: saved.lastActivityTime,
+          isAuthenticated: !!(saved.token && saved.user),
+        })
+      }
+    }
+  })
+}
 

@@ -136,13 +136,24 @@ function BungkusLazy({ children }) {
 }
 
 function RouteTerlindungi() {
+  const isInitializing = useAuthStore((state) => state.isInitializing)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const isSessionValid = useAuthStore((state) => state.isSessionValid)
   const clearSession = useAuthStore((state) => state.clearSession)
-  const sessionStatus = isSessionValid()
 
-  if (!sessionStatus.valid) {
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white p-4">
+        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-xs font-semibold text-slate-300 tracking-wide uppercase">Memverifikasi Sesi...</p>
+      </div>
+    )
+  }
+
+  const sessionStatus = isSessionValid()
+  if (!isAuthenticated || !sessionStatus.valid) {
     clearSession()
-    const reasonParam = sessionStatus.reason ? `?reason=${sessionStatus.reason}` : ''
+    const reasonParam = sessionStatus.reason && sessionStatus.reason !== 'no_token' ? `?reason=${sessionStatus.reason}` : ''
     return <Navigate to={`/masuk${reasonParam}`} replace />
   }
 
@@ -481,10 +492,11 @@ export const router = createBrowserRouter([
                { path: 'mutasi-siswa', element: <BungkusLazy><FoundationMutationsPage /></BungkusLazy> },
                { path: 'kelulusan-alumni', element: <BungkusLazy><FoundationGraduationAlumniPage /></BungkusLazy> },
                { path: 'informasi-sekolah', element: <BungkusLazy><FoundationInformationPage /></BungkusLazy> },
-               { path: 'berita-informasi', element: <PermissionElement deniedRoles={ROLES.GURU} any={['foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data']}><BungkusLazy><NewsManagementPage /></BungkusLazy></PermissionElement> },
+               { path: 'berita-informasi', element: <PermissionElement roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN, ...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.WAKA, ...ROLES.TATA_USAHA]} deniedRoles={ROLES.GURU} any={['foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data']}><BungkusLazy><NewsManagementPage /></BungkusLazy></PermissionElement> },
                { path: 'laporan', element: <BungkusLazy><FoundationReportsPage /></BungkusLazy> },
                { path: 'laporan/sdm', element: <BungkusLazy><FoundationLaporanSdmPage /></BungkusLazy> },
                { path: 'laporan/siswa', element: <BungkusLazy><FoundationLaporanSiswaPage /></BungkusLazy> },
+               { path: 'laporan/tahfizh', element: <BungkusLazy><LaporanTahfizhPage /></BungkusLazy> },
                { path: 'laporan/mutasi', element: <BungkusLazy><FoundationLaporanMutasiPage /></BungkusLazy> },
                { path: 'laporan/kelulusan', element: <BungkusLazy><FoundationLaporanKelulusanPage /></BungkusLazy> },
                { path: 'laporan/alumni', element: <BungkusLazy><FoundationLaporanAlumniPage /></BungkusLazy> },
@@ -505,7 +517,7 @@ export const router = createBrowserRouter([
            { path: 'operator', element: <PermissionElement any={['dashboard.operator.view']}><BungkusLazy><OperatorDashboardPage /></BungkusLazy></PermissionElement> },
             { path: 'musyrif', element: <PermissionElement any={['dashboard.guru-tahfizh.view']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek']}><BungkusLazy><MusyrifDashboardPage /></BungkusLazy></PermissionElement> },
           { path: 'chat-pegawai', element: <PermissionElement any={['chat.conversation.view', 'chat.manage']}><BungkusLazy><EmployeeChatPage /></BungkusLazy></PermissionElement> },
-          { path: 'berita-informasi', element: <PermissionElement deniedRoles={ROLES.GURU} any={['foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data']}><BungkusLazy><NewsManagementPage /></BungkusLazy></PermissionElement> },
+          { path: 'berita-informasi', element: <PermissionElement roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN, ...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.WAKA, ...ROLES.TATA_USAHA]} deniedRoles={ROLES.GURU} any={['foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data']}><BungkusLazy><NewsManagementPage /></BungkusLazy></PermissionElement> },
           { path: 'akademik', element: <PermissionElement deniedRoles={ROLES.GURU} any={['academic.view', 'academic.manage']}><Navigate to="/dashboard/akademik/dashboard" replace /></PermissionElement> },
           { path: 'akademik/dashboard', element: <PermissionElement deniedRoles={ROLES.GURU} any={['academic.view', 'academic.manage']}><BungkusLazy><AcademicPage /></BungkusLazy></PermissionElement> },
           { path: 'akademik/pengaturan', element: <PermissionElement any={['academic.view', 'academic.manage']} deniedRoles={ROLES.GURU}><BungkusLazy><AcademicLmsContainerPage section="pengaturan" /></BungkusLazy></PermissionElement> },
@@ -516,7 +528,7 @@ export const router = createBrowserRouter([
           {
             path: 'pemantauan',
             element: (
-              <PermissionElement any={['dashboard.pemantauan.lihat', 'teacher_monitoring.view']}>
+              <PermissionElement roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN, ...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.WAKA, ...ROLES.TATA_USAHA]} any={['dashboard.pemantauan.lihat', 'teacher_monitoring.view']}>
                 <BungkusLazy>
                   <MonitoringDashboardPage />
                 </BungkusLazy>
@@ -636,7 +648,7 @@ export const router = createBrowserRouter([
           {
             path: 'master-jabatan',
             element: (
-              <PermissionElement any={['master.view', 'sistem.master_data']} deniedRoles={['Guru', 'guru', 'Wali Kelas', 'wali_kelas', 'Guru Mapel', 'Guru Tahfizh', 'Guru BK']}>
+              <PermissionElement any={['master.view', 'sistem.master_data']} deniedRoles={['Guru', 'guru', 'Wali Kelas', 'wali_kelas', 'Guru Mapel', 'Guru Tahfizh', 'Guru BK', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan']}>
                 <BungkusLazy><MasterJabatanPage /></BungkusLazy>
               </PermissionElement>
             ),

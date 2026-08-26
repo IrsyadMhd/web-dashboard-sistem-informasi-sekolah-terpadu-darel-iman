@@ -105,7 +105,7 @@ const CONTAINERS = {
   },
   perencanaan: {
     title: 'Perencanaan Pembelajaran',
-    description: 'Susun CP, TP, dan Modul Ajar dalam alur yang ringkas dengan data dan relasi dari API yang sudah tersedia.',
+    description: 'Susun CP, TP, Modul Ajar, Kisi-Kisi, dan Bank Soal dalam alur yang ringkas dengan data dan relasi dari API yang sudah tersedia.',
     hideHeaderCard: false,
     tabsBelowKpi: true,
     tabs: [
@@ -133,12 +133,28 @@ const CONTAINERS = {
         description: 'Perencanaan RPP/MA',
         squircleStyle: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/80 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60',
       },
+      {
+        key: 'kisi-kisi',
+        label: 'Kisi-kisi',
+        component: LmsKisiKisiPage,
+        icon: HelpCircle,
+        description: 'Matriks Soal',
+        squircleStyle: 'bg-purple-100 text-purple-600 dark:bg-purple-950/80 dark:text-purple-400 border border-purple-200/80 dark:border-purple-800/60',
+      },
+      {
+        key: 'bank-soal',
+        label: 'Bank Soal',
+        component: LmsBankSoalPage,
+        icon: Database,
+        description: 'Repository Soal',
+        squircleStyle: 'bg-orange-100 text-orange-600 dark:bg-orange-950/80 dark:text-orange-400 border border-orange-200/80 dark:border-orange-800/60',
+      },
     ],
   },
   pembelajaran: {
     title: 'Pembelajaran',
     description: 'Akses konten pembelajaran, aktivitas, dan diskusi dari satu ruang kerja.',
-    hideHeaderCard: true,
+    hideHeaderCard: false,
     tabsBelowKpi: true,
     tabs: [
       {
@@ -185,9 +201,9 @@ const CONTAINERS = {
   },
   evaluasi: {
     title: 'Tugas & Evaluasi',
-    description: 'Kelola alur penugasan, pengumpulan, kisi-kisi, bank soal, dan CBT dengan CRUD lama yang tetap utuh.',
+    description: 'Kelola penugasan, pengumpulan tugas, ujian CBT, dan rekap penilaian siswa dalam satu alur evaluasi.',
     hideHeaderCard: false,
-    tabsBelowKpi: true,
+    tabsBelowKpi: false,
     tabs: [
       {
         key: 'penugasan',
@@ -199,35 +215,27 @@ const CONTAINERS = {
       },
       {
         key: 'pengumpulan',
-        label: 'Pengumpulan',
+        label: 'Pengumpulan Tugas',
         component: LmsPengumpulanTugasPage,
         icon: UploadCloud,
         description: 'Lembar Kerja Siswa',
         squircleStyle: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/80 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60',
       },
       {
-        key: 'kisi-kisi',
-        label: 'Kisi-kisi',
-        component: LmsKisiKisiPage,
-        icon: HelpCircle,
-        description: 'Matriks Soal',
-        squircleStyle: 'bg-purple-100 text-purple-600 dark:bg-purple-950/80 dark:text-purple-400 border border-purple-200/80 dark:border-purple-800/60',
-      },
-      {
-        key: 'bank-soal',
-        label: 'Bank Soal',
-        component: LmsBankSoalPage,
-        icon: Database,
-        description: 'Repository Soal',
-        squircleStyle: 'bg-orange-100 text-orange-600 dark:bg-orange-950/80 dark:text-orange-400 border border-orange-200/80 dark:border-orange-800/60',
-      },
-      {
         key: 'cbt',
-        label: 'Ujian Online',
+        label: 'Ujian CBT',
         component: LmsUjianPage,
         icon: Laptop,
         description: 'Evaluasi CBT',
         squircleStyle: 'bg-rose-100 text-rose-600 dark:bg-rose-950/80 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60',
+      },
+      {
+        key: 'penilaian',
+        label: 'Penilaian',
+        component: LmsPenilaianPage,
+        icon: Award,
+        description: 'Rekap Penilaian',
+        squircleStyle: 'bg-amber-100 text-amber-600 dark:bg-amber-950/80 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/60',
       },
     ],
   },
@@ -235,7 +243,7 @@ const CONTAINERS = {
     title: 'Nilai & Rapor',
     description: 'Buku nilai, rekap, rapor digital, dan keluaran PDF tersedia dalam satu area.',
     hideHeaderCard: false,
-    tabsBelowKpi: true,
+    tabsBelowKpi: false,
     tabs: [
       {
         key: 'buku-nilai',
@@ -294,7 +302,15 @@ export default function AcademicLmsContainerPage({ section }) {
   }
   const activeTab = searchParams.get('tab')
   const defaultTab = config.tabs[0].key
-  const selected = useMemo(() => config.tabs.find((t) => t.key === activeTab), [activeTab, config.tabs])
+  const selected = useMemo(() => {
+    return config.tabs.find((t) =>
+      t.key === activeTab ||
+      (activeTab === 'modul-semester' && t.key === 'semester') ||
+      (activeTab === 'semester' && t.key === 'modul-semester') ||
+      (activeTab === 'ujian-cbt' && t.key === 'cbt') ||
+      (activeTab === 'cbt' && t.key === 'ujian-cbt')
+    )
+  }, [activeTab, config.tabs])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })

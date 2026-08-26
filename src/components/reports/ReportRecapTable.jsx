@@ -20,21 +20,21 @@ export function ReportRecapTable({
       <CardContent className="pt-0">
         <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
           <TableRoot>
-            <TableHeader className="bg-[#0E5C44] text-white dark:bg-[#0E5C44]/90">
+            <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/80 text-[10px] font-black uppercase tracking-[0.12em]">
               <TableRow>
                 {columns.map((col, idx) => (
                   <TableHead
                     key={idx}
-                    className={`p-3 font-semibold text-white ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'}`}
+                    className={`p-3 font-extrabold text-slate-800 dark:text-slate-100 ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'}`}
                   >
                     {col.header}
                   </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-slate-100 bg-white dark:divide-slate-800/60 dark:bg-[#111827]">
+            <TableBody className="divide-y divide-slate-100/80 bg-white dark:divide-slate-800/60 dark:bg-[#111827]">
               {data.map((row, rIdx) => (
-                <TableRow key={rIdx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                <TableRow key={rIdx} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
                   {columns.map((col, cIdx) => {
                     const rawVal = row[col.accessor]
                     const formatted = col.format ? col.format(rawVal, row) : (typeof rawVal === 'number' ? rawVal.toLocaleString('id-ID') : rawVal)
