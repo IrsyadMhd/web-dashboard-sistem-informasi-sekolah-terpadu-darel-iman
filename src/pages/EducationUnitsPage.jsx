@@ -5,28 +5,37 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Award,
   Building2,
+  Calendar,
   CheckCircle2,
   ChevronDown,
+  Compass,
   Download,
+  FileCheck,
   FileSpreadsheet,
   FileText,
   GraduationCap,
+  Hash,
   Info,
+  Mail,
   MapPin,
   Pencil,
+  Phone,
   Plus,
   Printer,
   RefreshCcw,
   Save,
   School,
+  ShieldCheck,
+  Sparkles,
+  Tag,
   Trash2,
   Upload,
+  UserCheck,
   UsersRound,
   X,
   XCircle,
-  ShieldCheck,
-  Sparkles,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -1520,6 +1529,7 @@ export default function EducationUnitsPage() {
           </div>
         }
         // Per-row actions
+        actionColumnLabel=""
         onRowClick={row => { setActiveDetailTab('Informasi'); setDetailUnit(row) }}
         onView={row => { setActiveDetailTab('Informasi'); setDetailUnit(row) }}
         onEdit={canUpdate ? row => openEditModal(row) : undefined}
@@ -2113,7 +2123,7 @@ export default function EducationUnitsPage() {
       <AnimatePresence>
         {isFormOpen && (
           <div
-            className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-sm"
+            className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
             role="dialog"
             tabIndex={-1}
             aria-modal="true"
@@ -2121,391 +2131,623 @@ export default function EducationUnitsPage() {
             onMouseDown={e => { if (e.target === e.currentTarget) closeFormModal() }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
               className="modal-dialog font-sans my-auto w-full max-w-2xl"
             >
-            <div className="modal-content flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
-              {/* Header */}
-              <div className="modal-header flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0E5C44]/10 text-[#0E5C44] dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]">
-                    <School className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h3 id="edu-unit-form-title" className="modal-title text-base font-black text-slate-900 dark:text-white">
-                      {isEditMode ? 'Edit Unit Pendidikan' : 'Tambah Unit Pendidikan'}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Langkah {currentStep} dari 4</p>
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+                {/* Header */}
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                      <School className="h-5 w-5" strokeWidth={2.25} />
+                    </div>
+                    <div>
+                      <h3 id="edu-unit-form-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>{isEditMode ? 'Edit Unit Pendidikan' : 'Tambah Unit Pendidikan'}</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                          <Sparkles className="size-3" />
+                          {isEditMode ? 'Update' : 'Baru'}
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Langkah {currentStep} dari 4 · {
+                          currentStep === 1 ? 'Informasi Utama Unit' :
+                          currentStep === 2 ? 'Alamat & Lokasi Fisik' :
+                          currentStep === 3 ? 'Kepala Sekolah & SK' :
+                          'Ringkasan Data & Konfirmasi'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeFormModal}
+                    aria-label="Tutup form"
+                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  >
+                    <X className="size-4" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                {/* Step Wizard Indicator */}
+                <div className="border-b border-slate-100 bg-slate-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-900/50">
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                    {[
+                      { step: 1, label: 'Info Unit', icon: Building2 },
+                      { step: 2, label: 'Alamat', icon: MapPin },
+                      { step: 3, label: 'Pimpinan', icon: UsersRound },
+                      { step: 4, label: 'Konfirmasi', icon: CheckCircle2 },
+                    ].map(s => {
+                      const isActive = currentStep === s.step
+                      const isDone = currentStep > s.step
+                      return (
+                        <button
+                          key={s.step}
+                          type="button"
+                          onClick={() => setCurrentStep(s.step)}
+                          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 text-[11px] font-extrabold transition-all duration-200 cursor-pointer ${
+                            isActive
+                              ? 'bg-gradient-to-r from-[#0E5C44] to-[#147B5B] text-white shadow-md shadow-[#0E5C44]/25 dark:from-[#147B5B] dark:to-[#1E8E5A]'
+                              : isDone
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100/80 border border-emerald-200/50 dark:border-emerald-800/40'
+                              : 'bg-white text-slate-400 border border-slate-200/80 hover:bg-slate-100 dark:bg-slate-800/60 dark:border-slate-700/60 dark:text-slate-500'
+                          }`}
+                        >
+                          <s.icon className={`size-3.5 shrink-0 ${isActive ? 'text-white' : isDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                          <span className="truncate">{s.label}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={closeFormModal}
-                  aria-label="Tutup form"
-                  className="btn btn-text btn-circle btn-sm absolute end-3 top-3 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
 
-              {/* Step Indicator */}
-              <div className="flex items-center gap-0 overflow-x-auto border-b border-slate-100 px-6 dark:border-slate-700">
-                {[
-                  { step: 1, label: 'Info Unit' },
-                  { step: 2, label: 'Alamat' },
-                  { step: 3, label: 'Pimpinan' },
-                  { step: 4, label: 'Konfirmasi' },
-                ].map((s, idx) => (
-                  <button
-                    key={s.step}
-                    type="button"
-                    onClick={() => setCurrentStep(s.step)}
-                    className={`group flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-[11px] font-bold transition-all ${currentStep === s.step
-                        ? 'border-[#0E5C44] text-[#0E5C44] dark:border-[#3FBF75] dark:text-[#3FBF75]'
-                        : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                      }`}
-                  >
-                    <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-black transition-all ${currentStep === s.step ? 'bg-[#0E5C44] text-white dark:bg-[#3FBF75] dark:text-slate-900' :
-                        currentStep > s.step ? 'bg-[#0E5C44]/20 text-[#0E5C44] dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]' :
-                          'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
-                      }`}>
-                      {s.step}
-                    </span>
-                    <span className="hidden sm:inline">{s.label}</span>
-                  </button>
-                ))}
-              </div>
+                {/* Body */}
+                <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-4">
+                  {(formAlert || formMutationAlert) && (
+                    <InlineAlert
+                      type={formMutationAlert ? 'error' : 'warning'}
+                      message={formMutationAlert || formAlert}
+                      onClose={() => { setFormAlert(null); setFormMutationAlert(null) }}
+                    />
+                  )}
 
-              {/* Body */}
-              <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-4">
-                {(formAlert || formMutationAlert) && (
-                  <InlineAlert
-                    type={formMutationAlert ? 'error' : 'warning'}
-                    message={formMutationAlert || formAlert}
-                    onClose={() => { setFormAlert(null); setFormMutationAlert(null) }}
-                  />
-                )}
+                  {/* Step 1: Informasi */}
+                  {currentStep === 1 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                        <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                          <Building2 className="size-4 text-[#0E5C44] dark:text-[#3FBF75]" />
+                          Informasi Utama Unit Pendidikan
+                        </h3>
+                        <span className="text-[11px] font-semibold text-slate-400">* Wajib diisi</span>
+                      </div>
 
-                {/* Step 1: Informasi */}
-                {currentStep === 1 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Informasi Unit</h3>
+                      {/* Logo upload */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">Foto / Logo Unit</label>
+                        {formData.logo_url ? (
+                          <div className="flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+                            <img src={formData.logo_url} alt="Logo" className="h-14 w-14 shrink-0 rounded-xl border-2 border-emerald-600 object-cover shadow-xs" />
+                            <div>
+                              <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100">Logo unit terpasang</p>
+                              <button type="button" onClick={() => setFormData(p => ({ ...p, logo_url: '' }))} className="mt-1 text-xs font-bold text-rose-600 hover:underline cursor-pointer">Hapus & Upload Ulang</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-5 text-center transition-all hover:border-[#0E5C44] hover:bg-emerald-50/40 dark:border-slate-700 dark:bg-slate-900/40 dark:hover:border-emerald-500">
+                            <Upload className="mb-1.5 h-6 w-6 text-[#0E5C44] dark:text-emerald-400" />
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Klik untuk Unggah Logo Unit</span>
+                            <span className="mt-0.5 text-[10px] text-slate-400">Format PNG, JPG maks 2MB</span>
+                            <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                          </label>
+                        )}
+                      </div>
 
-                    {/* Logo upload */}
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Foto / Logo Unit</label>
-                      {formData.logo_url ? (
-                        <div className="flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                          <img src={formData.logo_url} alt="Logo" className="h-16 w-16 shrink-0 rounded-xl border-2 border-[#054e3b] object-cover shadow-sm" />
-                          <div>
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Logo berhasil diunggah</p>
-                            <button type="button" onClick={() => setFormData(p => ({ ...p, logo_url: '' }))} className="mt-1 text-xs font-bold text-rose-600 hover:underline">Hapus & Upload Ulang</button>
+                      {/* Nama Unit */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="name" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Nama Unit Pendidikan <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <Building2 className="size-4" />
+                          </div>
+                          <input
+                            id="name"
+                            name="name"
+                            type="text"
+                            placeholder="Contoh: SDIT 2 Dar el-Iman"
+                            value={formData.name}
+                            onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                        </div>
+                        <p className="text-[11px] font-medium text-slate-400">Nama resmi unit pendidikan yang terdaftar</p>
+                      </div>
+
+                      {/* Kode Unit & NPSN */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label htmlFor="code" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                            Kode Unit
+                          </label>
+                          <div className="relative flex items-center">
+                            <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                              <Tag className="size-4" />
+                            </div>
+                            <input
+                              id="code"
+                              name="code"
+                              type="text"
+                              placeholder="Contoh: SDIT-002"
+                              value={formData.code}
+                              onChange={e => setFormData(p => ({ ...p, code: e.target.value }))}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                            />
                           </div>
                         </div>
-                      ) : (
-                        <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center transition hover:border-[#0E5C44] hover:bg-emerald-50/30 dark:border-slate-700 dark:bg-slate-800/30">
-                          <Upload className="mb-1.5 h-8 w-8 text-[#0E5C44]" />
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Upload Logo</span>
-                          <span className="mt-0.5 text-[10px] text-slate-400">PNG, JPG maks 2MB</span>
-                          <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                        </label>
-                      )}
-                    </div>
 
-                    {[
-                      {
-                        label: 'Nama Unit Pendidikan', key: 'name', required: true, placeholder: 'Contoh: SDIT 2 Dar el-Iman', hint: 'Nama resmi unit pendidikan',
-                        validate: v => (!v?.trim() ? 'Nama Unit Pendidikan wajib diisi.' : null)
-                      },
-                      { label: 'Kode Unit', key: 'code', placeholder: 'Contoh: SDIT-002', hint: 'Kode unik pengenal unit' },
-                      { label: 'NPSN', key: 'npsn', placeholder: 'Nomor Pokok Sekolah Nasional' },
-                      {
-                        label: 'Email', key: 'email', type: 'email', placeholder: 'Email resmi unit',
-                        validate: v => (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? 'Format email tidak valid.' : null)
-                      },
-                      { label: 'No. Telepon', key: 'phone', placeholder: '08xx-xxxx-xxxx' },
-                    ].map(field => (
-                      <TextField
-                        key={field.key}
-                        className="w-full"
-                        name={field.key}
-                        type={field.type || 'text'}
-                        required={field.required}
-                        validate={field.validate}
-                      >
-                        <FieldLabel htmlFor={field.key}>
-                          {field.label} {field.required && <span className="text-rose-500">*</span>}
-                        </FieldLabel>
-                        <Input
-                          id={field.key}
-                          name={field.key}
-                          type={field.type || 'text'}
-                          placeholder={field.placeholder}
-                          value={formData[field.key]}
-                          onChange={e => setFormData(p => ({ ...p, [field.key]: e.target.value }))}
-                        />
-                        {field.hint && <FieldDescription>{field.hint}</FieldDescription>}
-                        <FieldError>{validation => validation.validationErrors.join(', ')}</FieldError>
-                      </TextField>
-                    ))}
-
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Jenis Unit <span className="text-rose-500">*</span></label>
-                      <select
-                        value={formData.unit_type}
-                        onChange={e => setFormData(p => ({ ...p, unit_type: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      >
-                        <option value="">Pilih Jenis Unit</option>
-                        {typeOptions.length > 0
-                          ? typeOptions.map(t => <option key={t} value={t}>{t}</option>)
-                          : ['TKIT', 'TAUD', 'SDIT', 'MIT', 'SMPIT', 'SMAIT', 'PONPES', 'Mahad'].map(t => <option key={t} value={t}>{t}</option>)
-                        }
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-200 flex-1">Status Unit Aktif</label>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={formData.is_active}
-                        onClick={() => setFormData(p => ({ ...p, is_active: !p.is_active }))}
-                        className={`relative h-6 w-11 rounded-full transition-colors ${formData.is_active ? 'bg-[#0E5C44]' : 'bg-slate-300 dark:bg-slate-600'}`}
-                      >
-                        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all ${formData.is_active ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 2: Alamat */}
-                {currentStep === 2 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Alamat Unit</h3>
-                    <TextField className="w-full">
-                      <FieldLabel htmlFor="address">Alamat Lengkap</FieldLabel>
-                      <TextArea
-                        id="address"
-                        name="address"
-                        rows={3}
-                        placeholder="Jl. Khatib Sulaiman No. 10..."
-                        value={formData.address}
-                        onChange={e => setFormData(p => ({ ...p, address: e.target.value }))}
-                      />
-                      <FieldDescription>Alamat lengkap lokasi fisik unit pendidikan</FieldDescription>
-                    </TextField>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <SearchableRegionInput
-                        label="Provinsi"
-                        value={formData.province}
-                        onChange={(newProv) => {
-                          setFormData((p) => ({
-                            ...p,
-                            province: newProv,
-                            city: p.province !== newProv ? '' : p.city,
-                          }))
-                        }}
-                        options={provList}
-                        placeholder="Cari / pilih provinsi..."
-                        isLoading={isProvLoading}
-                      />
-                      <SearchableRegionInput
-                        label="Kota / Kabupaten"
-                        value={formData.city}
-                        onChange={(newCity) => {
-                          setFormData((p) => ({ ...p, city: newCity }))
-                        }}
-                        options={kotaList}
-                        placeholder={formData.province ? "Cari / pilih kota/kabupaten..." : "Pilih provinsi atau ketik kota..."}
-                        isLoading={isKotaLoading}
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Kode Pos</label>
-                      <input type="text" placeholder="25136" value={formData.postal_code} onChange={e => setFormData(p => ({ ...p, postal_code: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3: Pimpinan */}
-                {currentStep === 3 && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Kepala Sekolah / Pimpinan</h3>
-                      <button
-                        type="button"
-                        onClick={() => setIsAddEmployeeModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 text-xs font-bold text-[#0E5C44] dark:text-[#3FBF75] hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition border border-emerald-200/80 dark:border-emerald-800/80 shadow-sm"
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Tambah Pegawai
-                      </button>
-                    </div>
-
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
-                        Pilih dari Data Pegawai
-                      </label>
-                      <select
-                        value=""
-                        onChange={e => {
-                          const selectedEmpId = e.target.value
-                          if (!selectedEmpId) return
-                          const emp = employeesList.find(x => String(x.id) === String(selectedEmpId))
-                          if (emp) {
-                            setFormData(p => ({
-                              ...p,
-                              principal_name: emp.name || emp.nama_lengkap || p.principal_name,
-                              principal_nip: emp.nip || emp.nipy || p.principal_nip,
-                            }))
-                          }
-                        }}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      >
-                        <option value="">-- Pilih Pegawai --</option>
-                        {employeesList.map(emp => {
-                          const empName = emp.name || emp.nama_lengkap
-                          const empNip = emp.nip || emp.nipy
-                          return (
-                            <option key={emp.id} value={emp.id}>
-                              {empName} {empNip ? `(NIP: ${empNip})` : ''} {emp.jabatan_name ? `- ${emp.jabatan_name}` : ''}
-                            </option>
-                          )
-                        })}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
-                        Nama Pimpinan
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ust. Fadli Rahman, S.Pd"
-                        value={formData.principal_name}
-                        onChange={e => setFormData(p => ({ ...p, principal_name: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
-                        NIP / NIPY
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="1985xxxxxx"
-                        value={formData.principal_nip}
-                        onChange={e => setFormData(p => ({ ...p, principal_nip: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
-                        No. SK Pendirian
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="No. SK..."
-                        value={formData.sk_pendirian}
-                        onChange={e => setFormData(p => ({ ...p, sk_pendirian: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Tahun Berdiri</label>
-                        <input type="number" placeholder="2011" value={formData.established_year} onChange={e => setFormData(p => ({ ...p, established_year: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" />
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Akreditasi</label>
-                        <select value={formData.accreditation} onChange={e => setFormData(p => ({ ...p, accreditation: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                          <option value="A">A (Unggul)</option>
-                          <option value="B">B (Baik)</option>
-                          <option value="C">C</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Konfirmasi */}
-                {currentStep === 4 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Konfirmasi Data</h3>
-                    <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-slate-50 text-xs dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-800/30">
-                      {[
-                        ['Nama Unit', formData.name || '-'],
-                        ['Jenis Unit', formData.unit_type || '-'],
-                        ['NPSN', formData.npsn || '-'],
-                        ['Kota, Provinsi', [formData.city, formData.province].filter(Boolean).join(', ') || '-'],
-                        ['Kepala Sekolah', formData.principal_name || '-'],
-                        ['Status', formData.is_active ? 'Aktif' : 'Nonaktif'],
-                      ].map(([label, value]) => (
-                        <div key={label} className="flex items-center justify-between px-4 py-2.5">
-                          <span className="font-semibold text-slate-500 dark:text-slate-400">{label}</span>
-                          <span className="font-bold text-slate-800 dark:text-slate-100">{value}</span>
+                        <div className="space-y-1.5">
+                          <label htmlFor="npsn" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                            NPSN
+                          </label>
+                          <div className="relative flex items-center">
+                            <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                              <Hash className="size-4" />
+                            </div>
+                            <input
+                              id="npsn"
+                              name="npsn"
+                              type="text"
+                              placeholder="Nomor Pokok Sekolah Nasional"
+                              value={formData.npsn}
+                              onChange={e => setFormData(p => ({ ...p, npsn: e.target.value }))}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                            />
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+                      </div>
 
-              {/* Footer */}
-              <div className="modal-footer flex items-center justify-between border-t border-slate-100 px-6 py-4 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={closeFormModal}
-                  className="btn btn-error text-white inline-flex items-center gap-1.5"
-                >
-                  <X className="size-4" /> Batal
-                </button>
-                <div className="flex items-center gap-2">
-                  {currentStep > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(s => s - 1)}
-                      className="btn btn-warning text-white inline-flex items-center gap-1.5 shadow-sm"
-                    >
-                      <ArrowLeft className="size-4" /> Kembali
-                    </button>
+                      {/* Email & Telepon */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label htmlFor="email" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                            Email Resmi
+                          </label>
+                          <div className="relative flex items-center">
+                            <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                              <Mail className="size-4" />
+                            </div>
+                            <input
+                              id="email"
+                              name="email"
+                              type="email"
+                              placeholder="info@sdit2.dareliman.sch.id"
+                              value={formData.email}
+                              onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label htmlFor="phone" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                            No. Telepon / Layanan
+                          </label>
+                          <div className="relative flex items-center">
+                            <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                              <Phone className="size-4" />
+                            </div>
+                            <input
+                              id="phone"
+                              name="phone"
+                              type="text"
+                              placeholder="0751-xxxxxx / 08xxxxxxxxxx"
+                              value={formData.phone}
+                              onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Jenis Unit */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="unit_type" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Jenis Unit <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <School className="size-4" />
+                          </div>
+                          <select
+                            id="unit_type"
+                            value={formData.unit_type}
+                            onChange={e => setFormData(p => ({ ...p, unit_type: e.target.value }))}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            <option value="">-- Pilih Jenis Unit --</option>
+                            {typeOptions.length > 0
+                              ? typeOptions.map(t => <option key={t} value={t}>{t}</option>)
+                              : ['TKIT', 'TAUD', 'SDIT', 'MIT', 'SMPIT', 'SMAIT', 'PONPES', 'Mahad'].map(t => <option key={t} value={t}>{t}</option>)
+                            }
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
+                      </div>
+
+                      {/* Status switch card */}
+                      <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/60 p-4 dark:border-slate-700/80 dark:bg-slate-900/40">
+                        <div>
+                          <p className="text-xs font-extrabold text-slate-900 dark:text-white">Status Operasional Unit</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Aktifkan agar unit dapat dipilih pada transaksi & data siswa</p>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <span className={`text-xs font-extrabold ${formData.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                            {formData.is_active ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={formData.is_active}
+                            onClick={() => setFormData(p => ({ ...p, is_active: !p.is_active }))}
+                            className={`relative h-6 w-11 rounded-full transition-colors duration-200 cursor-pointer ${formData.is_active ? 'bg-[#0E5C44]' : 'bg-slate-300 dark:bg-slate-600'}`}
+                          >
+                            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-200 ${formData.is_active ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                  {currentStep < 4 ? (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep(s => Math.min(4, s + 1))}
-                      className="btn btn-success bg-[#0E5C44] hover:bg-[#1E8E5A] text-white border-none inline-flex items-center gap-1.5 shadow-md"
-                    >
-                      Selanjutnya
-                      <ArrowRight className="size-4" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleFormSubmit}
-                      disabled={isMutating}
-                      className="btn btn-success bg-[#0E5C44] hover:bg-[#1E8E5A] text-white border-none inline-flex items-center gap-2 shadow-md disabled:opacity-50"
-                    >
-                      {isMutating ? (
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      ) : (
-                        <Save className="size-4" />
-                      )}
-                      {isEditMode ? 'Simpan Perubahan' : 'Simpan Unit'}
-                    </button>
+
+                  {/* Step 2: Alamat */}
+                  {currentStep === 2 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                        <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                          <MapPin className="size-4 text-[#0E5C44] dark:text-[#3FBF75]" />
+                          Alamat & Wilayah Operasional
+                        </h3>
+                      </div>
+
+                      {/* Alamat Lengkap */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="address" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Alamat Lengkap Unit
+                        </label>
+                        <div className="relative flex items-start">
+                          <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+                            <MapPin className="size-4" />
+                          </div>
+                          <textarea
+                            id="address"
+                            name="address"
+                            rows={3}
+                            placeholder="Jl. Khatib Sulaiman No. 10..."
+                            value={formData.address}
+                            onChange={e => setFormData(p => ({ ...p, address: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                        </div>
+                        <p className="text-[11px] font-medium text-slate-400">Alamat lengkap lokasi fisik unit pendidikan</p>
+                      </div>
+
+                      {/* Provinsi & Kota */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <SearchableRegionInput
+                          label="Provinsi"
+                          value={formData.province}
+                          onChange={(newProv) => {
+                            setFormData((p) => ({
+                              ...p,
+                              province: newProv,
+                              city: p.province !== newProv ? '' : p.city,
+                            }))
+                          }}
+                          options={provList}
+                          placeholder="Cari / pilih provinsi..."
+                          isLoading={isProvLoading}
+                        />
+                        <SearchableRegionInput
+                          label="Kota / Kabupaten"
+                          value={formData.city}
+                          onChange={(newCity) => {
+                            setFormData((p) => ({ ...p, city: newCity }))
+                          }}
+                          options={kotaList}
+                          placeholder={formData.province ? "Cari / pilih kota/kabupaten..." : "Pilih provinsi atau ketik kota..."}
+                          isLoading={isKotaLoading}
+                        />
+                      </div>
+
+                      {/* Kode Pos */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="postal_code" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Kode Pos
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <Compass className="size-4" />
+                          </div>
+                          <input
+                            id="postal_code"
+                            name="postal_code"
+                            type="text"
+                            placeholder="25136"
+                            value={formData.postal_code}
+                            onChange={e => setFormData(p => ({ ...p, postal_code: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 3: Pimpinan */}
+                  {currentStep === 3 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                        <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                          <UsersRound className="size-4 text-[#0E5C44] dark:text-[#3FBF75]" />
+                          Kepala Sekolah & SK Pendirian
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddEmployeeModalOpen(true)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 text-xs font-bold text-[#0E5C44] dark:text-[#3FBF75] hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs cursor-pointer"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Tambah Pegawai Baru
+                        </button>
+                      </div>
+
+                      {/* Select Pegawai */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="select_employee" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Pilih dari Data Pegawai
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <UsersRound className="size-4" />
+                          </div>
+                          <select
+                            id="select_employee"
+                            value=""
+                            onChange={e => {
+                              const selectedEmpId = e.target.value
+                              if (!selectedEmpId) return
+                              const emp = employeesList.find(x => String(x.id) === String(selectedEmpId))
+                              if (emp) {
+                                setFormData(p => ({
+                                  ...p,
+                                  principal_name: emp.name || emp.nama_lengkap || p.principal_name,
+                                  principal_nip: emp.nip || emp.nipy || p.principal_nip,
+                                }))
+                              }
+                            }}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            <option value="">-- Pilih Pegawai Terdaftar --</option>
+                            {employeesList.map(emp => {
+                              const empName = emp.name || emp.nama_lengkap
+                              const empNip = emp.nip || emp.nipy
+                              return (
+                                <option key={emp.id} value={emp.id}>
+                                  {empName} {empNip ? `(NIP: ${empNip})` : ''} {emp.jabatan_name ? `- ${emp.jabatan_name}` : ''}
+                                </option>
+                              )
+                            })}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
+                      </div>
+
+                      {/* Nama Pimpinan */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="principal_name" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Nama Pimpinan / Kepala Sekolah
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <UserCheck className="size-4" />
+                          </div>
+                          <input
+                            id="principal_name"
+                            name="principal_name"
+                            type="text"
+                            placeholder="Ust. Fadli Rahman, S.Pd"
+                            value={formData.principal_name}
+                            onChange={e => setFormData(p => ({ ...p, principal_name: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                        </div>
+                      </div>
+
+                      {/* NIP / NIPY */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="principal_nip" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          NIP / NIPY
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <FileCheck className="size-4" />
+                          </div>
+                          <input
+                            id="principal_nip"
+                            name="principal_nip"
+                            type="text"
+                            placeholder="1985xxxxxx"
+                            value={formData.principal_nip}
+                            onChange={e => setFormData(p => ({ ...p, principal_nip: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                        </div>
+                      </div>
+
+                      {/* No. SK Pendirian */}
+                      <div className="space-y-1.5">
+                        <label htmlFor="sk_pendirian" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          No. SK Pendirian Unit
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <FileText className="size-4" />
+                          </div>
+                          <input
+                            id="sk_pendirian"
+                            name="sk_pendirian"
+                            type="text"
+                            placeholder="Contoh: SK-YDI/2021/005"
+                            value={formData.sk_pendirian}
+                            onChange={e => setFormData(p => ({ ...p, sk_pendirian: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tahun Berdiri & Akreditasi */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label htmlFor="established_year" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                            Tahun Berdiri
+                          </label>
+                          <div className="relative flex items-center">
+                            <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                              <Calendar className="size-4" />
+                            </div>
+                            <input
+                              id="established_year"
+                              name="established_year"
+                              type="number"
+                              placeholder="2011"
+                              value={formData.established_year}
+                              onChange={e => setFormData(p => ({ ...p, established_year: e.target.value }))}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label htmlFor="accreditation" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                            Akreditasi
+                          </label>
+                          <div className="relative flex items-center">
+                            <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                              <Award className="size-4" />
+                            </div>
+                            <select
+                              id="accreditation"
+                              name="accreditation"
+                              value={formData.accreditation}
+                              onChange={e => setFormData(p => ({ ...p, accreditation: e.target.value }))}
+                              className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                            >
+                              <option value="A">A (Unggul)</option>
+                              <option value="B">B (Baik)</option>
+                              <option value="C">C</option>
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 4: Konfirmasi */}
+                  {currentStep === 4 && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                          <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+                          Ringkasan Data Unit
+                        </h3>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Siap Disimpan</span>
+                      </div>
+
+                      <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200/80 bg-slate-50/80 text-xs dark:divide-slate-700/70 dark:border-slate-700/80 dark:bg-slate-800/30 overflow-hidden">
+                        {[
+                          ['Nama Unit', formData.name || '-'],
+                          ['Jenis Unit', formData.unit_type || '-'],
+                          ['Kode Unit', formData.code || '-'],
+                          ['NPSN', formData.npsn || '-'],
+                          ['Kota, Provinsi', [formData.city, formData.province].filter(Boolean).join(', ') || '-'],
+                          ['Kepala Sekolah', formData.principal_name || '-'],
+                          ['Akreditasi', formData.accreditation || 'A'],
+                          ['Status Operasional', formData.is_active ? 'Aktif' : 'Nonaktif'],
+                        ].map(([label, value]) => (
+                          <div key={label} className="flex items-center justify-between px-4 py-3">
+                            <span className="font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+                            <span className="font-extrabold text-slate-900 dark:text-white">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex items-start gap-3">
+                        <ShieldCheck className="size-5 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                          Pastikan seluruh data unit yang dimasukkan telah sesuai dengan dokumen resmi yayasan sebelum menekan tombol simpan.
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
+
+                {/* Footer */}
+                <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30">
+                  <button
+                    type="button"
+                    onClick={closeFormModal}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 hover:text-slate-900 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                  >
+                    <X className="size-4 text-slate-400" />
+                    <span>Batal</span>
+                  </button>
+                  <div className="flex items-center gap-2.5">
+                    {currentStep > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(s => s - 1)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                      >
+                        <ArrowLeft className="size-4" />
+                        <span>Kembali</span>
+                      </button>
+                    )}
+                    {currentStep < 4 ? (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(s => Math.min(4, s + 1))}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0E5C44] to-[#147B5B] hover:from-[#0B4A37] hover:to-[#0F6349] dark:from-[#147B5B] dark:to-[#1E8E5A] text-white px-5 py-2.5 text-xs font-extrabold shadow-md shadow-[#0E5C44]/25 hover:shadow-lg hover:shadow-[#0E5C44]/35 transition-all duration-200 active:scale-95 cursor-pointer"
+                      >
+                        <span>Selanjutnya</span>
+                        <ArrowRight className="size-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleFormSubmit}
+                        disabled={isMutating}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0E5C44] to-[#147B5B] hover:from-[#0B4A37] hover:to-[#0F6349] dark:from-[#147B5B] dark:to-[#1E8E5A] text-white px-5 py-2.5 text-xs font-extrabold shadow-md shadow-[#0E5C44]/25 hover:shadow-lg hover:shadow-[#0E5C44]/35 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+                      >
+                        {isMutating ? (
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        ) : (
+                          <Save className="size-4" />
+                        )}
+                        <span>{isEditMode ? 'Simpan Perubahan' : 'Simpan Unit'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -2807,82 +3049,117 @@ export default function EducationUnitsPage() {
                     />
                   )}
 
-                  <div>
-                    <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
-                      Nama Lengkap <span className="text-rose-500">*</span>
+                  <div className="space-y-1.5">
+                    <label htmlFor="emp_name" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Nama Lengkap Pegawai <span className="text-rose-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Contoh: Ust. Ahmad Fauzi, M.Pd"
-                      value={employeeFormData.name}
-                      onChange={e => setEmployeeFormData(p => ({ ...p, name: e.target.value }))}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">NIP / NIPY</label>
+                    <div className="relative flex items-center">
+                      <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                        <UserCheck className="size-4" />
+                      </div>
                       <input
+                        id="emp_name"
                         type="text"
-                        placeholder="198501..."
-                        value={employeeFormData.nip}
-                        onChange={e => setEmployeeFormData(p => ({ ...p, nip: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Jabatan / Peran</label>
-                      <input
-                        type="text"
-                        placeholder="Kepala Sekolah / Guru"
-                        value={employeeFormData.jabatan_name}
-                        onChange={e => setEmployeeFormData(p => ({ ...p, jabatan_name: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        required
+                        placeholder="Contoh: Ust. Ahmad Fauzi, M.Pd"
+                        value={employeeFormData.name}
+                        onChange={e => setEmployeeFormData(p => ({ ...p, name: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Email</label>
-                      <input
-                        type="email"
-                        placeholder="pegawai@sekolah.sch.id"
-                        value={employeeFormData.email}
-                        onChange={e => setEmployeeFormData(p => ({ ...p, email: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label htmlFor="emp_nip" className="block text-xs font-bold text-slate-700 dark:text-slate-200">NIP / NIPY</label>
+                      <div className="relative flex items-center">
+                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                          <FileCheck className="size-4" />
+                        </div>
+                        <input
+                          id="emp_nip"
+                          type="text"
+                          placeholder="198501..."
+                          value={employeeFormData.nip}
+                          onChange={e => setEmployeeFormData(p => ({ ...p, nip: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">No. Telepon / WA</label>
-                      <input
-                        type="text"
-                        placeholder="08123456789"
-                        value={employeeFormData.phone}
-                        onChange={e => setEmployeeFormData(p => ({ ...p, phone: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                      />
+                    <div className="space-y-1.5">
+                      <label htmlFor="emp_jabatan" className="block text-xs font-bold text-slate-700 dark:text-slate-200">Jabatan / Peran</label>
+                      <div className="relative flex items-center">
+                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                          <Award className="size-4" />
+                        </div>
+                        <input
+                          id="emp_jabatan"
+                          type="text"
+                          placeholder="Kepala Sekolah / Guru"
+                          value={employeeFormData.jabatan_name}
+                          onChange={e => setEmployeeFormData(p => ({ ...p, jabatan_name: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label htmlFor="emp_email" className="block text-xs font-bold text-slate-700 dark:text-slate-200">Email</label>
+                      <div className="relative flex items-center">
+                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                          <Mail className="size-4" />
+                        </div>
+                        <input
+                          id="emp_email"
+                          type="email"
+                          placeholder="pegawai@sekolah.sch.id"
+                          value={employeeFormData.email}
+                          onChange={e => setEmployeeFormData(p => ({ ...p, email: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="emp_phone" className="block text-xs font-bold text-slate-700 dark:text-slate-200">No. Telepon / WA</label>
+                      <div className="relative flex items-center">
+                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                          <Phone className="size-4" />
+                        </div>
+                        <input
+                          id="emp_phone"
+                          type="text"
+                          placeholder="08123456789"
+                          value={employeeFormData.phone}
+                          onChange={e => setEmployeeFormData(p => ({ ...p, phone: e.target.value }))}
+                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                        />
+                      </div>
                     </div>
                   </div>
 
                 </div>
 
-                <div className="modal-footer flex items-center justify-end gap-3 border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
+                <div className="modal-footer flex items-center justify-end gap-2.5 border-t border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/30">
                   <button
                     type="button"
                     onClick={() => setIsAddEmployeeModalOpen(false)}
-                    className="btn btn-soft btn-secondary"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 hover:text-slate-900 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={createEmployeeMutation.isPending}
-                    className="btn btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0E5C44] to-[#147B5B] hover:from-[#0B4A37] hover:to-[#0F6349] dark:from-[#147B5B] dark:to-[#1E8E5A] text-white px-4 py-2 text-xs font-extrabold shadow-md shadow-[#0E5C44]/25 hover:shadow-lg hover:shadow-[#0E5C44]/35 transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
                   >
-                    {createEmployeeMutation.isPending ? 'Menyimpan...' : 'Simpan Pegawai'}
+                    {createEmployeeMutation.isPending ? (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <Save className="size-4" />
+                    )}
+                    <span>{createEmployeeMutation.isPending ? 'Menyimpan...' : 'Simpan Pegawai'}</span>
                   </button>
                 </div>
               </form>

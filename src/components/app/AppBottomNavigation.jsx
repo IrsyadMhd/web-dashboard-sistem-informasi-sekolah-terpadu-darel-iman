@@ -25,7 +25,7 @@ export default function AppBottomNavigation({
   return (
     <nav
       className={cn(
-        'app-bottom-nav fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-slate-200/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur-md lg:hidden dark:border-slate-800 dark:bg-slate-900/95',
+        'app-bottom-nav fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-slate-200/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur-md lg:hidden dark:border-slate-800 dark:bg-slate-900/95 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]',
         className
       )}
     >
@@ -38,13 +38,13 @@ export default function AppBottomNavigation({
             end={item.end}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-1 text-[10px] font-semibold transition',
-                isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
+                'flex flex-col items-center justify-center gap-1 text-[10px] font-semibold transition min-h-[44px] px-2 min-w-[44px]',
+                isActive ? 'text-emerald-600 dark:text-emerald-400 font-extrabold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
               )
             }
           >
             {item.icon && <item.icon className="h-5 w-5" aria-hidden="true" />}
-            <span>{item.label}</span>
+            <span className="truncate max-w-[64px]">{item.label}</span>
           </NavLink>
         )
       })}
@@ -54,7 +54,7 @@ export default function AppBottomNavigation({
           type="button"
           onClick={actionCenter.onClick}
           aria-label={actionCenter.ariaLabel}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md hover:bg-emerald-700 active:scale-95 transition"
         >
           {actionCenter.icon && <actionCenter.icon className="h-5 w-5" aria-hidden="true" />}
         </button>
@@ -64,11 +64,11 @@ export default function AppBottomNavigation({
         <button
           type="button"
           onClick={onOpenNotifications}
-          className="relative flex flex-col items-center gap-1 text-[10px] font-semibold text-slate-400"
+          className="relative flex flex-col items-center justify-center gap-1 text-[10px] font-semibold text-slate-400 min-h-[44px] px-2 min-w-[44px]"
         >
           <Bell className="h-5 w-5" aria-hidden="true" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 right-1/2 flex h-4 min-w-4 translate-x-3 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
+            <span className="absolute top-1 right-1/2 flex h-4 min-w-4 translate-x-3 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

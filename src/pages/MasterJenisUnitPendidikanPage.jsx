@@ -1025,6 +1025,7 @@ export default function MasterJenisUnitPendidikanPage() {
                 )}
               </div>
             }
+            actionColumnLabel=""
             onRowClick={(row) => handleOpenDetail(row)}
             onView={(row) => handleOpenDetail(row)}
             onEdit={(row) => !row.is_deleted ? handleOpenFormEdit(row) : undefined}

@@ -7,6 +7,7 @@ import { educationUnitService } from '../../services/educationUnitService'
 import { kelasService } from '../../services/kelasService'
 import { api } from '../../services/api'
 import { useProvinsiList, useKotaOptions, useKecamatanOptions, useKelurahanOptions } from '../../hooks/useWilayah'
+import PersonAvatar, { resolveAvatarUrl } from '../ui/PersonAvatar'
 
 const defaultForm = () => ({
   foto_url: '', no_pendaftaran: '', nik: '', no_registrasi_akta_lahir: '', no_kk: '', nisn: '', full_name: '', birth_date: '', birth_place: '', gender: 'male', agama: 'Islam', email: '', anak_ke: '', jumlah_saudara: '', jumlah_saudara_tiri: '', berat_badan: '', tinggi_badan: '', riwayat_penyakit: '', kewarganegaraan: 'WNI', alamat_siswa: '', rt: '', rw: '', dusun: '', kelurahan: '', kecamatan: '', kode_pos: '', kota_kabupaten: '', provinsi: '', jenis_tempat_tinggal: '', jarak_tempuh_ke_sekolah: '', moda_transportasi: '', hobi: '', cita_cita: '', latitude: '', longitude: '',
@@ -143,8 +144,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
           gender: initialData.gender === 'Perempuan' ? 'female' : 'male',
           birth_place: initialData.tempatLahir || initialData.birth_place || '',
           birth_date: initialData.tanggalLahir || initialData.birth_date || '',
-          agama: initialData.agama || meta.agama || 'Islam',
-          foto_url: initialData.foto || meta.foto_url || meta.foto || meta.photo_url || meta.photo || meta.avatar || '',
+          foto_url: resolveAvatarUrl(initialData) || resolveAvatarUrl(initialData?.foto) || initialData.foto || meta.foto_url || meta.foto || meta.photo_url || meta.photo || meta.avatar || '',
           nisn: initialData.nisn || meta.nisn || '',
           nis: initialData.nis || '',
           alamat_siswa: initialData.alamat || meta.alamat_siswa || meta.alamat_ortu || '',
@@ -652,10 +652,11 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                     <label className="block text-xs font-semibold text-slate-700 mb-2">Unggah Foto Siswa</label>
                     {formData.foto_url ? (
                       <div className="relative flex items-center gap-4 p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40">
-                        <img
+                        <PersonAvatar
                           src={formData.foto_url}
-                          alt="Preview Foto"
-                          className="h-20 w-20 rounded-xl object-cover border-2 border-emerald-600 shadow"
+                          name={formData.full_name}
+                          size="detail"
+                          className="h-20 w-20 rounded-xl border-2 border-emerald-600 shadow shrink-0"
                         />
                         <div className="space-y-1">
                           <p className="text-xs font-bold text-slate-800">Foto Siswa Berhasil Diunggah</p>

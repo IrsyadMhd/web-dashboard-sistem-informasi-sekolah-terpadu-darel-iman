@@ -7,7 +7,7 @@ function HoverCard({ ...props }: PreviewCard.Root.Props) {
   return <PreviewCard.Root data-slot="hover-card" {...props} />;
 }
 
-function HoverCardTrigger({ ...props }: PreviewCard.Trigger.Props) {
+function HoverCardTrigger({ asChild, ...props }: PreviewCard.Trigger.Props & { asChild?: boolean }) {
   return <PreviewCard.Trigger data-slot="hover-card-trigger" {...props} />;
 }
 

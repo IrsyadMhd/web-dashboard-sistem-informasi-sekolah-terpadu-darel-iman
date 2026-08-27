@@ -1273,6 +1273,7 @@ export default function MasterJabatanPage() {
             )}
           </div>
         }
+        actionColumnLabel=""
         onView={(row) => handleOpenDetail(row)}
         onEdit={(row) => canEditPosition && !row.terhapus && !isRowRestrictedForUser(row) ? handleOpenEdit(row) : undefined}
         onDelete={(row) => canManageGlobalPositions && !row.terhapus && !isRowRestrictedForUser(row) ? handleDelete(row) : undefined}
@@ -1315,6 +1316,10 @@ export default function MasterJabatanPage() {
           setSelectedJabatanForDetail(null)
         }}
         jabatan={selectedJabatanForDetail}
+        onEdit={() => {
+          setIsDetailModalOpen(false)
+          if (selectedJabatanForDetail) handleOpenEdit(selectedJabatanForDetail)
+        }}
       />
 
       <JabatanImportModal
@@ -1363,7 +1368,7 @@ export default function MasterJabatanPage() {
             role="dialog"
             tabIndex={-1}
             aria-modal="true"
-            className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+            className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md animate-fadeIn"
             onMouseDown={(e) => { if (e.target === e.currentTarget) setActiveKpiModal(null) }}
           >
             <motion.div
@@ -1371,26 +1376,34 @@ export default function MasterJabatanPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 8 }}
               transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-              className="modal-dialog font-sans w-full max-w-4xl"
+              className="modal-dialog font-sans my-auto w-full max-w-4xl"
             >
-              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
+              <div className="modal-content flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+                {/* Top accent bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
                 {/* Header */}
-                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-[#0E5C44]/10 p-2.5 text-[#0E5C44] dark:bg-[#3FBF75]/20 dark:text-[#3FBF75]">
+                    <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
                       {activeKpiModal === 'total' && <FaBriefcase className="h-5 w-5" />}
                       {activeKpiModal === 'aktif' && <FaCheckCircle className="h-5 w-5" />}
                       {activeKpiModal === 'struktur' && <FaSitemap className="h-5 w-5" />}
                       {activeKpiModal === 'login' && <FaLockOpen className="h-5 w-5" />}
                     </div>
                     <div>
-                      <h3 className="modal-title text-base font-extrabold text-slate-900 dark:text-white">
-                        {activeKpiModal === 'total' && 'Analisis Total Jabatan Terdaftar'}
-                        {activeKpiModal === 'aktif' && 'Rincian Jabatan Berstatus Aktif'}
-                        {activeKpiModal === 'struktur' && 'Rincian Jabatan Tampil di Bagan Struktur Organisasi'}
-                        {activeKpiModal === 'login' && 'Rincian Jabatan Berhak Akses Login Sistem'}
+                      <h3 className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>
+                          {activeKpiModal === 'total' && 'Analisis Total Jabatan Terdaftar'}
+                          {activeKpiModal === 'aktif' && 'Rincian Jabatan Berstatus Aktif'}
+                          {activeKpiModal === 'struktur' && 'Rincian Jabatan Tampil di Bagan Struktur Organisasi'}
+                          {activeKpiModal === 'login' && 'Rincian Jabatan Berhak Akses Login Sistem'}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                          <Sparkles className="size-3" /> Drill-down
+                        </span>
                       </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         Menampilkan {filteredKpiItems.length} data posisi jabatan terfilter
                       </p>
                     </div>
@@ -1399,27 +1412,27 @@ export default function MasterJabatanPage() {
                     type="button"
                     onClick={() => setActiveKpiModal(null)}
                     aria-label="Tutup modal"
-                    className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
                   >
-                    <X className="size-5" />
+                    <X className="size-4" strokeWidth={2.25} />
                   </button>
                 </div>
 
                 {/* Toolbar Filter inside Modal */}
                 <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/60 px-6 py-3 dark:border-slate-800 dark:bg-slate-900/40">
                   <div className="relative flex-1">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
                       value={kpiModalSearch}
                       onChange={(e) => setKpiModalSearch(e.target.value)}
                       placeholder="Cari kode, nama jabatan, atau satuan kerja..."
-                      className="h-9 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-4 text-xs font-semibold text-slate-700 placeholder:text-slate-400 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                      className="h-9 w-full rounded-xl border border-slate-200/90 bg-white pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-100"
                     />
                   </div>
-                  <AppBadge variant="info" size="sm">
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
                     {filteredKpiItems.length} Jabatan
-                  </AppBadge>
+                  </span>
                 </div>
 
                 {/* Body Table */}
@@ -1429,7 +1442,7 @@ export default function MasterJabatanPage() {
                       <p className="text-sm font-bold text-slate-500">Tidak ada data jabatan yang cocok dengan kriteria ini.</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800">
                       <table className="w-full text-left text-xs">
                         <thead className="bg-slate-50 text-[11px] font-extrabold uppercase text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                           <tr>
@@ -1449,10 +1462,10 @@ export default function MasterJabatanPage() {
                               <td className="px-4 py-3 font-bold text-slate-400">{idx + 1}</td>
                               <td className="px-4 py-3">
                                 <span className="block font-bold text-slate-900 dark:text-white">{item.nama_jabatan || item.name}</span>
-                                <span className="text-[10px] text-emerald-700 dark:text-emerald-400">{item.kode_jabatan || '-'} · Level {item.level_jabatan}</span>
+                                <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">{item.kode_jabatan || '-'} · Level {item.level_jabatan}</span>
                               </td>
                               <td className="px-4 py-3">
-                                <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold dark:bg-slate-800">
+                                <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold dark:bg-slate-800">
                                   {item.satuan_kerja || '-'}
                                 </span>
                               </td>
@@ -1466,7 +1479,7 @@ export default function MasterJabatanPage() {
                               </td>
                               <td className="px-4 py-3 text-center">
                                 {item.boleh_login ? (
-                                  <span className="inline-flex items-center gap-1 text-blue-600 font-bold text-[10px]"><FaLockOpen className="size-3" /> Ya</span>
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[10px]"><FaLockOpen className="size-3" /> Ya</span>
                                 ) : (
                                   <span className="text-slate-400 text-[10px]">Tidak</span>
                                 )}
@@ -1483,7 +1496,7 @@ export default function MasterJabatanPage() {
                                     setActiveKpiModal(null)
                                     handleOpenDetail(item)
                                   }}
-                                  className="h-7 px-2 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                  className="h-7 px-2.5 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg font-bold cursor-pointer"
                                 >
                                   <Eye className="size-3.5" />
                                   <span>Rincian</span>
@@ -1498,18 +1511,17 @@ export default function MasterJabatanPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-3 dark:border-slate-800 dark:bg-slate-900/50">
-                  <span className="text-xs font-semibold text-slate-500">
+                <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                     Menampilkan total {filteredKpiItems.length} baris
                   </span>
-                  <Button
-                    variant="ghost"
-                    appearance="outline"
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={() => setActiveKpiModal(null)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
                   >
                     Tutup
-                  </Button>
+                  </button>
                 </div>
               </div>
             </motion.div>

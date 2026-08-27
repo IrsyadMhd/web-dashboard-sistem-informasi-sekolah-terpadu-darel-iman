@@ -2,7 +2,26 @@ import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { X as FaTimes, CircleCheck as FaCheckCircle, Network } from 'lucide-react'
+import {
+  ArrowRight,
+  Briefcase,
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  CircleCheck,
+  FileText,
+  Hash,
+  Layers,
+  Network,
+  Palette,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+  UserCheck,
+  UserCog,
+  UsersRound,
+  X,
+} from 'lucide-react'
 
 // Validation Schema using Zod
 const jabatanSchema = z.object({
@@ -41,7 +60,7 @@ const PRESET_WARNA = [
 const PRESET_IKON = [
   { val: 'Crown', label: 'Crown (Mahkota)' },
   { val: 'ShieldCheck', label: 'Shield (Pengurus)' },
-  { val: 'UserTie', label: 'UserTie (Kepala/Pimpinan)' },
+  { val: 'UserCog', label: 'UserCog (Kepala/Pimpinan)' },
   { val: 'UserCheck', label: 'UserCheck (Wakil/Wali)' },
   { val: 'Briefcase', label: 'Briefcase (Divisi)' },
   { val: 'Building', label: 'Building (Tata Usaha)' },
@@ -181,438 +200,547 @@ export default function JabatanFormModal({
     onSubmit(data)
   }
 
+  const stepList = [
+    { step: 1, label: 'Identitas & Kode' },
+    { step: 2, label: 'Level & Afiliasi' },
+    { step: 3, label: 'Visual & Hak Akses' },
+    { step: 4, label: 'Konfirmasi' },
+  ]
+
   return (
     <div
       id="jabatan-form-modal"
-      className="overlay modal overlay-open:opacity-100 overlay-open:duration-300 fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+      className="overlay modal overlay-open:opacity-100 overlay-open:duration-300 fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md animate-fadeIn"
       role="dialog"
       aria-modal="true"
       aria-labelledby="form-jabatan-title"
       tabIndex={-1}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="modal-dialog font-sans w-full max-w-4xl">
-        <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
+      <div className="modal-dialog font-sans my-auto w-full max-w-4xl">
+        <div className="modal-content flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+          {/* Top accent line */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
           {/* Modal Header Bar */}
-          <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
+          <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"><Network className="h-5 w-5" /></span>
-              <div><h3 id="form-jabatan-title" className="modal-title text-base font-bold text-slate-900 dark:text-white">{isEdit ? 'Edit Jabatan' : 'Tambah Jabatan'}</h3><p className="text-xs text-slate-500 dark:text-slate-400">Lengkapi informasi jabatan secara bertahap.</p></div>
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                <Network className="h-5 w-5" strokeWidth={2.25} />
+              </div>
+              <div>
+                <h3 id="form-jabatan-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  {isEdit ? 'Edit Jabatan' : 'Tambah Jabatan'}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                    <Sparkles className="size-3" /> {isEdit ? 'Update' : 'Baru'}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Lengkapi informasi struktur jabatan kepegawaian.</p>
+              </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="btn btn-text btn-circle btn-sm absolute end-3 top-3"
+              className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
               aria-label="Close"
-              data-overlay="#jabatan-form-modal"
             >
-              <span className="icon-[tabler--x] size-4"></span>
+              <X className="size-4" strokeWidth={2.25} />
             </button>
           </div>
 
           {/* Modal Main Body Grid */}
           <form onSubmit={handleSubmit(submitHandler)} className="flex min-h-0 flex-1 flex-col">
             <div className="modal-body flex min-h-0 flex-1 flex-col overflow-y-auto p-0">
-            {/* Left Column: Wizard Stepper Vertikal */}
-            <div className="flex shrink-0 gap-2 overflow-x-auto border-b border-slate-100 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/60">
-              {[
-                { step: 1, label: 'Identitas & Kode' },
-                { step: 2, label: 'Level & Afiliasi' },
-                { step: 3, label: 'Visual & Hak Akses' },
-                { step: 4, label: 'Konfirmasi' },
-              ].map((s) => (
-                <div
-                  key={s.step}
-                  onClick={() => setCurrentStep(s.step)}
-                  className="group flex min-w-max cursor-pointer items-center gap-2 rounded-xl px-2 py-1"
-                >
-                  <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                      currentStep === s.step
-                        ? 'bg-[#054e3b] text-white shadow-md'
-                        : currentStep > s.step
-                          ? 'bg-[#046c4e] text-white'
-                          : 'bg-slate-200 text-slate-600 group-hover:bg-slate-300'
-                    }`}
-                  >
-                    {s.step}
-                  </div>
-                  <span
-                    className={`text-sm transition-colors ${
-                      currentStep === s.step
-                        ? 'font-extrabold text-[#054e3b]'
-                        : 'font-semibold text-slate-500 group-hover:text-slate-800'
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-              ))}
-            </div>
+              {/* Horizontal Wizard Stepper */}
+              <div className="flex shrink-0 items-center justify-between gap-1 overflow-x-auto border-b border-slate-100 bg-slate-50/60 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/40">
+                {stepList.map((s) => {
+                  const isActive = currentStep === s.step
+                  const isDone = currentStep > s.step
+                  return (
+                    <button
+                      key={s.step}
+                      type="button"
+                      onClick={() => setCurrentStep(s.step)}
+                      className={`flex flex-1 min-w-max items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition-all duration-200 cursor-pointer ${
+                        isActive
+                          ? 'bg-gradient-to-r from-[#0E5C44] to-[#147B5B] text-white shadow-md'
+                          : isDone
+                            ? 'bg-emerald-50/80 text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60'
+                            : 'bg-white text-slate-500 border border-slate-200/80 hover:bg-slate-100 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400'
+                      }`}
+                    >
+                      <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-extrabold ${
+                        isActive ? 'bg-white/20 text-white' : isDone ? 'bg-emerald-200 text-emerald-900 dark:bg-emerald-900/80 dark:text-emerald-200' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                      }`}>
+                        {s.step}
+                      </span>
+                      <span className="truncate">{s.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
 
-            {/* Right Main Column / Form Content */}
-            <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-              {/* STEP 1: Identitas & Kode */}
-              {currentStep === 1 && (
-                <div className="space-y-5">
-                  <h3 className="text-base font-extrabold text-[#0f172a] border-b border-slate-100 pb-2.5">
-                    Identitas Jabatan
-                  </h3>
-
-	                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-	                    <div>
-	                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-	                        Satuan Kerja <span className="text-rose-500">*</span>
-	                      </label>
-	                      <select
-	                        {...register('satuan_kerja')}
-	                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-	                      >
-	                        {(options.satuan_kerja || [
-	                          { value: 'Pengurus', label: 'Pengurus' },
-	                          { value: 'Bidang Pendidikan', label: 'Bidang Pendidikan' },
-	                          { value: 'Unit Pendidikan', label: 'Unit Pendidikan' },
-	                        ])
-                          .filter((item) => isUnitScopedManager
-                            ? item.value === 'Unit Pendidikan'
-                            : (!isKepalaSekolah || item.value !== 'Pengurus'))
-                          .map((item) => (
-	                          <option key={item.value} value={item.value}>{item.label}</option>
-	                        ))}
-	                      </select>
-	                    </div>
-
-	                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                        Kode Jabatan <span className="text-slate-400 font-normal">(Auto jika kosong)</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="NIY-2026xxxx / JBT-001"
-                        {...register('kode_jabatan')}
-                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-slate-400 focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                      />
-                      {errors.kode_jabatan && (
-                        <p className="mt-1 text-xs text-rose-500">{errors.kode_jabatan.message}</p>
-                      )}
+              {/* Right Main Column / Form Content */}
+              <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                {/* STEP 1: Identitas & Kode */}
+                {currentStep === 1 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                      <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <Briefcase className="size-4 text-[#0E5C44] dark:text-[#3FBF75]" />
+                        Identitas Utama Jabatan
+                      </h3>
+                      <span className="text-[11px] font-semibold text-slate-400">* Wajib diisi</span>
                     </div>
 
-	                    <div>
-	                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                        Nama Jabatan <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Kepala Sekolah / Guru Kelas"
-                        {...register('nama_jabatan')}
-                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-slate-400 focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                      />
-                      {errors.nama_jabatan && (
-                        <p className="mt-1 text-xs text-rose-500">{errors.nama_jabatan.message}</p>
-                      )}
-	                    </div>
-
-	                    <div>
-	                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-	                        Cakupan Akses <span className="text-rose-500">*</span>
-	                      </label>
-	                      <select
-	                        {...register('scope_akses')}
-	                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-	                      >
-	                        {(options.scope_akses || [
-	                          { value: 'semua_unit', label: 'Semua Unit' },
-	                          { value: 'bidang_pendidikan', label: 'Bidang Pendidikan' },
-	                          { value: 'unit_sendiri', label: 'Unit Pendidikan Sendiri' },
-	                          { value: 'rombel_sendiri', label: 'Rombel Sendiri' },
-	                          { value: 'kelas_mapel_sendiri', label: 'Kelas & Mata Pelajaran Sendiri' },
-	                          { value: 'siswa_binaan', label: 'Siswa Binaan' },
-                        ]).filter((item) => !isUnitScopedManager || !['semua_unit', 'bidang_pendidikan'].includes(item.value)).map((item) => (
-	                          <option key={item.value} value={item.value}>{item.label}</option>
-	                        ))}
-	                      </select>
-	                    </div>
-	                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                      Deskripsi / Tugas Pokok Jabatan
-                    </label>
-                    <textarea
-                      rows="3"
-                      placeholder="Penjelasan ringkas peran, wewenang, dan deskripsi pekerjaan..."
-                      {...register('deskripsi')}
-                      className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] placeholder:text-slate-400 focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: Level & Afiliasi */}
-              {currentStep === 2 && (
-                <div className="space-y-5">
-                  <h3 className="text-base font-extrabold text-[#0f172a] border-b border-slate-100 pb-2.5">
-                    Level Hirarki & Afiliasi Unit
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                        Level Jabatan <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        {...register('level_jabatan')}
-                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                      >
-                        <option value="">-- Pilih Level Jabatan --</option>
-                        {(options.level_jabatan?.length > 0 ? options.level_jabatan : LEVEL_JABATAN_OPTIONS)
-                          .filter((lvl) => !isUnitScopedManager || Number(lvl.value) > 2)
-                          .filter((lvl) => !isKepalaSekolah || Number(lvl.value) !== 1)
-                          .map((lvl) => (
-                            <option key={lvl.value} value={lvl.value}>
-                              {lvl.label}
-                            </option>
-                          ))}
-                      </select>
-                      {errors.level_jabatan && (
-                        <p className="mt-1 text-xs text-rose-500">{errors.level_jabatan.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                        Unit Sekolah / Yayasan
-                        <span className="text-slate-400 font-normal ml-1">(dari Data Unit Pendidikan)</span>
-                      </label>
-                      <select
-                        {...register('unit_sekolah_id')}
-                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                      >
-                        {!isUnitScopedManager && <option value="">-- Semua Unit / Yayasan --</option>}
-                        {(options.unit_sekolah || []).map((unit) => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.nama} {unit.kode ? `(${unit.kode})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      {(options.unit_sekolah || []).length === 0 && (
-                        <p className="mt-1 text-[11px] font-medium text-amber-700">Belum ada data unit pendidikan. Tambahkan di menu Unit Pendidikan.</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                        Atasan Langsung
-                        <span className="text-slate-400 font-normal ml-1">(dari Data Pegawai)</span>
-                      </label>
-                      <select
-                        {...register('atasan_pegawai_id')}
-                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                      >
-                        <option value="">-- Tidak Ada / Langsung ke Yayasan --</option>
-                        {(options.atasan_langsung || []).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.nama_pegawai}{p.nama_jabatan ? ` — ${p.nama_jabatan}` : ''}{p.niy ? ` (${p.niy})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      {(options.atasan_langsung || []).length === 0 && (
-                        <p className="mt-1 text-[11px] font-medium text-amber-700">Belum ada data pegawai aktif. Tambahkan di menu Kepegawaian.</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">
-                        Role Sistem
-                        <span className="text-slate-400 font-normal ml-1">(dari Tabel Hak Akses)</span>
-                      </label>
-                      <select
-                        {...register('role_sistem_id')}
-                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                      >
-                        <option value="">-- Tanpa Role / Atur Manual --</option>
-                        {(options.role_sistem || []).map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                      {(options.role_sistem || []).length === 0 && (
-                        <p className="mt-1 text-[11px] text-amber-500 font-medium">⚠ Belum ada role terdaftar. Tambahkan di menu Hak Akses.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 3: Visual & Hak Akses */}
-              {currentStep === 3 && (
-                <div className="space-y-5">
-                  <h3 className="text-base font-extrabold text-[#0f172a] border-b border-slate-100 pb-2.5">
-                    Visual & Konfigurasi Fitur
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">Urutan Tampilan</label>
-                      <input
-                        type="number"
-                        min="0"
-                        {...register('urutan')}
-                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">Warna Indikator</label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="color"
-                          {...register('warna')}
-                          className="w-10 h-10 p-0.5 rounded-xl border border-slate-200 cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          {...register('warna')}
-                          placeholder="#3B82F6"
-                          className="w-full rounded-xl border border-slate-200/90 px-3 py-2.5 text-sm uppercase text-[#0f172a]"
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Satuan Kerja */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Satuan Kerja <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <Building2 className="size-4" />
+                          </div>
+                          <select
+                            {...register('satuan_kerja')}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            {(options.satuan_kerja || [
+                              { value: 'Pengurus', label: 'Pengurus' },
+                              { value: 'Bidang Pendidikan', label: 'Bidang Pendidikan' },
+                              { value: 'Unit Pendidikan', label: 'Unit Pendidikan' },
+                            ])
+                              .filter((item) => isUnitScopedManager
+                                ? item.value === 'Unit Pendidikan'
+                                : (!isKepalaSekolah || item.value !== 'Pengurus'))
+                              .map((item) => (
+                                <option key={item.value} value={item.value}>{item.label}</option>
+                              ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {PRESET_WARNA.map((p) => (
-                          <button
-                            key={p.hex}
-                            type="button"
-                            onClick={() => setValue('warna', p.hex)}
-                            className={`w-5 h-5 rounded-full border border-white transition-transform ${
-                              watchWarna === p.hex ? 'scale-125 ring-2 ring-[#054e3b]' : 'hover:scale-110'
-                            }`}
-                            style={{ backgroundColor: p.hex }}
-                            title={p.label}
+
+                      {/* Kode Jabatan */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Kode Jabatan <span className="text-slate-400 font-normal">(Auto jika kosong)</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <Tag className="size-4" />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="NIY-2026xxxx / JBT-001"
+                            {...register('kode_jabatan')}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
                           />
-                        ))}
+                        </div>
+                        {errors.kode_jabatan && (
+                          <p className="text-[11px] font-semibold text-rose-500">{errors.kode_jabatan.message}</p>
+                        )}
+                      </div>
+
+                      {/* Nama Jabatan */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Nama Jabatan <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <UserCog className="size-4" />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Contoh: Kepala Sekolah / Guru Kelas"
+                            {...register('nama_jabatan')}
+                            className={`w-full rounded-xl border pl-10 pr-4 py-2.5 text-xs font-semibold placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:ring-4 ${
+                              errors.nama_jabatan
+                                ? 'border-rose-500 bg-rose-50/50 text-rose-900 focus:ring-rose-500/20'
+                                : 'border-slate-200/90 bg-slate-50/50 text-slate-800 focus:border-[#0E5C44] focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20'
+                            }`}
+                          />
+                        </div>
+                        {errors.nama_jabatan && (
+                          <p className="text-[11px] font-semibold text-rose-500">{errors.nama_jabatan.message}</p>
+                        )}
+                      </div>
+
+                      {/* Cakupan Akses */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Cakupan Akses <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <ShieldCheck className="size-4" />
+                          </div>
+                          <select
+                            {...register('scope_akses')}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            {(options.scope_akses || [
+                              { value: 'semua_unit', label: 'Semua Unit' },
+                              { value: 'bidang_pendidikan', label: 'Bidang Pendidikan' },
+                              { value: 'unit_sendiri', label: 'Unit Pendidikan Sendiri' },
+                              { value: 'rombel_sendiri', label: 'Rombel Sendiri' },
+                              { value: 'kelas_mapel_sendiri', label: 'Kelas & Mata Pelajaran Sendiri' },
+                              { value: 'siswa_binaan', label: 'Siswa Binaan' },
+                            ]).filter((item) => !isUnitScopedManager || !['semua_unit', 'bidang_pendidikan'].includes(item.value)).map((item) => (
+                              <option key={item.value} value={item.value}>{item.label}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">Pilihan Ikon</label>
-                      <select
-                        {...register('ikon')}
-                        className="w-full rounded-xl border border-slate-200/90 px-4 py-2.5 text-sm text-[#0f172a] focus:border-[#054e3b] focus:ring-2 focus:ring-[#054e3b]/10 focus:outline-none transition-all bg-white"
-                      >
-                        {PRESET_IKON.map((i) => (
-                          <option key={i.val} value={i.val}>
-                            {i.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[#f8fafc] p-4 rounded-2xl border border-slate-200/90">
-                    <div>
-                      <label className="block text-xs font-bold text-[#0f172a] mb-1.5">Status Operasional</label>
-                      <select
-                        {...register('status')}
-                        className="w-full rounded-xl border border-slate-200/90 px-3 py-2 text-sm text-[#0f172a] bg-white"
-                      >
-                        <option value="Aktif">Aktif</option>
-                        <option value="Nonaktif">Nonaktif</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/90">
-                      <div>
-                        <span className="text-xs font-bold text-[#0f172a] block">Tampil Struktur</span>
-                        <span className="text-[10px] text-slate-500">Bagan Organisasi</span>
+                    {/* Deskripsi */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                        Deskripsi / Tugas Pokok Jabatan
+                      </label>
+                      <div className="relative flex items-start">
+                        <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+                          <FileText className="size-4" />
+                        </div>
+                        <textarea
+                          rows="3"
+                          placeholder="Penjelasan ringkas peran, wewenang, dan deskripsi pekerjaan..."
+                          {...register('deskripsi')}
+                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
+                        />
                       </div>
-                      <input
-                        type="checkbox"
-                        {...register('tampil_struktur')}
-                        className="w-5 h-5 rounded text-[#054e3b] focus:ring-[#054e3b]"
-                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: Level & Afiliasi */}
+                {currentStep === 2 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                      <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <Layers className="size-4 text-[#0E5C44] dark:text-[#3FBF75]" />
+                        Level Hirarki & Afiliasi Unit
+                      </h3>
                     </div>
 
-                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/90">
-                      <div>
-                        <span className="text-xs font-bold text-[#0f172a] block">Boleh Login</span>
-                        <span className="text-[10px] text-slate-500">Akun Pengguna</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Level Jabatan */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Level Jabatan <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <Layers className="size-4" />
+                          </div>
+                          <select
+                            {...register('level_jabatan')}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            <option value="">-- Pilih Level Jabatan --</option>
+                            {(options.level_jabatan?.length > 0 ? options.level_jabatan : LEVEL_JABATAN_OPTIONS)
+                              .filter((lvl) => !isUnitScopedManager || Number(lvl.value) > 2)
+                              .filter((lvl) => !isKepalaSekolah || Number(lvl.value) !== 1)
+                              .map((lvl) => (
+                                <option key={lvl.value} value={lvl.value}>
+                                  {lvl.label}
+                                </option>
+                              ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
+                        {errors.level_jabatan && (
+                          <p className="text-[11px] font-semibold text-rose-500">{errors.level_jabatan.message}</p>
+                        )}
                       </div>
-                      <input
-                        type="checkbox"
-                        {...register('boleh_login')}
-                        className="w-5 h-5 rounded text-[#054e3b] focus:ring-[#054e3b]"
-                      />
+
+                      {/* Unit Sekolah */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Unit Sekolah / Yayasan
+                          <span className="text-slate-400 font-normal ml-1">(dari Data Unit Pendidikan)</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <Building2 className="size-4" />
+                          </div>
+                          <select
+                            {...register('unit_sekolah_id')}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            {!isUnitScopedManager && <option value="">-- Semua Unit / Yayasan --</option>}
+                            {(options.unit_sekolah || []).map((unit) => (
+                              <option key={unit.id} value={unit.id}>
+                                {unit.nama} {unit.kode ? `(${unit.kode})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
+                        {(options.unit_sekolah || []).length === 0 && (
+                          <p className="text-[11px] font-medium text-amber-700">Belum ada data unit pendidikan. Tambahkan di menu Unit Pendidikan.</p>
+                        )}
+                      </div>
+
+                      {/* Atasan Langsung */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Atasan Langsung
+                          <span className="text-slate-400 font-normal ml-1">(dari Data Pegawai)</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <UsersRound className="size-4" />
+                          </div>
+                          <select
+                            {...register('atasan_pegawai_id')}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            <option value="">-- Tidak Ada / Langsung ke Yayasan --</option>
+                            {(options.atasan_langsung || []).map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.nama_pegawai}{p.nama_jabatan ? ` — ${p.nama_jabatan}` : ''}{p.niy ? ` (${p.niy})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
+                        {(options.atasan_langsung || []).length === 0 && (
+                          <p className="text-[11px] font-medium text-amber-700">Belum ada data pegawai aktif. Tambahkan di menu Kepegawaian.</p>
+                        )}
+                      </div>
+
+                      {/* Role Sistem */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Role Sistem
+                          <span className="text-slate-400 font-normal ml-1">(dari Tabel Hak Akses)</span>
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <ShieldCheck className="size-4" />
+                          </div>
+                          <select
+                            {...register('role_sistem_id')}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            <option value="">-- Tanpa Role / Atur Manual --</option>
+                            {(options.role_sistem || []).map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
+                        {(options.role_sistem || []).length === 0 && (
+                          <p className="text-[11px] text-amber-500 font-medium">⚠ Belum ada role terdaftar. Tambahkan di menu Hak Akses.</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* STEP 4: Konfirmasi */}
-              {currentStep === 4 && (
-                <div className="space-y-4">
-                  <h3 className="text-base font-extrabold text-[#0f172a] border-b border-slate-100 pb-2.5">
-                    Konfirmasi Data Jabatan
-                  </h3>
+                {/* STEP 3: Visual & Hak Akses */}
+                {currentStep === 3 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                      <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <Palette className="size-4 text-[#0E5C44] dark:text-[#3FBF75]" />
+                        Visual & Konfigurasi Fitur
+                      </h3>
+                    </div>
 
-                  <div className="rounded-2xl border border-slate-200/90 bg-[#f8fafc] p-5 space-y-3 text-xs">
-                    <div className="flex justify-between border-b border-slate-200/80 pb-2">
-                      <span className="text-slate-500 font-medium">Nama Jabatan:</span>
-                      <span className="font-extrabold text-slate-900">{watchNama || '-'}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Urutan Tampilan */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">Urutan Tampilan</label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <Hash className="size-4" />
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            {...register('urutan')}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Warna Indikator */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">Warna Indikator</label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            {...register('warna')}
+                            className="h-9 w-9 rounded-xl border border-slate-200 cursor-pointer p-0.5 shadow-2xs hover:scale-105 transition-transform dark:border-slate-700"
+                          />
+                          <input
+                            type="text"
+                            {...register('warna')}
+                            placeholder="#3B82F6"
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-mono font-bold uppercase text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {PRESET_WARNA.map((p) => (
+                            <button
+                              key={p.hex}
+                              type="button"
+                              onClick={() => setValue('warna', p.hex)}
+                              className={`h-5 w-5 rounded-full border border-white transition-transform cursor-pointer ${
+                                watchWarna === p.hex ? 'scale-125 ring-2 ring-[#0E5C44]' : 'hover:scale-110'
+                              }`}
+                              style={{ backgroundColor: p.hex }}
+                              title={p.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Pilihan Ikon */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">Pilihan Ikon</label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <UserCheck className="size-4" />
+                          </div>
+                          <select
+                            {...register('ikon')}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                          >
+                            {PRESET_IKON.map((i) => (
+                              <option key={i.val} value={i.val}>
+                                {i.label}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between border-b border-slate-200/80 pb-2">
-                      <span className="text-slate-500 font-medium">Kode Jabatan:</span>
-                      <span className="font-bold text-slate-800 font-mono">{watchKode || 'Auto-generated'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-slate-200/80 pb-2">
-                      <span className="text-slate-500 font-medium">Level Jabatan:</span>
-                      <span className="font-bold text-slate-800">Level {watchLevel}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-medium">Deskripsi:</span>
-                      <span className="font-medium text-slate-700">{watchDeskripsi || '-'}</span>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-200/90 dark:bg-slate-900/40 dark:border-slate-800">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">Status Operasional</label>
+                        <div className="relative flex items-center">
+                          <select
+                            {...register('status')}
+                            className="w-full appearance-none rounded-xl border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 cursor-pointer"
+                          >
+                            <option value="Aktif">Aktif</option>
+                            <option value="Nonaktif">Nonaktif</option>
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-3 size-4 text-slate-400" />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200/90 dark:bg-slate-900 dark:border-slate-800">
+                        <div>
+                          <span className="text-xs font-extrabold text-slate-900 dark:text-white block">Tampil Struktur</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">Bagan Organisasi</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          {...register('tampil_struktur')}
+                          className="h-4 w-4 rounded border-slate-300 text-[#0E5C44] focus:ring-[#0E5C44] cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200/90 dark:bg-slate-900 dark:border-slate-800">
+                        <div>
+                          <span className="text-xs font-extrabold text-slate-900 dark:text-white block">Boleh Login</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">Akun Pengguna</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          {...register('boleh_login')}
+                          className="h-4 w-4 rounded border-slate-300 text-[#0E5C44] focus:ring-[#0E5C44] cursor-pointer"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* STEP 4: Konfirmasi */}
+                {currentStep === 4 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                      <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <CheckCircle2 className="size-4 text-[#0E5C44] dark:text-[#3FBF75]" />
+                        Konfirmasi Data Jabatan
+                      </h3>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200/90 bg-slate-50/60 p-5 space-y-3 text-xs dark:bg-slate-900/40 dark:border-slate-800">
+                      <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <span className="text-slate-500 font-medium">Nama Jabatan:</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white">{watchNama || '-'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <span className="text-slate-500 font-medium">Kode Jabatan:</span>
+                        <span className="font-bold text-slate-800 font-mono dark:text-slate-200">{watchKode || 'Auto-generated'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <span className="text-slate-500 font-medium">Level Jabatan:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">Level {watchLevel}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Deskripsi:</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{watchDeskripsi || '-'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Modal Bottom Action Footer */}
-          <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-soft btn-secondary"
-              data-overlay="#jabatan-form-modal"
-            >
-              Close
-            </button>
+            {/* Modal Bottom Action Footer */}
+            <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Tutup
+              </button>
 
-            <div className="flex items-center gap-2.5">
-              {currentStep < 4 ? (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="btn btn-primary inline-flex items-center gap-1.5"
-                >
-                  <span>Selanjutnya</span>
-                  <span>→</span>
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <FaCheckCircle className="size-4" />
-                  <span>{isSubmitting ? 'Menyimpan...' : isEdit ? 'Save changes' : 'Save changes'}</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2.5">
+                {currentStep < 4 ? (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0E5C44] to-[#147B5B] hover:from-[#0B4A37] hover:to-[#0F6349] dark:from-[#147B5B] dark:to-[#1E8E5A] text-white px-5 py-2.5 text-xs font-extrabold shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  >
+                    <span>Selanjutnya</span>
+                    <ArrowRight className="size-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#0E5C44] to-[#147B5B] hover:from-[#0B4A37] hover:to-[#0F6349] dark:from-[#147B5B] dark:to-[#1E8E5A] text-white px-5 py-2.5 text-xs font-extrabold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <CircleCheck className="size-4" />
+                    )}
+                    <span>{isSubmitting ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Simpan Jabatan'}</span>
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
   )
 }

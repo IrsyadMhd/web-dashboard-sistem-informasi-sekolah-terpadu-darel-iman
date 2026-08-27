@@ -23,6 +23,7 @@ export default function ActionDropdown({
   deletePermission,
   historyPermission,
   extraItems = [],
+  customActions = [],
   trigger,
 }) {
   const user = useAuthStore((state) => state.user)
@@ -41,7 +42,8 @@ export default function ActionDropdown({
   const canView = onView && checkPerm(viewPermission)
   const canEdit = onEdit && checkPerm(editPermission)
   const canHistory = onHistory && checkPerm(historyPermission)
-  const filteredExtraItems = extraItems.filter(
+  const rawExtras = extraItems.length > 0 ? extraItems : customActions
+  const filteredExtraItems = rawExtras.filter(
     (item) => !item.permission || checkPerm(item.permission)
   )
   const canDelete = onDelete && checkPerm(deletePermission)
@@ -92,16 +94,26 @@ export default function ActionDropdown({
             <span>Riwayat</span>
           </DropdownMenuItem>
         )}
-        {filteredExtraItems.map((item, idx) => (
-          <DropdownMenuItem
-            key={idx}
-            onAction={() => exec(item.onClick)}
-            className="cursor-pointer font-medium text-xs text-slate-700 hover:text-emerald-700 dark:text-slate-200"
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </DropdownMenuItem>
-        ))}
+        {filteredExtraItems.map((item, idx) => {
+          const IconComp = item.icon
+          const isDanger = item.isDanger || item.danger
+          return (
+            <DropdownMenuItem
+              key={idx}
+              onAction={() => exec(item.onClick)}
+              className={`cursor-pointer font-medium text-xs text-slate-700 hover:text-emerald-700 dark:text-slate-200 ${
+                isDanger ? 'text-rose-600 dark:text-rose-400 hover:text-rose-700' : ''
+              }`}
+            >
+              {typeof IconComp === 'function' || (typeof IconComp === 'object' && IconComp && IconComp.$$typeof) ? (
+                <IconComp className={`size-4 ${isDanger ? 'text-rose-500' : 'text-slate-500'}`} />
+              ) : (
+                IconComp
+              )}
+              <span>{item.label}</span>
+            </DropdownMenuItem>
+          )
+        })}
         {canDelete && (
           <>
             {(canView || canEdit || canHistory || filteredExtraItems.length > 0) && (

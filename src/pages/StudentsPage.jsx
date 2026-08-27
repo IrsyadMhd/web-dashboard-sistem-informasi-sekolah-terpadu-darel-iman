@@ -38,7 +38,7 @@ import { useDaftarKelas } from '../hooks/useReferenceData'
 import { useAksiSiswa, useDaftarSiswa } from '../hooks/useStudents'
 import { educationUnitService } from '../services/educationUnitService'
 import { studentService } from '../services/studentService'
-import PersonAvatar from '../components/ui/PersonAvatar'
+import PersonAvatar, { resolveAvatarUrl } from '../components/ui/PersonAvatar'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
 import { hasAnyRole } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
@@ -588,23 +588,18 @@ export default function StudentsPage() {
           item.phone || item.no_hp || item.hp_ortu || '-'
 
         const fotoObj =
+          resolveAvatarUrl(item) ||
+          resolveAvatarUrl(meta) ||
           item.photo_url ||
           item.photo ||
           item.foto_url ||
           item.foto ||
           item.avatar_url ||
           item.avatar ||
-          item.user?.photo_url ||
-          item.user?.avatar_url ||
-          item.user?.photo ||
-          item.user?.avatar ||
           meta.photo_url ||
           meta.photo ||
           meta.foto_url ||
           meta.foto ||
-          meta.avatar_url ||
-          meta.avatar ||
-          meta.url_foto ||
           ''
 
         const stRaw = String(meta.akademik?.status_siswa || (item.is_active ? 'aktif' : 'nonaktif')).toLowerCase()
@@ -1200,6 +1195,7 @@ export default function StudentsPage() {
         {/* Unified Master Data Container */}
         <AppDataTable
           title="Daftar Siswa"
+          actionColumnLabel=""
           description="Data siswa sesuai filter dan kewenangan pengguna."
           countLabel={`${Number(studentPagination.total || filteredStudents.length).toLocaleString('id-ID')} siswa`}
           actions={
@@ -1370,7 +1366,7 @@ export default function StudentsPage() {
                   <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa</th>
                   <th className="hidden w-[29%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Orang Tua / Wali</th>
                   <th className="hidden w-[11%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
-                  <th className="w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
+                  <th className="w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">

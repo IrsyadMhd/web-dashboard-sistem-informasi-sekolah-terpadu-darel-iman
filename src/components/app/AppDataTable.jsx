@@ -77,6 +77,7 @@ export default function AppDataTable({
   onDelete,
   onHistory,
   extraActions,
+  actionColumnLabel = 'AKSI',
   embedded = false,
   fullBleed = false,
   showToolbar = true,
@@ -368,7 +369,7 @@ export default function AppDataTable({
                   ))}
                   {hasActionColumn && (
                     <TableHead className="w-[88px] min-w-[88px] text-center font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 print:hidden">
-                      AKSI
+                      {actionColumnLabel}
                     </TableHead>
                   )}
                 </TableRow>

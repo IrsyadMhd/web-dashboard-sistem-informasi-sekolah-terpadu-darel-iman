@@ -29,6 +29,7 @@ import {
   Trash2,
   TrendingUp,
   UserCheck,
+  UserPlus,
   UsersRound,
   Printer,
   FileSpreadsheet,
@@ -88,7 +89,11 @@ import {
   Tooltip,
   Legend,
 } from 'recharts'
-import PersonAvatar from '../components/ui/PersonAvatar'
+import PersonAvatar, { resolveAvatarUrl } from '../components/ui/PersonAvatar'
+
+function getEmployeePhotoUrl(emp) {
+  return resolveAvatarUrl(emp) || ''
+}
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
 import { ROLES, hasAnyRole, isGlobalAccessManager, isUnitAccessManager, isKepsekOrDivisi } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
@@ -192,6 +197,7 @@ function initialFormState() {
 
 function parseFromApi(item) {
   const meta = item?.metadata || {}
+  const resolvedPhoto = resolveAvatarUrl(item) || ''
   return {
     id: item?.id || null,
     niy: item?.niy || '',
@@ -204,7 +210,11 @@ function parseFromApi(item) {
     tempat_lahir: item?.tempat_lahir || '',
     tanggal_lahir: item?.tanggal_lahir ? item.tanggal_lahir.split('T')[0] : '',
     agama: item?.agama || '',
-    foto: item?.foto || '',
+    foto: resolvedPhoto,
+    photo_url: resolvedPhoto,
+    avatar_url: resolvedPhoto,
+    user: item?.user,
+    raw: item,
 
     unit_id: item?.unit_id || '',
     unit_name: item?.unit?.name || '',
@@ -233,6 +243,7 @@ function parseFromApi(item) {
     certifications: meta.certifications || [],
     documents: meta.documents || [],
     attendances: meta.attendances || [],
+    metadata: meta,
   }
 }
 
@@ -998,7 +1009,7 @@ export default function EmployeesPage() {
         return (
           <div className="flex min-w-0 items-center gap-3">
             <PersonAvatar
-              src={row.photo_url || row.avatar_url || row.user?.photo_url || row.user?.avatar_url || row.foto}
+              src={getEmployeePhotoUrl(row)}
               name={fullName}
               size="md"
             />
@@ -1019,7 +1030,7 @@ export default function EmployeesPage() {
                 <HoverCardContent className="w-64 p-3.5 border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#1B2433] shadow-xl rounded-xl">
                   <div className="flex items-center gap-2.5 mb-2">
                     <PersonAvatar
-                      src={row.photo_url || row.avatar_url || row.user?.photo_url || row.user?.avatar_url || row.foto}
+                      src={getEmployeePhotoUrl(row)}
                       name={fullName}
                       size="sm"
                     />
@@ -1527,7 +1538,7 @@ export default function EmployeesPage() {
         <HoverCardContent side="top" align="center" className="w-80 p-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1B2433] rounded-2xl shadow-2xl space-y-3 z-50 text-left">
           {/* Profile Card Header */}
           <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <PersonAvatar src={employee.foto} name={fullName} size="md" />
+            <PersonAvatar src={getEmployeePhotoUrl(employee)} name={fullName} size="md" />
             <div className="min-w-0 flex-1">
               <h4 className="font-extrabold text-xs text-slate-900 dark:text-white truncate" title={fullName}>{fullName}</h4>
               <p className="text-[10px] text-slate-400 font-mono">NIY: {employee.niy || '-'}</p>
@@ -1629,17 +1640,12 @@ export default function EmployeesPage() {
         const namaFull = `${row.gelar_depan ? row.gelar_depan + ' ' : ''}${row.nama_lengkap}${row.gelar_belakang ? ', ' + row.gelar_belakang : ''}`
         return (
           <div className="flex min-w-0 items-center gap-3">
-            {row.foto ? (
-              <img
-                src={row.foto}
-                alt={row.nama_lengkap}
-                className="h-10 w-10 shrink-0 rounded-full object-cover shadow-xs border border-slate-200"
-              />
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-800 font-extrabold text-white text-xs shadow-xs">
-                {row.nama_lengkap?.substring(0, 2).toUpperCase() || 'PG'}
-              </div>
-            )}
+            <PersonAvatar
+              src={getEmployeePhotoUrl(row)}
+              name={namaFull}
+              size="table"
+              className="h-10 w-10 shrink-0 shadow-xs border border-slate-200"
+            />
             <div className="min-w-0 flex-1 space-y-0.5">
               <EmployeeHoverCard
                 employee={row}
@@ -2017,7 +2023,7 @@ export default function EmployeesPage() {
                         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black shadow-2xs ${rankColor}`}>
                           {index + 1}
                         </span>
-                        <PersonAvatar src={emp.foto} name={fullName} size="sm" />
+                        <PersonAvatar src={getEmployeePhotoUrl(emp)} name={fullName} size="sm" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-extrabold text-slate-900 dark:text-white" title={fullName}>
                             {fullName}
@@ -2074,7 +2080,7 @@ export default function EmployeesPage() {
                         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black shadow-2xs ${rankColor}`}>
                           {index + 1}
                         </span>
-                        <PersonAvatar src={emp.foto} name={fullName} size="sm" />
+                        <PersonAvatar src={getEmployeePhotoUrl(emp)} name={fullName} size="sm" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs font-extrabold text-slate-900 dark:text-white" title={fullName}>
                             {fullName}
@@ -2118,6 +2124,7 @@ export default function EmployeesPage() {
           }
           title="Daftar Master Data Pegawai & Tendik"
           description="Tabel direktori pegawai, satuan kerja, status keaktifan, dan manajemen profil SDM."
+          actionColumnLabel=""
           columns={columns}
           data={filteredItems}
           isLoading={isLoading}
@@ -2335,23 +2342,47 @@ export default function EmployeesPage() {
 
       {/* 5. MODAL WIZARD: TAMBAH / EDIT PEGAWAI */}
       {isFormModalOpen && (
-        <div className="overlay modal overlay-open:opacity-100 overlay-open:duration-300 fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden" role="dialog" aria-modal="true" aria-labelledby="employee-form-title" tabIndex={-1}>
-          <div className="modal-dialog font-sans w-full max-w-4xl">
-            <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
+        <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md print:hidden animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="employee-form-title" tabIndex={-1}>
+          <div className="modal-dialog font-sans my-auto w-full max-w-4xl">
+            <div className="modal-content flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+              {/* Top accent bar */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
               {/* Header */}
-              <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-                <h3 id="employee-form-title" className="modal-title text-base font-bold text-slate-900 dark:text-white">
-                  {isEditMode ? (isUnitPersonnelManager ? 'Edit Jabatan Pegawai' : 'Edit Pegawai') : 'Tambah Pegawai'}
-                </h3>
-                {isUnitPersonnelManager && <span className="mr-8 rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold text-amber-800">Hanya jabatan unit ini yang dapat diubah</span>}
-                <button
-                  type="button"
-                  onClick={closeFormModal}
-                  className="btn btn-text btn-circle btn-sm absolute end-3 top-3 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                  aria-label="Tutup"
-                >
-                  <FaTimes className="size-4" />
-                </button>
+              <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                    <UserPlus className="h-5 w-5" strokeWidth={2.25} />
+                  </div>
+                  <div>
+                    <h3 id="employee-form-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>{isEditMode ? (isUnitPersonnelManager ? 'Edit Jabatan Pegawai' : 'Edit Pegawai') : 'Tambah Pegawai'}</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                        <Sparkles className="size-3" />
+                        {isEditMode ? 'Update' : 'Baru'}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Langkah {currentStep} dari 4 · {
+                        currentStep === 1 ? 'Identitas & Foto' :
+                        currentStep === 2 ? 'Kepegawaian' :
+                        currentStep === 3 ? 'Kontak & Alamat' :
+                        'Konfirmasi Data'
+                      }
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {isUnitPersonnelManager && <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-extrabold text-amber-800 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60">Hanya jabatan unit ini yang dapat diubah</span>}
+                  <button
+                    type="button"
+                    onClick={closeFormModal}
+                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    aria-label="Tutup"
+                  >
+                    <X className="size-4" strokeWidth={2.25} />
+                  </button>
+                </div>
               </div>
 
               {/* Main Body Grid */}
@@ -2400,8 +2431,13 @@ export default function EmployeesPage() {
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1">Foto Pegawai</label>
                           {formData.foto ? (
-                            <div className="flex items-center gap-4 p-3 rounded-xl border border-emerald-200 bg-emerald-50/50">
-                              <img src={formData.foto} alt="Preview Foto" className="h-16 w-16 rounded-full object-cover border-2 border-emerald-600 shadow-sm shrink-0" />
+                            <div className="flex items-center gap-4 p-3 rounded-2xl border border-emerald-200/90 bg-emerald-50/60 dark:bg-emerald-950/40 dark:border-emerald-800">
+                              <PersonAvatar
+                                src={formData.foto}
+                                name={formData.nama_lengkap}
+                                size="detail"
+                                className="h-16 w-16 shrink-0 border-2 border-emerald-600 shadow-sm"
+                              />
                               <div>
                                 <p className="text-xs font-bold text-slate-800">Foto Berhasil Diunggah</p>
                                 <button
@@ -3175,21 +3211,37 @@ export default function EmployeesPage() {
 
       {/* 7. MODAL CETAK ID CARD PEGAWAI */}
       {showIdCardModal && (
-        <div className="overlay modal overlay-open:opacity-100 overlay-open:duration-300 fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden" role="dialog" aria-modal="true" aria-labelledby="employee-id-card-title" tabIndex={-1}>
-          <div className={`modal-dialog font-sans w-full transition-all duration-300 ${idCardOrientation === 'horizontal' ? 'max-w-6xl' : 'max-w-5xl'}`}>
-            <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
-              <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-                <div>
-                  <h3 id="employee-id-card-title" className="modal-title flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white"><FaIdCard className="text-emerald-700 dark:text-emerald-400" /> ID Card Pegawai</h3>
-                  <p className="mt-0.5 text-xs text-slate-500">Pratinjau kartu identitas dan QR akses SIMSIT</p>
+        <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md print:hidden animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="employee-id-card-title" tabIndex={-1}>
+          <div className={`modal-dialog font-sans my-auto w-full transition-all duration-300 ${idCardOrientation === 'horizontal' ? 'max-w-6xl' : 'max-w-5xl'}`}>
+            <div className="modal-content flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+              {/* Top accent bar */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+              {/* Header */}
+              <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                    <IdCard className="h-5 w-5" strokeWidth={2.25} />
+                  </div>
+                  <div>
+                    <h3 id="employee-id-card-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>ID Card Pegawai</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                        <Sparkles className="size-3" /> Cetak & Pratinjau
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Pratinjau kartu identitas & QR akses sistem untuk {showIdCardModal.nama_lengkap}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowIdCardModal(null)}
-                  className="btn btn-text btn-circle btn-sm absolute end-3 top-3 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                  className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
                   aria-label="Tutup ID Card"
                 >
-                  <FaTimes className="size-4" />
+                  <X className="size-4" strokeWidth={2.25} />
                 </button>
               </div>
 
@@ -3982,7 +4034,7 @@ export default function EmployeesPage() {
                           <td className="p-3">
                             <EmployeeHoverCard employee={emp}>
                               <div className="flex items-center gap-2.5 cursor-pointer">
-                                <PersonAvatar src={emp.foto} name={fullName} size="sm" />
+                                <PersonAvatar src={getEmployeePhotoUrl(emp)} name={fullName} size="sm" />
                                 <div>
                                   <p className="font-extrabold text-slate-900 dark:text-white hover:text-emerald-600 transition">{fullName}</p>
                                   <p className="font-mono text-[10px] text-slate-400">NIY: {emp.niy || '-'}</p>

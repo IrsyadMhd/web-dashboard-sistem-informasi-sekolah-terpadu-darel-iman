@@ -44,14 +44,15 @@ export default function FloatingChatWidget() {
   const loadChildren = useCallback(async () => {
     if (!isParent) return
     try {
-      const res = await familyPortalService.children()
-      const list = res.data || []
-      setChildren(list)
-      if (list.length > 0 && !childId) {
-        setChildId(list[0].id)
+      const res = await familyPortalService.children().catch(() => ({ data: [] }))
+      const list = res?.data || []
+      const validList = Array.isArray(list) ? list : []
+      setChildren(validList)
+      if (validList.length > 0 && !childId) {
+        setChildId(validList[0].id)
       }
     } catch {
-      // Ignore initial silent fetch error
+      setChildren([])
     }
   }, [isParent, childId])
 

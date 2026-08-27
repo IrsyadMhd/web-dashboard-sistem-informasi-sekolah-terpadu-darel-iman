@@ -1342,6 +1342,7 @@ export default function KelolaAlumniPage() {
         {/* AppDataTable Unified Emerald Container */}
         <AppDataTable
           title="Daftar Pengolahan Alumni & Mutasi"
+          actionColumnLabel=""
           description="Data alumni dan mutasi siswa sesuai filter dan unit pendidikan."
           countLabel={`${filteredList.length} alumni`}
           actions={
@@ -1514,7 +1515,7 @@ export default function KelolaAlumniPage() {
                   <th className="hidden w-[18%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Unit Asal</th>
                   <th className="hidden w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Tahun Lulus</th>
                   <th className="hidden w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Tujuan Lanjut Sekolah / PTN</th>
-                  <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
+                  <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">

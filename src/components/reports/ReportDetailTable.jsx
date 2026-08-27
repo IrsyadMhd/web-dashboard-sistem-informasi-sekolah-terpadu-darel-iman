@@ -144,8 +144,8 @@ export function ReportDetailTable({
       {/* Padded Container (Zero Horizontal Scroll/Shift) */}
       <div className="p-4 sm:p-6 md:p-8">
         <div className="overflow-hidden rounded-2xl border border-slate-200/90 shadow-2xs dark:border-slate-800">
-          <div className="w-full overflow-hidden print:overflow-visible">
-            <TableRoot className="w-full table-fixed border-collapse" fullBleed={false}>
+          <div className="w-full overflow-x-auto min-w-0 print:overflow-visible">
+            <TableRoot className="w-full min-w-[640px] border-collapse" fullBleed={false}>
               <TableHeader className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/80 text-[10px] font-black uppercase tracking-[0.12em] text-slate-800 dark:text-slate-100">
                 <TableRow>
                   {columns.map((col, idx) => (

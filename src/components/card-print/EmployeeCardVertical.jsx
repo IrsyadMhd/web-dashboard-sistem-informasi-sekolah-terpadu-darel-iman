@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { getCardLogoUrl } from '../../utils/cardLogoHelper'
+import { resolveAvatarUrl } from '../ui/PersonAvatar'
 
 export default function EmployeeCardVertical({
   employee,
@@ -145,15 +146,19 @@ export default function EmployeeCardVertical({
         }}
       >
         <span className="employee-id-card__photo-initials">{initials}</span>
-        {employee.foto && (
-          <img
-            src={employee.foto}
-            alt={namaLengkap}
-            onError={(e) => {
-              e.currentTarget.style.visibility = 'hidden'
-            }}
-          />
-        )}
+        {(() => {
+          const resolved = resolveAvatarUrl(employee)
+          if (!resolved) return null
+          return (
+            <img
+              src={resolved}
+              alt={namaLengkap}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          )
+        })()}
       </div>
 
       <div

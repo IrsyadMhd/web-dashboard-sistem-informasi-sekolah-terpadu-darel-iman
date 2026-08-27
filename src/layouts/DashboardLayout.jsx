@@ -1415,7 +1415,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
                 >
                   <Layers className="h-4 w-4 text-sky-600 dark:text-sky-400 stroke-[2.2]" />
                   <span className="hidden sm:inline text-sky-600/80 dark:text-sky-400/80 font-medium">Unit:</span>
-                  <span className="font-extrabold text-sky-900 dark:text-sky-200">{activeUnit || 'Semua Unit'}</span>
+                  <span className="font-extrabold text-sky-900 dark:text-sky-200 max-w-[100px] xs:max-w-[140px] sm:max-w-none truncate inline-block">{activeUnit || 'Semua Unit'}</span>
                   <ChevronDown className="h-3.5 w-3.5 text-sky-500" />
                 </button>
 
@@ -1503,7 +1503,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
 
               {/* 4. Dropdown Akses Role (HANYA muncul jika Super Admin / Admin, terletak tepat di samping button notifikasi) */}
               {hasFullMenuAccess && (
-                <div className="relative shrink-0 group" ref={roleAccessRef}>
+                <div className="relative shrink-0 group hidden sm:flex" ref={roleAccessRef}>
                   <button
                     type="button"
                     onClick={() => setRoleAccessOpen(!roleAccessOpen)}
@@ -1565,7 +1565,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
               </div>
 
               {/* 6. Cache Reset Button (Soft Pastel Amber/Orange) */}
-              <div className="group relative">
+              <div className="group relative hidden sm:flex">
                 <button
                   type="button"
                   onClick={handleResetCache}
@@ -1584,7 +1584,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
               </div>
 
               {/* 7. Light / Dark Mode Button (Soft Pastel Fuchsia/Pink) */}
-              <div className="group relative">
+              <div className="group relative hidden sm:flex">
                 <button
                   type="button"
                   onClick={() => setIsDarkMode(!isDarkMode)}
@@ -1672,6 +1672,29 @@ const getSidebarIconBadgeClass = (key, idx) => {
                           <span>Pengaturan Akun</span>
                         </button>
 
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsDarkMode(!isDarkMode)
+                          }}
+                          className="w-full sm:hidden flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                        >
+                          {isDarkMode ? <Sun className="h-5 w-5 text-amber-500 stroke-[1.8]" /> : <Moon className="h-5 w-5 text-fuchsia-600 dark:text-fuchsia-400 stroke-[1.8]" />}
+                          <span>Mode {isDarkMode ? 'Terang' : 'Gelap'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileDropdownOpen(false)
+                            handleResetCache()
+                          }}
+                          className="w-full sm:hidden flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                        >
+                          <RefreshCw className="h-5 w-5 text-amber-600 dark:text-amber-400 stroke-[1.8]" />
+                          <span>Atur Ulang Cache</span>
+                        </button>
+
                         {!isDivisiPendidikan && (
                           <button
                             type="button"
@@ -1720,7 +1743,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
           </header>
 
           {/* Main Page Workspace Container (Light Gray bg-slate-50) */}
-          <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-5 lg:p-6 space-y-6 max-w-7xl w-full mx-auto pb-24 lg:pb-10">
+          <main className="min-w-0 flex-1 overflow-x-hidden px-3 py-3.5 sm:px-5 sm:py-5 lg:p-6 space-y-4 sm:space-y-6 max-w-none lg:max-w-7xl w-full mx-auto pb-24 lg:pb-10">
             {impersonating && (
               <div className="auth-impersonating-banner flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
                 <div>

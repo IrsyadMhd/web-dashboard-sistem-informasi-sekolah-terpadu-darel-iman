@@ -358,23 +358,23 @@ export default function SuperAdminDashboardPage() {
           <AppBreadcrumb items={[{ label: `Dashboard Utama ${welcomeRoleName}` }]} />
 
           {/* Header Halaman Modern Hero Card */}
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="relative overflow-hidden rounded-[18px] sm:rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-3.5 sm:p-5 md:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
             {/* Ambient Glow Background Accent (Vibrant Dual Emerald-Teal Blobs) */}
             <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
             <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-4 min-w-0">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
-                  <ShieldCheck className="h-6 w-6" />
+            <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600 mt-0.5 sm:mt-0">
+                  <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
                       Dashboard Utama {welcomeRoleName}
                     </h1>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
-                      <ShieldCheck className="h-3.5 w-3.5" />
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-2.5 py-0.5 sm:px-3.5 sm:py-1 text-[10px] sm:text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                      <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                       {welcomeRoleName}
                     </span>
                   </div>
@@ -384,14 +384,14 @@ export default function SuperAdminDashboardPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-center w-full sm:w-auto">
                 <AppButton
                   variant="outline"
                   size="sm"
                   icon={RefreshCw}
                   pending={loading}
                   onClick={fetchDashboard}
-                  className="text-xs font-bold text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/80"
+                  className="w-full sm:w-auto text-xs font-bold text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/80"
                 >
                   Segarkan Data
                 </AppButton>
@@ -401,14 +401,14 @@ export default function SuperAdminDashboardPage() {
         </motion.div>
 
         {/* 3. Primary KPI Summary Cards (5-Card Grid) */}
-        <motion.div variants={itemVariants} className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+        <motion.div variants={itemVariants} className="space-y-2">
+          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-0.5 sm:gap-2">
+            <h2 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
               Metrik Utama Sistem & Unit Sekolah
             </h2>
-            <span className="text-xs text-slate-400 font-medium">Updated Realtime</span>
+            <span className="text-[10px] sm:text-xs text-slate-400 font-medium">Updated Realtime</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
             {primaryCards.map((card) => {
               const style = toneStyles[card.tone] || toneStyles.emerald
               const Icon = card.icon
@@ -421,29 +421,29 @@ export default function SuperAdminDashboardPage() {
                   onClick={() => setActiveModal(card.modalKey)}
                   role="button"
                   tabIndex={0}
-                  className={`group flex flex-col justify-between h-full p-4 rounded-[18px] border shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer ${style.cardBg}`}
+                  className={`group flex flex-col justify-between h-full p-3 sm:p-4 rounded-[16px] sm:rounded-[18px] border shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer ${style.cardBg}`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center justify-between gap-1.5 mb-2 sm:mb-3">
                     <div
-                      className={`size-10 sm:size-11 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}
+                      className={`size-8 sm:size-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}
                     >
-                      <Icon className="size-5 sm:size-6" />
+                      <Icon className="size-4 sm:size-5" />
                     </div>
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${style.badge}`}
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] sm:text-[11px] font-bold ${style.badge}`}
                     >
                       {card.badgeText}
                     </span>
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">
+                    <span className="text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5 truncate">
                       {card.title}
                     </span>
-                    <strong className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
+                    <strong className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
                       {formatAngka(card.value)}
                     </strong>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+                  <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-2 mt-2 sm:pt-3 sm:mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
                     <span>Lihat Rincian</span>
                     <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
                       Detail &rarr;
@@ -456,8 +456,8 @@ export default function SuperAdminDashboardPage() {
         </motion.div>
 
         {/* 4. Secondary KPI Grid */}
-        <motion.div variants={itemVariants} className="space-y-2.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <motion.div variants={itemVariants} className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
             {secondaryCards.map((card) => {
               const style = toneStyles[card.tone] || toneStyles.violet
               const Icon = card.icon
@@ -470,29 +470,29 @@ export default function SuperAdminDashboardPage() {
                   onClick={() => setActiveModal(card.modalKey)}
                   role="button"
                   tabIndex={0}
-                  className={`group flex flex-col justify-between h-full p-4 rounded-[18px] border shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer ${style.cardBg}`}
+                  className={`group flex flex-col justify-between h-full p-3 sm:p-4 rounded-[16px] sm:rounded-[18px] border shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer ${style.cardBg}`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center justify-between gap-1.5 mb-2 sm:mb-3">
                     <div
-                      className={`size-10 sm:size-11 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}
+                      className={`size-8 sm:size-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}
                     >
-                      <Icon className="size-5 sm:size-6" />
+                      <Icon className="size-4 sm:size-5" />
                     </div>
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${style.badge}`}
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] sm:text-[11px] font-bold ${style.badge}`}
                     >
                       {card.badgeText}
                     </span>
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">
+                    <span className="text-[11px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5 truncate">
                       {card.title}
                     </span>
-                    <strong className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
+                    <strong className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
                       {formatAngka(card.value)}
                     </strong>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+                  <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-2 mt-2 sm:pt-3 sm:mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
                     <span>Analisis Modul</span>
                     <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
                       Detail &rarr;

@@ -35,6 +35,81 @@ function getFallbackTone(name) {
   return tones[code % tones.length]
 }
 
+/**
+ * Resolves avatar/photo URL robustly from any employee or user object or string path.
+ */
+export function resolveAvatarUrl(src) {
+  if (!src) return null
+
+  let raw = src
+  if (typeof src === 'object') {
+    raw =
+      src.photo_url ||
+      src.avatar_url ||
+      src.user?.photo_url ||
+      src.user?.avatar_url ||
+      src.foto ||
+      src.foto_path ||
+      src.photo ||
+      src.avatar ||
+      src.foto_url ||
+      src.user?.foto ||
+      src.user?.photo ||
+      src.user?.avatar ||
+      src.metadata?.photo_url ||
+      src.metadata?.avatar_url ||
+      src.metadata?.foto ||
+      src.metadata?.photo ||
+      src.metadata?.avatar ||
+      src.metadata?.foto_url ||
+      src.user?.metadata?.photo_url ||
+      src.user?.metadata?.avatar_url ||
+      src.user?.metadata?.foto ||
+      src.user?.metadata?.photo ||
+      src.user?.metadata?.avatar ||
+      src.user?.metadata?.avatar_url ||
+      src.raw?.photo_url ||
+      src.raw?.avatar_url ||
+      src.raw?.foto ||
+      ''
+  }
+
+  if (!raw || typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+
+  if (trimmed.startsWith('data:')) return trimmed
+
+  const envApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+  let backendOrigin = envApiBase.replace(/\/api\/?$/, '')
+
+  if (typeof window !== 'undefined' && window.location) {
+    const currentHost = window.location.hostname || 'localhost'
+    if (backendOrigin.includes('localhost')) {
+      backendOrigin = backendOrigin.replace('localhost', currentHost)
+    } else if (backendOrigin.includes('127.0.0.1')) {
+      backendOrigin = backendOrigin.replace('127.0.0.1', currentHost)
+    }
+  }
+
+  let url = trimmed
+  if (/^https?:\/\//i.test(url)) {
+    if (typeof window !== 'undefined' && window.location) {
+      const currentHost = window.location.hostname || 'localhost'
+      if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/storage\/|\/app\/|\/uploads\/)/i.test(url)) {
+        url = url.replace(/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, backendOrigin)
+      }
+    }
+    return url
+  }
+
+  const cleanPath = url.startsWith('/') ? url : `/${url}`
+  if (cleanPath.startsWith('/storage/')) {
+    return `${backendOrigin}${cleanPath}`
+  }
+  return `${backendOrigin}/storage${cleanPath}`
+}
+
 export default function PersonAvatar({
   src,
   name,
@@ -50,29 +125,7 @@ export default function PersonAvatar({
     setImageFailed(false)
   }, [src])
 
-  const resolvedSrc = useMemo(() => {
-    if (!src || typeof src !== 'string') return null
-    const trimmed = src.trim()
-    if (!trimmed) return null
-
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
-    const backendOrigin = apiBase.replace(/\/api\/?$/, '')
-
-    let url = trimmed
-    // Fix legacy URLs generated when APP_URL was missing port 8000
-    if (url.startsWith('http://localhost/storage/') || url.startsWith('http://127.0.0.1/storage/')) {
-      url = url.replace(/^http:\/\/(localhost|127\.0\.0\.1)\/storage\//, `${backendOrigin}/storage/`)
-    }
-
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-      return url
-    }
-    const cleanPath = url.startsWith('/') ? url : `/${url}`
-    if (cleanPath.startsWith('/storage/')) {
-      return `${backendOrigin}${cleanPath}`
-    }
-    return `${backendOrigin}/storage${cleanPath}`
-  }, [src])
+  const resolvedSrc = useMemo(() => resolveAvatarUrl(src), [src])
 
   const isCircle = shape === 'circle'
   const wrapperClass = [
