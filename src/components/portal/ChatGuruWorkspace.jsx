@@ -6,6 +6,7 @@ import {
   UserCheck,
   BookOpen,
   Filter,
+  Check,
   CheckCheck,
   Clock,
   AlertCircle,
@@ -21,9 +22,23 @@ import {
   Users,
   UserPlus,
   Briefcase,
-  Building2
+  Building2,
+  Lock,
+  Pin,
+  Image as ImageIcon,
+  FileText,
+  AtSign,
+  Mic,
+  Plus,
+  Phone,
+  Video,
+  MoreVertical,
+  X,
+  Minus
 } from 'lucide-react'
+import api from '../../services/api'
 import { familyPortalService } from '../../services/familyPortalService'
+import { educationUnitService } from '../../services/educationUnitService'
 
 const CATEGORIES = [
   'Akademik',
@@ -39,37 +54,163 @@ const CATEGORIES = [
   'Lainnya'
 ]
 
+const EMOJI_OPTIONS = ['👍', '🙏', '❤️', '👏', '😊', '💡']
+
+const formatMessageTime = (timestamp) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  if (isNaN(date.getTime())) return String(timestamp)
+  const now = new Date()
+  const isToday = date.toDateString() === now.toDateString()
+  return isToday
+    ? date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+}
+
 export default function ChatGuruWorkspace({
   mode = 'parent', // 'parent' | 'teacher' | 'employee'
   childId = '',
   childrenList = [],
-  onSelectChild = null,
+  onSelectChild = () => {},
   hideHeader = false,
   isPopup = false
 }) {
-  const [tab, setTab] = useState('all') // 'all' | 'homeroom' | 'subject' | 'unread' | 'directory'
-  const [search, setSearch] = useState('')
+  const [tab, setTab] = useState(mode === 'employee' ? 'percakapan' : 'all') // 'percakapan' | 'directory' | 'all' | 'kepsek' | 'divisi_pendidikan' | 'homeroom' | 'subject' | 'unread'
+  const [contacts, setContacts] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('chat_contacts_cache')
+      return cached ? JSON.parse(cached) : []
+    } catch { return [] }
+  })
+  const [directoryContacts, setDirectoryContacts] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('chat_directory_cache')
+      return cached ? JSON.parse(cached) : []
+    } catch { return [] }
+  })
   const [selectedContact, setSelectedContact] = useState(null)
-  const [contacts, setContacts] = useState([])
-  const [directoryContacts, setDirectoryContacts] = useState([])
+  const [dbUnits, setDbUnits] = useState([])
+
   const [messages, setMessages] = useState([])
   const [messageText, setMessageText] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [search, setSearch] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState('all')
+  const [selectedStatus, setSelectedStatus] = useState('all')
+
   const [loading, setLoading] = useState(true)
   const [messagesLoading, setMessagesLoading] = useState(false)
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
+  const [showNewChatModal, setShowNewChatModal] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [selectedGroupParticipants, setSelectedGroupParticipants] = useState([])
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false)
+  const [showAnnouncement, setShowAnnouncement] = useState(true)
 
   const messagesEndRef = useRef(null)
+
+  const currentUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('school_erp_user') || sessionStorage.getItem('school_erp_user')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }, [])
+  const currentUserId = currentUser?.id || currentUser?.user_id
+
+  const getAvatarUrl = (item) => {
+    if (!item) return null
+    const photo = item.foto || item.photo || item.avatar || item.user?.avatar
+    if (!photo || typeof photo !== 'string' || !photo.trim()) return null
+    if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:')) {
+      return photo
+    }
+    const cleanPath = photo.replace(/^\/?(storage\/)?/, '')
+    return `/storage/${cleanPath}`
+  }
+
+  const renderPresenceDot = (status, isOnline) => {
+    const isActivelyOnline = isOnline || status === 'online'
+    const isBusy = status === 'busy' || status === 'sibuk'
+
+    if (isActivelyOnline) {
+      return (
+        <span
+          title="Status: Online"
+          className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-pulse"
+        />
+      )
+    }
+    if (isBusy) {
+      return (
+        <span
+          title="Status: Sibuk"
+          className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900"
+        />
+      )
+    }
+    return (
+      <span
+        title="Status: Offline"
+        className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-600 ring-2 ring-white dark:ring-slate-900"
+      />
+    )
+  }
+
+  // Fetch unit pendidikan directly from PostgreSQL database
+  useEffect(() => {
+    const fetchUnits = async () => {
+      try {
+        const res = await api.get('/foundation/units').catch(() => educationUnitService.getAll())
+        const raw = res?.data?.data || res?.data || res || []
+        const list = Array.isArray(raw) ? raw : (Array.isArray(raw.data) ? raw.data : [])
+        setDbUnits(list)
+      } catch (err) {
+        setDbUnits([])
+      }
+    }
+    fetchUnits()
+  }, [])
+
+  const availableUnits = useMemo(() => {
+    const map = new Map()
+
+    dbUnits.forEach((u) => {
+      const uName = u.name || u.nama_unit || u.nama
+      const uId = u.id || u.unit_id
+      if (uName) {
+        const key = uId ? String(uId) : uName
+        map.set(key, { id: key, name: uName })
+      }
+    })
+
+    directoryContacts.forEach((c) => {
+      const uName = c.unit_name || c.unit?.name
+      const uId = c.unit_id || c.unit?.id
+      if (uName && uName !== '-') {
+        const key = uId ? String(uId) : uName
+        if (!map.has(key)) {
+          map.set(key, { id: key, name: uName })
+        }
+      }
+    })
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [dbUnits, directoryContacts])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   // Load Contacts or Teacher/Employee Conversations
-  const fetchContacts = async () => {
-    setLoading(true)
+  // Load Contacts or Teacher/Employee Conversations
+  const fetchContacts = async (querySearch = search, unit = selectedUnit, status = selectedStatus) => {
+    if (contacts.length === 0 && directoryContacts.length === 0) {
+      setLoading(true)
+    }
     setError('')
     try {
       if (mode === 'parent') {
@@ -82,22 +223,36 @@ export default function ChatGuruWorkspace({
       } else if (mode === 'employee') {
         const [convRes, dirRes] = await Promise.all([
           familyPortalService.employeeConversations().catch(() => ({ data: [] })),
-          familyPortalService.employeeContacts().catch(() => ({ data: [] }))
+          familyPortalService.employeeContacts(querySearch, unit, status).catch(() => ({ data: [] }))
         ])
-        const convList = convRes.data || []
-        const dirList = dirRes.data || []
+
+        const extractArray = (res) => {
+          if (!res) return []
+          if (Array.isArray(res)) return res
+          if (Array.isArray(res.data)) return res.data
+          if (Array.isArray(res.data?.data)) return res.data.data
+          return []
+        }
+
+        const convList = extractArray(convRes)
+        const dirList = extractArray(dirRes)
+
         setContacts(convList)
         setDirectoryContacts(dirList)
-        if (convList.length > 0 && !selectedContact) {
-          setSelectedContact(convList[0])
-        } else if (dirList.length > 0 && !selectedContact) {
-          setSelectedContact(dirList[0])
+        try {
+          sessionStorage.setItem('chat_contacts_cache', JSON.stringify(convList))
+          sessionStorage.setItem('chat_directory_cache', JSON.stringify(dirList))
+        } catch {}
+
+        const firstAvailable = convList.length > 0 ? convList[0] : (dirList.length > 0 ? dirList[0] : null)
+        if (!selectedContact && firstAvailable) {
+          setSelectedContact(firstAvailable)
         }
       } else {
         const res = await familyPortalService.teacherConversations()
         const list = res.data || []
         setContacts(list)
-        if (list.length > 0 && !selectedContact) {
+        if (!selectedContact && list.length > 0) {
           setSelectedContact(list[0])
         }
       }
@@ -110,30 +265,44 @@ export default function ChatGuruWorkspace({
 
   useEffect(() => {
     setSelectedContact(null)
-    fetchContacts()
+    if (mode === 'employee') {
+      setTab('percakapan')
+    } else {
+      setTab('all')
+    }
+    fetchContacts(search, selectedUnit, selectedStatus)
   }, [mode, childId])
+
+  // Trigger fetchContacts when search or filter controls change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchContacts(search, selectedUnit, selectedStatus)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [search, selectedUnit, selectedStatus])
 
   // Load Messages for selected contact
   const fetchMessages = async () => {
     if (!selectedContact) return
     setMessagesLoading(true)
     try {
+      const targetUserId = selectedContact.user_id || selectedContact.id
       if (mode === 'parent') {
-        const targetUserId = selectedContact.user_id || selectedContact.id
         const res = await familyPortalService.chatMessages(targetUserId, childId).catch(() => ({ data: [] }))
-        setMessages(res.data || [])
+        setMessages(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
       } else if (mode === 'employee') {
-        const targetUserId = selectedContact.user_id || selectedContact.id
-        const res = await familyPortalService.employeeMessages(targetUserId)
-        setMessages(res.data || [])
+        const res = await familyPortalService.employeeMessages(targetUserId).catch(() => ({ data: [] }))
+        const apiMsgs = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : [])
+        setMessages(apiMsgs)
       } else {
-        const parentUserId = selectedContact.parent_user_id
-        const studentId = selectedContact.student_id
-        const res = await familyPortalService.teacherMessages(parentUserId, studentId)
-        setMessages(res.data || [])
+        const parentUserId = selectedContact.parent_user_id || targetUserId
+        const studentId = selectedContact.student_id || childId
+        const res = await familyPortalService.teacherMessages(parentUserId, studentId).catch(() => ({ data: [] }))
+        setMessages(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
       }
     } catch (err) {
-      setError('Gagal memuat pesan percakapan.')
+      console.warn('Gagal memuat pesan percakapan:', err)
+      setMessages([])
     } finally {
       setMessagesLoading(false)
       setTimeout(scrollToBottom, 100)
@@ -144,30 +313,161 @@ export default function ChatGuruWorkspace({
     fetchMessages()
   }, [selectedContact, childId])
 
-  // Filter contacts by Tab & Search
+  // Combined contacts for Employee mode
+  const combinedEmployeeContacts = useMemo(() => {
+    if (mode !== 'employee') return contacts
+
+    const map = new Map()
+
+    // Directory contacts
+    directoryContacts.forEach((dirItem, idx) => {
+      const uid = dirItem.user_id || dirItem.id || `dir_${idx}`
+      map.set(uid, { ...dirItem })
+    })
+
+    // Active conversations
+    contacts.forEach((convItem, idx) => {
+      const uid = convItem.user_id || convItem.id || `conv_${idx}`
+      const existing = map.get(uid)
+      if (existing) {
+        map.set(uid, {
+          ...existing,
+          ...convItem,
+          is_online: existing.is_online ?? convItem.is_online,
+          status: existing.status ?? convItem.status,
+        })
+      } else {
+        map.set(uid, { ...convItem })
+      }
+    })
+
+    const mergedList = Array.from(map.values())
+
+    return mergedList.sort((a, b) => {
+      if (a.last_message_at && b.last_message_at) {
+        return new Date(b.last_message_at) - new Date(a.last_message_at)
+      }
+      if (a.last_message_at) return -1
+      if (b.last_message_at) return 1
+      return (a.name || '').localeCompare(b.name || '')
+    })
+  }, [mode, contacts, directoryContacts])
+
+  const selectedUnitObj = useMemo(() => {
+    if (!selectedUnit || selectedUnit === 'all') return null
+    return availableUnits.find(
+      (u) => String(u.id).toLowerCase() === String(selectedUnit).toLowerCase() ||
+             u.name.toLowerCase() === String(selectedUnit).toLowerCase()
+    )
+  }, [availableUnits, selectedUnit])
+
+  // Filter contacts by Tab, Search, Unit, & Status
   const filteredContacts = useMemo(() => {
-    const activeSource = (mode === 'employee' && tab === 'directory') ? directoryContacts : contacts
+    const activeSource =
+      mode === 'employee'
+        ? tab === 'directory'
+          ? (directoryContacts.length > 0 ? directoryContacts : combinedEmployeeContacts)
+          : combinedEmployeeContacts
+        : contacts
+
+    const query = (search || '').trim().toLowerCase()
+    const targetUnit = (selectedUnit || '').trim().toLowerCase()
+    const targetStatus = (selectedStatus || '').trim().toLowerCase()
 
     return activeSource.filter((item) => {
-      const nameMatch =
-        (item.name || item.parent_name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (item.subject || item.class_name || item.position_name || item.unit_name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (item.student_name || item.nip_niy || '').toLowerCase().includes(search.toLowerCase())
+      // 1. Search Query Filter
+      if (query) {
+        const searchableStr = [
+          item.name,
+          item.nama_lengkap,
+          item.nama_panggilan,
+          item.position_name,
+          item.position?.name,
+          item.jabatan,
+          item.role,
+          item.unit_name,
+          item.unit?.name,
+          item.division_name,
+          item.nip_niy,
+          item.niy,
+          item.nik,
+          item.email,
+          item.no_hp
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
 
-      if (!nameMatch) return false
-
-      if (tab === 'homeroom') {
-        return item.teacher_type === 'wali_kelas' || item.role === 'Wali Kelas'
+        if (!searchableStr.includes(query)) return false
       }
-      if (tab === 'subject') {
-        return item.teacher_type === 'guru_mapel' || item.role === 'Guru Mapel'
+
+      // 2. Unit Filter
+      if (targetUnit && targetUnit !== 'all') {
+        const itemUnitName = (item.unit_name || item.unit?.name || '').toLowerCase()
+        const itemUnitId = String(item.unit_id || item.unit?.id || '').toLowerCase()
+        const selName = (selectedUnitObj?.name || targetUnit).toLowerCase()
+        const selId = String(selectedUnitObj?.id || targetUnit).toLowerCase()
+
+        const isMatch =
+          itemUnitId === selId ||
+          itemUnitId === targetUnit ||
+          (selName && itemUnitName === selName) ||
+          (selName.length > 2 && itemUnitName.includes(selName)) ||
+          (itemUnitName.length > 2 && selName.includes(itemUnitName))
+
+        if (!isMatch) return false
+      }
+
+      // 3. Status Filter
+      if (targetStatus && targetStatus !== 'all') {
+        const statusVal = String(item.status || '').toLowerCase()
+        const isOnline = Boolean(item.is_online === true || statusVal === 'online')
+        const isBusy = Boolean(statusVal === 'busy' || statusVal === 'sedang sibuk' || statusVal === 'sibuk')
+        const isOffline = !isOnline && !isBusy
+
+        if (targetStatus === 'online' && !isOnline) return false
+        if (targetStatus === 'busy' && !isBusy) return false
+        if (targetStatus === 'offline' && !isOffline) return false
+      }
+
+      // 4. Tab Scoping Filter
+      if (tab === 'percakapan' || tab === 'all' || tab === 'directory') {
+        return true
+      }
+      if (tab === 'kepsek') {
+        const pos = (item.position_name || item.role || item.title || '').toLowerCase()
+        return pos.includes('kepala') || pos.includes('kepsek') || pos.includes('waka') || pos.includes('principal')
+      }
+      if (tab === 'divisi_pendidikan') {
+        const pos = (item.position_name || item.role || item.division_name || '').toLowerCase()
+        return pos.includes('pendidikan') || pos.includes('divisi') || pos.includes('kurikulum') || pos.includes('kabid')
       }
       if (tab === 'unread') {
         return (item.unread_count || 0) > 0
       }
+
       return true
     })
-  }, [contacts, directoryContacts, search, tab, mode])
+  }, [contacts, combinedEmployeeContacts, directoryContacts, search, tab, mode, selectedUnit, selectedStatus])
+
+  // Total Unread Across All Conversations
+  const totalUnreadCount = useMemo(() => {
+    return filteredContacts.reduce((acc, item) => acc + (item.unread_count || 0), 0)
+  }, [filteredContacts])
+
+  // Separate Unread vs All Conversations for Sidebar
+  const unreadContacts = useMemo(() => {
+    return filteredContacts.filter((item) => (item.unread_count || 0) > 0)
+  }, [filteredContacts])
+
+  // Find index of first unread message in current conversation for Unread Divider
+  const firstUnreadMessageIndex = useMemo(() => {
+    if (!selectedContact) return -1
+    return messages.findIndex((msg) => {
+      const isIncoming = msg.sender_user_id === (selectedContact.user_id || selectedContact.id)
+      return isIncoming && !msg.read_at
+    })
+  }, [messages, selectedContact])
 
   // Handle Send Message
   const handleSend = async (e) => {
@@ -181,19 +481,30 @@ export default function ChatGuruWorkspace({
     }
 
     try {
+      const targetUserId = selectedContact.user_id || selectedContact.id
       if (mode === 'parent') {
-        const targetUserId = selectedContact.user_id || selectedContact.id
         await familyPortalService.sendMessage(targetUserId, childId, fullText)
       } else if (mode === 'employee') {
-        const targetUserId = selectedContact.user_id || selectedContact.id
         await familyPortalService.sendEmployeeMessage(targetUserId, fullText)
       } else {
-        const parentUserId = selectedContact.parent_user_id
-        const studentId = selectedContact.student_id
+        const parentUserId = selectedContact.parent_user_id || targetUserId
+        const studentId = selectedContact.student_id || childId
         await familyPortalService.sendTeacherMessage(parentUserId, studentId, fullText)
       }
+
+      const newMsg = {
+        id: 'msg_temp_' + Date.now(),
+        sender_user_id: currentUserId || 'own_user',
+        recipient_user_id: targetUserId,
+        message: fullText,
+        created_at: new Date().toISOString(),
+        is_own: true,
+        read_at: null
+      }
+      setMessages((prev) => [...prev, newMsg])
       setMessageText('')
       setSelectedCategory('')
+      setTimeout(scrollToBottom, 50)
       fetchMessages()
       fetchContacts()
     } catch (err) {
@@ -203,165 +514,271 @@ export default function ChatGuruWorkspace({
     }
   }
 
+  // Handle Reaction Toggle
+  const handleToggleReaction = async (messageId, reactionEmoji) => {
+    try {
+      await familyPortalService.addReaction(messageId, reactionEmoji)
+      fetchMessages()
+    } catch (err) {}
+  }
+
+  // Handle Create Group Conversation
+  const handleCreateGroup = async (e) => {
+    e.preventDefault()
+    if (!groupName.trim() || selectedGroupParticipants.length === 0 || isCreatingGroup) return
+
+    setIsCreatingGroup(true)
+    try {
+      const res = await familyPortalService.createGroupConversation(groupName.trim(), selectedGroupParticipants)
+      if (res?.data) {
+        setSelectedContact(res.data)
+        setShowNewChatModal(false)
+        setGroupName('')
+        setSelectedGroupParticipants([])
+        fetchContacts()
+      }
+    } catch (err) {
+      alert('Gagal membuat grup percakapan.')
+    } finally {
+      setIsCreatingGroup(false)
+    }
+  }
+
   return (
     <div
       className={`flex flex-col overflow-hidden ${
         isPopup
           ? 'h-full w-full bg-white dark:bg-slate-900'
-          : 'rounded-[20px] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 min-h-[580px] lg:h-[680px]'
+          : 'rounded-[22px] border border-emerald-500/20 bg-white shadow-xl dark:border-emerald-800/40 dark:bg-slate-900 min-h-[620px] lg:h-[720px]'
       }`}
     >
-      {/* Container Header */}
+      {/* 1. MAIN CONTAINER HEADER WITH GRADIENT (Matching Reference UI) */}
       {!hideHeader && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/60">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
-              <MessageSquare className="h-5 w-5" />
+        <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 px-5 py-3.5 text-white shadow-md">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md border border-white/20 text-white shadow-inner">
+                <MessageSquare className="h-5 w-5 text-emerald-100" />
+              </div>
+              <div>
+                <h2 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+                  <span>Chat Antar Pegawai</span>
+                </h2>
+                <p className="text-xs font-medium text-emerald-100/90">
+                  Ruang Diskusi Sekolah • Direct &amp; Group Perpesanan Terpadu
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-black text-slate-900 dark:text-white">
-                {mode === 'parent'
-                  ? 'Chat Guru'
-                  : mode === 'employee'
-                  ? 'Chat Antar Pegawai & Staf'
-                  : 'Komunikasi Orang Tua'}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {mode === 'parent'
-                  ? 'Komunikasi langsung dengan Wali Kelas & Guru Mapel anak'
-                  : mode === 'employee'
-                  ? 'Diskusi internal terpadu antar Guru, Staf, dan Pimpinan Sekolah'
-                  : 'Pesan masuk dan diskusi dengan Orang Tua / Wali Murid'}
-              </p>
+
+            {/* Header Right Action Icons */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                title="Minimize Window"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                title="Tutup"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
-
-          {/* Multi-Child Selector for Parent Mode */}
-          {mode === 'parent' && childrenList.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-400">Anak:</span>
-              <select
-                value={childId}
-                onChange={(e) => onSelectChild && onSelectChild(e.target.value)}
-                className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              >
-                {childrenList.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.full_name} ({c.kelas?.nama_kelas || 'Kelas'})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Main Workspace Layout */}
+      {/* 2. MAIN WORKSPACE GRID LAYOUT (2 Columns: Left = Contacts List & Filters, Right = Chat Page) */}
       <div
-        className={`grid flex-1 overflow-hidden ${
-          isPopup ? 'grid-cols-1 h-full' : 'grid-cols-1 lg:grid-cols-[320px_1fr]'
+        className={`grid flex-1 min-h-0 overflow-hidden ${
+          isPopup ? 'grid-cols-1 md:grid-cols-[330px_1fr] h-full' : 'grid-cols-1 md:grid-cols-[340px_1fr]'
         }`}
       >
-        {/* Left Sidebar: Navigation & Contact List */}
+        {/* LEFT SIDEBAR: SEARCH & CONVERSATION LIST (Column 1) */}
         <aside
-          className={`flex flex-col border-r border-slate-100 dark:border-slate-800 ${
-            mobileDetailOpen ? 'hidden' : 'flex'
-          } ${!isPopup ? 'lg:flex' : ''}`}
+          className={`flex flex-col border-r border-slate-200/80 dark:border-slate-800 h-full min-h-0 overflow-hidden ${
+            mobileDetailOpen ? 'hidden md:flex' : 'flex'
+          }`}
         >
-          {/* Tabs Nav */}
-          <div className="p-3 border-b border-slate-100 dark:border-slate-800 space-y-2">
-            <div className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100/80 p-1 dark:bg-slate-800/80">
+          {/* SEARCH BAR, FILTERS & TABS TOOLBAR IN COLUMN 1 (Zero Shifting) */}
+          <div className="p-3 border-b border-slate-200/80 dark:border-slate-800 space-y-2.5 bg-white dark:bg-slate-900 shrink-0">
+            {/* ROW 1: SEARCH INPUT & RESET BUTTON */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={
+                    tab === 'directory'
+                      ? 'Cari nama, NIP/NIY, unit...'
+                      : tab === 'kepsek'
+                      ? 'Cari Kepsek...'
+                      : tab === 'divisi_pendidikan'
+                      ? 'Cari Div. Pendidikan...'
+                      : 'Cari percakapan...'
+                  }
+                  className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-9 pr-3 text-xs font-medium outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              {selectedUnit !== 'all' || selectedStatus !== 'all' || search.trim() !== '' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedUnit('all')
+                    setSelectedStatus('all')
+                    setSearch('')
+                  }}
+                  className="flex h-9 items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-50 px-2.5 text-xs font-bold text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300 shadow-2xs transition cursor-pointer shrink-0"
+                  title="Reset Filter"
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  <span className="text-[11px]">Reset</span>
+                </button>
+              ) : null}
+            </div>
+
+            {/* ROW 2: UNIT & STATUS FILTER DROPDOWNS (2 Equal Columns - ZERO SHIFTING) */}
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={selectedUnit}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setSelectedUnit(val)
+                  fetchContacts(search, val, selectedStatus)
+                }}
+                className="h-8 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-2 text-[11px] font-bold text-slate-700 shadow-2xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer truncate"
+              >
+                <option value="all">Semua Unit</option>
+                {availableUnits.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setSelectedStatus(val)
+                  fetchContacts(search, selectedUnit, val)
+                }}
+                className="h-8 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-2 text-[11px] font-bold text-slate-700 shadow-2xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer truncate"
+              >
+                <option value="all">Status: Semua</option>
+                <option value="online">Status: Online</option>
+                <option value="busy">Status: Sibuk</option>
+                <option value="offline">Status: Offline</option>
+              </select>
+            </div>
+
+            {/* ROW 3: CATEGORY TABS PILLS */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pt-0.5 select-none">
               <button
-                onClick={() => setTab('all')}
-                className={`flex flex-1 items-center justify-center rounded-lg py-1.5 text-[11px] font-bold transition ${
-                  tab === 'all'
-                    ? 'bg-white text-emerald-700 shadow dark:bg-slate-900 dark:text-emerald-400'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                type="button"
+                onClick={() => setTab('percakapan')}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                  tab === 'percakapan'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
                 }`}
               >
-                {mode === 'employee' ? 'Percakapan' : 'Semua'}
+                Percakapan
               </button>
 
-              {mode === 'employee' ? (
-                <button
-                  onClick={() => setTab('directory')}
-                  className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] font-bold transition ${
-                    tab === 'directory'
-                      ? 'bg-white text-emerald-700 shadow dark:bg-slate-900 dark:text-emerald-400'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  <Users className="h-3 w-3" /> Pegawai
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setTab('homeroom')}
-                    className={`flex flex-1 items-center justify-center rounded-lg py-1.5 text-[11px] font-bold transition ${
-                      tab === 'homeroom'
-                        ? 'bg-white text-emerald-700 shadow dark:bg-slate-900 dark:text-emerald-400'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    Wali Kelas
-                  </button>
-                  <button
-                    onClick={() => setTab('subject')}
-                    className={`flex flex-1 items-center justify-center rounded-lg py-1.5 text-[11px] font-bold transition ${
-                      tab === 'subject'
-                        ? 'bg-white text-emerald-700 shadow dark:bg-slate-900 dark:text-emerald-400'
-                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    Guru Mapel
-                  </button>
-                </>
-              )}
-
               <button
-                onClick={() => setTab('unread')}
-                className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition ${
-                  tab === 'unread'
-                    ? 'bg-white text-emerald-700 shadow dark:bg-slate-900 dark:text-emerald-400'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                type="button"
+                onClick={() => setTab('directory')}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                  tab === 'directory'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
                 }`}
               >
-                Belum Dibaca
+                Pegawai
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTab('kepsek')}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                  tab === 'kepsek'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Kepsek
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTab('divisi_pendidikan')}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap ${
+                  tab === 'divisi_pendidikan'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Divisi
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTab('unread')}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-extrabold transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                  tab === 'unread'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                <span>Belum Dibaca</span>
+                {totalUnreadCount > 0 && (
+                  <span className="rounded-full bg-blue-500 px-1 py-0.2 text-[9px] font-black text-white">
+                    {totalUnreadCount}
+                  </span>
+                )}
               </button>
             </div>
 
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={
-                  mode === 'employee'
-                    ? 'Cari nama, NIP, unit, atau jabatan...'
-                    : 'Cari guru, orang tua, atau mata pelajaran...'
-                }
-                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
-              />
+            {/* ROW 4: TOTAL COUNTER SUMMARY */}
+            <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-0.5 pt-0.5">
+              <span>
+                {tab === 'directory'
+                  ? 'Total Pegawai: '
+                  : tab === 'kepsek'
+                  ? 'Total Kepsek: '
+                  : tab === 'divisi_pendidikan'
+                  ? 'Total Div. Pendidikan: '
+                  : tab === 'unread'
+                  ? 'Total Belum Dibaca: '
+                  : 'Total Percakapan: '}
+                <strong className="font-black text-emerald-700 dark:text-emerald-400">{filteredContacts.length}</strong>
+              </span>
             </div>
           </div>
 
-          {/* Contact Cards List */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {/* CONVERSATION LIST WITH UNREAD & ALL SECTIONS */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3.5 scroll-smooth">
             {loading ? (
-              <div className="space-y-2 p-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+              <div className="space-y-2.5 p-1">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
                 ))}
               </div>
             ) : error ? (
-              <div className="p-4 text-center">
-                <AlertCircle className="mx-auto mb-2 h-6 w-6 text-rose-500" />
+              <div className="p-6 text-center">
+                <AlertCircle className="mx-auto mb-2 h-7 w-7 text-rose-500" />
                 <p className="text-xs font-bold text-rose-600 dark:text-rose-400">{error}</p>
                 <button
+                  type="button"
                   onClick={fetchContacts}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-xs cursor-pointer"
                 >
                   <RefreshCw className="h-3.5 w-3.5" /> Coba Lagi
                 </button>
@@ -369,116 +786,224 @@ export default function ChatGuruWorkspace({
             ) : filteredContacts.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400">
                 <Inbox className="mx-auto mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
-                <p className="font-bold">Belum ada percakapan</p>
-                <p className="mt-1 text-[11px]">
-                  {mode === 'parent'
-                    ? 'Kontak guru untuk kelas anak akan tampil di sini.'
-                    : mode === 'employee'
-                    ? 'Klik tab "Pegawai" untuk memilih rekan kerja & memulai pesan.'
-                    : 'Pesan dari orang tua siswa akan muncul di sini.'}
+                <p className="font-bold">
+                  {tab === 'directory'
+                    ? 'Belum ada kontak pegawai'
+                    : tab === 'kepsek'
+                    ? 'Tidak ada kontak Kepala Sekolah'
+                    : tab === 'divisi_pendidikan'
+                    ? 'Tidak ada kontak Divisi Pendidikan'
+                    : tab === 'unread'
+                    ? 'Tidak ada pesan belum dibaca'
+                    : 'Belum ada percakapan aktif'}
                 </p>
+                <p className="mt-1 text-[11px]">
+                  {tab === 'directory'
+                    ? 'Kontak pegawai yang dapat Anda hubungi akan tampil di sini.'
+                    : tab === 'unread'
+                    ? 'Semua pesan dari pegawai telah Anda baca.'
+                    : 'Pilih pegawai dari daftar kontak untuk memulai percakapan.'}
+                </p>
+                {tab === 'percakapan' && directoryContacts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTab('directory')}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-md hover:bg-emerald-700 transition cursor-pointer"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Lihat Daftar Pegawai ({directoryContacts.length})
+                  </button>
+                )}
               </div>
             ) : (
-              filteredContacts.map((contact) => {
-                const contactId = contact.user_id || contact.id || contact.parent_user_id
-                const isSelected =
-                  selectedContact &&
-                  (selectedContact.user_id === contactId ||
-                    selectedContact.id === contactId ||
-                    selectedContact.parent_user_id === contact.parent_user_id)
-
-                const isHomeroom =
-                  contact.teacher_type === 'wali_kelas' || contact.role === 'Wali Kelas'
-
-                const avatarName = contact.name || contact.parent_name || 'U'
-
-                return (
-                  <button
-                    key={contactId + '_' + (contact.student_id || '')}
-                    onClick={() => {
-                      setSelectedContact(contact)
-                      setMobileDetailOpen(true)
-                    }}
-                    className={`group relative flex w-full items-start gap-3 rounded-xl p-3 text-left transition ${
-                      isSelected
-                        ? 'bg-emerald-50 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-100'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    {/* Avatar */}
-                    <div className="relative shrink-0">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-xs font-black text-white shadow-sm">
-                        {avatarName[0]}
-                      </div>
-                      {contact.unread_count > 0 && (
-                        <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white shadow">
-                          {contact.unread_count}
-                        </span>
-                      )}
+              <>
+                {/* SECTION 1: BELUM DIBACA (If any unread messages exist) */}
+                {unreadContacts.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 px-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      <span>BELUM DIBACA</span>
+                      <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-black text-white">
+                        {unreadContacts.length}
+                      </span>
                     </div>
 
-                    {/* Details */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <h4 className="truncate text-xs font-bold text-slate-900 dark:text-white">
-                          {contact.name || contact.parent_name}
-                        </h4>
-                        {contact.last_message_at && (
-                          <span className="shrink-0 text-[10px] text-slate-400">
-                            {new Date(contact.last_message_at).toLocaleTimeString('id-ID', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        )}
-                      </div>
+                    {unreadContacts.map((contact) => {
+                      const contactId = contact.user_id || contact.id
+                      const isSelected = selectedContact && (selectedContact.user_id === contactId || selectedContact.id === contactId)
+                      const isOnline = contact.is_online || contact.status === 'online'
 
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        <span
-                          className={`inline-block rounded-md px-1.5 py-0.5 text-[9px] font-black uppercase ${
-                            mode === 'employee'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : isHomeroom
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                              : 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300'
+                      return (
+                        <div
+                          key={'unread_' + contactId}
+                          onClick={() => {
+                            setSelectedContact(contact)
+                            setMobileDetailOpen(true)
+                          }}
+                          className={`group relative flex w-full items-center justify-between gap-3 rounded-2xl p-2.5 transition-all duration-200 cursor-pointer ${
+                            isSelected
+                              ? 'border border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-600 shadow-xs'
+                              : 'bg-blue-50/60 hover:bg-blue-50 dark:bg-blue-950/20 border border-blue-100/70 dark:border-blue-900/30'
                           }`}
                         >
-                          {contact.position_name || contact.role || (isHomeroom ? 'Wali Kelas' : 'Guru Mapel')}
-                        </span>
-                        <span className="truncate text-[11px] font-medium text-slate-500">
-                          {contact.unit_name || contact.subject || contact.class_name || '-'}
-                        </span>
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="relative shrink-0">
+                              {contact.type === 'group' ? (
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white font-bold shadow-2xs">
+                                  <Users className="h-4.5 w-4.5" />
+                                </div>
+                              ) : getAvatarUrl(contact) ? (
+                                <img
+                                  src={getAvatarUrl(contact)}
+                                  alt={contact.name}
+                                  className="h-10 w-10 rounded-full object-cover shadow-2xs ring-1 ring-slate-200"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none'
+                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'
+                                  }}
+                                />
+                              ) : (
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-xs font-black text-white shadow-2xs">
+                                  {(contact.name || 'P')[0]}
+                                </div>
+                              )}
+                              {contact.type !== 'group' && renderPresenceDot(contact.status, isOnline)}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <h4 className="truncate text-xs font-black text-slate-900 dark:text-white">
+                                  {contact.name}
+                                </h4>
+                                <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                  {formatMessageTime(contact.last_message_at)}
+                                </span>
+                              </div>
+                              <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                                {contact.last_message || contact.subtitle || 'Belum ada pesan'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {contact.unread_count > 0 && (
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-black text-white shadow-2xs">
+                                {contact.unread_count}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* SECTION 2: SEMUA PERCAKAPAN */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="px-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    SEMUA PERCAKAPAN
+                  </div>
+
+                  {filteredContacts.map((contact) => {
+                    const contactId = contact.user_id || contact.id
+                    const isSelected = selectedContact && (selectedContact.user_id === contactId || selectedContact.id === contactId)
+                    const isOnline = contact.is_online || contact.status === 'online'
+
+                    const displayName = contact.name || contact.nama_lengkap || contact.nama_panggilan || contact.nama || 'Pegawai'
+                    const displaySub = contact.last_message || contact.subtitle || contact.position_name || contact.position?.name || contact.jabatan || 'Staf Pegawai'
+
+                    return (
+                      <div
+                        key={'all_' + contactId}
+                        onClick={() => {
+                          setSelectedContact(contact)
+                          setMobileDetailOpen(true)
+                        }}
+                        className={`group relative flex w-full items-center justify-between gap-3 rounded-2xl p-2.5 transition-all duration-200 cursor-pointer ${
+                          isSelected
+                            ? 'border border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 dark:border-emerald-600 shadow-2xs'
+                            : 'border border-transparent bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="relative shrink-0">
+                            {contact.type === 'group' ? (
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-700 text-white font-bold shadow-2xs">
+                                <Users className="h-4.5 w-4.5" />
+                              </div>
+                            ) : getAvatarUrl(contact) ? (
+                              <img
+                                src={getAvatarUrl(contact)}
+                                alt={displayName}
+                                className="h-10 w-10 rounded-full object-cover shadow-2xs ring-1 ring-slate-200"
+                                onError={(e) => {
+                                  e.target.style.display = 'none'
+                                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'
+                                }}
+                              />
+                            ) : (
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-xs font-black text-white shadow-2xs">
+                                {displayName[0]}
+                              </div>
+                            )}
+                            {contact.type !== 'group' && renderPresenceDot(contact.status, isOnline)}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <h4 className="truncate text-xs font-black text-slate-900 dark:text-white">
+                                {displayName}
+                              </h4>
+                              <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                {formatMessageTime(contact.last_message_at)}
+                              </span>
+                            </div>
+
+                            <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                              {displaySub}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Right: Unread Badge or Read Checkmark */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {contact.unread_count > 0 ? (
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-black text-white shadow-2xs">
+                              {contact.unread_count}
+                            </span>
+                          ) : (
+                            <CheckCheck className="h-4 w-4 text-emerald-600" />
+                          )}
+                        </div>
                       </div>
-
-                      {mode === 'teacher' && contact.student_name && (
-                        <p className="mt-0.5 truncate text-[10px] text-slate-400">
-                          Siswa: <strong className="text-slate-600 dark:text-slate-300">{contact.student_name}</strong>
-                        </p>
-                      )}
-
-                      {contact.last_message && (
-                        <p className="mt-1 truncate text-[11px] text-slate-500 dark:text-slate-400">
-                          {contact.last_message}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                )
-              })
+                    )
+                  })}
+                </div>
+              </>
             )}
+          </div>
+
+          {/* SIDEBAR FOOTER: + PERCAKAPAN BARU BUTTON */}
+          <div className="p-3 border-t border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => setShowNewChatModal(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-50/80 px-4 py-2.5 text-xs font-extrabold text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100/90 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 transition shadow-2xs cursor-pointer"
+            >
+              <Plus className="h-4 w-4" /> Percakapan Baru
+            </button>
           </div>
         </aside>
 
-        {/* Right Area: Message Chat Detail */}
+        {/* RIGHT AREA: ACTIVE CHAT DETAIL WORKSPACE (Column 2) */}
         <main
-          className={`flex flex-col bg-slate-50/40 dark:bg-slate-900/40 ${
-            mobileDetailOpen ? 'flex' : 'hidden'
-          } ${!isPopup ? 'lg:flex' : ''}`}
+          className={`flex flex-col bg-white dark:bg-slate-900 h-full min-h-0 overflow-hidden ${
+            mobileDetailOpen ? 'flex' : 'hidden md:flex'
+          }`}
         >
           {selectedContact ? (
             <>
-              {/* Chat Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 shadow-sm">
+              {/* CHAT DETAIL HEADER */}
+              <div className="flex items-center justify-between border-b border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 shadow-2xs shrink-0">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setMobileDetailOpen(false)}
@@ -489,33 +1014,86 @@ export default function ChatGuruWorkspace({
                     <ChevronLeft className="h-5 w-5" />
                   </button>
 
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-xs font-black text-white">
-                    {(selectedContact.name || selectedContact.parent_name || 'U')[0]}
+                  <div className="relative">
+                    {selectedContact.type === 'group' ? (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-700 text-white font-bold shadow-2xs">
+                        <Users className="h-5 w-5" />
+                      </div>
+                    ) : getAvatarUrl(selectedContact) ? (
+                      <img
+                        src={getAvatarUrl(selectedContact)}
+                        alt={selectedContact.name}
+                        className="h-10 w-10 rounded-full object-cover shadow-2xs ring-1 ring-slate-200"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-xs font-black text-white shadow-2xs">
+                        {(selectedContact.name || 'P')[0]}
+                      </div>
+                    )}
+                    {selectedContact.type !== 'group' && renderPresenceDot(selectedContact.status, selectedContact.is_online || selectedContact.status === 'online')}
                   </div>
 
                   <div>
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white">
-                      {selectedContact.name || selectedContact.parent_name}
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>{selectedContact.name || selectedContact.nama_lengkap || 'Pegawai'}</span>
                     </h3>
-                    <p className="text-[11px] text-slate-500">
-                      {selectedContact.position_name || selectedContact.subject || selectedContact.role || 'Pegawai'}{' '}
-                      {selectedContact.unit_name && `• Unit: ${selectedContact.unit_name}`}{' '}
-                      {selectedContact.student_name && `• Siswa: ${selectedContact.student_name}`}{' '}
-                      {selectedContact.class_name && `• ${selectedContact.class_name}`}
+                    <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                      {selectedContact.type === 'group'
+                        ? `${selectedContact.members_count || selectedContact.participants?.length || 1} anggota`
+                        : `${selectedContact.position_name || selectedContact.role || 'Staf Pegawai'} ${selectedContact.unit_name ? '• ' + selectedContact.unit_name : ''}`}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                    <ShieldCheck className="h-3 w-3" />{' '}
-                    {mode === 'employee' ? 'Chat Internal Pegawai' : 'Percakapan Resmi'}
-                  </span>
+                {/* Header Action Icons */}
+                <div className="flex items-center gap-1">
+                  <button type="button" className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="Cari dalam chat">
+                    <Search className="h-4.5 w-4.5" />
+                  </button>
+                  <button type="button" className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="Panggilan Suara">
+                    <Phone className="h-4.5 w-4.5" />
+                  </button>
+                  <button type="button" className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="Panggilan Video">
+                    <Video className="h-4.5 w-4.5" />
+                  </button>
+                  <button type="button" className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+                    <MoreVertical className="h-4.5 w-4.5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Chat Messages Stream */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {/* PINNED ANNOUNCEMENT BANNER (Matching Reference UI) */}
+              {showAnnouncement && selectedContact.announcement && (
+                <div className="mx-4 mt-3 bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 rounded-2xl p-2.5 px-3.5 flex items-center justify-between gap-3 text-xs text-emerald-950 dark:text-emerald-200 font-medium shadow-2xs select-none shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Pin className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span className="truncate text-slate-700 dark:text-slate-300 font-medium">
+                      <strong className="font-extrabold text-emerald-900 dark:text-emerald-200">Pengumuman:</strong> {selectedContact.announcement}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAnnouncement(false)}
+                    className="ml-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 px-3 py-1 text-[11px] font-bold shrink-0 transition cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              )}
+
+              {/* CHAT MESSAGES STREAM */}
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3.5 scroll-smooth">
+                {/* Day Divider */}
+                <div className="flex items-center justify-center my-3">
+                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                    — Hari ini —
+                  </span>
+                </div>
+
                 {messagesLoading ? (
                   <div className="flex min-h-[200px] items-center justify-center">
                     <RefreshCw className="h-6 w-6 animate-spin text-emerald-600" />
@@ -526,95 +1104,157 @@ export default function ChatGuruWorkspace({
                       <Sparkles className="h-6 w-6" />
                     </div>
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Mulai percakapan santun & produktif
+                      Mulai percakapan santun &amp; produktif
                     </h4>
                     <p className="mx-auto mt-1 max-w-sm text-[11px] text-slate-400">
-                      {mode === 'employee'
-                        ? 'Tulis pesan internal untuk koordinasi pekerjaan, informasi unit, atau diskusi tim.'
-                        : 'Tulis pesan di bawah untuk berkonsultasi mengenai perkembangan akademik, tahfizh, atau mutabaah anak.'}
+                      Tulis pesan di bawah untuk memulai koordinasi pekerjaan atau diskusi internal.
                     </p>
                   </div>
                 ) : (
-                  messages.map((msg) => {
-                    const isOwn =
-                      msg.sender_user_id !==
-                      (selectedContact.user_id || selectedContact.parent_user_id || selectedContact.id)
+                  messages.map((msg, index) => {
+                    const targetUserId = selectedContact?.user_id || selectedContact?.id
+                    const isOwn = Boolean(
+                      msg.is_own ||
+                      (currentUserId && String(msg.sender_user_id) === String(currentUserId)) ||
+                      (targetUserId && String(msg.sender_user_id) !== String(targetUserId))
+                    )
+                    const senderName = isOwn ? 'Anda' : (msg.sender_name || selectedContact?.name || 'Pengirim')
+                    const isFirstUnread = Boolean(msg.is_unread || index === firstUnreadMessageIndex)
 
                     return (
-                      <div
-                        key={msg.id}
-                        className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
-                      >
-                        <div
-                          className={`max-w-[85%] sm:max-w-[70%] rounded-2xl p-3.5 text-xs shadow-sm ${
-                            isOwn
-                              ? 'bg-gradient-to-r from-emerald-700 to-teal-700 text-white rounded-br-none'
-                              : 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 rounded-bl-none border border-slate-100 dark:border-slate-700'
-                          }`}
-                        >
-                          <p className="whitespace-pre-wrap leading-relaxed">{msg.message}</p>
-                          <div className="mt-1 flex items-center justify-end gap-1 text-[9px] opacity-70">
-                            <span>
-                              {new Date(msg.created_at).toLocaleTimeString('id-ID', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                      <React.Fragment key={msg.id || index}>
+                        {/* UNREAD DIVIDER (Matching Reference UI) */}
+                        {isFirstUnread && (
+                          <div className="flex items-center justify-center my-4 select-none">
+                            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                              — Belum Dibaca —
                             </span>
-                            {isOwn && (
-                              <CheckCheck
-                                className={`h-3 w-3 ${
-                                  msg.read_at ? 'text-cyan-200' : 'text-white/60'
-                                }`}
+                          </div>
+                        )}
+
+                        <div className={`flex items-start gap-2.5 ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}>
+                          {!isOwn && (
+                            msg.sender_avatar || msg.sender_foto || selectedContact?.foto || selectedContact?.photo ? (
+                              <img
+                                src={msg.sender_avatar || msg.sender_foto || selectedContact?.foto || selectedContact?.photo}
+                                alt={senderName}
+                                className="h-8 w-8 rounded-full object-cover shrink-0 ring-1 ring-slate-200/80 mt-0.5"
                               />
+                            ) : (
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-xs font-black text-white shrink-0 shadow-2xs mt-0.5">
+                                {(senderName || 'P')[0]}
+                              </div>
+                            )
+                          )}
+
+                          <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[85%] sm:max-w-[78%]`}>
+                            {!isOwn && (
+                              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
+                                {senderName}
+                              </span>
                             )}
+
+                            <div className="flex items-end gap-2">
+                              <div
+                                className={`group relative rounded-2xl p-3 text-xs shadow-2xs ${
+                                  isOwn
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/80 text-slate-900 dark:text-emerald-100 rounded-tr-xs'
+                                    : 'bg-slate-100/90 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-xs'
+                                }`}
+                              >
+                                <p className="whitespace-pre-wrap leading-relaxed">{msg.message}</p>
+
+                                {/* Timestamp inside bubble right aligned */}
+                                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-400 font-semibold">
+                                  <span>{formatMessageTime(msg.created_at || msg.created_at_time)}</span>
+                                  {isOwn && (
+                                    <CheckCheck className="h-3.5 w-3.5 text-emerald-600" />
+                                  )}
+                                </div>
+
+                                {/* Emoji Reactions Bar */}
+                                {Array.isArray(msg.reactions) && msg.reactions.length > 0 && (
+                                  <div className="mt-1.5 flex flex-wrap gap-1">
+                                    {msg.reactions.map((r, rIdx) => (
+                                      <span
+                                        key={rIdx}
+                                        className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-200 shadow-2xs"
+                                      >
+                                        <span>{r.reaction}</span>
+                                        <span>{r.count}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {msg.is_unread && (
+                                <span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0 shadow-2xs mb-2" />
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </React.Fragment>
                     )
                   })
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Composer */}
-              <div className="border-t border-slate-100 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 space-y-2">
-                {/* Category Pills */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                  <span className="text-[10px] font-bold text-slate-400 shrink-0">Kategori:</span>
-                  {CATEGORIES.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() =>
-                        setSelectedCategory((prev) => (prev === cat ? '' : cat))
-                      }
-                      className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold transition ${
-                        selectedCategory === cat
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+              {/* 4. BOTTOM MESSAGE COMPOSER (Matching Reference UI) */}
+              <div className="border-t border-slate-200/80 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 space-y-2 shrink-0">
+                <form onSubmit={handleSend} className="space-y-2">
+                  {/* Curved Rounded Input Bar */}
+                  <div className="flex items-center gap-2 rounded-3xl border border-slate-200/90 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-1 shadow-inner">
+                    <input
+                      type="text"
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      placeholder="Ketik pesan..."
+                      className="h-9 flex-1 bg-transparent text-xs text-slate-900 dark:text-white outline-none placeholder:text-slate-400"
+                    />
 
-                {/* Input Form */}
-                <form onSubmit={handleSend} className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Ketik pesan Anda..."
-                    className="h-11 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 text-xs outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-800 dark:focus:bg-slate-900"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!messageText.trim() || sending}
-                    className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition hover:bg-emerald-700 disabled:opacity-40"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
+                    <button type="button" className="p-1 text-slate-400 hover:text-slate-600 transition" title="Rekam Suara">
+                      <Mic className="h-4.5 w-4.5" />
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={!messageText.trim() || sending}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition hover:bg-emerald-700 disabled:opacity-40 cursor-pointer shrink-0"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Bottom Attachment Toolbar */}
+                  <div className="flex items-center justify-between text-slate-400 px-2 pt-0.5">
+                    <div className="flex items-center gap-3">
+                      <button type="button" className="hover:text-emerald-600 transition cursor-pointer" title="Lampirkan File">
+                        <Paperclip className="h-4 w-4" />
+                      </button>
+                      <button type="button" className="hover:text-emerald-600 transition cursor-pointer" title="Emoji">
+                        <Smile className="h-4 w-4" />
+                      </button>
+                      <button type="button" className="hover:text-emerald-600 transition cursor-pointer" title="Mention User">
+                        <AtSign className="h-4 w-4" />
+                      </button>
+                      <button type="button" className="hover:text-emerald-600 transition cursor-pointer" title="Kirim Gambar">
+                        <ImageIcon className="h-4 w-4" />
+                      </button>
+                      <button type="button" className="hover:text-emerald-600 transition cursor-pointer" title="Kirim Dokumen">
+                        <FileText className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Unread Indicator Badge (Matching Reference UI) */}
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-600">
+                      <span>{totalUnreadCount} belum dibaca</span>
+                      {totalUnreadCount > 0 && (
+                        <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
+                      )}
+                    </div>
+                  </div>
                 </form>
               </div>
             </>
@@ -625,14 +1265,104 @@ export default function ChatGuruWorkspace({
                 Pilih Percakapan
               </h3>
               <p className="mt-1 max-w-xs text-xs text-slate-400">
-                {mode === 'employee'
-                  ? 'Pilih pegawai atau staf di sebelah kiri untuk membuka pesan.'
-                  : 'Pilih guru atau orang tua di sebelah kiri untuk membuka pesan.'}
+                Pilih pegawai atau staf di sebelah kiri untuk membuka pesan.
               </p>
             </div>
           )}
         </main>
       </div>
+
+      {/* MODAL: + PERCAKAPAN BARU (Direct or Group Chat) */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Plus className="h-4 w-4 text-emerald-600" /> Buat Percakapan / Grup Baru
+              </h3>
+              <button onClick={() => setShowNewChatModal(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateGroup} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nama Grup (Opsional jika Chat 1-on-1):
+                </label>
+                <input
+                  type="text"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder="Contoh: Rapat Divisi Pendidikan"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Pilih Anggota Pegawai:
+                </label>
+                <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-800 space-y-1 scroll-smooth">
+                  {directoryContacts.map((emp) => {
+                    const empId = emp.user_id || emp.id
+                    const isChecked = selectedGroupParticipants.includes(empId)
+
+                    return (
+                      <div
+                        key={empId}
+                        onClick={() => {
+                          if (!groupName.trim()) {
+                            // Direct Chat
+                            setSelectedContact(emp)
+                            setShowNewChatModal(false)
+                            setMobileDetailOpen(true)
+                          } else {
+                            // Toggle for Group
+                            setSelectedGroupParticipants((prev) =>
+                              prev.includes(empId) ? prev.filter((id) => id !== empId) : [...prev, empId]
+                            )
+                          }
+                        }}
+                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                          isChecked ? 'bg-emerald-50 dark:bg-emerald-950/40' : ''
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{emp.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{emp.position_name || 'Staf Pegawai'}</p>
+                        </div>
+                        {groupName.trim() && (
+                          <input type="checkbox" checked={isChecked} onChange={() => {}} className="accent-emerald-600" />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowNewChatModal(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 cursor-pointer"
+                >
+                  Batal
+                </button>
+                {groupName.trim() && (
+                  <button
+                    type="submit"
+                    disabled={selectedGroupParticipants.length === 0 || isCreatingGroup}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md hover:bg-emerald-700 disabled:opacity-40 cursor-pointer"
+                  >
+                    Buat Grup
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

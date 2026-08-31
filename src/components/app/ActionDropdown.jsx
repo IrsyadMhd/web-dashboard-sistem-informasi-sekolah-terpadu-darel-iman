@@ -48,8 +48,6 @@ export default function ActionDropdown({
   )
   const canDelete = onDelete && checkPerm(deletePermission)
 
-  const hasAnyAction = canView || canEdit || canHistory || filteredExtraItems.length > 0 || canDelete
-
   const exec = (fn) => {
     if (typeof fn === 'function') {
       setTimeout(() => {
@@ -95,8 +93,13 @@ export default function ActionDropdown({
           </DropdownMenuItem>
         )}
         {filteredExtraItems.map((item, idx) => {
-          const IconComp = item.icon
           const isDanger = item.isDanger || item.danger
+          const iconClassName = `size-4 ${isDanger ? 'text-rose-500' : 'text-slate-500'}`
+          const renderedIcon = React.isValidElement(item.icon)
+            ? item.icon
+            : item.icon
+              ? React.createElement(item.icon, { className: iconClassName })
+              : null
           return (
             <DropdownMenuItem
               key={idx}
@@ -105,11 +108,7 @@ export default function ActionDropdown({
                 isDanger ? 'text-rose-600 dark:text-rose-400 hover:text-rose-700' : ''
               }`}
             >
-              {typeof IconComp === 'function' || (typeof IconComp === 'object' && IconComp && IconComp.$$typeof) ? (
-                <IconComp className={`size-4 ${isDanger ? 'text-rose-500' : 'text-slate-500'}`} />
-              ) : (
-                IconComp
-              )}
+              {renderedIcon}
               <span>{item.label}</span>
             </DropdownMenuItem>
           )

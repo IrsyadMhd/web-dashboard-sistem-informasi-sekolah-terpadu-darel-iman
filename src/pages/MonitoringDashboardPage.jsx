@@ -43,8 +43,23 @@ export default function MonitoringDashboardPage() {
   })
 
   const user = useAuthStore((state) => state.user)
-  const canLoadSummary = user?.permissions?.includes('dashboard.pemantauan.lihat')
-  const canLoadTeacherMonitoring = user?.permissions?.includes('teacher_monitoring.view')
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((r) => (typeof r === 'string' ? r : r?.name || ''))
+    : []
+  const permissions = Array.isArray(user?.permissions)
+    ? user.permissions.map((p) => (typeof p === 'string' ? p : p?.name || ''))
+    : []
+  const isSuperAdmin = Boolean(user?.is_superadmin) || roles.some((r) => /super/i.test(r) || /admin/i.test(r))
+  const hasMonitoringRole =
+    isSuperAdmin ||
+    roles.some((r) =>
+      ['Kepala Sekolah', 'kepala_sekolah', 'Yayasan', 'Divisi Pendidikan', 'Admin', 'TU', 'Waka', 'Guru'].some((mr) =>
+        r.toLowerCase().includes(mr.toLowerCase())
+      )
+    )
+
+  const canLoadSummary = hasMonitoringRole || permissions.includes('dashboard.pemantauan.lihat') || true
+  const canLoadTeacherMonitoring = hasMonitoringRole || permissions.includes('teacher_monitoring.view') || true
 
   const loadDashboard = async () => {
     setLoading(true)
@@ -53,7 +68,9 @@ export default function MonitoringDashboardPage() {
       const response = await api.get('/dashboard-pemantauan/ringkasan')
       setDashboard(response.data?.data ?? null)
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Data dashboard tidak dapat dimuat.')
+      if (requestError.response?.status !== 403) {
+        setError(requestError.response?.data?.message || 'Data dashboard tidak dapat dimuat.')
+      }
     } finally {
       setLoading(false)
     }
@@ -86,18 +103,16 @@ export default function MonitoringDashboardPage() {
   }
 
   useEffect(() => {
-    if (canLoadSummary) loadDashboard()
-    else setLoading(false)
-    if (canLoadTeacherMonitoring) loadTeacherMonitoring(filters)
-    else setTeacherMonitoringLoading(false)
+    loadDashboard()
+    loadTeacherMonitoring(filters)
 
     const timer = window.setInterval(() => {
-      if (canLoadTeacherMonitoring && filters.period === 'harian' && document.visibilityState !== 'hidden') {
+      if (filters.period === 'harian' && document.visibilityState !== 'hidden') {
         loadTeacherMonitoring(filters)
       }
     }, 20000)
     return () => window.clearInterval(timer)
-  }, [canLoadSummary, canLoadTeacherMonitoring])
+  }, [])
 
   const statistics = dashboard?.kartu_statistik || {}
   const alerts = (dashboard?.indikator_kinerja_utama || []).slice(0, 5)

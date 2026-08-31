@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react'
+import { useDebounce } from '../hooks/useDebounce'
 import { motion, AnimatePresence } from 'framer-motion'
 import { printEmployeeIdCard, downloadEmployeeIdCard } from '../services/idCardPrintService.jsx'
 import EmployeeIdCard from '../components/card-print/EmployeeIdCard'
@@ -369,6 +370,7 @@ export default function EmployeesPage() {
 
   // Filter States
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('')
   const [selectedJabatanFilter, setSelectedJabatanFilter] = useState('')
   const [selectedStatusPegawaiFilter, setSelectedStatusPegawaiFilter] = useState('')
@@ -461,7 +463,7 @@ export default function EmployeesPage() {
       'employees-list',
       page,
       perPage,
-      search,
+      debouncedSearch,
       selectedUnitFilter,
       selectedJabatanFilter,
       selectedStatusPegawaiFilter,
@@ -472,7 +474,7 @@ export default function EmployeesPage() {
       employeeService.getDaftar({
         page,
         per_page: perPage,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         unit_id: selectedUnitFilter || undefined,
         jabatan_id: selectedJabatanFilter || undefined,
         status_pegawai: selectedStatusPegawaiFilter || undefined,

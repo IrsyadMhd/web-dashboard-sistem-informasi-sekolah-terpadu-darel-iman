@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useDebounce } from '../hooks/useDebounce'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -264,6 +265,7 @@ export default function EducationUnitsPage() {
 
   // ── Filter & Pagination State ───────────────────────────────────────────
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('')
   const [selectedCityFilter, setSelectedCityFilter] = useState('')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
@@ -366,11 +368,11 @@ export default function EducationUnitsPage() {
 
   // ── Main List Query ─────────────────────────────────────────────────────
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['education-units', page, perPage, search, selectedTypeFilter, selectedCityFilter, selectedStatusFilter],
+    queryKey: ['education-units', page, perPage, debouncedSearch, selectedTypeFilter, selectedCityFilter, selectedStatusFilter],
     queryFn: () => educationUnitService.getDaftar({
       page,
       per_page: perPage,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       level: selectedTypeFilter || undefined,
       city: selectedCityFilter || undefined,
       status: selectedStatusFilter || undefined,

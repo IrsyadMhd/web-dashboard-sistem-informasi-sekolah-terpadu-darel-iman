@@ -3,6 +3,7 @@ import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import { ArrowRightLeft, Award, FileSpreadsheet, GraduationCap, RefreshCcw, ShieldAlert, UserCheck, UserMinus, UserPlus, UserRound, UsersRound } from 'lucide-react'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import api from '../../services/api'
+import useDebounce from '../../hooks/useDebounce'
 import {
   MasterBadge,
   MasterDataPage,
@@ -19,6 +20,8 @@ import {
 import { PersonIdentityCell } from '../../components/ui/PersonIdentityCell'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
+import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
+import { SquircleActionButton } from '../../components/master-data'
 
 const MUTATION_VARIANTS = {
   masuk: { label: 'Pindah Masuk', variant: 'success' },
@@ -43,6 +46,7 @@ export function FoundationMutationsPage() {
 
   const [jenis, setJenis] = useState('all') // 'all' | 'masuk' | 'antarunit' | 'keluar'
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedUnit, setSelectedUnit] = useState('all')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
@@ -51,6 +55,7 @@ export function FoundationMutationsPage() {
 
   const [selectedStudentId, setSelectedStudentId] = useState(null)
   const [showExport, setShowExport] = useState(false)
+  const [activeKpiModal, setActiveKpiModal] = useState(null)
 
   useEffect(() => {
     api.get('/foundation/units')
@@ -67,7 +72,7 @@ export function FoundationMutationsPage() {
     setError(false)
     try {
       const params = {
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         unit_id: selectedUnit !== 'all' ? selectedUnit : undefined,
         type: jenis !== 'all' ? jenis : undefined,
         per_page: 100,
@@ -88,29 +93,14 @@ export function FoundationMutationsPage() {
       setLoading(false)
       setIsFetching(false)
     }
-  }, [search, selectedUnit, jenis])
+  }, [debouncedSearch, selectedUnit, jenis])
 
   useEffect(() => {
     fetchMutations()
   }, [fetchMutations])
 
-  const filteredMutations = useMemo(() => mutations.filter((m) => {
-    const name = (m.full_name || m.nama || '').toString().toLowerCase()
-    const nis = (m.nis || m.nisn || '').toString().toLowerCase()
-    const unitName = (m.education_unit?.name || m.unit?.name || '').toString().toLowerCase()
-    const raw = (m.metadata?.mutasi_type || m.mutasi_type || '').toString().toLowerCase()
-
-    const matchesJenis =
-      jenis === 'all' ||
-      (jenis === 'masuk' && raw.includes('masuk')) ||
-      (jenis === 'antarunit' && raw.includes('antar')) ||
-      (jenis === 'keluar' && raw.includes('keluar'))
-
-    const matchesSearch = name.includes(search.toLowerCase()) || nis.includes(search.toLowerCase())
-    const matchesUnit = selectedUnit === 'all' || m.unit_id === selectedUnit || unitName.includes(selectedUnit.toLowerCase())
-
-    return matchesJenis && matchesSearch && matchesUnit
-  }), [mutations, jenis, search, selectedUnit])
+  // Filter dilakukan di backend via params (search, unit_id, type/jenis).
+  // FE tidak perlu filter ulang — langsung pakai data dari API.
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -122,7 +112,7 @@ export function FoundationMutationsPage() {
   }
 
   const sortedMutations = useMemo(() => {
-    return [...filteredMutations].sort((a, b) => {
+    return [...mutations].sort((a, b) => {
       let aVal = ''
       let bVal = ''
       if (sortKey === 'nama') {
@@ -143,7 +133,7 @@ export function FoundationMutationsPage() {
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
       return 0
     })
-  }, [filteredMutations, sortKey, sortOrder])
+  }, [mutations, sortKey, sortOrder])
 
   const totalItems = sortedMutations.length
   const lastPage = Math.max(1, Math.ceil(totalItems / perPage))
@@ -183,8 +173,8 @@ export function FoundationMutationsPage() {
       <section className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* 1. Siswa Aktif (Tahun Ajaran) */}
-          <a
-            href="/dashboard/yayasan/siswa"
+          <div
+            onClick={() => setActiveKpiModal('peningkatan')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -197,11 +187,11 @@ export function FoundationMutationsPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-emerald-100 px-2 py-1 text-[10px] font-extrabold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">Aktif</span>
-          </a>
+          </div>
 
           {/* 2. Siswa Masuk (Baru) */}
-          <a
-            href="/dashboard/yayasan/siswa-baru"
+          <div
+            onClick={() => setActiveKpiModal('siswa_mobility')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -214,11 +204,11 @@ export function FoundationMutationsPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-sky-100 px-2 py-1 text-[10px] font-extrabold text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">Baru</span>
-          </a>
+          </div>
 
           {/* 3. Siswa Keluar (Mutasi) */}
-          <a
-            href="/dashboard/yayasan/mutasi-siswa"
+          <div
+            onClick={() => setActiveKpiModal('siswa_mobility')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-50/60 p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-amber-800/60 dark:bg-amber-950/40 text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -231,11 +221,11 @@ export function FoundationMutationsPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-amber-200/80 px-2 py-1 text-[10px] font-extrabold text-amber-800 dark:bg-amber-900 dark:text-amber-200">Mutasi</span>
-          </a>
+          </div>
 
           {/* 4. Kelulusan & Alumni */}
-          <a
-            href="/dashboard/yayasan/kelulusan-alumni"
+          <div
+            onClick={() => setActiveKpiModal('alumni')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -248,7 +238,7 @@ export function FoundationMutationsPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-purple-100 px-2 py-1 text-[10px] font-extrabold text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">Alumni</span>
-          </a>
+          </div>
         </div>
       </section>
 
@@ -424,6 +414,13 @@ export function FoundationMutationsPage() {
         id={selectedStudentId}
         isOpen={Boolean(selectedStudentId)}
         onClose={() => setSelectedStudentId(null)}
+      />
+
+      <FoundationUnitKpiModal
+        type={activeKpiModal || 'siswa_mobility'}
+        isOpen={Boolean(activeKpiModal)}
+        onClose={() => setActiveKpiModal(null)}
+        units={units}
       />
 
       <FoundationExportModal

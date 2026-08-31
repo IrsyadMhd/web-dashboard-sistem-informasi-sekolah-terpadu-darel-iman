@@ -226,10 +226,10 @@ export const isGlobalAccessManager = (roles = []) =>
 
 /**
  * Unit Access Manager — kelola data unit sendiri saja.
- * Termasuk: Divisi Pendidikan (semua sub-divisi), Kepala Sekolah
+ * Termasuk: Divisi Pendidikan (semua sub-divisi), Kepala Sekolah, Tata Usaha
  */
 export const isUnitAccessManager = (roles = []) =>
-  hasAnyRole(roles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH])
+  hasAnyRole(roles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.TATA_USAHA])
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § 5. HELPER PREDICATE — BERDASARKAN DOKUMEN HAK AKSES SIT
@@ -467,4 +467,3 @@ export const getEditableTiers = (userRoles = []) => {
     .filter((tier) => hasAnyRole(userRoles, tier.canEditBy))
     .map((tier) => ({ tier, scope: isGlobalEditor ? 'global' : 'own_unit' }))
 }
-

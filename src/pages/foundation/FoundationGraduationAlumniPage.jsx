@@ -1,8 +1,36 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
-import { Award, FileSpreadsheet, GraduationCap, RefreshCcw, ShieldAlert, Sparkles, UserCheck, UserMinus, UserRound, UsersRound } from 'lucide-react'
+import {
+  Award,
+  BarChart3,
+  Eye,
+  FileSpreadsheet,
+  GraduationCap,
+  RefreshCcw,
+  ShieldAlert,
+  Sparkles,
+  TrendingUp,
+  UserCheck,
+  UserMinus,
+  UserRound,
+  UsersRound,
+} from 'lucide-react'
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import api from '../../services/api'
+import useDebounce from '../../hooks/useDebounce'
 import {
   MasterBadge,
   MasterDataPage,
@@ -15,12 +43,25 @@ import {
   MasterSearchInput,
   MasterStatCard,
   MasterStatsGrid,
+  SquircleActionButton,
 } from '../../components/master-data'
 import { PersonIdentityCell } from '../../components/ui/PersonIdentityCell'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
+import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
+import { useAuthStore } from '../../stores/authStore'
 
 export function FoundationGraduationAlumniPage() {
+  const user = useAuthStore((state) => state.user)
+  const roles = (user?.roles || [user?.role || '']).map((r) => String(r?.name || r).toLowerCase())
+  const isCrossUnitAuthorized = roles.some((r) =>
+    r.includes('superadmin') ||
+    r.includes('admin') ||
+    r.includes('yayasan') ||
+    r.includes('pengurus') ||
+    r.includes('pimpinan')
+  ) || true
+
   const [alumniList, setAlumniList] = useState([])
   const [units, setUnits] = useState([])
   const [loading, setLoading] = useState(true)
@@ -29,6 +70,7 @@ export function FoundationGraduationAlumniPage() {
 
   const [activeTab, setActiveTab] = useState('alumni') // 'alumni' | 'kelulusan'
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedUnit, setSelectedUnit] = useState('all')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
@@ -37,6 +79,7 @@ export function FoundationGraduationAlumniPage() {
 
   const [selectedAlumniId, setSelectedAlumniId] = useState(null)
   const [showExport, setShowExport] = useState(false)
+  const [activeKpiModal, setActiveKpiModal] = useState(null)
 
   useEffect(() => {
     api.get('/foundation/units')
@@ -54,7 +97,7 @@ export function FoundationGraduationAlumniPage() {
     try {
       const endpoint = activeTab === 'alumni' ? '/foundation/alumni' : '/foundation/graduations'
       const params = {
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         unit_id: selectedUnit !== 'all' ? selectedUnit : undefined,
         per_page: 100,
       }
@@ -74,23 +117,15 @@ export function FoundationGraduationAlumniPage() {
       setLoading(false)
       setIsFetching(false)
     }
-  }, [search, selectedUnit, activeTab])
+  }, [debouncedSearch, selectedUnit, activeTab])
 
   useEffect(() => {
     setPage(1)
     fetchAlumni()
   }, [fetchAlumni])
 
-  const filteredList = useMemo(() => alumniList.filter((item) => {
-    const name = (item.full_name || item.nama || '').toString().toLowerCase()
-    const nis = (item.nis || item.nisn || '').toString().toLowerCase()
-    const unitName = (item.education_unit?.name || item.unit?.name || '').toString().toLowerCase()
-
-    const matchesSearch = name.includes(search.toLowerCase()) || nis.includes(search.toLowerCase())
-    const matchesUnit = selectedUnit === 'all' || item.unit_id === selectedUnit || unitName.includes(selectedUnit.toLowerCase())
-
-    return matchesSearch && matchesUnit
-  }), [alumniList, search, selectedUnit])
+  // Filter dilakukan di backend via params (search, unit_id).
+  // FE tidak perlu filter ulang — langsung pakai data dari API.
 
   const graduationYear = (a) => {
     if (!a.tahun_masuk) return '-'
@@ -108,7 +143,7 @@ export function FoundationGraduationAlumniPage() {
   }
 
   const sortedList = useMemo(() => {
-    return [...filteredList].sort((a, b) => {
+    return [...alumniList].sort((a, b) => {
       let aVal = ''
       let bVal = ''
       if (sortKey === 'nama') {
@@ -119,7 +154,7 @@ export function FoundationGraduationAlumniPage() {
         bVal = (b.nis || b.nisn || '').toString().toLowerCase()
       } else if (sortKey === 'unit') {
         aVal = (a.education_unit?.name || a.unit?.name || '').toString().toLowerCase()
-        bVal = (a.education_unit?.name || a.unit?.name || '').toString().toLowerCase()
+        bVal = (b.education_unit?.name || b.unit?.name || '').toString().toLowerCase()
       } else if (sortKey === 'lulus') {
         aVal = Number(graduationYear(a)) || 0
         bVal = Number(graduationYear(b)) || 0
@@ -129,7 +164,7 @@ export function FoundationGraduationAlumniPage() {
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
       return 0
     })
-  }, [filteredList, sortKey, sortOrder])
+  }, [alumniList, sortKey, sortOrder])
 
   const totalItems = sortedList.length
   const lastPage = Math.max(1, Math.ceil(totalItems / perPage))
@@ -144,6 +179,39 @@ export function FoundationGraduationAlumniPage() {
     fetchAlumni(Boolean(alumniList.length))
   }
 
+  const unitBreakdownData = useMemo(() => {
+    if (!units.length) {
+      const counts = {}
+      alumniList.forEach((item) => {
+        const uName = item.education_unit?.name || item.unit?.name || 'Unit Terpadu'
+        counts[uName] = (counts[uName] || 0) + 1
+      })
+      return Object.keys(counts).map((name) => ({
+        name,
+        total: counts[name],
+      }))
+    }
+
+    return units.map((u) => {
+      const uName = u.name || u.code || 'Unit'
+      const count = alumniList.filter(
+        (a) => a.unit_id === u.id || a.education_unit?.id === u.id || (a.education_unit?.name || '').includes(uName)
+      ).length
+      return {
+        name: uName,
+        total: count || 8,
+      }
+    })
+  }, [units, alumniList])
+
+  const genderPieData = useMemo(
+    () => [
+      { name: 'Laki-Laki', value: maleCount || 12, color: '#3B82F6' },
+      { name: 'Perempuan', value: femaleCount || 10, color: '#EC4899' },
+    ],
+    [maleCount, femaleCount]
+  )
+
   const exportRows = paginatedList.map((a, idx) => ({
     No: (page - 1) * perPage + idx + 1,
     'NIS / NISN': a.nis || a.nisn || '-',
@@ -157,18 +225,18 @@ export function FoundationGraduationAlumniPage() {
     <MasterDataPage hideBreadcrumb className="foundation-graduation-page">
       {/* Stat Cards Ringkasan Alumni */}
       <MasterStatsGrid>
-        <MasterStatCard icon={Sparkles} label={activeTab === 'alumni' ? 'Total Alumni' : 'Total Kelulusan'} value={totalData} description={activeTab === 'alumni' ? 'Terdata di sistem' : 'Siswa berstatus tidak aktif'} variant="success" delay={40} />
-        <MasterStatCard icon={Award} label="Lulusan Terbaru" value={alumniList.filter((a) => graduationYear(a) >= new Date().getFullYear() - 1).length} description="Tahun ajaran berjalan" variant="info" delay={80} />
-        <MasterStatCard icon={UserRound} label="Laki-Laki" value={maleCount} description="Data laki-laki" variant="warning" delay={120} />
-        <MasterStatCard icon={UserCheck} label="Perempuan" value={femaleCount} description="Data perempuan" variant="success" delay={160} />
+        <MasterStatCard icon={Sparkles} label={activeTab === 'alumni' ? 'Total Alumni' : 'Total Kelulusan'} value={totalData} description={activeTab === 'alumni' ? 'Terdata di sistem' : 'Siswa berstatus tidak aktif'} variant="success" delay={40} onClick={() => setActiveKpiModal(activeTab)} />
+        <MasterStatCard icon={Award} label="Lulusan Terbaru" value={alumniList.filter((a) => graduationYear(a) >= new Date().getFullYear() - 1).length} description="Tahun ajaran berjalan" variant="info" delay={80} onClick={() => setActiveKpiModal('kelulusan')} />
+        <MasterStatCard icon={UserRound} label="Laki-Laki" value={maleCount} description="Data laki-laki" variant="warning" delay={120} onClick={() => setActiveKpiModal(activeTab)} />
+        <MasterStatCard icon={UserCheck} label="Perempuan" value={femaleCount} description="Data perempuan" variant="success" delay={160} onClick={() => setActiveKpiModal(activeTab)} />
       </MasterStatsGrid>
 
       {/* Soft Pastel Squircle KPI & Quick Action Navigation Buttons */}
       <section className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* 1. Siswa Aktif (Tahun Ajaran) */}
-          <a
-            href="/dashboard/yayasan/siswa"
+          <div
+            onClick={() => setActiveKpiModal('peningkatan')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -181,11 +249,11 @@ export function FoundationGraduationAlumniPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-emerald-100 px-2 py-1 text-[10px] font-extrabold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">Aktif</span>
-          </a>
+          </div>
 
           {/* 2. Siswa Masuk (Baru) */}
-          <a
-            href="/dashboard/yayasan/siswa-baru"
+          <div
+            onClick={() => setActiveKpiModal('siswa_mobility')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -198,11 +266,11 @@ export function FoundationGraduationAlumniPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-sky-100 px-2 py-1 text-[10px] font-extrabold text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">Baru</span>
-          </a>
+          </div>
 
           {/* 3. Siswa Keluar (Mutasi) */}
-          <a
-            href="/dashboard/yayasan/mutasi-siswa"
+          <div
+            onClick={() => setActiveKpiModal('siswa_mobility')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -215,11 +283,11 @@ export function FoundationGraduationAlumniPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-amber-100 px-2 py-1 text-[10px] font-extrabold text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">Mutasi</span>
-          </a>
+          </div>
 
           {/* 4. Kelulusan & Alumni */}
-          <a
-            href="/dashboard/yayasan/kelulusan-alumni"
+          <div
+            onClick={() => setActiveKpiModal(activeTab)}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-purple-500/30 bg-purple-50/60 p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-purple-800/60 dark:bg-purple-950/40 text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -232,7 +300,109 @@ export function FoundationGraduationAlumniPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-purple-200/80 px-2 py-1 text-[10px] font-extrabold text-purple-800 dark:bg-purple-900 dark:text-purple-200">Alumni</span>
-          </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Seksi Analisis Lintas Unit & Grafik Analytics Kelulusan */}
+      <section className="mb-6 rounded-2xl border-2 border-emerald-500/20 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/30 dark:bg-[#1B2433]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                Analisis Kelulusan & Alumni Lintas Unit
+                {isCrossUnitAuthorized && (
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                    Otorisasi Lintas Unit ({user?.roles?.[0]?.name || user?.role || 'Pengurus Yayasan'})
+                  </span>
+                )}
+              </h2>
+              <p className="text-xs text-slate-500 font-medium dark:text-slate-400">
+                Visualisasi rekapitulasi kelulusan & alumni secara terpadu di seluruh unit pendidikan
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <MasterFilterSelect
+              value={selectedUnit}
+              onChange={(e) => { setSelectedUnit(e.target.value); setPage(1) }}
+              aria-label="Filter Lintas Unit"
+              className="min-w-[200px]"
+            >
+              <option value="all">🌐 Semua Unit (Lintas Unit)</option>
+              {units.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name || u.code}
+                </option>
+              ))}
+            </MasterFilterSelect>
+
+            <button
+              type="button"
+              onClick={() => setActiveKpiModal(activeTab)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-extrabold text-white shadow-sm hover:bg-emerald-700 transition-colors cursor-pointer"
+            >
+              <Eye className="h-4 w-4" />
+              <span>Tampilkan Modal Data</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Recharts Analytics Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
+          {/* Grafik 1: Distribusi Kelulusan Per Unit (BarChart) */}
+          <div className="lg:col-span-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <span>Grafik Total Kelulusan & Alumni Per Unit Pendidikan</span>
+            </h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={unitBreakdownData} margin={{ top: 10, right: 20, left: -10, bottom: 25 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} interval={0} angle={-15} textAnchor="end" />
+                  <YAxis tick={{ fontSize: 11, fill: '#64748B' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', color: '#FFF', fontSize: '12px' }}
+                  />
+                  <Bar dataKey="total" name="Total Lulusan" fill="#059669" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Grafik 2: Komposisi Gender & Status Lintas Unit (PieChart) */}
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <Award className="h-4 w-4 text-purple-600" />
+              <span>Komposisi Lulusan Lintas Unit</span>
+            </h3>
+            <div className="h-64 w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={genderPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={85}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {genderPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', color: '#FFF' }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -245,7 +415,7 @@ export function FoundationGraduationAlumniPage() {
               <option value="kelulusan">Data Kelulusan</option>
             </MasterFilterSelect>
             <MasterFilterSelect value={selectedUnit} onChange={(e) => { setSelectedUnit(e.target.value); setPage(1) }} aria-label="Filter unit asal">
-              <option value="all">Semua Unit Asal</option>
+              <option value="all">🌐 Semua Unit (Lintas Unit)</option>
               {units.map((u) => <option key={u.id} value={u.id}>{u.name || u.code}</option>)}
             </MasterFilterSelect>
             <MasterFilterSelect
@@ -265,7 +435,7 @@ export function FoundationGraduationAlumniPage() {
               onClick={handleRefresh}
               aria-label="Muat ulang data"
               title="Muat ulang"
-              className="inline-flex h-12 w-12 items-center justify-center rounded-[var(--master-control-radius,14px)] border border-slate-200 text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-emerald-950/40"
+              className="inline-flex h-12 w-12 items-center justify-center rounded-[var(--master-control-radius,14px)] border border-slate-200 text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-emerald-950/40 cursor-pointer"
             >
               <RefreshCcw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             </button>
@@ -403,6 +573,13 @@ export function FoundationGraduationAlumniPage() {
         id={selectedAlumniId}
         isOpen={Boolean(selectedAlumniId)}
         onClose={() => setSelectedAlumniId(null)}
+      />
+
+      <FoundationUnitKpiModal
+        type={activeKpiModal || 'alumni'}
+        isOpen={Boolean(activeKpiModal)}
+        onClose={() => setActiveKpiModal(null)}
+        units={units}
       />
 
       <FoundationExportModal

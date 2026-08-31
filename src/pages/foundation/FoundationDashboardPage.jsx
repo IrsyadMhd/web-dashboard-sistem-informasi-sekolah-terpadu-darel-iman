@@ -649,7 +649,7 @@ export function FoundationDashboardPage() {
           />
 
           <KpiCard
-            title="Guru & Pendidik"
+            title="Guru"
             value={formatNumber(kpis.guru?.total ?? kpis.total_guru)}
             trend={kpis.guru?.growth ?? kpis.growth_guru}
             trendType={(kpis.guru?.growth ?? 0) >= 0 ? 'up' : 'down'}
@@ -662,7 +662,7 @@ export function FoundationDashboardPage() {
           />
 
           <KpiCard
-            title="Pegawai & Tendik"
+            title="Tendik"
             value={formatNumber(kpis.pegawai?.total ?? kpis.total_pegawai)}
             trend={kpis.pegawai?.growth ?? kpis.growth_pegawai}
             trendType={(kpis.pegawai?.growth ?? 0) >= 0 ? 'up' : 'down'}

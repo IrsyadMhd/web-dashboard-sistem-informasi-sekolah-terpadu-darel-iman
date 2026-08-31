@@ -6,6 +6,7 @@ import {
   ChevronRight,
   FileSpreadsheet,
   GraduationCap,
+  Printer,
   RefreshCw,
   Search,
   Sparkles,
@@ -17,8 +18,9 @@ import {
 import api from '../../services/api'
 import { Modal } from '../ui/modal'
 import { Button } from '../ui/button'
-import { MasterBadge } from '../master-data'
+import { MasterBadge, PrintOptionModal, SquircleActionButton } from '../master-data'
 import { PersonIdentityCell } from '../ui/PersonIdentityCell'
+import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
 import KpiDetailDrawer from '../KpiDetailDrawer'
 import { FoundationExportModal } from './FoundationExportModal'
 
@@ -47,6 +49,75 @@ const CONFIGS = {
     icon: Award,
     badgeColor: 'bg-purple-50 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300',
   },
+  alumni: {
+    title: 'Detail & Rekapitulasi Data Alumni',
+    subtitle: 'Rekapitulasi lulusan, status alumni, dan rekam jejak lulusan lintas unit',
+    icon: Award,
+    badgeColor: 'bg-purple-50 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300',
+  },
+  kelulusan: {
+    title: 'Detail & Rekapitulasi Kelulusan Siswa',
+    subtitle: 'Daftar kelulusan siswa lintas unit pendidikan terpadu',
+    icon: GraduationCap,
+    badgeColor: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
+  },
+}
+
+function getMobilityStatus(item) {
+  const typeVal = String(
+    item.metadata?.mutasi_type ||
+    item.mutasi_type ||
+    item.type ||
+    ''
+  ).toLowerCase()
+
+  const statusVal = String(
+    item.metadata?.status ||
+    item.status ||
+    item.status_proses ||
+    ''
+  ).toLowerCase()
+
+  const reasonVal = String(
+    item.metadata?.keterangan ||
+    item.reason ||
+    ''
+  ).toLowerCase()
+
+  if (
+    typeVal.includes('proses') ||
+    typeVal.includes('pending') ||
+    statusVal.includes('proses') ||
+    statusVal.includes('pending') ||
+    reasonVal.includes('proses') ||
+    reasonVal.includes('pending')
+  ) {
+    return {
+      key: 'proses',
+      label: 'Diproses',
+      badgeClass: 'inline-flex items-center justify-center rounded-full bg-amber-500 text-white font-extrabold text-[11px] px-3 py-1 shadow-xs tracking-wide',
+    }
+  }
+
+  if (
+    typeVal.includes('keluar') ||
+    typeVal.includes('exit') ||
+    typeVal.includes('drop') ||
+    typeVal.includes('berhenti') ||
+    statusVal.includes('keluar')
+  ) {
+    return {
+      key: 'keluar',
+      label: 'Siswa Keluar',
+      badgeClass: 'inline-flex items-center justify-center rounded-full bg-red-600 text-white font-extrabold text-[11px] px-3 py-1 shadow-xs tracking-wide',
+    }
+  }
+
+  return {
+    key: 'masuk',
+    label: 'Siswa Masuk',
+    badgeClass: 'inline-flex items-center justify-center rounded-full bg-emerald-600 text-white font-extrabold text-[11px] px-3 py-1 shadow-xs tracking-wide',
+  }
 }
 
 export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
@@ -58,7 +129,9 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
   const [dataList, setDataList] = useState([])
   const [search, setSearch] = useState('')
   const [selectedUnit, setSelectedUnit] = useState('all')
+  const [mobilityFilter, setMobilityFilter] = useState('all') // 'all' | 'masuk' | 'keluar' | 'proses'
   const [showExport, setShowExport] = useState(false)
+  const [showPrintModal, setShowPrintModal] = useState(false)
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null)
   const [selectedDetailType, setSelectedDetailType] = useState('pegawai')
@@ -82,6 +155,10 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
         endpoint = '/foundation/student-mutations'
       } else if (type === 'siswa_berprestasi') {
         endpoint = '/foundation/laporan/prestasi'
+      } else if (type === 'alumni') {
+        endpoint = '/foundation/alumni'
+      } else if (type === 'kelulusan') {
+        endpoint = '/foundation/graduations'
       }
 
       const res = await api.get(endpoint, { params })
@@ -116,20 +193,38 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
       setDataList([])
       setSearch('')
       setSelectedUnit('all')
+      setMobilityFilter('all')
       setError(false)
+      setShowPrintModal(false)
+      setShowExport(false)
     }
   }, [isOpen, fetchData])
 
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return dataList
-    const q = search.toLowerCase()
     return dataList.filter((item) => {
-      const name = String(item.name || item.nama || item.nama_lengkap || item.full_name || item.siswa_nama || '').toLowerCase()
-      const code = String(item.code || item.kode || item.niy || item.nis || item.nisn || item.judul_prestasi || '').toLowerCase()
-      const unit = String(item.unit?.name || item.education_unit?.name || item.unit_nama || '').toLowerCase()
-      return name.includes(q) || code.includes(q) || unit.includes(q)
+      // 1. Filter by Tipe Pergerakan for siswa_mobility
+      if (type === 'siswa_mobility' && mobilityFilter !== 'all') {
+        const mob = getMobilityStatus(item)
+        if (mob.key !== mobilityFilter) {
+          return false
+        }
+      }
+
+      // 2. Filter by search query
+      if (search.trim()) {
+        const q = search.toLowerCase()
+        const name = String(item.name || item.nama || item.nama_lengkap || item.full_name || item.siswa_nama || '').toLowerCase()
+        const code = String(item.code || item.kode || item.niy || item.nis || item.nisn || item.judul_prestasi || '').toLowerCase()
+        const unit = String(item.unit?.name || item.education_unit?.name || item.unit_nama || '').toLowerCase()
+        const reason = String(item.metadata?.keterangan || item.reason || '').toLowerCase()
+        if (!name.includes(q) && !code.includes(q) && !unit.includes(q) && !reason.includes(q)) {
+          return false
+        }
+      }
+
+      return true
     })
-  }, [dataList, search])
+  }, [dataList, search, type, mobilityFilter])
 
   const exportRows = useMemo(() => {
     return filteredItems.map((item, idx) => {
@@ -157,12 +252,13 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
           Status: item.status || 'Aktif',
         }
       } else if (type === 'siswa_mobility') {
+        const mob = getMobilityStatus(item)
         return {
           No: idx + 1,
           'NIS / NISN': item.nis || item.nisn || '-',
           Nama: item.full_name || item.nama || '-',
           'Unit Pendidikan': item.education_unit?.name || item.unit?.name || '-',
-          Jenis: item.metadata?.mutasi_type || item.type || 'Mutasi',
+          'Tipe Pergerakan': mob.label,
           Keterangan: item.metadata?.keterangan || item.reason || 'Pergerakan Siswa',
         }
       } else {
@@ -178,6 +274,130 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
       }
     })
   }, [filteredItems, type])
+
+  const handlePrintClean = () => {
+    let headers = []
+    let rows = []
+
+    if (type === 'peningkatan') {
+      headers = ['NO', 'UNIT PENDIDIKAN', 'JENJANG', 'TOTAL SISWA', 'SISWA BARU', 'PEGAWAI', 'GURU', 'ROMBEL', 'STATUS']
+      rows = filteredItems.map((item, idx) => [
+        idx + 1,
+        item.name || item.nama || '-',
+        item.jenis_unit || item.level || '-',
+        item.siswa_aktif_count || 0,
+        item.siswa_baru_count || 0,
+        item.pegawai_count || 0,
+        item.guru_count || 0,
+        item.rombel_count || 0,
+        item.is_active ? 'Aktif' : 'Nonaktif',
+      ])
+    } else if (type === 'pegawai_kpi') {
+      headers = ['NO', 'NAMA SDM', 'NIY / NIK', 'UNIT KERJA', 'JABATAN', 'STATUS PEGAWAI', 'KEAKTIFAN']
+      rows = filteredItems.map((item, idx) => [
+        idx + 1,
+        item.nama_lengkap || item.nama || '-',
+        item.niy || item.nik || '-',
+        item.unit?.name || item.unit?.code || '-',
+        item.position?.nama_jabatan || item.jabatan || 'Staf',
+        item.status_pegawai || 'Tetap',
+        item.status || 'Aktif',
+      ])
+    } else if (type === 'siswa_mobility') {
+      headers = ['NO', 'NAMA SISWA', 'NIS / NISN', 'UNIT PENDIDIKAN', 'TIPE PERGERAKAN', 'KETERANGAN']
+      rows = filteredItems.map((item, idx) => {
+        const mob = getMobilityStatus(item)
+        return [
+          idx + 1,
+          item.full_name || item.nama || '-',
+          item.nis || item.nisn || '-',
+          item.education_unit?.name || item.unit?.name || '-',
+          mob.label,
+          item.metadata?.keterangan || item.reason || 'Proses Administrasi',
+        ]
+      })
+    } else {
+      headers = ['NO', 'NAMA SISWA', 'UNIT PENDIDIKAN', 'JUDUL PRESTASI', 'BIDANG', 'TINGKAT', 'CAPAIAN']
+      rows = filteredItems.map((item, idx) => [
+        idx + 1,
+        item.siswa_nama || item.student?.full_name || item.full_name || '-',
+        item.unit_nama || item.education_unit?.name || '-',
+        item.judul_prestasi || item.title || '-',
+        item.jenis_prestasi || item.category || 'Akademik',
+        item.tingkat || 'Kota',
+        item.peringkat || item.rank || 'Juara 1',
+      ])
+    }
+
+    printCleanTable({
+      title: config.title.toUpperCase(),
+      subtitle: `${config.subtitle} · Total: ${filteredItems.length} Record`,
+      headers,
+      rows,
+    })
+  }
+
+  const handleDownloadPdfTable = () => {
+    let headers = []
+    let rows = []
+
+    if (type === 'peningkatan') {
+      headers = ['NO', 'UNIT PENDIDIKAN', 'JENJANG', 'TOTAL SISWA', 'SISWA BARU', 'PEGAWAI', 'GURU', 'ROMBEL', 'STATUS']
+      rows = filteredItems.map((item, idx) => [
+        idx + 1,
+        item.name || item.nama || '-',
+        item.jenis_unit || item.level || '-',
+        item.siswa_aktif_count || 0,
+        item.siswa_baru_count || 0,
+        item.pegawai_count || 0,
+        item.guru_count || 0,
+        item.rombel_count || 0,
+        item.is_active ? 'Aktif' : 'Nonaktif',
+      ])
+    } else if (type === 'pegawai_kpi') {
+      headers = ['NO', 'NAMA SDM', 'NIY / NIK', 'UNIT KERJA', 'JABATAN', 'STATUS PEGAWAI', 'KEAKTIFAN']
+      rows = filteredItems.map((item, idx) => [
+        idx + 1,
+        item.nama_lengkap || item.nama || '-',
+        item.niy || item.nik || '-',
+        item.unit?.name || item.unit?.code || '-',
+        item.position?.nama_jabatan || item.jabatan || 'Staf',
+        item.status_pegawai || 'Tetap',
+        item.status || 'Aktif',
+      ])
+    } else if (type === 'siswa_mobility') {
+      headers = ['NO', 'NAMA SISWA', 'NIS / NISN', 'UNIT PENDIDIKAN', 'TIPE PERGERAKAN', 'KETERANGAN']
+      rows = filteredItems.map((item, idx) => {
+        const mob = getMobilityStatus(item)
+        return [
+          idx + 1,
+          item.full_name || item.nama || '-',
+          item.nis || item.nisn || '-',
+          item.education_unit?.name || item.unit?.name || '-',
+          mob.label,
+          item.metadata?.keterangan || item.reason || 'Proses Administrasi',
+        ]
+      })
+    } else {
+      headers = ['NO', 'NAMA SISWA', 'UNIT PENDIDIKAN', 'JUDUL PRESTASI', 'BIDANG', 'TINGKAT', 'CAPAIAN']
+      rows = filteredItems.map((item, idx) => [
+        idx + 1,
+        item.siswa_nama || item.student?.full_name || item.full_name || '-',
+        item.unit_nama || item.education_unit?.name || '-',
+        item.judul_prestasi || item.title || '-',
+        item.jenis_prestasi || item.category || 'Akademik',
+        item.tingkat || 'Kota',
+        item.peringkat || item.rank || 'Juara 1',
+      ])
+    }
+
+    downloadPdfTable({
+      title: config.title.toUpperCase(),
+      filename: `Laporan_${type}_Yayasan.pdf`,
+      headers,
+      rows,
+    })
+  }
 
   if (!isOpen) return null
 
@@ -207,21 +427,25 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
             <span className="text-xs text-slate-500 font-medium">
               Total <strong className="text-slate-800 dark:text-white">{filteredItems.length}</strong> record terdata
             </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
+            <div className="flex items-center gap-2.5">
+              <SquircleActionButton
+                variant="export"
+                label="Export Excel"
                 onClick={() => setShowExport(true)}
-                className="gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 px-3.5"
-              >
-                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                <span>Export Excel</span>
-              </Button>
+              />
+
+              <SquircleActionButton
+                variant="print"
+                label="Cetak Laporan"
+                onClick={() => setShowPrintModal(true)}
+              />
+
               <Button
-                variant="primary"
+                variant="ghost"
+                appearance="fill"
                 size="sm"
                 onClick={onClose}
-                className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 px-4"
+                className="rounded-xl border border-slate-200 bg-slate-100/90 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700 px-4 transition-colors duration-200 cursor-pointer ml-1"
               >
                 Tutup
               </Button>
@@ -243,6 +467,19 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
               />
             </div>
 
+            {type === 'siswa_mobility' && (
+              <select
+                value={mobilityFilter}
+                onChange={(e) => setMobilityFilter(e.target.value)}
+                className="px-3 py-2 text-xs font-bold bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100 cursor-pointer shadow-2xs"
+              >
+                <option value="all">Semua Tipe Pergerakan</option>
+                <option value="masuk">🟢 Siswa Masuk</option>
+                <option value="keluar">🔴 Siswa Keluar</option>
+                <option value="proses">🟡 Diproses</option>
+              </select>
+            )}
+
             {units.length > 0 && (
               <select
                 value={selectedUnit}
@@ -262,11 +499,62 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
               type="button"
               onClick={fetchData}
               title="Refresh"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
+
+          {/* Quick Filter Badges for siswa_mobility */}
+          {type === 'siswa_mobility' && (
+            <div className="flex items-center gap-2 flex-wrap px-1 text-xs font-bold">
+              <span className="text-slate-500 dark:text-slate-400 font-semibold text-[11px] mr-1">Filter Pergerakan:</span>
+              <button
+                type="button"
+                onClick={() => setMobilityFilter('all')}
+                className={`px-3 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                  mobilityFilter === 'all'
+                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Semua ({dataList.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilityFilter('masuk')}
+                className={`px-3 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                  mobilityFilter === 'masuk'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300'
+                }`}
+              >
+                🟢 Siswa Masuk ({dataList.filter((i) => getMobilityStatus(i).key === 'masuk').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilityFilter('keluar')}
+                className={`px-3 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                  mobilityFilter === 'keluar'
+                    ? 'bg-red-600 text-white shadow-xs'
+                    : 'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/60 dark:text-red-300'
+                }`}
+              >
+                🔴 Siswa Keluar ({dataList.filter((i) => getMobilityStatus(i).key === 'keluar').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilityFilter('proses')}
+                className={`px-3 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                  mobilityFilter === 'proses'
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300'
+                }`}
+              >
+                🟡 Diproses ({dataList.filter((i) => getMobilityStatus(i).key === 'proses').length})
+              </button>
+            </div>
+          )}
 
           {/* Data Content Table */}
           <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800">
@@ -324,97 +612,159 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
                       <th className="px-4 py-3 text-center">Capaian</th>
                     </tr>
                   )}
+                  {(type === 'alumni' || type === 'kelulusan') && (
+                    <tr>
+                      <th className="px-3 py-3 text-center w-10">No</th>
+                      <th className="px-4 py-3">Nama Siswa</th>
+                      <th className="px-4 py-3">NIS / NISN</th>
+                      <th className="px-4 py-3">Unit Asal</th>
+                      <th className="px-4 py-3 text-center">Tahun Lulus</th>
+                      <th className="px-4 py-3 text-center">Status</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredItems.map((item, idx) => (
-                    <tr key={item.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                      <td className="px-3 py-3 text-center font-bold text-slate-400">{idx + 1}</td>
+                  {filteredItems.map((item, idx) => {
+                    const mob = type === 'siswa_mobility' ? getMobilityStatus(item) : null
+                    const isKeluar = mob?.key === 'keluar'
 
-                      {type === 'peningkatan' && (
-                        <>
-                          <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
-                            {item.name || item.nama}
-                            <div className="text-[10px] text-slate-400 font-normal">{item.code || item.kode}</div>
-                          </td>
-                          <td className="px-4 py-3 font-medium">{item.jenis_unit || item.level || '-'}</td>
-                          <td className="px-4 py-3 text-center font-bold text-emerald-700 dark:text-emerald-400">
-                            {(item.siswa_aktif_count || 0).toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-blue-600">
-                            +{(item.siswa_baru_count || 0).toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-4 py-3 text-center font-medium">{item.pegawai_count || 0}</td>
-                          <td className="px-4 py-3 text-center font-medium">{item.guru_count || 0}</td>
-                          <td className="px-4 py-3 text-center font-medium">{item.rombel_count || 0}</td>
-                          <td className="px-4 py-3 text-center">
-                            <MasterBadge variant={item.is_active ? 'success' : 'neutral'}>
-                              {item.is_active ? 'Aktif' : 'Nonaktif'}
-                            </MasterBadge>
-                          </td>
-                        </>
-                      )}
+                    return (
+                      <tr
+                        key={item.id || idx}
+                        className={
+                          isKeluar
+                            ? 'bg-red-50/50 hover:bg-red-100/60 dark:bg-red-950/30 dark:hover:bg-red-950/50 transition-colors'
+                            : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors'
+                        }
+                      >
+                        <td className={`px-3 py-3 text-center font-bold ${isKeluar ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}>
+                          {idx + 1}
+                        </td>
 
-                      {type === 'pegawai_kpi' && (
-                        <>
-                          <td className="px-4 py-3">
-                            <PersonIdentityCell
-                              src={item.foto || item.photo}
-                              name={item.nama_lengkap || item.nama}
-                              subtitle={item.email || item.no_hp || '-'}
-                            />
-                          </td>
-                          <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">{item.niy || item.nik || '-'}</td>
-                          <td className="px-4 py-3 font-semibold">{item.unit?.name || item.unit?.code || '-'}</td>
-                          <td className="px-4 py-3 font-medium">{item.position?.nama_jabatan || item.jabatan || 'Staf'}</td>
-                          <td className="px-4 py-3 text-center font-semibold">{item.status_pegawai || 'Tetap'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <MasterBadge variant={item.status === 'aktif' || !item.status ? 'success' : 'neutral'}>
-                              {item.status || 'Aktif'}
-                            </MasterBadge>
-                          </td>
-                        </>
-                      )}
+                        {type === 'peningkatan' && (
+                          <>
+                            <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                              {item.name || item.nama}
+                              <div className="text-[10px] text-slate-400 font-normal">{item.code || item.kode}</div>
+                            </td>
+                            <td className="px-4 py-3 font-medium">{item.jenis_unit || item.level || '-'}</td>
+                            <td className="px-4 py-3 text-center font-bold text-emerald-700 dark:text-emerald-400">
+                              {(item.siswa_aktif_count || 0).toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-blue-600">
+                              +{(item.siswa_baru_count || 0).toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-4 py-3 text-center font-medium">{item.pegawai_count || 0}</td>
+                            <td className="px-4 py-3 text-center font-medium">{item.guru_count || 0}</td>
+                            <td className="px-4 py-3 text-center font-medium">{item.rombel_count || 0}</td>
+                            <td className="px-4 py-3 text-center">
+                              <MasterBadge variant={item.is_active ? 'success' : 'neutral'}>
+                                {item.is_active ? 'Aktif' : 'Nonaktif'}
+                              </MasterBadge>
+                            </td>
+                          </>
+                        )}
 
-                      {type === 'siswa_mobility' && (
-                        <>
-                          <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{item.full_name || item.nama || '-'}</td>
-                          <td className="px-4 py-3 font-mono font-bold">{item.nis || item.nisn || '-'}</td>
-                          <td className="px-4 py-3 font-medium">{item.education_unit?.name || item.unit?.name || '-'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <MasterBadge variant={item.metadata?.mutasi_type === 'masuk' ? 'success' : 'warning'}>
-                              {item.metadata?.mutasi_type === 'masuk' ? 'Siswa Masuk' : 'Siswa Keluar'}
-                            </MasterBadge>
-                          </td>
-                          <td className="px-4 py-3 text-slate-500">{item.metadata?.keterangan || item.reason || 'Proses Administrasi'}</td>
-                        </>
-                      )}
+                        {type === 'pegawai_kpi' && (
+                          <>
+                            <td className="px-4 py-3">
+                              <PersonIdentityCell
+                                src={item.foto || item.photo}
+                                name={item.nama_lengkap || item.nama}
+                                subtitle={item.email || item.no_hp || '-'}
+                              />
+                            </td>
+                            <td className="px-4 py-3 font-mono font-bold text-slate-900 dark:text-white">{item.niy || item.nik || '-'}</td>
+                            <td className="px-4 py-3 font-semibold">{item.unit?.name || item.unit?.code || '-'}</td>
+                            <td className="px-4 py-3 font-medium">{item.position?.nama_jabatan || item.jabatan || 'Staf'}</td>
+                            <td className="px-4 py-3 text-center font-semibold">{item.status_pegawai || 'Tetap'}</td>
+                            <td className="px-4 py-3 text-center">
+                              <MasterBadge variant={item.status === 'aktif' || !item.status ? 'success' : 'neutral'}>
+                                {item.status || 'Aktif'}
+                              </MasterBadge>
+                            </td>
+                          </>
+                        )}
 
-                      {type === 'siswa_berprestasi' && (
-                        <>
-                          <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
-                            {item.siswa_nama || item.student?.full_name || item.full_name || '-'}
-                          </td>
-                          <td className="px-4 py-3 font-medium">{item.unit_nama || item.education_unit?.name || '-'}</td>
-                          <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-100">{item.judul_prestasi || item.title || '-'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <MasterBadge variant="info">{item.jenis_prestasi || item.category || 'Akademik'}</MasterBadge>
-                          </td>
-                          <td className="px-4 py-3 text-center font-bold text-slate-700 dark:text-slate-200">{item.tingkat || 'Kota'}</td>
-                          <td className="px-4 py-3 text-center">
-                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                              {item.peringkat || item.rank || 'Juara 1'}
-                            </span>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
+                        {type === 'siswa_mobility' && (
+                          <>
+                            <td className={`px-4 py-3 font-bold ${isKeluar ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
+                              {item.full_name || item.nama || '-'}
+                            </td>
+                            <td className={`px-4 py-3 font-mono font-bold ${isKeluar ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                              {item.nis || item.nisn || '-'}
+                            </td>
+                            <td className={`px-4 py-3 font-medium ${isKeluar ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                              {item.education_unit?.name || item.unit?.name || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={mob.badgeClass}>
+                                {mob.label}
+                              </span>
+                            </td>
+                            <td className={`px-4 py-3 ${isKeluar ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
+                              {item.metadata?.keterangan || item.reason || 'Proses Administrasi'}
+                            </td>
+                          </>
+                        )}
+
+                        {type === 'siswa_berprestasi' && (
+                          <>
+                            <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                              {item.siswa_nama || item.student?.full_name || item.full_name || '-'}
+                            </td>
+                            <td className="px-4 py-3 font-medium">{item.unit_nama || item.education_unit?.name || '-'}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-100">{item.judul_prestasi || item.title || '-'}</td>
+                            <td className="px-4 py-3 text-center">
+                              <MasterBadge variant="info">{item.jenis_prestasi || item.category || 'Akademik'}</MasterBadge>
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-slate-700 dark:text-slate-200">{item.tingkat || 'Kota'}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                {item.peringkat || item.rank || 'Juara 1'}
+                              </span>
+                            </td>
+                          </>
+                        )}
+
+                        {(type === 'alumni' || type === 'kelulusan') && (
+                          <>
+                            <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">
+                              <PersonIdentityCell
+                                src={item.photo}
+                                name={item.full_name || item.nama}
+                                subtitle={item.nis || item.nisn || '-'}
+                              />
+                            </td>
+                            <td className="px-4 py-3 font-mono font-bold text-slate-700 dark:text-slate-200">{item.nis || item.nisn || '-'}</td>
+                            <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-100">{item.education_unit?.name || item.unit?.name || '-'}</td>
+                            <td className="px-4 py-3 text-center font-bold text-purple-600 dark:text-purple-400">
+                              {item.tahun_masuk ? Number(item.tahun_masuk) + 3 : new Date().getFullYear()}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <MasterBadge variant={type === 'alumni' ? 'success' : 'info'}>
+                                {type === 'alumni' ? 'Alumni Lulus' : 'Kelulusan'}
+                              </MasterBadge>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             )}
           </div>
         </div>
       </Modal>
+
+      <PrintOptionModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        onPrint={handlePrintClean}
+        onDownload={handleDownloadPdfTable}
+        title={config.title}
+      />
 
       <FoundationExportModal
         isOpen={showExport}

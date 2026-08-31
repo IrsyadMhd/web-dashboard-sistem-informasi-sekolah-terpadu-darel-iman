@@ -10,6 +10,7 @@ import {
   Home,
   Pencil,
   Plus,
+  Printer,
   RefreshCcw,
   RotateCcw,
   Star,
@@ -131,6 +132,11 @@ const squircleVariants = {
     icon: Download,
     base: 'bg-amber-100/90 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300',
     hover: 'hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white hover:shadow-md hover:shadow-amber-500/30',
+  },
+  print: {
+    icon: Printer,
+    base: 'bg-indigo-100/90 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300',
+    hover: 'hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white hover:shadow-md hover:shadow-indigo-600/30',
   },
   primary: {
     icon: Plus,

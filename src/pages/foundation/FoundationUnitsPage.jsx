@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   GraduationCap,
+  LineChart as LineChartIcon,
   MapPin,
   RefreshCcw,
   School,
@@ -22,8 +23,8 @@ import {
   UsersRound,
 } from 'lucide-react'
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -395,7 +396,7 @@ export function FoundationUnitsPage() {
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-200/80 pb-4 dark:border-slate-700">
           <div className="flex items-start sm:items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60">
-              <BarChart3 className="h-5 w-5" />
+              <LineChartIcon className="h-5 w-5" />
             </span>
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Analisis Pergerakan Siswa Per Unit Pendidikan</h2>
@@ -436,8 +437,18 @@ export function FoundationUnitsPage() {
 
         <div className="mt-6 h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={mobilityChartData} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+            <AreaChart data={mobilityChartData} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
+              <defs>
+                <linearGradient id="unitSiswaMasukGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="unitSiswaKeluarGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#CBD5E1" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} interval={0} angle={-15} textAnchor="end" />
               <YAxis tick={{ fontSize: 11, fill: '#64748B' }} />
               <Tooltip
@@ -445,11 +456,18 @@ export function FoundationUnitsPage() {
                   if (active && payload && payload.length) {
                     const item = payload[0].payload
                     return (
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{item.fullName || label}</p>
-                        <div className="mt-2 space-y-1 text-xs">
-                          <p className="text-emerald-600 font-semibold">📥 Siswa Masuk: {payload[0]?.value} siswa</p>
-                          <p className="text-rose-600 font-semibold">📤 Siswa Keluar: {payload[1]?.value} siswa</p>
+                      <div className="relative rounded-xl bg-slate-900 border border-slate-700/80 px-4 py-3 shadow-2xl text-white min-w-[160px]">
+                        <p className="text-xs font-bold text-slate-200 border-b border-slate-700/80 pb-1.5 mb-2">{item.fullName || label}</p>
+                        <div className="space-y-1.5 text-xs font-semibold">
+                          {payload.map((entry, index) => (
+                            <div key={`tooltip-${index}`} className="flex items-center justify-between gap-4">
+                              <span className="flex items-center gap-2 text-slate-300">
+                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color || entry.stroke || entry.fill }} />
+                                {entry.name}:
+                              </span>
+                              <span className="font-extrabold text-white">{entry.value}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )
@@ -458,9 +476,9 @@ export function FoundationUnitsPage() {
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: 10 }} />
-              <Bar dataKey="Siswa Masuk" fill="#10B981" radius={[6, 6, 0, 0]} maxBarSize={36} />
-              <Bar dataKey="Siswa Keluar" fill="#F43F5E" radius={[6, 6, 0, 0]} maxBarSize={36} />
-            </BarChart>
+              <Area type="monotone" dataKey="Siswa Masuk" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#unitSiswaMasukGrad)" dot={{ r: 5, fill: '#10B981', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+              <Area type="monotone" dataKey="Siswa Keluar" stroke="#F43F5E" strokeWidth={3} fillOpacity={1} fill="url(#unitSiswaKeluarGrad)" dot={{ r: 5, fill: '#F43F5E', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </motion.section>

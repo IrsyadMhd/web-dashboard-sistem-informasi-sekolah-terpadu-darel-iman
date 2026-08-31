@@ -17,12 +17,13 @@ api.interceptors.request.use((config) => {
   }
 
   const token = localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
+  const url = config.url || ''
 
-  if (token) {
+  if (token && typeof token === 'string') {
     // Only check validity for protected endpoints (avoid infinite loop on login)
-    if (!config.url.includes('/login') && !config.url.includes('/auth/')) {
+    if (!url.includes('/login') && !url.includes('/auth/')) {
       const validity = checkSessionValidity({ token })
-      if (!validity.valid && token && !token.startsWith('dev-test-token')) {
+      if (!validity.valid && !token.startsWith('dev-test-token')) {
         clearAuthArtifacts()
         window.dispatchEvent(new Event('auth-session-cleared'))
         if (window.location.pathname !== '/masuk') {
@@ -45,7 +46,7 @@ api.interceptors.response.use(
 
     if (status === 401) {
       const token = localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
-      if (token && token.startsWith('dev-test-token')) {
+      if (token && typeof token === 'string' && token.startsWith('dev-test-token')) {
         return Promise.reject(error)
       }
       clearAuthArtifacts()
