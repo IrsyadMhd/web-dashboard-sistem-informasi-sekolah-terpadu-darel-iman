@@ -95,8 +95,9 @@ export function MutabaahSubNav() {
   ]
 
   return (
-    <nav className="mb-6 rounded-[18px] border border-slate-200/80 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]" aria-label="Navigasi Kontekstual Mutaba'ah">
-      <div className="flex items-center gap-2 flex-wrap shrink-0 justify-end sm:justify-start">
+    <nav className="relative overflow-hidden mb-6 rounded-[22px] border-2 border-emerald-500/25 bg-white p-3.5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]" aria-label="Navigasi Kontekstual Mutaba'ah">
+      <div className="pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+      <div className="relative z-10 flex items-center gap-2 flex-wrap shrink-0 justify-end sm:justify-start">
         {navItems.map((item) => {
             const isActive = item.end ? pathname === item.path : pathname.startsWith(item.path)
             const Icon = item.icon

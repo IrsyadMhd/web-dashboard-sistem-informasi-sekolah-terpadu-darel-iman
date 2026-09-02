@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -128,7 +128,15 @@ export default function DashboardLayout() {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false)
   const [roleAccessOpen, setRoleAccessOpen] = useState(false)
   const [roleAccessLoading, setRoleAccessLoading] = useState('')
-  const [impersonating] = useState(() => Boolean(localStorage.getItem('school_erp_superadmin_session')))
+  const [impersonating, setImpersonating] = useState(() => Boolean(localStorage.getItem('school_erp_superadmin_session')))
+
+  // Hapus sesi impersonasi yang tertinggal jika pengguna saat ini kembali ke dashboard sebagai Super Admin / Admin
+  useEffect(() => {
+    if (hasFullMenuAccess && localStorage.getItem('school_erp_superadmin_session')) {
+      localStorage.removeItem('school_erp_superadmin_session')
+      setImpersonating(false)
+    }
+  }, [hasFullMenuAccess])
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme')
@@ -316,7 +324,26 @@ export default function DashboardLayout() {
   }, [])
 
   const namaTampil = user?.name || 'Ketua Yayasan'
-  const roleTampil = roles.join(', ') || 'Pengguna'
+  const impersonatedSession = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('school_erp_superadmin_session') || 'null')
+    } catch {
+      return null
+    }
+  }, [impersonating])
+
+  const roleTampil = useMemo(() => {
+    if (impersonatedSession?.targetRoleLabel) {
+      return impersonatedSession.targetRoleLabel
+    }
+    if (!roles || roles.length === 0) return 'Pengguna'
+    const cleanList = roles
+      .map((r) => (typeof r === 'string' ? r : r?.name || ''))
+      .filter((r) => r && !r.includes('_') && r.toLowerCase() !== 'tu' && r.toLowerCase() !== 'walas' && r.toLowerCase() !== 'kepsek')
+    const uniqueRoles = Array.from(new Set(cleanList.length > 0 ? cleanList : roles))
+    return uniqueRoles.slice(0, 2).join(', ') || 'Pengguna'
+  }, [roles, impersonatedSession])
+
   const tanggalTampil = new Intl.DateTimeFormat('id-ID', {
     weekday: 'long',
     day: 'numeric',
@@ -337,6 +364,7 @@ export default function DashboardLayout() {
     } finally {
       clearSession()
       localStorage.removeItem('school_erp_superadmin_session')
+      setImpersonating(false)
       // Kirim sinyal toast ke halaman login via sessionStorage
       sessionStorage.setItem('auth_toast', JSON.stringify({
         type: 'logout',
@@ -369,6 +397,7 @@ export default function DashboardLayout() {
       const currentSession = {
         token: localStorage.getItem('school_erp_token'),
         user,
+        targetRoleLabel: option.label,
       }
       const result = await authService.impersonate(option.role)
       const targetUser = result.user?.data || result.user
@@ -376,6 +405,7 @@ export default function DashboardLayout() {
         throw new Error('Respons sesi role tidak valid')
       }
       localStorage.setItem('school_erp_superadmin_session', JSON.stringify(currentSession))
+      setImpersonating(true)
       setSession({ token: result.token, user: targetUser })
       // Reload penuh diperlukan agar cache query, permission, dan seluruh outlet
       // dibangun ulang menggunakan token pengguna target.
@@ -393,10 +423,12 @@ export default function DashboardLayout() {
       if (!original?.token || !original?.user) throw new Error('Sesi tidak ditemukan')
       setSession(original)
       localStorage.removeItem('school_erp_superadmin_session')
+      setImpersonating(false)
       window.location.replace('/dashboard')
     } catch {
       clearSession()
       localStorage.removeItem('school_erp_superadmin_session')
+      setImpersonating(false)
       window.location.href = '/masuk'
     }
   }
@@ -1784,7 +1816,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
 
           {/* Main Page Workspace Container (Light Gray bg-slate-50) */}
           <main className="min-w-0 flex-1 overflow-x-hidden px-3 py-3.5 sm:px-5 sm:py-5 lg:p-6 space-y-4 sm:space-y-6 max-w-none lg:max-w-7xl w-full mx-auto pb-24 lg:pb-10">
-            {impersonating && (
+            {impersonating && !hasFullMenuAccess && (
               <div className="auth-impersonating-banner flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
                 <div>
                   <p className="text-xs font-extrabold">Mode akses role aktif: {roleTampil}</p>
@@ -1793,10 +1825,10 @@ const getSidebarIconBadgeClass = (key, idx) => {
                 <button
                   type="button"
                   onClick={returnToSuperAdmin}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-amber-800 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-amber-800 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300 cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Kembali ke Super Admin
+                  Kembali ke Dashboard Utama
                 </button>
               </div>
             )}

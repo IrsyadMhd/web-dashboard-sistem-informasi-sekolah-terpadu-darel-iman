@@ -42,6 +42,57 @@ const MONTHS = [
   { value: '12', label: 'Desember' },
 ]
 
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+  },
+  rose: {
+    card: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+    glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
+    iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30',
+    tag: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+    title: 'text-rose-700 dark:text-rose-400',
+    val: 'text-rose-700 dark:text-rose-300',
+  },
+  purple: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+  },
+  cyan: {
+    card: 'border-cyan-300/70 bg-gradient-to-br from-cyan-50 via-teal-50/60 to-white hover:border-cyan-400 dark:border-cyan-700/50 dark:from-cyan-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-cyan-400/20 group-hover:bg-cyan-400/30',
+    iconBox: 'bg-gradient-to-br from-cyan-500 to-teal-600 text-white shadow-cyan-500/30',
+    tag: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-300',
+    title: 'text-cyan-700 dark:text-cyan-400',
+    val: 'text-cyan-700 dark:text-cyan-300',
+  },
+}
+
 const label = (value) =>
 ({
   online: 'Online',
@@ -322,35 +373,37 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
 
   return (
     <>
-      <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 p-5 dark:border-slate-800">
+      {/* Modern Emerald Datatable Container */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30">
               <Radio className="h-5 w-5 animate-pulse" />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 Monitoring Data Guru Mengajar
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Data real-time jadwal, presensi mengajar, aktivitas user, dan rekapitulasi periode ({activePeriod.toUpperCase()}). Server: {formatDateTime(data?.server_time)}
-              </CardDescription>
+              </p>
             </div>
           </div>
 
-          <CardAction className="relative top-0 right-0 sm:static flex items-center gap-2">
+          <div className="relative top-0 right-0 sm:static flex items-center gap-2">
             <SquircleActionButton
               variant="view"
               icon={Printer}
               label="Cetak"
               onClick={() => setIsPrintModalOpen(true)}
             />
-          </CardAction>
-        </CardHeader>
+          </div>
+        </div>
 
-        <CardContent className="p-4 md:p-6 space-y-6">
+        <div className="p-4 md:p-6 space-y-6">
           {/* FILTER PERIODE PILL TAB SWITCHER */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-4">
+          <div className="rounded-[18px] border-2 border-emerald-500/20 bg-slate-50/60 p-4.5 shadow-xs dark:border-emerald-800/30 dark:bg-slate-900/40 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -519,27 +572,36 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
             </Alert>
           ) : (
             <>
-              {/* KPI RINGKASAN REKAPITULASI */}
+              {/* Modern KPI Summary Grid */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {[
-                  ['scheduled_today', 'Total Guru', Users, 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-100 dark:border-blue-900/40'],
-                  ['checked_in', 'Sudah Presensi', Clock3, 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/40'],
-                  ['not_checked_in', 'Belum Presensi', Activity, 'bg-slate-50 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300 border-slate-200/80 dark:border-slate-800'],
-                  ['late', 'Terlambat', Clock3, 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-100 dark:border-rose-900/40'],
-                  ['active', 'Sedang Mengajar', Radio, 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-100 dark:border-amber-900/40'],
-                  ['completed', 'Selesai / Capaian', BookOpen, 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300 border-cyan-100 dark:border-cyan-900/40'],
-                ].map(([key, title, Icon, styleClass]) => (
-                  <div
-                    key={key}
-                    className={`flex flex-col justify-between rounded-2xl border p-3.5 transition-all hover:scale-[1.02] ${styleClass}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold">{title}</span>
-                      <Icon className="h-4 w-4 opacity-80" />
+                  { key: 'scheduled_today', title: 'Total Guru', icon: Users, tone: 'blue', tag: 'Guru' },
+                  { key: 'checked_in', title: 'Sudah Presensi', icon: Clock3, tone: 'emerald', tag: 'Presensi' },
+                  { key: 'not_checked_in', title: 'Belum Presensi', icon: Activity, tone: 'amber', tag: 'Belum' },
+                  { key: 'late', title: 'Terlambat', icon: Clock3, tone: 'rose', tag: 'Terlambat' },
+                  { key: 'active', title: 'Sedang Mengajar', icon: Radio, tone: 'purple', tag: 'Mengajar' },
+                  { key: 'completed', title: 'Selesai / Capaian', icon: BookOpen, tone: 'cyan', tag: 'Selesai' },
+                ].map(({ key, title, icon: Icon, tone, tag }) => {
+                  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+                  return (
+                    <div
+                      key={key}
+                      className={`group relative overflow-hidden rounded-[18px] border-2 p-3.5 sm:p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md text-left ${t.card}`}
+                    >
+                      <div className={`pointer-events-none absolute -top-6 -right-6 h-20 w-20 rounded-full blur-xl transition-all ${t.glow}`} />
+                      <div className="flex items-center justify-between mb-2">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-white shadow-xs ${t.iconBox}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <span className={`rounded-lg px-2 py-0.5 text-[9.5px] font-extrabold ${t.tag}`}>
+                          {tag}
+                        </span>
+                      </div>
+                      <p className={`text-[10.5px] font-bold uppercase tracking-wider ${t.title}`}>{title}</p>
+                      <p className={`text-2xl sm:text-3xl font-black tabular-nums ${t.val}`}>{summary[key] ?? 0}</p>
                     </div>
-                    <strong className="mt-3 text-2xl font-black">{summary[key] ?? 0}</strong>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {/* TOOLBAR UTAMA TOMBOL AKSI DI ATAS DATATABLE */}
@@ -737,8 +799,8 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
               />
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* DETAIL MODAL LAPORAN ABSENSI REKAPITULASI PER MATA PELAJARAN GURU */}
       {selectedTeacherRow && (

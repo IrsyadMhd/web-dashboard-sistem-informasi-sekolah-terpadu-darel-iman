@@ -85,29 +85,6 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
     }
   }, [])
 
-  if (method === 'manual') {
-    return (
-      <div className="flex items-start gap-3.5 rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50/20 p-4.5 shadow-2xs dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-emerald-900/30 dark:to-emerald-950/20">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs mt-0.5">
-          <ListChecks size={20} />
-        </div>
-        <div>
-          <h4 className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200 uppercase tracking-wider">
-            Checklist Presensi Manual (Roll Call)
-          </h4>
-          <p className="mt-1 text-xs font-semibold text-emerald-900/90 dark:text-emerald-300/90 leading-relaxed">
-            Gunakan tombol opsi status di bawah untuk checklist kehadiran siswa satu per satu (
-            <span className="font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md">Hadir</span>,{' '}
-            <span className="font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-900/60 px-1.5 py-0.5 rounded-md">Terlambat</span>,{' '}
-            <span className="font-extrabold text-sky-700 dark:text-sky-300 bg-sky-100/90 dark:bg-sky-900/60 px-1.5 py-0.5 rounded-md">Izin</span>,{' '}
-            <span className="font-extrabold text-violet-700 dark:text-violet-300 bg-violet-100/90 dark:bg-violet-900/60 px-1.5 py-0.5 rounded-md">Sakit</span>,{' '}
-            <span className="font-extrabold text-rose-700 dark:text-rose-300 bg-rose-100/90 dark:bg-rose-900/60 px-1.5 py-0.5 rounded-md">Alpha</span>).
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   const startCamera = async () => {
     setCameraLoading(true)
     setCameraError('')
@@ -287,6 +264,29 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
     e?.preventDefault()
     if (!modalInput.trim() || disabled || !captureActive) return
     processScanCode(modalInput)
+  }
+
+  if (method === 'manual') {
+    return (
+      <div className="flex items-start gap-3.5 rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50/20 p-4.5 shadow-2xs dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-emerald-900/30 dark:to-emerald-950/20">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs mt-0.5">
+          <ListChecks size={20} />
+        </div>
+        <div>
+          <h4 className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200 uppercase tracking-wider">
+            Checklist Presensi Manual (Roll Call)
+          </h4>
+          <p className="mt-1 text-xs font-semibold text-emerald-900/90 dark:text-emerald-300/90 leading-relaxed">
+            Gunakan tombol opsi status di bawah untuk checklist kehadiran siswa satu per satu (
+            <span className="font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md">Hadir</span>,{' '}
+            <span className="font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-900/60 px-1.5 py-0.5 rounded-md">Terlambat</span>,{' '}
+            <span className="font-extrabold text-sky-700 dark:text-sky-300 bg-sky-100/90 dark:bg-sky-900/60 px-1.5 py-0.5 rounded-md">Izin</span>,{' '}
+            <span className="font-extrabold text-violet-700 dark:text-violet-300 bg-violet-100/90 dark:bg-violet-900/60 px-1.5 py-0.5 rounded-md">Sakit</span>,{' '}
+            <span className="font-extrabold text-rose-700 dark:text-rose-300 bg-rose-100/90 dark:bg-rose-900/60 px-1.5 py-0.5 rounded-md">Alpha</span>).
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
