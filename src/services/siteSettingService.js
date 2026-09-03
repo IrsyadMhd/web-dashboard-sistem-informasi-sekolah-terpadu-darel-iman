@@ -3,17 +3,21 @@ import { api } from './api'
 function normalizeAssets(settings) {
   const apiOrigin = new URL(api.defaults.baseURL, window.location.origin).origin
   const assetUrl = (value) => {
-    if (!value) return ''
+    if (!value || typeof value !== 'string') return ''
 
     // Path relatif dari backend selalu memakai origin API, bukan origin Vite.
     if (value.startsWith('/')) return `${apiOrigin}${value}`
 
-    // Koreksi URL lama yang dibuat dari APP_URL tanpa port API.
-    const parsed = new URL(value, apiOrigin)
-    if (parsed.pathname.startsWith('/storage/')) {
-      return `${apiOrigin}${parsed.pathname}${parsed.search}`
+    try {
+      // Koreksi URL lama yang dibuat dari APP_URL tanpa port API.
+      const parsed = new URL(value, apiOrigin)
+      if (parsed.pathname && parsed.pathname.startsWith('/storage/')) {
+        return `${apiOrigin}${parsed.pathname}${parsed.search}`
+      }
+      return parsed.href
+    } catch {
+      return value
     }
-    return parsed.href
   }
 
   return {

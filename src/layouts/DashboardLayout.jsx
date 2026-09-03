@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -46,7 +46,7 @@ import PersonAvatar from '../components/ui/PersonAvatar'
 import GlobalSearchModal from '../components/GlobalSearchModal'
 import NotificationCenter from '../components/app/NotificationCenter'
 import AppBottomNavigation from '../components/app/AppBottomNavigation'
-import { isMusyrifRole, isParentRole, isStudentRole, isTeacherRole, resolveDefaultPortal } from '../auth/portalResolver'
+import { isMusyrifRole, isParentRole, isStudentRole, isTeacherRole, isTuOrKepsek, resolveDefaultPortal } from '../auth/portalResolver'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -86,10 +86,13 @@ export default function DashboardLayout() {
   const isDivisiPendidikan = hasRole('Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Pengawasan Akademik')
   const isPureMusyrif = isMusyrifRole(roles) && !hasRole('Guru', 'guru', 'Guru Mata Pelajaran', 'guru_mata_pelajaran', 'Guru PAI', 'Guru Tahfizh', 'Wali Kelas', 'walas', 'wali_kelas', 'Super Admin', 'Admin')
   const isMusyrifUser = isMusyrifRole(roles) || isPureMusyrif || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing')
+  const isStaffOrTeacherUser = hasFullMenuAccess || isTeacherRole(roles) || isTuOrKepsek(roles) || isDivisiPendidikan || isMusyrifUser || hasRole('Operator', 'Wali Kelas', 'Guru', 'Kepala Sekolah', 'TU', 'Tata Usaha')
+  const isPureStudent = isStudentRole(roles) && !isStaffOrTeacherUser
+  const isPureParent = isParentRole(roles) && !isStaffOrTeacherUser
   const canViewEducationUnits = can('unit.view', 'unit.view_all', 'foundation.unit.view', 'sistem.master_data')
   const canViewStudents = can('student.view', 'student.view_all', 'kesiswaan.data_lengkap_siswa')
   const canCreateStudent = can('student.create')
-  const isPortalUser = isStudentRole(roles) || isParentRole(roles)
+  const isPortalUser = isPureStudent || isPureParent
   const defaultPortal = resolveDefaultPortal(user || {})
 
   const [collapsed, setCollapsed] = useState(() => {
@@ -125,7 +128,15 @@ export default function DashboardLayout() {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false)
   const [roleAccessOpen, setRoleAccessOpen] = useState(false)
   const [roleAccessLoading, setRoleAccessLoading] = useState('')
-  const [impersonating] = useState(() => Boolean(localStorage.getItem('school_erp_superadmin_session')))
+  const [impersonating, setImpersonating] = useState(() => Boolean(localStorage.getItem('school_erp_superadmin_session')))
+
+  // Hapus sesi impersonasi yang tertinggal jika pengguna saat ini kembali ke dashboard sebagai Super Admin / Admin
+  useEffect(() => {
+    if (hasFullMenuAccess && localStorage.getItem('school_erp_superadmin_session')) {
+      localStorage.removeItem('school_erp_superadmin_session')
+      setImpersonating(false)
+    }
+  }, [hasFullMenuAccess])
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme')
@@ -313,7 +324,26 @@ export default function DashboardLayout() {
   }, [])
 
   const namaTampil = user?.name || 'Ketua Yayasan'
-  const roleTampil = roles.join(', ') || 'Pengguna'
+  const impersonatedSession = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('school_erp_superadmin_session') || 'null')
+    } catch {
+      return null
+    }
+  }, [impersonating])
+
+  const roleTampil = useMemo(() => {
+    if (impersonatedSession?.targetRoleLabel) {
+      return impersonatedSession.targetRoleLabel
+    }
+    if (!roles || roles.length === 0) return 'Pengguna'
+    const cleanList = roles
+      .map((r) => (typeof r === 'string' ? r : r?.name || ''))
+      .filter((r) => r && !r.includes('_') && r.toLowerCase() !== 'tu' && r.toLowerCase() !== 'walas' && r.toLowerCase() !== 'kepsek')
+    const uniqueRoles = Array.from(new Set(cleanList.length > 0 ? cleanList : roles))
+    return uniqueRoles.slice(0, 2).join(', ') || 'Pengguna'
+  }, [roles, impersonatedSession])
+
   const tanggalTampil = new Intl.DateTimeFormat('id-ID', {
     weekday: 'long',
     day: 'numeric',
@@ -334,6 +364,7 @@ export default function DashboardLayout() {
     } finally {
       clearSession()
       localStorage.removeItem('school_erp_superadmin_session')
+      setImpersonating(false)
       // Kirim sinyal toast ke halaman login via sessionStorage
       sessionStorage.setItem('auth_toast', JSON.stringify({
         type: 'logout',
@@ -366,6 +397,7 @@ export default function DashboardLayout() {
       const currentSession = {
         token: localStorage.getItem('school_erp_token'),
         user,
+        targetRoleLabel: option.label,
       }
       const result = await authService.impersonate(option.role)
       const targetUser = result.user?.data || result.user
@@ -373,6 +405,7 @@ export default function DashboardLayout() {
         throw new Error('Respons sesi role tidak valid')
       }
       localStorage.setItem('school_erp_superadmin_session', JSON.stringify(currentSession))
+      setImpersonating(true)
       setSession({ token: result.token, user: targetUser })
       // Reload penuh diperlukan agar cache query, permission, dan seluruh outlet
       // dibangun ulang menggunakan token pengguna target.
@@ -390,10 +423,12 @@ export default function DashboardLayout() {
       if (!original?.token || !original?.user) throw new Error('Sesi tidak ditemukan')
       setSession(original)
       localStorage.removeItem('school_erp_superadmin_session')
+      setImpersonating(false)
       window.location.replace('/dashboard')
     } catch {
       clearSession()
       localStorage.removeItem('school_erp_superadmin_session')
+      setImpersonating(false)
       window.location.href = '/masuk'
     }
   }
@@ -463,6 +498,7 @@ export default function DashboardLayout() {
     )
 
   const bolehBukaMenu = (to) => {
+    if (!to || typeof to !== 'string') return false
     if (hasFullMenuAccess) return true
     if (isMusyrifUser && (to === '/absensi/laporan' || to === '/dashboard/mutabaah/rekap' || to.startsWith('/dashboard/laporan'))) return false
 
@@ -527,6 +563,7 @@ export default function DashboardLayout() {
     }
     if (to.includes('/chat-pegawai')) {
       if ((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess) return false
+      if (hasFullMenuAccess || isKepalaSekolah || isDivisiPendidikan || hasRole('Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan')) return true
       return can('chat.conversation.view', 'chat.manage')
     }
     if (to.includes('/akademik/nilai-rapor') || to.includes('/lms/penilaian') || to.includes('/lms/rapor')) {
@@ -736,6 +773,9 @@ export default function DashboardLayout() {
     }
     if (to.includes('/profil-akun') || to.includes('/profil-saya') || to === '/dashboard/profil-akun') return true
     if (to.includes('/hak-akses')) return can('sistem.hak_akses', 'permission.manage', 'role.manage')
+    if (to.includes('/koneksi-api-mobile')) {
+      return hasRole('Super Admin', 'SuperAdmin', 'super_admin', 'superadmin', 'Admin', 'admin') || hasFullMenuAccess
+    }
     if (to.includes('/pengaturan')) {
       return hasRole('Super Admin', 'SuperAdmin', 'super_admin', 'superadmin', 'Admin', 'admin')
     }
@@ -882,7 +922,6 @@ const getSidebarIconBadgeClass = (key, idx) => {
         { to: '/dashboard/yayasan/pegawai-guru', label: 'Pegawai & Guru' },
         { to: '/dashboard/yayasan/siswa', label: 'Data Siswa' },
         { to: '/dashboard/yayasan/informasi-sekolah', label: 'Informasi Sekolah' },
-        { to: '/dashboard/yayasan/laporan', label: 'Laporan Lintas Unit' },
       ],
     },
     {
@@ -890,7 +929,6 @@ const getSidebarIconBadgeClass = (key, idx) => {
       label: 'Laporan',
       icon: FileText,
       submenus: [
-        { to: '/dashboard/yayasan/laporan', label: 'Ringkasan Laporan Lintas Unit' },
         { to: '/dashboard/yayasan/laporan/tahfizh', label: 'Laporan Tahfizh' },
         { to: '/dashboard/yayasan/laporan/mutasi', label: 'Laporan Mutasi Siswa' },
         { to: '/dashboard/yayasan/laporan/alumni', label: 'Laporan Alumni' },
@@ -921,7 +959,6 @@ const getSidebarIconBadgeClass = (key, idx) => {
           { to: '/dashboard/monitoring-divisi', label: 'Monitoring Divisi' },
         ] : []),
         { to: '/dashboard/berita-informasi', label: 'Berita & Pengumuman' },
-        ...(!isDivisiPendidikan ? [{ to: '/dashboard/yayasan/laporan', label: 'Laporan Lintas Unit' }] : []),
       ] : [
         { to: '/dashboard/yayasan', label: 'Ringkasan Utama' },
         ...(hasFullMenuAccess || can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') || hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Divisi') ? [
@@ -931,7 +968,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
         { to: '/dashboard/yayasan/pegawai-guru', label: 'Pegawai & Guru' },
         { to: '/dashboard/yayasan/siswa', label: 'Data Siswa' },
         { to: '/dashboard/yayasan/informasi-sekolah', label: 'Informasi Sekolah' },
-        { to: '/dashboard/yayasan/laporan', label: 'Laporan Lintas Unit' },
+        { to: '/dashboard/chat-pegawai', label: 'Chat Pengurus & Pegawai' },
       ],
     },
     ...(!((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess) ? [
@@ -947,6 +984,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
           { to: '/dashboard/students', label: 'Siswa' },
           { to: '/dashboard/kelola-alumni', label: 'Pengolahan Data Alumni' },
           { to: '/dashboard/berita-informasi', label: 'Berita & Pengumuman' },
+          { label: 'Kalender Akademik', action: 'calendar' },
           { to: '/dashboard/master-quran-surah', label: 'Al-Qur’an' },
           { to: '/dashboard/master-jadwal-sholat', label: 'Sholat' },
           { to: '/dashboard/master-doa', label: 'Do’a & Dzikir' },
@@ -959,6 +997,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
       icon: BookOpen,
       submenus: [
         { to: '/dashboard/akademik/pengaturan?tab=tahun-ajaran', label: 'Pengaturan Akademik' },
+        { label: 'Kalender Akademik', action: 'calendar' },
         { to: '/dashboard/akademik/perencanaan?tab=cp', label: 'Perencanaan Pembelajaran' },
         { to: '/dashboard/akademik/pembelajaran?tab=materi', label: 'Pembelajaran' },
         { to: '/dashboard/akademik/evaluasi?tab=penugasan', label: 'Tugas & Evaluasi' },
@@ -1063,6 +1102,9 @@ const getSidebarIconBadgeClass = (key, idx) => {
         { to: '/dashboard/profil-akun', label: 'Profil Saya & Akun' },
         ...(!(isParentRole(roles) || isStudentRole(roles) || isTataUsaha) || hasFullMenuAccess || hasRole('Super Admin', 'Admin', 'Kepala Sekolah') ? [
           { to: '/dashboard/pengaturan', label: 'Profil Sekolah' },
+        ] : []),
+        ...(hasRole('Super Admin', 'Admin', 'superadmin', 'admin', 'SuperAdmin') || hasFullMenuAccess ? [
+          { to: '/dashboard/koneksi-api-mobile', label: 'Koneksi API Mobile Android' },
         ] : []),
         { to: '/dashboard/hak-akses', label: 'Hak Akses' },
       ],
@@ -1290,6 +1332,21 @@ const getSidebarIconBadgeClass = (key, idx) => {
                           <span className="text-[9px] text-slate-400 font-normal">Submenu</span>
                         </div>
                         {item.submenus.map((sub, sIdx) => {
+                          if (sub.action === 'calendar') {
+                            return (
+                              <button
+                                key={`flyout-${item.key}-cal-${sIdx}`}
+                                type="button"
+                                onClick={() => {
+                                  setMobileMenuOpen(false)
+                                  setIsAcademicCalendarOpen(true)
+                                }}
+                                className="block w-full text-left rounded-lg px-2.5 py-1.5 text-xs transition-colors text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+                              >
+                                {sub.label}
+                              </button>
+                            )
+                          }
                           const active = isSubActive(sub.to, item.submenus, item.key)
                           return (
                             <NavLink
@@ -1314,6 +1371,21 @@ const getSidebarIconBadgeClass = (key, idx) => {
                   {!collapsed && isOpen && (
                     <div className="ml-5 space-y-1 border-l-2 border-emerald-500/50 dark:border-emerald-600/50 pl-3 pt-1 animate-[masterDropdownSlide_0.2s_ease-out]">
                       {item.submenus.map((sub, sIdx) => {
+                        if (sub.action === 'calendar') {
+                          return (
+                            <button
+                              key={`${item.key}-cal-${sIdx}`}
+                              type="button"
+                              onClick={() => {
+                                setMobileMenuOpen(false)
+                                setIsAcademicCalendarOpen(true)
+                              }}
+                              className="block w-full text-left rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                            >
+                              {sub.label}
+                            </button>
+                          )
+                        }
                         const active = isSubActive(sub.to, item.submenus, item.key)
                         return (
                           <NavLink
@@ -1661,8 +1733,8 @@ const getSidebarIconBadgeClass = (key, idx) => {
                           type="button"
                           onClick={() => {
                             setProfileDropdownOpen(false)
-                            if (isStudentRole(roles)) navigate('/portal-siswa/profil')
-                            else if (isParentRole(roles)) navigate('/portal-orangtua?tab=profile')
+                            if (isPureStudent) navigate('/portal-siswa/profil')
+                            else if (isPureParent) navigate('/portal-orangtua?tab=profile')
                             else if (isFoundationUser) navigate('/dashboard/yayasan/profil')
                             else navigate('/dashboard/profil-akun')
                           }}
@@ -1744,7 +1816,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
 
           {/* Main Page Workspace Container (Light Gray bg-slate-50) */}
           <main className="min-w-0 flex-1 overflow-x-hidden px-3 py-3.5 sm:px-5 sm:py-5 lg:p-6 space-y-4 sm:space-y-6 max-w-none lg:max-w-7xl w-full mx-auto pb-24 lg:pb-10">
-            {impersonating && (
+            {impersonating && !hasFullMenuAccess && (
               <div className="auth-impersonating-banner flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100">
                 <div>
                   <p className="text-xs font-extrabold">Mode akses role aktif: {roleTampil}</p>
@@ -1753,10 +1825,10 @@ const getSidebarIconBadgeClass = (key, idx) => {
                 <button
                   type="button"
                   onClick={returnToSuperAdmin}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-amber-800 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-amber-800 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300 cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Kembali ke Super Admin
+                  Kembali ke Dashboard Utama
                 </button>
               </div>
             )}
@@ -1770,7 +1842,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
       <AppBottomNavigation
         items={[
           { to: defaultPortal, label: 'Beranda', icon: LayoutDashboard, end: true },
-          ...(canViewStudents && !isStudentRole(roles) && !isParentRole(roles)
+          ...(canViewStudents && !isPureStudent && !isPureParent
             ? [{
               to: '/dashboard/students',
               label: 'Data Siswa',
@@ -1778,9 +1850,9 @@ const getSidebarIconBadgeClass = (key, idx) => {
             }]
             : []),
           {
-            to: isStudentRole(roles)
+            to: isPureStudent
               ? '/portal-siswa/profil'
-              : isParentRole(roles)
+              : isPureParent
                 ? '/portal-orangtua?tab=profile'
                 : isFoundationUser
                   ? '/dashboard/yayasan/profil'
@@ -1789,20 +1861,20 @@ const getSidebarIconBadgeClass = (key, idx) => {
             icon: User,
           },
         ]}
-        actionCenter={(isStudentRole(roles) && can('student.assignment.view')) || (isParentRole(roles) && can('parent.attendance.view')) || canCreateStudent ? {
+        actionCenter={(isPureStudent && can('student.assignment.view')) || (isPureParent && can('parent.attendance.view')) || canCreateStudent ? {
           icon: Plus,
           ariaLabel: 'Aksi Cepat',
-          onClick: () => navigate(isStudentRole(roles) ? '/portal-siswa/tugas' : isParentRole(roles) ? '/portal-orangtua?tab=attendance' : '/dashboard/students?action=add'),
+          onClick: () => navigate(isPureStudent ? '/portal-siswa/tugas' : isPureParent ? '/portal-orangtua?tab=attendance' : '/dashboard/students?action=add'),
         } : null}
         onOpenNotifications={() => {
-          if (isStudentRole(roles)) navigate('/portal-siswa/informasi-sekolah')
-          else if (isParentRole(roles)) navigate('/portal-orangtua?tab=announcements')
+          if (isPureStudent) navigate('/portal-siswa/informasi-sekolah')
+          else if (isPureParent) navigate('/portal-orangtua?tab=announcements')
           else window.dispatchEvent(new Event('open-notification-center'))
         }}
       />
 
       {/* Floating Action Button (FAB) for Mobile Quick Add */}
-      {!isStudentRole(roles) && !isParentRole(roles) && canCreateStudent && <FAB onClick={() => navigate('/dashboard/students?action=add')} label="Tambah Siswa" />}
+      {!isPureStudent && !isPureParent && canCreateStudent && <FAB onClick={() => navigate('/dashboard/students?action=add')} label="Tambah Siswa" />}
 
       {/* Floating Chat Pop-Up & Melayang Button */}
       <FloatingChatWidget />

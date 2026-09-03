@@ -23,9 +23,10 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
-import { Upload1, Download1 } from '@tailgrids/icons'
+import { Upload1, Download1, CheckCircle1 } from '@tailgrids/icons'
 import { FaGraduationCap, FaSchool, FaExchangeAlt, FaUserSlash } from 'react-icons/fa'
 import Swal from 'sweetalert2'
+import useDebounce from '../hooks/useDebounce'
 
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -44,6 +45,7 @@ import { exportCsv } from '../components/reports/ReportKit'
 
 import { Button } from '../components/tailgrids/core/button'
 import { Spinner } from '../components/tailgrids/core/spinner'
+import { Pagination } from '../components/tailgrids/core/pagination'
 import {
   Card,
   CardHeader,
@@ -87,63 +89,99 @@ import alumniService from '../services/alumniService'
 import { studentService } from '../services/studentService'
 import api from '../services/api'
 
-// Sub-komponen KpiTintedCard (Identik dengan StudentsPage.jsx)
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', active, onClick }) {
+// Sub-komponen KpiTintedCard Modern Style (Identik Spesifikasi TAILGRIDS_ALUMNI_MUTASI_CARDS)
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', tag, active, onClick }) {
   const tones = {
     emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      activeCard: 'ring-2 ring-emerald-500 shadow-md',
+      card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+      activeCard: 'ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20 border-emerald-400',
+      glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+      iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+      tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
       title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+      val: 'text-emerald-700 dark:text-emerald-300',
+      sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+      cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+      defaultTag: 'Alumni',
     },
     blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      activeCard: 'ring-2 ring-blue-500 shadow-md',
+      card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+      activeCard: 'ring-2 ring-blue-500 shadow-md shadow-blue-500/20 border-blue-400',
+      glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+      iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+      tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
       title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
-    },
-    rose: {
-      card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
-      activeCard: 'ring-2 ring-rose-500 shadow-md',
-      title: 'text-rose-700 dark:text-rose-400',
-      icon: 'text-rose-500',
-      val: 'text-rose-600 dark:text-rose-300',
-      sub: 'text-rose-600/70 dark:text-rose-400/70',
+      val: 'text-blue-700 dark:text-blue-300',
+      sub: 'text-blue-600/80 dark:text-blue-400/80',
+      cta: 'text-blue-600/60 dark:text-blue-500/60',
+      defaultTag: 'Studi Lanjut',
     },
     amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      activeCard: 'ring-2 ring-amber-500 shadow-md',
+      card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+      activeCard: 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20 border-amber-400',
+      glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+      iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+      tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
       title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
+      val: 'text-amber-700 dark:text-amber-300',
+      sub: 'text-amber-600/80 dark:text-amber-400/80',
+      cta: 'text-amber-600/60 dark:text-amber-500/60',
+      defaultTag: 'Internal',
+    },
+    rose: {
+      card: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+      activeCard: 'ring-2 ring-rose-500 shadow-md shadow-rose-500/20 border-rose-400',
+      glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
+      iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30',
+      tag: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+      title: 'text-rose-700 dark:text-rose-400',
+      val: 'text-rose-700 dark:text-rose-300',
+      sub: 'text-rose-600/80 dark:text-rose-400/80',
+      cta: 'text-rose-600/60 dark:text-rose-500/60',
+      defaultTag: 'Eksternal',
     },
   }
 
   const t = tones[tone] || tones.emerald
 
   return (
-    <motion.div
-      whileHover={{ scale: 1.015, y: -2 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+    <div
       onClick={onClick}
-      className={`rounded-2xl border p-4 shadow-sm cursor-pointer transition-all duration-200 ${
+      className={`group relative overflow-hidden cursor-pointer rounded-[18px] border-2 p-5 shadow-sm hover:shadow-md transition-all duration-200 ${
         active ? t.activeCard : t.card
       }`}
     >
-      <div className="flex items-center justify-between">
-        <span className={`text-xs font-semibold uppercase tracking-wider ${t.title}`}>{label}</span>
-        <Icon className={`w-5 h-5 ${t.icon}`} />
+      {/* Ambient Glow */}
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+
+      {/* Header with Gradient Icon Box & Pill Tag */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+          </div>
+        </div>
+        <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
+          {tag || t.defaultTag}
+        </span>
       </div>
-      <div className="mt-2 flex items-baseline justify-between">
-        <span className={`text-2xl font-black ${t.val}`}>{value}</span>
-      </div>
-      <p className={`mt-1 text-[11px] font-medium ${t.sub}`}>{subtext}</p>
-    </motion.div>
+
+      {/* Metric Big Value */}
+      <p className={`text-4xl font-black tabular-nums ${t.val}`}>
+        {value}
+      </p>
+      <p className={`mt-0.5 text-[11px] font-semibold ${t.sub}`}>
+        {subtext}
+      </p>
+
+      {/* Click Affordance Footer */}
+      <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+        <Eye className="h-3 w-3" /> Klik untuk detail lengkap
+      </p>
+    </div>
   )
 }
 
@@ -283,11 +321,18 @@ export default function KelolaAlumniPage() {
     nis: '',
     nisn: '',
     unit_id: '',
+    kelas_id: '',
+    kelas_name: '',
     tahun_lulus: new Date().getFullYear().toString(),
     status_lanjutan: 'Kuliah',
     perguruan_tinggi: '',
     pekerjaan: '',
     catatan: '',
+    // Jenis data: 'alumni' | 'pindah_unit' | 'pindah_keluar'
+    jenis_data: 'alumni',
+    unit_tujuan_id: '',
+    sekolah_tujuan: '',
+    alasan_mutasi: '',
   })
 
   // Database Students Fetching & Search State for Tambah Alumni
@@ -316,10 +361,6 @@ export default function KelolaAlumniPage() {
           const list = extractStudentsArray(res)
           setStudentsList(list)
         })
-        .catch((err) => {
-          console.error('Gagal memuat daftar siswa:', err)
-          setStudentsList([])
-        })
         .finally(() => {
           setLoadingStudents(false)
         })
@@ -330,7 +371,58 @@ export default function KelolaAlumniPage() {
     }
   }, [addModalOpen, addForm.unit_id])
 
-  const handleSelectStudentFromObj = (found) => {
+  // Modal DataTable Seleksi Siswa/Santri Real-Time berdasar Scope Unit User
+  const [studentTableModalOpen, setStudentTableModalOpen] = useState(false)
+  const [studentTableList, setStudentTableList] = useState([])
+  const [studentTableLoading, setStudentTableLoading] = useState(false)
+  const [studentTableSearch, setStudentTableSearch] = useState('')
+  const [studentTableUnitFilter, setStudentTableUnitFilter] = useState('all')
+  const [studentTablePage, setStudentTablePage] = useState(1)
+  const [studentTableTotalPages, setStudentTableTotalPages] = useState(1)
+  const [studentTableTotalCount, setStudentTableTotalCount] = useState(0)
+  const debouncedStudentTableSearch = useDebounce(studentTableSearch, 350)
+
+  const fetchStudentTableData = useCallback(async () => {
+    if (!studentTableModalOpen) return
+    setStudentTableLoading(true)
+    try {
+      const res = await studentService.getDaftar({
+        search: debouncedStudentTableSearch.trim() || undefined,
+        unit_id: studentTableUnitFilter !== 'all' ? studentTableUnitFilter : undefined,
+        page: studentTablePage,
+        per_page: 10,
+      })
+      const items = extractStudentsArray(res)
+      setStudentTableList(items)
+      const total = res?.data?.total || res?.total || items.length || 0
+      const lastPage = res?.data?.last_page || res?.last_page || Math.ceil(total / 10) || 1
+      setStudentTableTotalCount(total)
+      setStudentTableTotalPages(lastPage)
+    } catch (err) {
+      console.error('Gagal memuat datatable siswa:', err)
+      setStudentTableList([])
+    } finally {
+      setStudentTableLoading(false)
+    }
+  }, [studentTableModalOpen, debouncedStudentTableSearch, studentTableUnitFilter, studentTablePage])
+
+  useEffect(() => {
+    fetchStudentTableData()
+  }, [fetchStudentTableData])
+
+  const handleOpenStudentTableModal = () => {
+    setStudentTablePage(1)
+    setStudentTableSearch('')
+    setStudentTableUnitFilter(addForm.unit_id || 'all')
+    setStudentTableModalOpen(true)
+  }
+
+  const handleChooseStudentFromTable = (student) => {
+    handleSelectStudentFromObj(student, true)
+    setStudentTableModalOpen(false)
+  }
+
+  const handleSelectStudentFromObj = (found, notify = false) => {
     if (!found) return
     setSelectedStudentId(String(found.id))
     const studentName = found.full_name || found.nama || found.name || found.student_name || ''
@@ -339,6 +431,16 @@ export default function KelolaAlumniPage() {
     const studentUnitId = String(
       found.unit_id || found.education_unit_id || found.education_unit?.id || found.unit?.id || units[0]?.id || ''
     )
+    const studentKelasId = String(
+      found.kelas_id || found.school_class_id || found.schoolClass?.id || found.school_class?.id || ''
+    )
+    const studentKelasName =
+      found.school_class?.nama_kelas ||
+      found.schoolClass?.nama_kelas ||
+      found.kelas?.nama_kelas ||
+      found.metadata?.nama_kelas ||
+      found.metadata?.kelas ||
+      ''
 
     setAddForm((prev) => ({
       ...prev,
@@ -346,30 +448,67 @@ export default function KelolaAlumniPage() {
       nis: studentNis,
       nisn: studentNisn,
       unit_id: studentUnitId || prev.unit_id,
+      kelas_id: studentKelasId || prev.kelas_id,
+      kelas_name: studentKelasName || prev.kelas_name,
     }))
 
-    setSelectedStudentInfo(`${studentName} ${studentNis ? `(NIS: ${studentNis})` : ''}`)
+    const unitObj = units.find((u) => String(u.id) === String(studentUnitId))
+    const unitNameStr = unitObj?.name || unitObj?.nama || 'Unit Sekolah'
+    const kelasDisplay = studentKelasName ? ` | Kelas: ${studentKelasName}` : ''
+    const infoStr = `${studentName} (NIS: ${studentNis || '-'}) - ${unitNameStr}${kelasDisplay}`
+    setSelectedStudentInfo(infoStr)
+
+    if (notify) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Data Siswa Ditarik',
+        text: `Data "${studentName}" (${unitNameStr}${kelasDisplay}) berhasil ditarik dan diisikan secara langsung!`,
+        timer: 2500,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+      })
+    }
   }
 
   const handleSearchStudents = async () => {
-    if (!studentSearchQuery.trim()) return
     setSearchingStudents(true)
     try {
       const res = await studentService.getDaftar({
-        search: studentSearchQuery.trim(),
+        search: studentSearchQuery.trim() || undefined,
         unit_id: addForm.unit_id || undefined,
         per_page: 50,
       })
       const list = extractStudentsArray(res)
       setStudentsList(list)
       if (list.length > 0) {
-        handleSelectStudentFromObj(list[0])
+        handleSelectStudentFromObj(list[0], true)
       } else {
         setSelectedStudentId('')
         setSelectedStudentInfo('')
+        Swal.fire({
+          icon: 'info',
+          title: 'Siswa Tidak Ditemukan',
+          text: studentSearchQuery.trim()
+            ? `Tidak ada data siswa yang cocok dengan kata kunci "${studentSearchQuery}".`
+            : 'Belum ada data siswa terdaftar di database.',
+          timer: 2500,
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+        })
       }
     } catch (err) {
       console.error('Gagal mencari siswa:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Memuat',
+        text: 'Gagal mengambil data siswa dari database.',
+        timer: 2000,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+      })
     } finally {
       setSearchingStudents(false)
     }
@@ -380,7 +519,7 @@ export default function KelolaAlumniPage() {
     if (!studentId) return
     const found = studentsList.find((s) => String(s.id) === String(studentId))
     if (found) {
-      handleSelectStudentFromObj(found)
+      handleSelectStudentFromObj(found, true)
     }
   }
 
@@ -395,13 +534,22 @@ export default function KelolaAlumniPage() {
     pekerjaan: '',
     tahun_lulus: new Date().getFullYear().toString(),
     catatan: '',
+    // Jenis data: 'alumni' | 'pindah_unit' | 'pindah_keluar'
+    jenis_data: 'alumni',
+    unit_tujuan_id: '',
+    sekolah_tujuan: '',
+    alasan_mutasi: '',
   })
 
   // Form State Pindah Unit (Internal)
   const [pindahUnitForm, setPindahUnitForm] = useState({
     target_unit_id: '',
+    tingkat: '',
+    kelas_id: '',
     alasan: 'Pindah unit pendidikan internal',
   })
+  const [targetUnitClasses, setTargetUnitClasses] = useState([])
+  const [loadingTargetClasses, setLoadingTargetClasses] = useState(false)
 
   // Form State Pindah Keluar (Sekolah Lain)
   const [pindahKeluarForm, setPindahKeluarForm] = useState({
@@ -449,6 +597,44 @@ export default function KelolaAlumniPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Load Kelas / Rombel untuk Unit Tujuan Baru ketika Pindah Unit
+  useEffect(() => {
+    if (!pindahUnitModalOpen || !pindahUnitForm.target_unit_id) return
+    let isMounted = true
+    setLoadingTargetClasses(true)
+    api
+      .get('/kelas', { params: { unit_id: pindahUnitForm.target_unit_id, per_page: 100 } })
+      .then((res) => {
+        if (!isMounted) return
+        const items = res?.data?.data?.data || res?.data?.data || res?.data || []
+        setTargetUnitClasses(Array.isArray(items) ? items : [])
+      })
+      .catch((err) => {
+        console.error('Gagal memuat kelas unit tujuan:', err)
+        if (isMounted) setTargetUnitClasses([])
+      })
+      .finally(() => {
+        if (isMounted) setLoadingTargetClasses(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [pindahUnitModalOpen, pindahUnitForm.target_unit_id])
+
+  const availableTingkatan = useMemo(() => {
+    const set = new Set()
+    targetUnitClasses.forEach((k) => {
+      const t = k.tingkat || k.level || k.grade
+      if (t) set.add(String(t))
+    })
+    return Array.from(set).sort()
+  }, [targetUnitClasses])
+
+  const filteredTargetClasses = useMemo(() => {
+    if (!pindahUnitForm.tingkat) return targetUnitClasses
+    return targetUnitClasses.filter((k) => String(k.tingkat || k.level || k.grade) === String(pindahUnitForm.tingkat))
+  }, [targetUnitClasses, pindahUnitForm.tingkat])
 
   // Synchronized Category Lists for KPI Cards & Drill-Down Modals
   const categoryLists = useMemo(() => {
@@ -518,6 +704,33 @@ export default function KelolaAlumniPage() {
     pindah_keluar: categoryLists.pindah_keluar.length,
     mutasi: categoryLists.mutasi.length,
   }), [categoryLists])
+
+  // Breakdown distribusi tujuan studi untuk alumni yang tamat
+  const tujuanStats = useMemo(() => {
+    const list = categoryLists.lanjut_studi
+    const kuliah = list.filter((item) => {
+      const s = ((item.metadata?.status_lanjutan || item.status_lanjutan || item.metadata?.tujuan_kelulusan || '') + ' ' + (item.metadata?.perguruan_tinggi || '')).toLowerCase()
+      return s.includes('kuliah') || s.includes('ptn') || s.includes('pts') || s.includes('universitas') || s.includes('institut') || s.includes('studi') || s.includes('kampus') || s.includes('college')
+    }).length
+    const pesantren = list.filter((item) => {
+      const s = (item.metadata?.status_lanjutan || item.status_lanjutan || item.metadata?.tujuan_kelulusan || '').toLowerCase()
+      return s.includes('pesantren') || s.includes("ma'had") || s.includes('mahad') || s.includes('ponpes') || s.includes('tahfizh') || s.includes('tahfidz')
+    }).length
+    const bekerja = list.filter((item) => {
+      const s = (item.metadata?.status_lanjutan || item.status_lanjutan || item.metadata?.pekerjaan || '').toLowerCase()
+      return s.includes('kerja') || s.includes('karir') || s.includes('bekerja') || s.includes('wirausaha') || s.includes('swasta') || s.includes('pns') || s.includes('tni') || s.includes('polri')
+    }).length
+    const sekolah = list.filter((item) => {
+      const s = (item.metadata?.status_lanjutan || item.status_lanjutan || item.metadata?.tujuan_kelulusan || '').toLowerCase()
+      return s.includes('sma') || s.includes('smk') || s.includes('ma ') || s.includes('sekolah') || s.includes('lanjutan') || s.includes('madrasah')
+    }).length
+    const belumDiisi = list.filter((item) => {
+      const meta = item.metadata || {}
+      const s = (meta.status_lanjutan || item.status_lanjutan || meta.tujuan_kelulusan || meta.perguruan_tinggi || '').trim()
+      return !s
+    }).length
+    return { kuliah, pesantren, bekerja, sekolah, belumDiisi, total: list.length }
+  }, [categoryLists.lanjut_studi])
 
   // Filtered Alumni List
   const filteredList = useMemo(() => {
@@ -763,6 +976,8 @@ export default function KelolaAlumniPage() {
       nis: '',
       nisn: '',
       unit_id: units[0]?.id || '',
+      kelas_id: '',
+      kelas_name: '',
       tahun_lulus: new Date().getFullYear().toString(),
       status_lanjutan: 'Kuliah',
       perguruan_tinggi: '',
@@ -782,16 +997,42 @@ export default function KelolaAlumniPage() {
       })
       return
     }
+    if (addForm.jenis_data === 'pindah_unit' && !addForm.unit_tujuan_id) {
+      Swal.fire({ icon: 'warning', title: 'Form Belum Lengkap', text: 'Pilih unit tujuan pindah terlebih dahulu.' })
+      return
+    }
+    if (addForm.jenis_data === 'pindah_keluar' && !addForm.sekolah_tujuan.trim()) {
+      Swal.fire({ icon: 'warning', title: 'Form Belum Lengkap', text: 'Nama sekolah tujuan pindah keluar wajib diisi.' })
+      return
+    }
     setSubmitting(true)
     try {
-      await alumniService.createAlumni(addForm)
-      Swal.fire({
-        icon: 'success',
-        title: 'Alumni Ditambahkan',
-        text: 'Data alumni baru berhasil disimpan ke sistem.',
-        timer: 1800,
-        showConfirmButton: false,
-      })
+      if (addForm.jenis_data === 'pindah_unit') {
+        // Buat dulu record siswa sebagai alumni, lalu langsung proses pindah unit
+        const created = await alumniService.createAlumni({ ...addForm, status_lanjutan: 'Pindah Unit' })
+        const newId = created?.data?.id || created?.id
+        if (newId) {
+          await alumniService.pindahUnit(newId, {
+            target_unit_id: addForm.unit_tujuan_id,
+            alasan: addForm.alasan_mutasi || 'Pindah unit pendidikan internal',
+          })
+        }
+        Swal.fire({ icon: 'success', title: 'Mutasi Internal Berhasil', text: 'Siswa berhasil dipindahkan ke unit baru.', timer: 1800, showConfirmButton: false })
+      } else if (addForm.jenis_data === 'pindah_keluar') {
+        const created = await alumniService.createAlumni({ ...addForm, status_lanjutan: 'Pindah Keluar' })
+        const newId = created?.data?.id || created?.id
+        if (newId) {
+          await alumniService.pindahKeluar(newId, {
+            sekolah_tujuan: addForm.sekolah_tujuan,
+            alasan: addForm.alasan_mutasi || 'Pindah keluar ke sekolah lain',
+            hapus_dari_unit: true,
+          })
+        }
+        Swal.fire({ icon: 'success', title: 'Mutasi Keluar Berhasil', text: 'Siswa berhasil diproses pindah keluar.', timer: 1800, showConfirmButton: false })
+      } else {
+        await alumniService.createAlumni(addForm)
+        Swal.fire({ icon: 'success', title: 'Alumni Ditambahkan', text: 'Data alumni baru berhasil disimpan ke sistem.', timer: 1800, showConfirmButton: false })
+      }
       setAddModalOpen(false)
       fetchData()
     } catch (err) {
@@ -799,7 +1040,7 @@ export default function KelolaAlumniPage() {
       Swal.fire({
         icon: 'error',
         title: 'Gagal',
-        text: err.response?.data?.message || 'Gagal menambahkan data alumni baru.',
+        text: err.response?.data?.message || 'Gagal menyimpan data.',
       })
     } finally {
       setSubmitting(false)
@@ -929,6 +1170,10 @@ export default function KelolaAlumniPage() {
   const handleOpenEdit = (alumni) => {
     setSelectedAlumni(alumni)
     const meta = alumni.metadata || {}
+    // Deteksi jenis data dari metadata yang ada
+    let detectedJenis = 'alumni'
+    if (meta.mutasi_type === 'masuk_unit_baru') detectedJenis = 'pindah_unit'
+    else if (meta.mutasi_type === 'keluar' || meta.mutasi_type === 'berhenti') detectedJenis = 'pindah_keluar'
     setEditForm({
       full_name: alumni.full_name || alumni.nama || '',
       nis: alumni.nis || '',
@@ -939,6 +1184,10 @@ export default function KelolaAlumniPage() {
       pekerjaan: meta.pekerjaan || '',
       tahun_lulus: meta.tahun_lulus || alumni.tahun_masuk || new Date().getFullYear().toString(),
       catatan: meta.catatan_alumni || '',
+      jenis_data: detectedJenis,
+      unit_tujuan_id: '',
+      sekolah_tujuan: meta.sekolah_tujuan || '',
+      alasan_mutasi: meta.catatan_mutasi || meta.alasan_keluar || '',
     })
     setEditModalOpen(true)
   }
@@ -971,11 +1220,16 @@ export default function KelolaAlumniPage() {
   }
 
   const handleOpenPindahUnit = (alumni) => {
+    const validUnits = units.filter((u) => u.id !== alumni.unit_id)
+    const defaultUnit = validUnits[0]?.id || units[0]?.id || ''
     setSelectedAlumni(alumni)
     setPindahUnitForm({
-      target_unit_id: units[0]?.id || '',
+      target_unit_id: defaultUnit,
+      tingkat: '',
+      kelas_id: '',
       alasan: 'Pindah unit pendidikan internal',
     })
+    setTargetUnitClasses([])
     setPindahUnitModalOpen(true)
   }
 
@@ -1127,14 +1381,15 @@ export default function KelolaAlumniPage() {
           </div>
         </motion.div>
 
-        {/* Quick Summary Cards (KpiTintedCard identik dengan StudentsPage) */}
+        {/* Quick Summary Cards (KpiTintedCard Modern Style) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
           <KpiTintedCard
             icon={FaGraduationCap}
             label="Total Alumni Terdata"
             value={counts.all}
-            subtext="Terdaftar di sistem (Klik detail)"
+            subtext="Terdaftar di sistem yayasan"
             tone="emerald"
+            tag="Database"
             active={categoryTab === 'all'}
             onClick={() => { setCategoryTab('all'); setPage(1); handleOpenCardModal('total_alumni'); }}
           />
@@ -1142,8 +1397,9 @@ export default function KelolaAlumniPage() {
             icon={FaSchool}
             label="Tercatat Lanjut Studi"
             value={counts.alumni}
-            subtext="Kuliah / Sekolah / Pesantren (Klik detail)"
+            subtext="Kuliah / Sekolah / Pesantren"
             tone="blue"
+            tag="Studi Lanjut"
             active={categoryTab === 'alumni'}
             onClick={() => { setCategoryTab('alumni'); setPage(1); handleOpenCardModal('lanjut_studi'); }}
           />
@@ -1151,8 +1407,9 @@ export default function KelolaAlumniPage() {
             icon={FaExchangeAlt}
             label="Mutasi Pindah Unit"
             value={counts.pindah_unit}
-            subtext="Internal antar unit (Klik detail)"
+            subtext="Internal antar unit sekolah"
             tone="amber"
+            tag="Internal"
             active={categoryTab === 'mutasi'}
             onClick={() => { setCategoryTab('mutasi'); setPage(1); handleOpenCardModal('pindah_unit'); }}
           />
@@ -1160,11 +1417,198 @@ export default function KelolaAlumniPage() {
             icon={FaUserSlash}
             label="Pindah Keluar Sekolah"
             value={counts.pindah_keluar}
-            subtext="Mutasi luar / dilepas (Klik detail)"
+            subtext="Mutasi luar / sekolah lain"
             tone="rose"
+            tag="Eksternal"
             active={categoryTab === 'mutasi'}
             onClick={() => { setCategoryTab('mutasi'); setPage(1); handleOpenCardModal('pindah_keluar'); }}
           />
+        </div>
+
+        {/* === 3 Detail KPI Card: Pindah Unit, Pindah Keluar, Tujuan Tamat === */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
+
+          {/* Card A: Pindah Unit — Mutasi Internal */}
+          <div
+            onClick={() => { setCategoryTab('mutasi'); setPage(1); handleOpenCardModal('pindah_unit'); }}
+            className="group relative overflow-hidden cursor-pointer rounded-[18px] border-2 border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white p-5 shadow-sm hover:shadow-md hover:border-amber-400 transition-all duration-200 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900"
+          >
+            {/* Ambient glow */}
+            <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl group-hover:bg-amber-400/30 transition-all" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/40">
+                  <ArrowRightLeft className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Pindah Unit</p>
+                  <p className="text-[10px] text-amber-600/70 dark:text-amber-500/70">Mutasi Internal Antar Unit</p>
+                </div>
+              </div>
+              <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">
+                Internal
+              </span>
+            </div>
+
+            {/* Big Number */}
+            <p className="text-4xl font-black text-amber-700 dark:text-amber-300 tabular-nums">
+              {counts.pindah_unit}
+            </p>
+            <p className="mt-0.5 text-[11px] font-semibold text-amber-600/80 dark:text-amber-400/80">siswa berpindah unit di dalam yayasan</p>
+
+            {/* Mini breakdown: unit paling banyak tujuan */}
+            <div className="mt-3 pt-3 border-t border-amber-200/60 dark:border-amber-800/40 space-y-1">
+              {counts.pindah_unit > 0 ? (
+                <>
+                  {(() => {
+                    const unitCount = {}
+                    categoryLists.pindah_unit.forEach((item) => {
+                      const uName = item.education_unit?.name || item.unit?.name || 'Unit Lain'
+                      unitCount[uName] = (unitCount[uName] || 0) + 1
+                    })
+                    return Object.entries(unitCount)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 3)
+                      .map(([unit, cnt]) => (
+                        <div key={unit} className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-amber-800/80 dark:text-amber-300/80 truncate max-w-[70%]">{unit}</span>
+                          <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400">{cnt} siswa</span>
+                        </div>
+                      ))
+                  })()}
+                </>
+              ) : (
+                <p className="text-[10px] text-amber-500/60 italic">Belum ada data mutasi internal</p>
+              )}
+            </div>
+
+            {/* Click CTA */}
+            <p className="mt-2 text-[10px] font-bold text-amber-600/60 dark:text-amber-500/60 flex items-center gap-1">
+              <Eye className="h-3 w-3" /> Klik untuk detail lengkap
+            </p>
+          </div>
+
+          {/* Card B: Pindah Keluar — Mutasi ke Sekolah Lain */}
+          <div
+            onClick={() => { setCategoryTab('mutasi'); setPage(1); handleOpenCardModal('pindah_keluar'); }}
+            className="group relative overflow-hidden cursor-pointer rounded-[18px] border-2 border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white p-5 shadow-sm hover:shadow-md hover:border-rose-400 transition-all duration-200 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900"
+          >
+            {/* Ambient glow */}
+            <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-rose-400/20 blur-2xl group-hover:bg-rose-400/30 transition-all" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-sm shadow-rose-500/40">
+                  <UserX className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">Pindah Keluar</p>
+                  <p className="text-[10px] text-rose-600/70 dark:text-rose-500/70">Mutasi ke Sekolah Lain</p>
+                </div>
+              </div>
+              <span className="rounded-lg bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
+                Eksternal
+              </span>
+            </div>
+
+            {/* Big Number */}
+            <p className="text-4xl font-black text-rose-700 dark:text-rose-300 tabular-nums">
+              {counts.pindah_keluar}
+            </p>
+            <p className="mt-0.5 text-[11px] font-semibold text-rose-600/80 dark:text-rose-400/80">siswa pindah keluar ke sekolah lain</p>
+
+            {/* Mini breakdown: sekolah tujuan */}
+            <div className="mt-3 pt-3 border-t border-rose-200/60 dark:border-rose-800/40 space-y-1">
+              {counts.pindah_keluar > 0 ? (
+                <>
+                  {(() => {
+                    const sekolahCount = {}
+                    categoryLists.pindah_keluar.forEach((item) => {
+                      const tujuan = item.metadata?.sekolah_tujuan || 'Sekolah Lain'
+                      sekolahCount[tujuan] = (sekolahCount[tujuan] || 0) + 1
+                    })
+                    return Object.entries(sekolahCount)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 3)
+                      .map(([sekolah, cnt]) => (
+                        <div key={sekolah} className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-rose-800/80 dark:text-rose-300/80 truncate max-w-[70%]">{sekolah}</span>
+                          <span className="text-[10px] font-extrabold text-rose-700 dark:text-rose-400">{cnt} siswa</span>
+                        </div>
+                      ))
+                  })()}
+                </>
+              ) : (
+                <p className="text-[10px] text-rose-500/60 italic">Belum ada data mutasi keluar</p>
+              )}
+            </div>
+
+            {/* Click CTA */}
+            <p className="mt-2 text-[10px] font-bold text-rose-600/60 dark:text-rose-500/60 flex items-center gap-1">
+              <Eye className="h-3 w-3" /> Klik untuk detail lengkap
+            </p>
+          </div>
+
+          {/* Card C: Tujuan Siswa Tamat / Alumni Lulus */}
+          <div
+            onClick={() => { setCategoryTab('alumni'); setPage(1); handleOpenCardModal('lanjut_studi'); }}
+            className="group relative overflow-hidden cursor-pointer rounded-[18px] border-2 border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white p-5 shadow-sm hover:shadow-md hover:border-emerald-400 transition-all duration-200 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900"
+          >
+            {/* Ambient glow */}
+            <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-emerald-400/20 blur-2xl group-hover:bg-emerald-400/30 transition-all" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/40">
+                  <GraduationCap className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Tujuan Tamat</p>
+                  <p className="text-[10px] text-emerald-600/70 dark:text-emerald-500/70">Distribusi Studi Lanjut Alumni</p>
+                </div>
+              </div>
+              <span className="rounded-lg bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                {tujuanStats.total} Alumni
+              </span>
+            </div>
+
+            {/* Breakdown distribusi tujuan */}
+            <div className="space-y-2">
+              {[
+                { label: 'Kuliah / PTN / PTS', count: tujuanStats.kuliah, color: 'bg-blue-500', textColor: 'text-blue-700 dark:text-blue-300' },
+                { label: 'Pesantren / Ma\'had', count: tujuanStats.pesantren, color: 'bg-purple-500', textColor: 'text-purple-700 dark:text-purple-300' },
+                { label: 'Bekerja / Wirausaha', count: tujuanStats.bekerja, color: 'bg-amber-500', textColor: 'text-amber-700 dark:text-amber-300' },
+                { label: 'Sekolah Lanjutan', count: tujuanStats.sekolah, color: 'bg-sky-500', textColor: 'text-sky-700 dark:text-sky-300' },
+                { label: 'Belum Terisi', count: tujuanStats.belumDiisi, color: 'bg-slate-300', textColor: 'text-slate-500 dark:text-slate-400' },
+              ].map(({ label, count, color, textColor }) => {
+                const pct = tujuanStats.total > 0 ? Math.round((count / tujuanStats.total) * 100) : 0
+                return (
+                  <div key={label}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className={`text-[10px] font-semibold ${textColor} truncate max-w-[60%]`}>{label}</span>
+                      <span className={`text-[10px] font-extrabold ${textColor}`}>{count} <span className="font-semibold opacity-70">siswa</span></span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${color}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Click CTA */}
+            <p className="mt-3 text-[10px] font-bold text-emerald-600/60 dark:text-emerald-500/60 flex items-center gap-1">
+              <Eye className="h-3 w-3" /> Klik untuk detail lengkap
+            </p>
+          </div>
+
         </div>
 
         {/* Notification Alert if Error */}
@@ -1180,8 +1624,8 @@ export default function KelolaAlumniPage() {
           </Alert>
         )}
 
-        {/* Card Datatable Segmented Switcher untuk Alumni & Mutasi */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-5">
+        {/* Card Datatable Segmented Switcher untuk Alumni & Mutasi — disembunyikan */}
+        <div className="hidden">
           {/* Card 1: Semua Data */}
           <button
             type="button"
@@ -1633,10 +2077,105 @@ export default function KelolaAlumniPage() {
 
             <form onSubmit={handleSaveAdd}>
               <DialogBody className="space-y-5 py-4 max-h-[70vh] overflow-y-auto pr-1.5 text-slate-700 dark:text-slate-200">
-                {/* ── SEKSI 1: IDENTITAS UTAMA ALUMNI ── */}
+                {/* ── SEKSI 1: JENIS DATA / TIPE MUTASI ── */}
                 <div className="space-y-3.5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 pb-1 border-b border-emerald-100 dark:border-emerald-950">
-                    <span>1. Identitas Utama Siswa / Alumni</span>
+                    <span>1. Jenis Data / Tipe Mutasi</span>
+                  </div>
+
+                  {/* Pilihan Jenis Data */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { val: 'alumni', label: 'Alumni / Lulus', icon: GraduationCap, color: 'emerald' },
+                      { val: 'pindah_unit', label: 'Pindah Unit', icon: ArrowRightLeft, color: 'amber' },
+                      { val: 'pindah_keluar', label: 'Pindah Keluar', icon: UserX, color: 'rose' },
+                    ].map(({ val, label, icon: Icon, color }) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setAddForm({ ...addForm, jenis_data: val, unit_tujuan_id: '', sekolah_tujuan: '', alasan_mutasi: '' })}
+                        className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-[10px] font-extrabold transition-all cursor-pointer ${
+                          addForm.jenis_data === val
+                            ? color === 'emerald' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-sm'
+                            : color === 'amber' ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 shadow-sm'
+                            : 'border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 shadow-sm'
+                            : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Field kondisional: Pindah Unit */}
+                  {addForm.jenis_data === 'pindah_unit' && (
+                    <div className="space-y-3 rounded-xl border border-amber-200/80 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20 p-3.5">
+                      <div className="flex flex-col gap-1.5">
+                        <FieldLabel className="block text-xs font-semibold text-amber-800 dark:text-amber-300">
+                          Unit Tujuan Pindah <span className="text-rose-500">*</span>
+                        </FieldLabel>
+                        <Select
+                          value={addForm.unit_tujuan_id}
+                          onChange={(val) => setAddForm({ ...addForm, unit_tujuan_id: String(val) })}
+                        >
+                          <SelectTrigger className="h-10 w-full text-xs rounded-xl bg-white border-amber-200 hover:bg-amber-50/50 dark:bg-slate-900 dark:border-amber-900/50 focus:ring-2 focus:ring-amber-500/20">
+                            <SelectValue placeholder="Pilih Unit Tujuan" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {units.filter(u => String(u.id) !== String(addForm.unit_id)).map((u) => (
+                              <SelectItem key={u.id} id={u.id} value={u.id}>{u.name || u.nama}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldDescription className="text-[11px] text-amber-700/70">Pilih unit tujuan berbeda dari unit asal siswa.</FieldDescription>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <FieldLabel className="block text-xs font-semibold text-amber-800 dark:text-amber-300">Alasan / Catatan Mutasi</FieldLabel>
+                        <Input
+                          type="text"
+                          placeholder="Contoh: Mengikuti orang tua pindah domisili"
+                          value={addForm.alasan_mutasi}
+                          onChange={(e) => setAddForm({ ...addForm, alasan_mutasi: e.target.value })}
+                          className="w-full h-10 text-xs rounded-xl border border-amber-200 bg-white dark:bg-slate-900 dark:border-amber-900/50 px-3.5 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Field kondisional: Pindah Keluar */}
+                  {addForm.jenis_data === 'pindah_keluar' && (
+                    <div className="space-y-3 rounded-xl border border-rose-200/80 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/20 p-3.5">
+                      <div className="flex flex-col gap-1.5">
+                        <FieldLabel className="block text-xs font-semibold text-rose-800 dark:text-rose-300">
+                          Nama Sekolah Tujuan <span className="text-rose-500">*</span>
+                        </FieldLabel>
+                        <Input
+                          type="text"
+                          placeholder="Contoh: SMA Negeri 1 Jakarta / MAN 2 Bandung"
+                          value={addForm.sekolah_tujuan}
+                          onChange={(e) => setAddForm({ ...addForm, sekolah_tujuan: e.target.value })}
+                          className="w-full h-10 text-xs rounded-xl border border-rose-200 bg-white dark:bg-slate-900 dark:border-rose-900/50 px-3.5 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <FieldLabel className="block text-xs font-semibold text-rose-800 dark:text-rose-300">Alasan Pindah Keluar</FieldLabel>
+                        <Input
+                          type="text"
+                          placeholder="Contoh: Ikut orang tua pindah ke luar kota"
+                          value={addForm.alasan_mutasi}
+                          onChange={(e) => setAddForm({ ...addForm, alasan_mutasi: e.target.value })}
+                          className="w-full h-10 text-xs rounded-xl border border-rose-200 bg-white dark:bg-slate-900 dark:border-rose-900/50 px-3.5 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── SEKSI 2: IDENTITAS UTAMA ALUMNI ── */}
+                <div className="space-y-3.5 pt-1">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 pb-1 border-b border-emerald-100 dark:border-emerald-950">
+                    <span>2. Identitas Utama Siswa / Alumni</span>
                   </div>
 
                   {/* ── SELEKTOR TARIK DATA DARI DATABASE SISWA ── */}
@@ -1646,9 +2185,9 @@ export default function KelolaAlumniPage() {
                       Cari & Tarik Data Siswa dari Database
                     </FieldLabel>
 
-                    {/* Input Nama Siswa & Tombol Cari Siswa */}
-                    <div className="flex items-center gap-2 w-full">
-                      <div className="relative flex-1">
+                    {/* Tombol Buka DataTable Siswa & Input Pencarian */}
+                    <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+                      <div className="relative flex-1 w-full">
                         <Input
                           type="text"
                           placeholder="Ketik Nama Siswa atau NIS..."
@@ -1661,15 +2200,25 @@ export default function KelolaAlumniPage() {
                           <Spinner className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         )}
                       </div>
-                      <Button
-                        type="button"
-                        onClick={handleSearchStudents}
-                        pending={searchingStudents}
-                        className="h-10 text-xs px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-bold shrink-0 text-white gap-1.5 shadow-xs"
-                      >
-                        <Search className="w-3.5 h-3.5" />
-                        Cari Siswa
-                      </Button>
+                      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                        <Button
+                          type="button"
+                          onClick={handleSearchStudents}
+                          pending={searchingStudents}
+                          className="h-10 text-xs px-3 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 font-bold text-white gap-1.5 shadow-xs"
+                        >
+                          <Search className="w-3.5 h-3.5" />
+                          Cari
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={handleOpenStudentTableModal}
+                          className="h-10 text-xs px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 font-bold text-white gap-1.5 shadow-md shadow-emerald-500/10"
+                        >
+                          <School className="w-3.5 h-3.5" />
+                          Buka DataTable Siswa
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Dropdown Pilihan Siswa */}
@@ -1744,13 +2293,14 @@ export default function KelolaAlumniPage() {
                   </div>
                 </div>
 
-                {/* ── SEKSI 2: RIWAYAT KELULUSAN UNIT ── */}
+                {/* ── SEKSI 3: RIWAYAT KELULUSAN UNIT & KELAS ── */}
                 <div className="space-y-3.5 pt-1">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 pb-1 border-b border-emerald-100 dark:border-emerald-950">
-                    <span>2. Riwayat Kelulusan Unit Sekolah</span>
+                    <span>3. Riwayat Kelulusan Unit Sekolah & Kelas</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
+                    {/* Field 1: Unit Pendidikan Asal */}
                     <div className="flex flex-col gap-1.5 w-full">
                       <FieldLabel className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
                         Unit Pendidikan Asal <span className="text-rose-500">*</span>
@@ -1771,26 +2321,42 @@ export default function KelolaAlumniPage() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {/* Field 2: Kelas / Rombel Terakhir (Terisi Otomatis Saat Tarik Data) */}
                     <div className="flex flex-col gap-1.5 w-full">
                       <FieldLabel className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        Tahun Lulus <span className="text-rose-500">*</span>
+                        Kelas / Rombel Terakhir
                       </FieldLabel>
                       <Input
                         type="text"
-                        placeholder="Contoh: 2026"
-                        value={addForm.tahun_lulus}
-                        onChange={(e) => setAddForm({ ...addForm, tahun_lulus: e.target.value })}
+                        placeholder="Contoh: Kelas 9A / 12-IPA-1"
+                        value={addForm.kelas_name}
+                        onChange={(e) => setAddForm({ ...addForm, kelas_name: e.target.value })}
                         className="w-full h-10 text-xs rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3.5 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
-                        required
                       />
                     </div>
                   </div>
+
+                  {/* Field 3: Tahun Lulus */}
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <FieldLabel className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Tahun Lulus / Tamat <span className="text-rose-500">*</span>
+                    </FieldLabel>
+                    <Input
+                      type="text"
+                      placeholder="Contoh: 2026"
+                      value={addForm.tahun_lulus}
+                      onChange={(e) => setAddForm({ ...addForm, tahun_lulus: e.target.value })}
+                      className="w-full h-10 text-xs rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3.5 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
+                      required
+                    />
+                  </div>
                 </div>
 
-                {/* ── SEKSI 3: KELANJUTAN STUDI / KARIR ── */}
+                {/* ── SEKSI 4: KELANJUTAN STUDI / KARIR ── */}
                 <div className="space-y-3.5 pt-1">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 pb-1 border-b border-emerald-100 dark:border-emerald-950">
-                    <span>3. Kelanjutan Studi & Karir Alumni</span>
+                    <span>4. Kelanjutan Studi & Karir Alumni</span>
                   </div>
 
                   <div className="flex flex-col gap-1.5 w-full">
@@ -1861,6 +2427,156 @@ export default function KelolaAlumniPage() {
         </OverlayWrapper>
       )}
 
+      {/* ── 1.1. MODAL DATATABLE SISWA / SANTRI SELECTOR (TailGrids Dialog) ────────── */}
+      {studentTableModalOpen && (
+        <OverlayWrapper>
+          <Backdrop isOpen={studentTableModalOpen} onOpenChange={setStudentTableModalOpen} />
+          <Dialog isOpen={studentTableModalOpen} onOpenChange={setStudentTableModalOpen} className="max-w-4xl w-full rounded-2xl p-6 border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]">
+            <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <DialogTitle className="flex items-center gap-3 text-base font-bold text-slate-900 dark:text-slate-100">
+                <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 shrink-0 shadow-xs">
+                  <School className="w-5 h-5" />
+                </div>
+                <div>
+                  <div>DataTable Siswa & Santri Database</div>
+                  <DialogDescription className="text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                    Pilih siswa/santri dari daftar unit di bawah ini untuk mengisikan identitas alumni secara langsung.
+                  </DialogDescription>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+
+            <DialogBody className="space-y-4 py-4 max-h-[75vh] overflow-y-auto pr-1 text-slate-700 dark:text-slate-200">
+              {/* Filter Toolbar */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800">
+                <div className="relative flex-1 w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Cari Nama Siswa, NIS, NISN..."
+                    value={studentTableSearch}
+                    onChange={(e) => { setStudentTableSearch(e.target.value); setStudentTablePage(1); }}
+                    className="w-full h-9 pl-9 text-xs rounded-lg border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <MasterFilterSelect
+                    value={studentTableUnitFilter}
+                    onChange={(e) => { setStudentTableUnitFilter(e.target.value); setStudentTablePage(1); }}
+                    className="h-9 text-xs rounded-lg min-w-[160px]"
+                  >
+                    <option value="all">-- Semua Unit Sekolah --</option>
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name || u.nama}</option>
+                    ))}
+                  </MasterFilterSelect>
+
+                  <AppBadge color="emerald" size="sm" className="whitespace-nowrap font-bold">
+                    {studentTableTotalCount} Siswa
+                  </AppBadge>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 uppercase text-[10px] font-bold tracking-wider">
+                    <tr>
+                      <th className="py-3 px-3.5 text-center w-10">No</th>
+                      <th className="py-3 px-3.5">Identitas Siswa</th>
+                      <th className="py-3 px-3.5">NIS / NISN</th>
+                      <th className="py-3 px-3.5">Unit Sekolah</th>
+                      <th className="py-3 px-3.5">Kelas / Rombel</th>
+                      <th className="py-3 px-3.5 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-[#1B2433]">
+                    {studentTableLoading ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-500">
+                          <Spinner className="w-6 h-6 mx-auto mb-2 text-emerald-600" />
+                          Memuat data siswa database...
+                        </td>
+                      </tr>
+                    ) : studentTableList.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-500">
+                          Tidak ada siswa/santri ditemukan pada scope unit ini.
+                        </td>
+                      </tr>
+                    ) : (
+                      studentTableList.map((row, idx) => {
+                        const sName = row.full_name || row.nama || row.name || 'Siswa'
+                        const sNis = row.nis || row.metadata?.nis || '-'
+                        const sNisn = row.nisn || row.metadata?.nisn || '-'
+                        const uName = row.education_unit?.name || row.educationUnit?.name || row.unit_name || row.unit?.name || 'Unit'
+                        const kName = row.school_class?.nama_kelas || row.schoolClass?.nama_kelas || row.kelas?.nama_kelas || '-'
+
+                        return (
+                          <tr key={row.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                            <td className="py-2.5 px-3.5 text-center font-medium text-slate-500">
+                              {(studentTablePage - 1) * 10 + idx + 1}
+                            </td>
+                            <td className="py-2.5 px-3.5">
+                              <PersonIdentityCell
+                                name={sName}
+                                subtext={sNis !== '-' ? `NIS: ${sNis}` : 'Siswa'}
+                                avatarUrl={row.photo_url || row.avatar_url || row.foto}
+                              />
+                            </td>
+                            <td className="py-2.5 px-3.5 font-medium text-slate-700 dark:text-slate-300">
+                              <div>NIS: <span className="font-semibold">{sNis}</span></div>
+                              <div className="text-[10px] text-slate-400">NISN: {sNisn}</div>
+                            </td>
+                            <td className="py-2.5 px-3.5">
+                              <AppBadge color="sky" size="sm">{uName}</AppBadge>
+                            </td>
+                            <td className="py-2.5 px-3.5">
+                              <AppBadge color="cyan" size="sm">{kName}</AppBadge>
+                            </td>
+                            <td className="py-2.5 px-3.5 text-center">
+                              <Button
+                                type="button"
+                                size="xs"
+                                variant="primary"
+                                onClick={() => handleChooseStudentFromTable(row)}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1 rounded-lg px-3 py-1.5 shadow-xs"
+                              >
+                                <CheckCircle1 className="w-3.5 h-3.5" />
+                                Pilih Siswa Ini
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {studentTableTotalPages > 1 && (
+                <div className="pt-2">
+                  <Pagination
+                    currentPage={studentTablePage}
+                    totalPages={studentTableTotalPages}
+                    onPageChange={(p) => setStudentTablePage(p)}
+                    sideLayout="full"
+                  />
+                </div>
+              )}
+            </DialogBody>
+
+            <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800">
+              <DialogClose appearance="outline" size="sm" type="button">
+                Tutup
+              </DialogClose>
+            </DialogFooter>
+          </Dialog>
+        </OverlayWrapper>
+      )}
+
       {/* ── 2. MODAL EDIT DATA ALUMNI (TailGrids Dialog) ───────────────────────── */}
       {editModalOpen && selectedAlumni && (
         <OverlayWrapper>
@@ -1882,10 +2598,105 @@ export default function KelolaAlumniPage() {
 
             <form onSubmit={handleSaveEdit}>
               <DialogBody className="space-y-5 py-4 max-h-[70vh] overflow-y-auto pr-1.5 text-slate-700 dark:text-slate-200">
-                {/* ── SEKSI 1: IDENTITAS UTAMA ALUMNI ── */}
+                {/* ── SEKSI 1: JENIS DATA / TIPE MUTASI (Edit) ── */}
                 <div className="space-y-3.5">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1.5 pb-1 border-b border-blue-100 dark:border-blue-950">
-                    <span>1. Identitas Utama Siswa / Alumni</span>
+                    <span>1. Jenis Data / Tipe Mutasi</span>
+                  </div>
+
+                  {/* Pilihan Jenis Data */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { val: 'alumni', label: 'Alumni / Lulus', icon: GraduationCap, color: 'emerald' },
+                      { val: 'pindah_unit', label: 'Pindah Unit', icon: ArrowRightLeft, color: 'amber' },
+                      { val: 'pindah_keluar', label: 'Pindah Keluar', icon: UserX, color: 'rose' },
+                    ].map(({ val, label, icon: Icon, color }) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setEditForm({ ...editForm, jenis_data: val, unit_tujuan_id: '', sekolah_tujuan: editForm.sekolah_tujuan || '', alasan_mutasi: editForm.alasan_mutasi || '' })}
+                        className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-[10px] font-extrabold transition-all cursor-pointer ${
+                          editForm.jenis_data === val
+                            ? color === 'emerald' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-sm'
+                            : color === 'amber' ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 shadow-sm'
+                            : 'border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 shadow-sm'
+                            : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Field kondisional: Pindah Unit */}
+                  {editForm.jenis_data === 'pindah_unit' && (
+                    <div className="space-y-3 rounded-xl border border-amber-200/80 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20 p-3.5">
+                      <div className="flex flex-col gap-1.5">
+                        <FieldLabel className="block text-xs font-semibold text-amber-800 dark:text-amber-300">
+                          Unit Tujuan Pindah <span className="text-rose-500">*</span>
+                        </FieldLabel>
+                        <Select
+                          value={editForm.unit_tujuan_id}
+                          onChange={(val) => setEditForm({ ...editForm, unit_tujuan_id: String(val) })}
+                        >
+                          <SelectTrigger className="h-10 w-full text-xs rounded-xl bg-white border-amber-200 hover:bg-amber-50/50 dark:bg-slate-900 dark:border-amber-900/50 focus:ring-2 focus:ring-amber-500/20">
+                            <SelectValue placeholder="Pilih Unit Tujuan" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {units.filter(u => String(u.id) !== String(editForm.unit_id)).map((u) => (
+                              <SelectItem key={u.id} id={u.id} value={u.id}>{u.name || u.nama}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldDescription className="text-[11px] text-amber-700/70">Unit tujuan berbeda dari unit asal saat ini.</FieldDescription>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <FieldLabel className="block text-xs font-semibold text-amber-800 dark:text-amber-300">Alasan / Catatan Mutasi</FieldLabel>
+                        <Input
+                          type="text"
+                          placeholder="Contoh: Pindah mengikuti orang tua"
+                          value={editForm.alasan_mutasi}
+                          onChange={(e) => setEditForm({ ...editForm, alasan_mutasi: e.target.value })}
+                          className="w-full h-10 text-xs rounded-xl border border-amber-200 bg-white dark:bg-slate-900 dark:border-amber-900/50 px-3.5 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Field kondisional: Pindah Keluar */}
+                  {editForm.jenis_data === 'pindah_keluar' && (
+                    <div className="space-y-3 rounded-xl border border-rose-200/80 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/20 p-3.5">
+                      <div className="flex flex-col gap-1.5">
+                        <FieldLabel className="block text-xs font-semibold text-rose-800 dark:text-rose-300">
+                          Nama Sekolah Tujuan <span className="text-rose-500">*</span>
+                        </FieldLabel>
+                        <Input
+                          type="text"
+                          placeholder="Contoh: SMA Negeri 1 Jakarta"
+                          value={editForm.sekolah_tujuan}
+                          onChange={(e) => setEditForm({ ...editForm, sekolah_tujuan: e.target.value })}
+                          className="w-full h-10 text-xs rounded-xl border border-rose-200 bg-white dark:bg-slate-900 dark:border-rose-900/50 px-3.5 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <FieldLabel className="block text-xs font-semibold text-rose-800 dark:text-rose-300">Alasan Pindah Keluar</FieldLabel>
+                        <Input
+                          type="text"
+                          placeholder="Contoh: Mengikuti orang tua pindah kota"
+                          value={editForm.alasan_mutasi}
+                          onChange={(e) => setEditForm({ ...editForm, alasan_mutasi: e.target.value })}
+                          className="w-full h-10 text-xs rounded-xl border border-rose-200 bg-white dark:bg-slate-900 dark:border-rose-900/50 px-3.5 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── SEKSI 2: IDENTITAS UTAMA ALUMNI ── */}
+                <div className="space-y-3.5 pt-1">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1.5 pb-1 border-b border-blue-100 dark:border-blue-950">
+                    <span>2. Identitas Utama Siswa / Alumni</span>
                   </div>
 
                   <div className="flex flex-col gap-1.5 w-full">
@@ -1923,10 +2734,10 @@ export default function KelolaAlumniPage() {
                   </div>
                 </div>
 
-                {/* ── SEKSI 2: RIWAYAT KELULUSAN UNIT ── */}
+                {/* ── SEKSI 3: RIWAYAT KELULUSAN UNIT ── */}
                 <div className="space-y-3.5 pt-1">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1.5 pb-1 border-b border-blue-100 dark:border-blue-950">
-                    <span>2. Riwayat Kelulusan Unit Sekolah</span>
+                    <span>3. Riwayat Kelulusan Unit Sekolah</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
@@ -1961,10 +2772,10 @@ export default function KelolaAlumniPage() {
                   </div>
                 </div>
 
-                {/* ── SEKSI 3: KELANJUTAN STUDI / KARIR ── */}
+                {/* ── SEKSI 4: KELANJUTAN STUDI / KARIR ── */}
                 <div className="space-y-3.5 pt-1">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-1.5 pb-1 border-b border-blue-100 dark:border-blue-950">
-                    <span>3. Kelanjutan Studi & Karir Alumni</span>
+                    <span>4. Kelanjutan Studi & Karir Alumni</span>
                   </div>
 
                   <div className="flex flex-col gap-1.5 w-full">
@@ -2064,11 +2875,14 @@ export default function KelolaAlumniPage() {
                   </AlertDescription>
                 </Alert>
 
+                {/* 1. Pilih Unit Tujuan Baru */}
                 <div className="flex flex-col gap-1.5 w-full">
-                  <FieldLabel className="block text-xs font-semibold text-slate-800 dark:text-slate-200">Pilih Unit Tujuan Baru</FieldLabel>
+                  <FieldLabel className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    Pilih Unit Tujuan Baru <span className="text-rose-500">*</span>
+                  </FieldLabel>
                   <Select
                     value={pindahUnitForm.target_unit_id}
-                    onChange={(val) => setPindahUnitForm({ ...pindahUnitForm, target_unit_id: String(val) })}
+                    onChange={(val) => setPindahUnitForm({ ...pindahUnitForm, target_unit_id: String(val), tingkat: '', kelas_id: '' })}
                   >
                     <SelectTrigger className="h-10 w-full text-xs rounded-xl bg-slate-50/70 border-slate-200 hover:bg-white dark:bg-slate-900 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500/20">
                       <SelectValue placeholder="Pilih Unit Tujuan" />
@@ -2085,6 +2899,70 @@ export default function KelolaAlumniPage() {
                   </Select>
                 </div>
 
+                {/* 2. Grid Tingkatan & Kelas/Rombel Tujuan Baru */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full">
+                  {/* Pilihan Tingkatan */}
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <FieldLabel className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Tingkatan Pendidikan
+                    </FieldLabel>
+                    <MasterFilterSelect
+                      value={pindahUnitForm.tingkat}
+                      onChange={(e) => setPindahUnitForm({ ...pindahUnitForm, tingkat: e.target.value, kelas_id: '' })}
+                      className="w-full h-10 text-xs rounded-xl"
+                    >
+                      <option value="">-- Pilih Tingkatan --</option>
+                      {availableTingkatan.length > 0 ? (
+                        availableTingkatan.map((t) => (
+                          <option key={t} value={t}>Tingkat {t}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="1">Tingkat 1</option>
+                          <option value="2">Tingkat 2</option>
+                          <option value="3">Tingkat 3</option>
+                          <option value="4">Tingkat 4</option>
+                          <option value="5">Tingkat 5</option>
+                          <option value="6">Tingkat 6</option>
+                          <option value="7">Tingkat 7</option>
+                          <option value="8">Tingkat 8</option>
+                          <option value="9">Tingkat 9</option>
+                          <option value="10">Tingkat 10</option>
+                          <option value="11">Tingkat 11</option>
+                          <option value="12">Tingkat 12</option>
+                        </>
+                      )}
+                    </MasterFilterSelect>
+                  </div>
+
+                  {/* Pilihan Kelas / Rombel Tujuan */}
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <FieldLabel className="block text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                      <span>Kelas / Rombel Tujuan</span>
+                      {loadingTargetClasses && <Spinner className="w-3 h-3 text-emerald-600" />}
+                    </FieldLabel>
+                    <MasterFilterSelect
+                      value={pindahUnitForm.kelas_id}
+                      onChange={(e) => setPindahUnitForm({ ...pindahUnitForm, kelas_id: e.target.value })}
+                      className="w-full h-10 text-xs rounded-xl"
+                    >
+                      <option value="">
+                        {loadingTargetClasses
+                          ? 'Memuat kelas unit...'
+                          : filteredTargetClasses.length > 0
+                          ? '-- Pilih Kelas / Rombel --'
+                          : '-- Tidak ada rombel --'}
+                      </option>
+                      {filteredTargetClasses.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.nama_kelas || k.name || k.nama} {k.tingkat ? `(Tingkat ${k.tingkat})` : ''}
+                        </option>
+                      ))}
+                    </MasterFilterSelect>
+                  </div>
+                </div>
+
+                {/* 3. Alasan Mutasi Internal */}
                 <div className="flex flex-col gap-1.5 w-full">
                   <FieldLabel className="block text-xs font-semibold text-slate-800 dark:text-slate-200">Alasan Mutasi Internal</FieldLabel>
                   <Input
@@ -2191,7 +3069,7 @@ export default function KelolaAlumniPage() {
       {cardModalOpen && (
         <OverlayWrapper>
           <Backdrop isOpen={cardModalOpen} onOpenChange={setCardModalOpen} />
-          <Dialog isOpen={cardModalOpen} onOpenChange={setCardModalOpen} className="max-w-3xl w-full rounded-2xl p-6 border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]">
+          <Dialog isOpen={cardModalOpen} onOpenChange={setCardModalOpen} className="max-w-4xl w-full rounded-2xl p-6 border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]">
             <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
               <DialogTitle className="flex items-center gap-3 text-base font-bold text-slate-900 dark:text-slate-100">
                 <div className={`p-2.5 rounded-xl ${
@@ -2228,16 +3106,42 @@ export default function KelolaAlumniPage() {
                 />
               </div>
 
-              {/* Tabel Daftar Siswa/Alumni Modal */}
+              {/* Tabel Daftar Siswa/Alumni Modal dengan Kolom Dinamis */}
               <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-600 dark:bg-slate-900/80 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800 font-bold uppercase tracking-wider text-[11px]">
                     <tr>
-                      <th className="py-2.5 px-3">No</th>
-                      <th className="py-2.5 px-3">Nama & NIS Siswa</th>
-                      <th className="py-2.5 px-3">Unit Pendidikan</th>
-                      <th className="py-2.5 px-3">Tahun Lulus</th>
-                      <th className="py-2.5 px-3">Status / Tujuan</th>
+                      <th className="py-2.5 px-3 w-12 text-center">No</th>
+                      <th className="py-2.5 px-3 min-w-[200px]">Nama & NIS Siswa</th>
+                      {cardModalData.type === 'pindah_unit' ? (
+                        <>
+                          <th className="py-2.5 px-3">Unit Asal</th>
+                          <th className="py-2.5 px-3">Unit Tujuan Baru</th>
+                          <th className="py-2.5 px-3 text-center">Waktu Mutasi</th>
+                          <th className="py-2.5 px-3">Alasan Mutasi</th>
+                        </>
+                      ) : cardModalData.type === 'pindah_keluar' ? (
+                        <>
+                          <th className="py-2.5 px-3">Unit Asal</th>
+                          <th className="py-2.5 px-3">Sekolah Tujuan Keluar</th>
+                          <th className="py-2.5 px-3 text-center">Waktu Pindah</th>
+                          <th className="py-2.5 px-3">Alasan Keluar</th>
+                        </>
+                      ) : cardModalData.type === 'lanjut_studi' || cardModalData.type === 'alumni' ? (
+                        <>
+                          <th className="py-2.5 px-3">Unit Lulus</th>
+                          <th className="py-2.5 px-3 text-center">Tahun Tamat</th>
+                          <th className="py-2.5 px-3">Status Lanjutan</th>
+                          <th className="py-2.5 px-3">Kampus / Sekolah Tujuan</th>
+                          <th className="py-2.5 px-3">Jurusan / Karir</th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="py-2.5 px-3">Unit Pendidikan</th>
+                          <th className="py-2.5 px-3 text-center">Tahun Lulus</th>
+                          <th className="py-2.5 px-3">Status / Tujuan</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -2251,12 +3155,12 @@ export default function KelolaAlumniPage() {
                       })
                       .map((row, idx) => {
                         const meta = row.metadata || {}
-                        const tujuan = meta.status_lanjutan || meta.perguruan_tinggi || row.status_lanjutan || 'Terdaftar'
-                        const unitName = row.education_unit?.name || row.unit?.name || 'Unit Utama'
+                        const currentUnit = row.education_unit?.name || row.unit?.name || 'Unit Utama'
+                        const unitAsal = units.find(u => String(u.id) === String(meta.unit_asal_id || meta.unit_asal_dilepas))?.name || meta.unit_asal_name || currentUnit
 
                         return (
                           <tr key={row.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
-                            <td className="py-2.5 px-3 text-slate-400 font-mono">{idx + 1}</td>
+                            <td className="py-2.5 px-3 text-slate-400 font-mono text-center">{idx + 1}</td>
                             <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-100">
                               <PersonIdentityCell
                                 avatarUrl={row.photo || row.avatar || row.foto}
@@ -2264,24 +3168,99 @@ export default function KelolaAlumniPage() {
                                 subtitle={`NIS: ${row.nis || row.nisn || '-'}`}
                               />
                             </td>
-                            <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-medium">{unitName}</td>
-                            <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{row.tahun_lulus || meta.tahun_lulus || row.tahun_masuk || '-'}</td>
-                            <td className="py-2.5 px-3">
-                              <AppBadge variant={
-                                meta.mutasi_type === 'keluar' ? 'error' :
-                                meta.mutasi_type === 'masuk_unit_baru' ? 'warning' :
-                                'success'
-                              }>
-                                {tujuan}
-                              </AppBadge>
-                            </td>
+
+                            {/* Kolom Khusus: Pindah Unit */}
+                            {cardModalData.type === 'pindah_unit' && (
+                              <>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-medium">
+                                  {unitAsal}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span className="inline-flex items-center gap-1 font-bold text-amber-700 dark:text-amber-300">
+                                    <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
+                                    {currentUnit}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-300 font-mono text-[11px]">
+                                  {meta.tgl_mutasi ? new Date(meta.tgl_mutasi).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) : (meta.tahun_mutasi || row.tahun_lulus || '-')}
+                                </td>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 text-[11px] italic">
+                                  {meta.catatan_mutasi || meta.alasan || '-'}
+                                </td>
+                              </>
+                            )}
+
+                            {/* Kolom Khusus: Pindah Keluar */}
+                            {cardModalData.type === 'pindah_keluar' && (
+                              <>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-medium">
+                                  {unitAsal}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span className="font-bold text-rose-700 dark:text-rose-400">
+                                    {meta.sekolah_tujuan || meta.tujuan || 'Sekolah Luar'}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-300 font-mono text-[11px]">
+                                  {meta.tgl_mutasi ? new Date(meta.tgl_mutasi).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' }) : (meta.tahun_mutasi || '-')}
+                                </td>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 text-[11px] italic">
+                                  {meta.alasan_keluar || meta.catatan_mutasi || meta.alasan || '-'}
+                                </td>
+                              </>
+                            )}
+
+                            {/* Kolom Khusus: Tujuan Tamat / Lanjut Studi */}
+                            {(cardModalData.type === 'lanjut_studi' || cardModalData.type === 'alumni') && (
+                              <>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-medium">
+                                  {currentUnit}
+                                </td>
+                                <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-300 font-mono font-bold">
+                                  {row.tahun_lulus || meta.tahun_lulus || row.tahun_masuk || '-'}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <AppBadge variant={
+                                    (meta.status_lanjutan || '').toLowerCase().includes('kuliah') ? 'cyan' :
+                                    (meta.status_lanjutan || '').toLowerCase().includes('pesantren') ? 'primary' :
+                                    (meta.status_lanjutan || '').toLowerCase().includes('kerja') ? 'warning' :
+                                    'success'
+                                  }>
+                                    {meta.status_lanjutan || row.status_lanjutan || 'Kuliah'}
+                                  </AppBadge>
+                                </td>
+                                <td className="py-2.5 px-3 font-semibold text-emerald-800 dark:text-emerald-300">
+                                  {meta.perguruan_tinggi || meta.tujuan_kelulusan || '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 text-[11px]">
+                                  {meta.jurusan || meta.prodi || meta.pekerjaan || row.pekerjaan || '-'}
+                                </td>
+                              </>
+                            )}
+
+                            {/* Default Fallback Columns */}
+                            {cardModalData.type !== 'pindah_unit' && cardModalData.type !== 'pindah_keluar' && cardModalData.type !== 'lanjut_studi' && cardModalData.type !== 'alumni' && (
+                              <>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-medium">{currentUnit}</td>
+                                <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-300">{row.tahun_lulus || meta.tahun_lulus || row.tahun_masuk || '-'}</td>
+                                <td className="py-2.5 px-3">
+                                  <AppBadge variant={
+                                    meta.mutasi_type === 'keluar' ? 'error' :
+                                    meta.mutasi_type === 'masuk_unit_baru' ? 'warning' :
+                                    'success'
+                                  }>
+                                    {meta.status_lanjutan || meta.perguruan_tinggi || row.status_lanjutan || 'Terdaftar'}
+                                  </AppBadge>
+                                </td>
+                              </>
+                            )}
                           </tr>
                         )
                       })}
 
                     {cardModalData.list.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-400 font-medium">
+                        <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">
                           Belum ada data siswa untuk kategori ini.
                         </td>
                       </tr>

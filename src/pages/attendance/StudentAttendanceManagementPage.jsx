@@ -11,6 +11,7 @@ import {
   CalendarCheck,
   Clock,
   ExternalLink,
+  Eye,
   FileCheck2,
   FileEdit,
   FileSpreadsheet,
@@ -598,72 +599,116 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
     visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
   }
 
-  function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick, active }) {
-    const tones = {
-      blue: {
-        card: active
-          ? 'border-blue-300 bg-blue-50/80 ring-2 ring-blue-500/20 dark:border-blue-800 dark:bg-blue-950/40'
-          : 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-        title: 'text-blue-700 dark:text-blue-400',
-        icon: 'text-blue-500',
-        val: 'text-blue-600 dark:text-blue-300',
-        sub: 'text-blue-600/70 dark:text-blue-400/70',
-      },
-      emerald: {
-        card: active
-          ? 'border-emerald-300 bg-emerald-50/80 ring-2 ring-emerald-500/20 dark:border-emerald-800 dark:bg-emerald-950/40'
-          : 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-        title: 'text-emerald-700 dark:text-emerald-400',
-        icon: 'text-emerald-500',
-        val: 'text-emerald-600 dark:text-emerald-300',
-        sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-      },
-      amber: {
-        card: active
-          ? 'border-amber-300 bg-amber-50/80 ring-2 ring-amber-500/20 dark:border-amber-800 dark:bg-amber-950/40'
-          : 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-        title: 'text-amber-700 dark:text-amber-400',
-        icon: 'text-amber-500',
-        val: 'text-amber-600 dark:text-amber-300',
-        sub: 'text-amber-600/70 dark:text-amber-400/70',
-      },
-      purple: {
-        card: active
-          ? 'border-purple-300 bg-purple-50/80 ring-2 ring-purple-500/20 dark:border-purple-800 dark:bg-purple-950/40'
-          : 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
-        title: 'text-purple-700 dark:text-purple-400',
-        icon: 'text-purple-500',
-        val: 'text-purple-600 dark:text-purple-300',
-        sub: 'text-purple-600/70 dark:text-purple-400/70',
-      },
-      rose: {
-        card: active
-          ? 'border-rose-300 bg-rose-50/80 ring-2 ring-rose-500/20 dark:border-rose-800 dark:bg-rose-950/40'
-          : 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
-        title: 'text-rose-700 dark:text-rose-400',
-        icon: 'text-rose-500',
-        val: 'text-rose-600 dark:text-rose-300',
-        sub: 'text-rose-600/70 dark:text-rose-400/70',
-      },
-    }
-    const t = tones[tone] || tones.emerald
+  // ── SUB-KOMPONEN MODERN KPI CARDS (Spesifikasi Sesuai Dashboard Kepala Sekolah) ──
+  const MODERN_CARD_TONES = {
+    emerald: {
+      card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+      glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+      iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+      tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      val: 'text-emerald-700 dark:text-emerald-300',
+      sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+      cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+    },
+    blue: {
+      card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+      glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+      iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+      tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+      title: 'text-blue-700 dark:text-blue-400',
+      val: 'text-blue-700 dark:text-blue-300',
+      sub: 'text-blue-600/80 dark:text-blue-400/80',
+      cta: 'text-blue-600/60 dark:text-blue-500/60',
+    },
+    amber: {
+      card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+      glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+      iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+      tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+      title: 'text-amber-700 dark:text-amber-400',
+      val: 'text-amber-700 dark:text-amber-300',
+      sub: 'text-amber-600/80 dark:text-amber-400/80',
+      cta: 'text-amber-600/60 dark:text-amber-500/60',
+    },
+    rose: {
+      card: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+      glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
+      iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30',
+      tag: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+      title: 'text-rose-700 dark:text-rose-400',
+      val: 'text-rose-700 dark:text-rose-300',
+      sub: 'text-rose-600/80 dark:text-rose-400/80',
+      cta: 'text-rose-600/60 dark:text-rose-500/60',
+    },
+    purple: {
+      card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+      glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+      iconBox: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-purple-500/30',
+      tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+      title: 'text-purple-700 dark:text-purple-400',
+      val: 'text-purple-700 dark:text-purple-300',
+      sub: 'text-purple-600/80 dark:text-purple-400/80',
+      cta: 'text-purple-600/60 dark:text-purple-500/60',
+    },
+  }
+
+  function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald', onClick, active }) {
+    const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+    const isClickable = typeof onClick === 'function'
+
     return (
       <motion.div
         variants={itemVariants}
-        whileHover={{ scale: 1.04, y: -2 }}
-        whileTap={{ scale: 0.96 }}
+        whileHover={{ scale: 1.02, y: -2 }}
+        whileTap={{ scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         onClick={onClick}
-        className={`text-left rounded-2xl border ${t.card} p-4 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group min-w-0`}
+        role={isClickable ? 'button' : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+        onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+        className={`group relative overflow-hidden rounded-[18px] border-2 p-4.5 sm:p-5 shadow-sm transition-all duration-200 text-left ${
+          isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+        } ${
+          active
+            ? 'ring-2 ring-emerald-500/60 border-emerald-500/90 shadow-md shadow-emerald-500/15 dark:ring-emerald-400/60 dark:border-emerald-400/90'
+            : ''
+        } ${t.card}`}
       >
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <p className={`text-xs font-bold ${t.title} truncate`}>{label}</p>
-          <Icon className={`h-4 w-4 shrink-0 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+        {/* Ambient Glow */}
+        <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+
+        {/* Header with Gradient Icon Box & Pill Tag */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+              <Icon className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+            </div>
+          </div>
+          {tag && (
+            <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
+              {tag}
+            </span>
+          )}
         </div>
-        <p className={`mt-2 text-2xl font-black tracking-tight ${t.val}`}>{value ?? 0}</p>
+
+        {/* Metric Value */}
+        <p className={`text-3xl sm:text-4xl font-black tabular-nums ${t.val}`}>
+          {value ?? '0'}
+        </p>
         {subtext && (
-          <p className={`mt-1 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          <p className={`mt-0.5 text-[11px] font-semibold ${t.sub}`}>
             {subtext}
+          </p>
+        )}
+
+        {/* Click Affordance Footer */}
+        {isClickable && (
+          <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+            <Eye className="h-3 w-3" /> {active ? 'Tab Sedang Dipilih' : 'Klik untuk Buka Tab'}
           </p>
         )}
       </motion.div>
@@ -728,49 +773,54 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
         </div>
       </motion.div>
 
-      {/* TailGrids Card KPI Metric Grid */}
+      {/* Modern KPI Metric Grid (Style Kepala Sekolah Dashboard) */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
-        <KpiTintedCard
+        <ModernKpiCard
           icon={Users}
           label="Rekapitulasi Siswa"
           value={metrics.recapTotal}
           subtext="Periode Bulan Ini"
+          tag="Rekap Matriks"
           tone="blue"
           active={activeTab === 'rekap'}
           onClick={() => handleTabChange('rekap')}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={BookOpen}
           label="Sesi Pelajaran"
           value={metrics.sessionTotal}
           subtext="Matpel & Guru"
+          tag="Sesi Mapel"
           tone="emerald"
           active={activeTab === 'sesi-pelajaran'}
           onClick={() => handleTabChange('sesi-pelajaran')}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={FileCheck2}
           label="Verifikasi Izin"
           value={metrics.permPending}
           subtext="Menunggu Persetujuan"
+          tag="Perlu Approval"
           tone="amber"
           active={activeTab === 'verifikasi'}
           onClick={() => handleTabChange('verifikasi')}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={FileEdit}
           label="Koreksi Presensi"
           value={metrics.corrPending}
           subtext="Pengajuan Siswa"
+          tag="Koreksi Data"
           tone="purple"
           active={activeTab === 'koreksi'}
           onClick={() => handleTabChange('koreksi')}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={ShieldAlert}
           label="Tindak Lanjut"
           value={metrics.followUpOpen}
           subtext="Penanganan Siswa Alpa"
+          tag="Perlu Tindakan"
           tone="rose"
           active={activeTab === 'tindak-lanjut'}
           onClick={() => handleTabChange('tindak-lanjut')}

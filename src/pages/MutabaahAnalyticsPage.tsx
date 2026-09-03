@@ -118,6 +118,142 @@ const worshipItemsList = [
   'Disiplin',
 ]
 
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600 dark:text-emerald-400',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600 dark:text-blue-400',
+  },
+  indigo: {
+    card: 'border-indigo-300/70 bg-gradient-to-br from-indigo-50 via-sky-50/60 to-white hover:border-indigo-400 dark:border-indigo-700/50 dark:from-indigo-950/40 dark:via-sky-950/20 dark:to-slate-900',
+    glow: 'bg-indigo-400/20 group-hover:bg-indigo-400/30',
+    iconBox: 'bg-gradient-to-br from-indigo-500 to-sky-600 text-white shadow-indigo-500/30',
+    tag: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300',
+    title: 'text-indigo-700 dark:text-indigo-400',
+    val: 'text-indigo-700 dark:text-indigo-300',
+    sub: 'text-indigo-600/80 dark:text-indigo-400/80',
+    cta: 'text-indigo-600 dark:text-indigo-400',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600 dark:text-amber-400',
+  },
+  rose: {
+    card: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+    glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
+    iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30',
+    tag: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+    title: 'text-rose-700 dark:text-rose-400',
+    val: 'text-rose-700 dark:text-rose-300',
+    sub: 'text-rose-600/80 dark:text-rose-400/80',
+    cta: 'text-rose-600 dark:text-rose-400',
+  },
+  violet: {
+    card: 'border-violet-300/70 bg-gradient-to-br from-violet-50 via-purple-50/60 to-white hover:border-violet-400 dark:border-violet-700/50 dark:from-violet-950/40 dark:via-purple-950/20 dark:to-slate-900',
+    glow: 'bg-violet-400/20 group-hover:bg-violet-400/30',
+    iconBox: 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/30',
+    tag: 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300',
+    title: 'text-violet-700 dark:text-violet-400',
+    val: 'text-violet-700 dark:text-violet-300',
+    sub: 'text-violet-600/80 dark:text-violet-400/80',
+    cta: 'text-violet-600 dark:text-violet-400',
+  },
+}
+
+function ModernKpiCard({
+  icon: Icon,
+  label,
+  value,
+  subtext,
+  tag,
+  tone = 'emerald',
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  value: string | number
+  subtext?: string
+  tag?: string
+  tone?: keyof typeof MODERN_CARD_TONES
+  onClick?: () => void
+}) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
+
+  return (
+    <div
+      onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-4 sm:p-5 shadow-sm transition-all duration-200 ${
+        isClickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''
+      } ${t.card}`}
+    >
+      {/* Ambient Glow */}
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full blur-2xl transition-all ${t.glow}`} />
+
+      {/* Header with 3D Gradient Icon Box & Pill Tag */}
+      <div className="flex items-center justify-between mb-3">
+        <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-xs ${t.iconBox}`}>
+          <Icon className="h-4.5 w-4.5" />
+        </div>
+        {tag && (
+          <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold shadow-2xs ${t.tag}`}>
+            {tag}
+          </span>
+        )}
+      </div>
+
+      {/* Metric Label & Value */}
+      <p className={`text-[10.5px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+      <p className={`text-2xl sm:text-3xl font-black tabular-nums ${t.val}`}>
+        {value ?? 0}
+      </p>
+      {subtext && (
+        <p className={`mt-0.5 text-[11px] font-semibold truncate ${t.sub}`}>
+          {subtext}
+        </p>
+      )}
+
+      {/* Footer */}
+      <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+        <Eye className="h-3 w-3" /> Detail pemantauan
+      </p>
+    </div>
+  )
+}
+
 export default function MutabaahAnalyticsPage({ view }: { view: View }) {
   const user = useAuthStore((state) => state.user)
   const userRoles = useMemo(() => user?.roles || (user?.role ? [user.role] : []), [user])
@@ -537,13 +673,41 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
         </div>
       </motion.div>
 
-      {/* 📊 KPI CARDS GRID */}
-      <MasterStatsGrid>
-        <MasterStatCard icon={Users} label="Total Santri Aktif" value={view === 'rekap' ? (recapData?.total || students.length) : (analytics.data?.kpis?.total_students || 0)} description="Sesuai data master siswa" variant="info" delay={40} />
-        <MasterStatCard icon={CheckCircle2} label="Sudah Diisi" value={view === 'rekap' ? students.filter((item) => item.progressToday > 0).length : (analytics.data?.kpis?.filled || 0)} description="Memiliki data Mutabaah" variant="success" delay={80} />
-        <MasterStatCard icon={ShieldCheck} label="Sudah Final" value={view === 'rekap' ? students.filter((item) => item.status === 'Finalized').length : (analytics.data?.kpis?.finalized || 0)} description="Telah dikunci pembimbing" variant="success" delay={120} />
-        <MasterStatCard icon={AlertTriangle} label="Belum Diisi" value={view === 'rekap' ? students.filter((item) => item.status === 'Belum Diisi').length : (analytics.data?.kpis?.not_filled || 0)} description="Perlu ditindaklanjuti" variant="danger" delay={160} />
-      </MasterStatsGrid>
+      {/* 📊 MODERN KPI CARDS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-5">
+        <ModernKpiCard
+          icon={Users}
+          label="Total Santri Aktif"
+          value={view === 'rekap' ? (recapData?.total || students.length) : (analytics.data?.kpis?.total_students || 0)}
+          subtext="Sesuai data master siswa"
+          tag="Santri Aktif"
+          tone="blue"
+        />
+        <ModernKpiCard
+          icon={CheckCircle2}
+          label="Sudah Diisi"
+          value={view === 'rekap' ? students.filter((item) => item.progressToday > 0).length : (analytics.data?.kpis?.filled || 0)}
+          subtext="Memiliki data Mutabaah"
+          tag="Tercatat"
+          tone="emerald"
+        />
+        <ModernKpiCard
+          icon={ShieldCheck}
+          label="Sudah Final"
+          value={view === 'rekap' ? students.filter((item) => item.status === 'Finalized').length : (analytics.data?.kpis?.finalized || 0)}
+          subtext="Telah dikunci pembimbing"
+          tag="Terkunci"
+          tone="indigo"
+        />
+        <ModernKpiCard
+          icon={AlertTriangle}
+          label="Belum Diisi"
+          value={view === 'rekap' ? students.filter((item) => item.status === 'Belum Diisi').length : (analytics.data?.kpis?.not_filled || 0)}
+          subtext="Perlu ditindaklanjuti"
+          tag="Perhatian"
+          tone="rose"
+        />
+      </div>
 
       {/* 🧭 CARD MUTABA'AH YAUMIYYAH SUB-NAV (Positioned directly above Data Mutabaah Santri Card) */}
       <MutabaahSubNav />
@@ -552,68 +716,74 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
       {view === 'dashboard' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 my-5">
           {/* Chart 1: Trend Progress Pekanan */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3 dark:border-slate-800">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Trend Progress Mutabaah Pekanan</h4>
-                <p className="text-[11px] text-slate-400">Rata-rata persentase pengisian mutabaah harian santri</p>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+            <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4 border-b border-emerald-500/15 pb-3.5">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Trend Progress Mutabaah Pekanan</h4>
+                  <p className="text-[11px] text-slate-400">Rata-rata persentase pengisian mutabaah harian santri</p>
+                </div>
+                <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Live Trend</span>
               </div>
-              <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Live Trend</span>
-            </div>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={analytics.data?.charts?.weekly_progress || [
-                  { date: 'Senin', progress: 85 },
-                  { date: 'Selasa', progress: 90 },
-                  { date: 'Rabu', progress: 88 },
-                  { date: 'Kamis', progress: 92 },
-                  { date: 'Jumat', progress: 95 },
-                  { date: 'Sabtu', progress: 89 },
-                  { date: 'Minggu', progress: 94 },
-                ]}>
-                  <defs>
-                    <linearGradient id="colorProgress" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
-                  <Tooltip formatter={(val) => [`${val}%`, 'Progress']} />
-                  <Area type="monotone" dataKey="progress" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorProgress)" />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={analytics.data?.charts?.weekly_progress || [
+                    { date: 'Senin', progress: 85 },
+                    { date: 'Selasa', progress: 90 },
+                    { date: 'Rabu', progress: 88 },
+                    { date: 'Kamis', progress: 92 },
+                    { date: 'Jumat', progress: 95 },
+                    { date: 'Sabtu', progress: 89 },
+                    { date: 'Minggu', progress: 94 },
+                  ]}>
+                    <defs>
+                      <linearGradient id="colorProgress" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
+                    <Tooltip formatter={(val) => [`${val}%`, 'Progress']} />
+                    <Area type="monotone" dataKey="progress" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorProgress)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
           {/* Chart 2: Realisasi Target per Amalan */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3 dark:border-slate-800">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Capaian Target Amalan Utama</h4>
-                <p className="text-[11px] text-slate-400">Persentase pelaksanaan amalan ibadah terbanyak</p>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+            <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4 border-b border-emerald-500/15 pb-3.5">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Capaian Target Amalan Utama</h4>
+                  <p className="text-[11px] text-slate-400">Persentase pelaksanaan amalan ibadah terbanyak</p>
+                </div>
+                <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">Capaian Amalan</span>
               </div>
-              <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">Capaian Amalan</span>
-            </div>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.data?.charts?.target_realization || [
-                  { name: 'Subuh', realization: 92 },
-                  { name: 'Zuhur', realization: 96 },
-                  { name: 'Ashar', realization: 94 },
-                  { name: 'Maghrib', realization: 98 },
-                  { name: 'Isya', realization: 95 },
-                  { name: 'Tilawah', realization: 85 },
-                  { name: 'Tahajud', realization: 78 },
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
-                  <Tooltip formatter={(val) => [`${val}%`, 'Realisasi']} />
-                  <Bar dataKey="realization" fill="#0E5C44" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analytics.data?.charts?.target_realization || [
+                    { name: 'Subuh', realization: 92 },
+                    { name: 'Zuhur', realization: 96 },
+                    { name: 'Ashar', realization: 94 },
+                    { name: 'Maghrib', realization: 98 },
+                    { name: 'Isya', realization: 95 },
+                    { name: 'Tilawah', realization: 85 },
+                    { name: 'Tahajud', realization: 78 },
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
+                    <Tooltip formatter={(val) => [`${val}%`, 'Realisasi']} />
+                    <Bar dataKey="realization" fill="#0E5C44" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         </div>
@@ -622,34 +792,38 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
       {/* 📊 REKAPITULASI VIEW: SUMMARY STATUS CARDS */}
       {view === 'rekap' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-5">
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Capaian Baik</p>
-            <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
-              {analytics.data?.summary?.good ?? 88.5}%
-            </p>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400/80 mt-0.5">Amalan terlaksana dengan baik</p>
-          </div>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
-            <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Capaian Kurang</p>
-            <p className="text-2xl font-black text-amber-700 dark:text-amber-400 mt-1">
-              {analytics.data?.summary?.less ?? 8.2}%
-            </p>
-            <p className="text-[11px] text-amber-600 dark:text-amber-400/80 mt-0.5">Perlu peningkatan bimbingan</p>
-          </div>
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-900/50 dark:bg-rose-950/30">
-            <p className="text-xs font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Belum Dikerjakan</p>
-            <p className="text-2xl font-black text-rose-700 dark:text-rose-400 mt-1">
-              {analytics.data?.summary?.not_done ?? 3.3}%
-            </p>
-            <p className="text-[11px] text-rose-600 dark:text-rose-400/80 mt-0.5">Tidak terlaksana</p>
-          </div>
-          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-            <p className="text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">Paraf Orang Tua</p>
-            <p className="text-2xl font-black text-indigo-700 dark:text-indigo-400 mt-1">
-              {analytics.data?.summary?.parent_signature ?? 95}%
-            </p>
-            <p className="text-[11px] text-indigo-600 dark:text-indigo-400/80 mt-0.5">Telah diverifikasi orang tua</p>
-          </div>
+          <ModernKpiCard
+            icon={CheckCircle2}
+            label="Capaian Baik"
+            value={`${analytics.data?.summary?.good ?? 88.5}%`}
+            subtext="Amalan terlaksana dengan baik"
+            tag="Baik"
+            tone="emerald"
+          />
+          <ModernKpiCard
+            icon={AlertTriangle}
+            label="Capaian Kurang"
+            value={`${analytics.data?.summary?.less ?? 8.2}%`}
+            subtext="Perlu peningkatan bimbingan"
+            tag="Kurang"
+            tone="amber"
+          />
+          <ModernKpiCard
+            icon={XCircle}
+            label="Belum Dikerjakan"
+            value={`${analytics.data?.summary?.not_done ?? 3.3}%`}
+            subtext="Tidak terlaksana"
+            tag="Kritis"
+            tone="rose"
+          />
+          <ModernKpiCard
+            icon={ShieldCheck}
+            label="Paraf Orang Tua"
+            value={`${analytics.data?.summary?.parent_signature ?? 95}%`}
+            subtext="Telah diverifikasi orang tua"
+            tag="Terverifikasi"
+            tone="indigo"
+          />
         </div>
       )}
 
@@ -657,41 +831,45 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
       {view === 'evaluasi' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 my-5">
           {/* Target vs Realisasi Grid */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3 dark:border-slate-800">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Evaluasi Target Ibadah Wajib & Sunnah</h4>
-                <p className="text-[11px] text-slate-400">Perbandingan target vs realisasi rata-rata santri</p>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+            <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4 border-b border-emerald-500/15 pb-3.5">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Evaluasi Target Ibadah Wajib & Sunnah</h4>
+                  <p className="text-[11px] text-slate-400">Perbandingan target vs realisasi rata-rata santri</p>
+                </div>
+                <span className="rounded-lg bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">Target Evaluasi</span>
               </div>
-              <span className="rounded-lg bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300">Target Evaluasi</span>
-            </div>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
-                  { name: 'Shalat Subuh', target: 100, realization: 94 },
-                  { name: 'Shalat Zuhur', target: 100, realization: 97 },
-                  { name: 'Shalat Ashar', target: 100, realization: 95 },
-                  { name: 'Shalat Maghrib', target: 100, realization: 98 },
-                  { name: 'Shalat Isya', target: 100, realization: 96 },
-                  { name: 'Tilawah Quran', target: 80, realization: 75 },
-                  { name: 'Shalat Dhuha', target: 70, realization: 68 },
-                  { name: 'Shalat Tahajud', target: 60, realization: 52 },
-                ]}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
-                  <Tooltip formatter={(val, name) => [`${val}%`, name === 'target' ? 'Target' : 'Realisasi']} />
-                  <Bar dataKey="target" fill="#CBD5E1" radius={[4, 4, 0, 0]} name="Target" />
-                  <Bar dataKey="realization" fill="#0E5C44" radius={[4, 4, 0, 0]} name="Realisasi" />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: 'Shalat Subuh', target: 100, realization: 94 },
+                    { name: 'Shalat Zuhur', target: 100, realization: 97 },
+                    { name: 'Shalat Ashar', target: 100, realization: 95 },
+                    { name: 'Shalat Maghrib', target: 100, realization: 98 },
+                    { name: 'Shalat Isya', target: 100, realization: 96 },
+                    { name: 'Tilawah Quran', target: 80, realization: 75 },
+                    { name: 'Shalat Dhuha', target: 70, realization: 68 },
+                    { name: 'Shalat Tahajud', target: 60, realization: 52 },
+                  ]}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
+                    <Tooltip formatter={(val, name) => [`${val}%`, name === 'target' ? 'Target' : 'Realisasi']} />
+                    <Bar dataKey="target" fill="#CBD5E1" radius={[4, 4, 0, 0]} name="Target" />
+                    <Bar dataKey="realization" fill="#0E5C44" radius={[4, 4, 0, 0]} name="Realisasi" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
           {/* Stat Ringkasan Evaluasi Musyrif */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] flex flex-col justify-between">
+            <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4 border-b border-emerald-500/15 pb-3.5">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">Status Pembimbingan & Catatan Evaluasi</h4>
                 <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Ringkasan Musyrif</span>
               </div>
@@ -728,7 +906,7 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
                 </div>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-slate-500">
+            <div className="relative z-10 mt-4 pt-3 border-t border-emerald-500/15 flex items-center justify-between text-xs font-semibold text-slate-500">
               <span>Total Santri Dievaluasi: 26 Santri</span>
               <span className="text-[#0E5C44] dark:text-emerald-400 font-bold cursor-pointer hover:underline">Unduh Laporan Evaluasi →</span>
             </div>
@@ -738,6 +916,7 @@ export default function MutabaahAnalyticsPage({ view }: { view: View }) {
 
       {/* 🟢 MAIN TABLE & FILTER CARD (Data Mutabaah Santri) */}
       <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <div className="pointer-events-none absolute -top-12 -right-12 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl dark:bg-emerald-400/15" />
         {/* Header Baris 1: Title & Soft Pastel Squircle Action Buttons */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 -mx-5 -mt-5 p-5 mb-4">
           <div>

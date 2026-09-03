@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react'
+import { useDebounce } from '../hooks/useDebounce'
 import { motion, AnimatePresence } from 'framer-motion'
 import { printEmployeeIdCard, downloadEmployeeIdCard } from '../services/idCardPrintService.jsx'
 import EmployeeIdCard from '../components/card-print/EmployeeIdCard'
@@ -369,6 +370,7 @@ export default function EmployeesPage() {
 
   // Filter States
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('')
   const [selectedJabatanFilter, setSelectedJabatanFilter] = useState('')
   const [selectedStatusPegawaiFilter, setSelectedStatusPegawaiFilter] = useState('')
@@ -461,7 +463,7 @@ export default function EmployeesPage() {
       'employees-list',
       page,
       perPage,
-      search,
+      debouncedSearch,
       selectedUnitFilter,
       selectedJabatanFilter,
       selectedStatusPegawaiFilter,
@@ -472,7 +474,7 @@ export default function EmployeesPage() {
       employeeService.getDaftar({
         page,
         per_page: perPage,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         unit_id: selectedUnitFilter || undefined,
         jabatan_id: selectedJabatanFilter || undefined,
         status_pegawai: selectedStatusPegawaiFilter || undefined,
@@ -1630,6 +1632,39 @@ export default function EmployeesPage() {
     )
   }, [getEmployeeMapelList, getEmployeeKelasList, getEmployeeJpHours, getEmployeeOtherRoles])
 
+  // Helper Render Status Pegawai Badge (Warna Solid: Tetap = Hijau Solid, Kontrak = Merah Solid)
+  const renderStatusPegawaiBadge = (status) => {
+    const val = status || 'Tetap'
+    const lower = String(val).toLowerCase().trim()
+    const isTetap = lower.includes('tetap')
+    const isKontrak = lower.includes('kontrak')
+    const isHonorer = lower.includes('honorer')
+    const isMagang = lower.includes('magang')
+
+    let badgeStyle = 'bg-slate-600 text-white border-slate-700'
+
+    if (isTetap) {
+      // Hijau Solid (Vibrant, high-contrast, premium solid emerald)
+      badgeStyle = 'bg-emerald-600 dark:bg-emerald-600 text-white border-emerald-700/80 shadow-xs ring-1 ring-emerald-500/30'
+    } else if (isKontrak) {
+      // Merah Solid (Vibrant, high-contrast, premium solid rose/red)
+      badgeStyle = 'bg-rose-600 dark:bg-rose-600 text-white border-rose-700/80 shadow-xs ring-1 ring-rose-500/30'
+    } else if (isHonorer) {
+      // Amber Solid
+      badgeStyle = 'bg-amber-600 dark:bg-amber-600 text-white border-amber-700/80 shadow-xs ring-1 ring-amber-500/30'
+    } else if (isMagang) {
+      // Blue Solid
+      badgeStyle = 'bg-blue-600 dark:bg-blue-600 text-white border-blue-700/80 shadow-xs ring-1 ring-blue-500/30'
+    }
+
+    return (
+      <span className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-black tracking-wide border ${badgeStyle}`}>
+        <span className="h-1.5 w-1.5 rounded-full bg-white/90 shrink-0" />
+        <span>{val}</span>
+      </span>
+    )
+  }
+
   // AppDataTable Columns Definition
   const columns = [
     {
@@ -1658,10 +1693,16 @@ export default function EmployeesPage() {
                   {namaFull}
                 </span>
               </EmployeeHoverCard>
-              <div className="flex items-center gap-1.5">
-                <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                  NIY: {row.niy || '-'}
-                </span>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
+                <span>{row.niy || '-'}</span>
+                {row.jenis_kelamin && (
+                  <>
+                    <span>•</span>
+                    <span className={`font-bold ${row.jenis_kelamin === 'L' ? 'text-blue-600' : 'text-pink-600'}`}>
+                      {row.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1692,11 +1733,7 @@ export default function EmployeesPage() {
       key: 'status_pegawai',
       label: 'STATUS PEGAWAI',
       className: 'w-32',
-      render: (row) => (
-        <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-          {row.status_pegawai || 'Tetap'}
-        </span>
-      ),
+      render: (row) => renderStatusPegawaiBadge(row.status_pegawai),
     },
     {
       key: 'no_hp',
@@ -2899,10 +2936,11 @@ export default function EmployeesPage() {
                       {detailEmployee.gelar_depan} {detailEmployee.nama_lengkap}{detailEmployee.gelar_belakang ? `, ${detailEmployee.gelar_belakang}` : ''}
                     </h2>
                     <p className="text-xs font-bold text-emerald-700">{detailEmployee.jabatan_name} - {detailEmployee.unit_name}</p>
-                    <p className="text-xs text-slate-500 flex items-center justify-center md:justify-start gap-2">
-                      <span>Status: <strong className="text-slate-800">{detailEmployee.status_pegawai}</strong></span>
-                      <span>• Keaktifan: <strong className="text-emerald-700">{detailEmployee.status}</strong></span>
-                    </p>
+                    <div className="text-xs text-slate-500 flex flex-wrap items-center justify-center md:justify-start gap-2 pt-0.5">
+                      <span className="flex items-center gap-1.5 font-medium">Status: {renderStatusPegawaiBadge(detailEmployee.status_pegawai)}</span>
+                      <span>•</span>
+                      <span>Keaktifan: <strong className="text-emerald-700 font-extrabold">{detailEmployee.status}</strong></span>
+                    </div>
                   </div>
                 </div>
 
@@ -2968,8 +3006,8 @@ export default function EmployeesPage() {
                       <span className="font-bold text-slate-800">{detailEmployee.jabatan_name}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block mb-0.5">Status Pegawai</span>
-                      <span className="font-bold text-slate-800">{detailEmployee.status_pegawai}</span>
+                      <span className="text-slate-400 block mb-1">Status Pegawai</span>
+                      {renderStatusPegawaiBadge(detailEmployee.status_pegawai)}
                     </div>
                     <div>
                       <span className="text-slate-400 block mb-0.5">Tanggal Masuk</span>

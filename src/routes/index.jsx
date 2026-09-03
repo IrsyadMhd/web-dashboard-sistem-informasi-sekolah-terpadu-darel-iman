@@ -13,6 +13,7 @@ const NotificationsPage = lazy(() => import('../pages/NotificationsPage'))
 const LoginPage = lazy(() => import('../pages/LoginPage'))
 const BeritaPublikPage = lazy(() => import('../pages/BeritaPublikPage'))
 const PengaturanPage = lazy(() => import('../pages/PengaturanPage'))
+const MobileApiConfigPage = lazy(() => import('../pages/MobileApiConfigPage'))
 const LaporanAbsensiPage = lazy(() => import('../pages/LaporanAbsensiPage'))
 const LaporanTahfizhPage = lazy(() => import('../pages/LaporanTahfizhPage'))
 const LaporanAkademikPage = lazy(() => import('../pages/LaporanAkademikPage'))
@@ -1353,6 +1354,14 @@ export const router = createBrowserRouter([
             element: (
               <PermissionElement roles={['Super Admin', 'SuperAdmin', 'super_admin', 'superadmin', 'Admin', 'admin']}>
                 <BungkusLazy><PengaturanPage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'koneksi-api-mobile',
+            element: (
+              <PermissionElement roles={['Super Admin', 'SuperAdmin', 'super_admin', 'superadmin', 'Admin', 'admin']}>
+                <BungkusLazy><MobileApiConfigPage /></BungkusLazy>
               </PermissionElement>
             ),
           },

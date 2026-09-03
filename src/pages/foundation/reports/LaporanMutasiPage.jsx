@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRightLeft, ArrowDownLeft, ArrowUpRight, CheckCircle2, Clock, XCircle, Scale, ShieldCheck, Sparkles, TrendingDown, TrendingUp, UserMinus } from 'lucide-react'
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, CartesianGrid } from 'recharts'
 import { reportService } from '../../../services/reportService'
 import AppBreadcrumb from '../../../components/app/AppBreadcrumb'
 import { ReportHeader } from '../../../components/reports/ReportHeader'
@@ -18,6 +18,30 @@ import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+
+const ChartDarkTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="relative rounded-xl bg-slate-900 border border-slate-700/80 px-4 py-3 shadow-2xl text-white min-w-[150px]">
+        <p className="text-xs font-bold text-slate-200 border-b border-slate-700/80 pb-1.5 mb-2">
+          {payload[0]?.payload?.fullName || payload[0]?.payload?.name || label}
+        </p>
+        <div className="space-y-1.5 text-xs">
+          {payload.map((entry, index) => (
+            <div key={`tooltip-${index}`} className="flex items-center justify-between gap-4 font-semibold">
+              <span className="flex items-center gap-2 text-slate-300">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color || entry.stroke || entry.fill }} />
+                {entry.name}:
+              </span>
+              <span className="font-extrabold text-white">{entry.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  return null
+}
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -239,16 +263,35 @@ export function LaporanMutasiPage() {
           <CardContent>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={charts.monthly_trend || []}>
-                  <XAxis dataKey="month" stroke="#888888" fontSize={11} />
-                  <YAxis stroke="#888888" fontSize={11} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="masuk" name="Pindah Masuk" stroke="#0E5C44" strokeWidth={2} />
-                  <Line type="monotone" dataKey="keluar" name="Pindah Keluar" stroke="#F43F5E" strokeWidth={2} />
-                  <Line type="monotone" dataKey="berhenti" name="Berhenti" stroke="#F59E0B" strokeWidth={2} />
-                  <Line type="monotone" dataKey="antarunit" name="Antarunit" stroke="#0284C7" strokeWidth={2} />
-                </LineChart>
+                <AreaChart data={charts.monthly_trend || []} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                  <defs>
+                    <linearGradient id="mutasiMasukGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0E5C44" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#0E5C44" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="mutasiKeluarGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="mutasiBerhentiGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="mutasiAntarunitGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0284C7" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#0284C7" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#CBD5E1" />
+                  <XAxis dataKey="month" stroke="#64748B" fontSize={11} />
+                  <YAxis stroke="#64748B" fontSize={11} />
+                  <Tooltip content={<ChartDarkTooltip />} />
+                  <Legend wrapperStyle={{ paddingTop: 10 }} />
+                  <Area type="monotone" dataKey="masuk" name="Pindah Masuk" stroke="#0E5C44" strokeWidth={3} fillOpacity={1} fill="url(#mutasiMasukGrad)" dot={{ r: 4, fill: '#0E5C44', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="keluar" name="Pindah Keluar" stroke="#F43F5E" strokeWidth={3} fillOpacity={1} fill="url(#mutasiKeluarGrad)" dot={{ r: 4, fill: '#F43F5E', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="berhenti" name="Berhenti" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#mutasiBerhentiGrad)" dot={{ r: 4, fill: '#F59E0B', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="antarunit" name="Antarunit" stroke="#0284C7" strokeWidth={3} fillOpacity={1} fill="url(#mutasiAntarunitGrad)" dot={{ r: 4, fill: '#0284C7', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
@@ -282,14 +325,25 @@ export function LaporanMutasiPage() {
           <CardContent>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts.unit_comparison || []}>
-                  <XAxis dataKey="name" stroke="#888888" fontSize={11} />
-                  <YAxis stroke="#888888" fontSize={11} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="masuk" name="Pindah Masuk" fill="#0E5C44" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="keluar" name="Pindah Keluar" fill="#F43F5E" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                <AreaChart data={charts.unit_comparison || []} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                  <defs>
+                    <linearGradient id="unitMasukGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0E5C44" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#0E5C44" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="unitKeluarGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#CBD5E1" />
+                  <XAxis dataKey="name" stroke="#64748B" fontSize={11} />
+                  <YAxis stroke="#64748B" fontSize={11} />
+                  <Tooltip content={<ChartDarkTooltip />} />
+                  <Legend wrapperStyle={{ paddingTop: 10 }} />
+                  <Area type="monotone" dataKey="masuk" name="Pindah Masuk" stroke="#0E5C44" strokeWidth={3} fillOpacity={1} fill="url(#unitMasukGrad)" dot={{ r: 5, fill: '#0E5C44', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+                  <Area type="monotone" dataKey="keluar" name="Pindah Keluar" stroke="#F43F5E" strokeWidth={3} fillOpacity={1} fill="url(#unitKeluarGrad)" dot={{ r: 5, fill: '#F43F5E', strokeWidth: 2, stroke: '#FFFFFF' }} activeDot={{ r: 7, strokeWidth: 2 }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>

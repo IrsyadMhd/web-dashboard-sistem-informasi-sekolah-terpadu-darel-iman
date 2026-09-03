@@ -857,14 +857,13 @@ export default function TahfizhPage() {
     if (playingAudioUrl === url && audioRef.current) {
       audioRef.current.pause()
       setPlayingAudioUrl(null)
-      return
-    }
+    if (!url) return
 
     if (audioRef.current) {
       audioRef.current.pause()
     }
 
-    const fullUrl = url.startsWith('http') ? url : `http://localhost:8000${url}`
+    const fullUrl = typeof url === 'string' && url.startsWith('http') ? url : `http://localhost:8000${url}`
     const newAudio = new Audio(fullUrl)
     newAudio.play()
     audioRef.current = newAudio
@@ -3450,4 +3449,5 @@ export default function TahfizhPage() {
       />
     </PageContainer>
   )
+}
 }

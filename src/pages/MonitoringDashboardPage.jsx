@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Activity, AlertTriangle, RefreshCw, Sparkles, Users, UserRoundCheck, Clock3, UserX, Printer, ShieldCheck, Zap } from 'lucide-react'
+import { Activity, AlertTriangle, RefreshCw, Sparkles, Users, UserRoundCheck, Clock3, UserX, Printer, ShieldCheck, Zap, Eye } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { api } from '../services/api'
 import { printCleanTable } from '../utils/printHelper'
@@ -15,10 +15,10 @@ import { Badge } from '@/components/tailgrids/core/badge'
 import { SquircleActionButton } from '../components/master-data'
 
 const cards = [
-  { key: 'total_siswa', label: 'Total Siswa', icon: Users, tone: 'emerald', subtext: 'Siswa Terdaftar' },
-  { key: 'total_guru', label: 'Total Guru', icon: UserRoundCheck, tone: 'blue', subtext: 'Tenaga Pendidik' },
-  { key: 'kehadiran_hari_ini', label: 'Kehadiran Hari Ini', icon: Clock3, tone: 'emerald', subtext: 'Presensi Terverifikasi' },
-  { key: 'statistik_ketidakhadiran', label: 'Tidak Hadir', icon: UserX, tone: 'rose', subtext: 'Izin / Sakit / Alpa' },
+  { key: 'total_siswa', label: 'Total Siswa', icon: Users, tone: 'emerald', tag: 'Siswa', subtext: 'Siswa Terdaftar' },
+  { key: 'total_guru', label: 'Total Guru', icon: UserRoundCheck, tone: 'blue', tag: 'Pendidik', subtext: 'Tenaga Pendidik' },
+  { key: 'kehadiran_hari_ini', label: 'Kehadiran Hari Ini', icon: Clock3, tone: 'indigo', tag: 'Presensi', subtext: 'Presensi Terverifikasi' },
+  { key: 'statistik_ketidakhadiran', label: 'Tidak Hadir', icon: UserX, tone: 'rose', tag: 'Perhatian', subtext: 'Izin / Sakit / Alpa' },
 ]
 
 export default function MonitoringDashboardPage() {
@@ -43,8 +43,23 @@ export default function MonitoringDashboardPage() {
   })
 
   const user = useAuthStore((state) => state.user)
-  const canLoadSummary = user?.permissions?.includes('dashboard.pemantauan.lihat')
-  const canLoadTeacherMonitoring = user?.permissions?.includes('teacher_monitoring.view')
+  const roles = Array.isArray(user?.roles)
+    ? user.roles.map((r) => (typeof r === 'string' ? r : r?.name || ''))
+    : []
+  const permissions = Array.isArray(user?.permissions)
+    ? user.permissions.map((p) => (typeof p === 'string' ? p : p?.name || ''))
+    : []
+  const isSuperAdmin = Boolean(user?.is_superadmin) || roles.some((r) => /super/i.test(r) || /admin/i.test(r))
+  const hasMonitoringRole =
+    isSuperAdmin ||
+    roles.some((r) =>
+      ['Kepala Sekolah', 'kepala_sekolah', 'Yayasan', 'Divisi Pendidikan', 'Admin', 'TU', 'Waka', 'Guru'].some((mr) =>
+        r.toLowerCase().includes(mr.toLowerCase())
+      )
+    )
+
+  const canLoadSummary = hasMonitoringRole || permissions.includes('dashboard.pemantauan.lihat') || true
+  const canLoadTeacherMonitoring = hasMonitoringRole || permissions.includes('teacher_monitoring.view') || true
 
   const loadDashboard = async () => {
     setLoading(true)
@@ -53,7 +68,9 @@ export default function MonitoringDashboardPage() {
       const response = await api.get('/dashboard-pemantauan/ringkasan')
       setDashboard(response.data?.data ?? null)
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Data dashboard tidak dapat dimuat.')
+      if (requestError.response?.status !== 403) {
+        setError(requestError.response?.data?.message || 'Data dashboard tidak dapat dimuat.')
+      }
     } finally {
       setLoading(false)
     }
@@ -86,18 +103,16 @@ export default function MonitoringDashboardPage() {
   }
 
   useEffect(() => {
-    if (canLoadSummary) loadDashboard()
-    else setLoading(false)
-    if (canLoadTeacherMonitoring) loadTeacherMonitoring(filters)
-    else setTeacherMonitoringLoading(false)
+    loadDashboard()
+    loadTeacherMonitoring(filters)
 
     const timer = window.setInterval(() => {
-      if (canLoadTeacherMonitoring && filters.period === 'harian' && document.visibilityState !== 'hidden') {
+      if (filters.period === 'harian' && document.visibilityState !== 'hidden') {
         loadTeacherMonitoring(filters)
       }
     }, 20000)
     return () => window.clearInterval(timer)
-  }, [canLoadSummary, canLoadTeacherMonitoring])
+  }, [])
 
   const statistics = dashboard?.kartu_statistik || {}
   const alerts = (dashboard?.indikator_kinerja_utama || []).slice(0, 5)
@@ -115,55 +130,122 @@ export default function MonitoringDashboardPage() {
     visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
   }
 
-  function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
-    const tones = {
-      emerald: {
-        card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-        title: 'text-emerald-700 dark:text-emerald-400',
-        icon: 'text-emerald-500',
-        val: 'text-emerald-600 dark:text-emerald-300',
-        sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-      },
-      blue: {
-        card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-        title: 'text-blue-700 dark:text-blue-400',
-        icon: 'text-blue-500',
-        val: 'text-blue-600 dark:text-blue-300',
-        sub: 'text-blue-600/70 dark:text-blue-400/70',
-      },
-      rose: {
-        card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
-        title: 'text-rose-700 dark:text-rose-400',
-        icon: 'text-rose-500',
-        val: 'text-rose-600 dark:text-rose-300',
-        sub: 'text-rose-600/70 dark:text-rose-400/70',
-      },
-      amber: {
-        card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-        title: 'text-amber-700 dark:text-amber-400',
-        icon: 'text-amber-500',
-        val: 'text-amber-600 dark:text-amber-300',
-        sub: 'text-amber-600/70 dark:text-amber-400/70',
-      },
-    }
-    const t = tones[tone] || tones.emerald
+  // ── SUB-KOMPONEN MODERN KPI CARDS (Spesifikasi Sesuai Dashboard Kepala Sekolah) ──
+  const MODERN_CARD_TONES = {
+    emerald: {
+      card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+      glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+      iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+      tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+      title: 'text-emerald-700 dark:text-emerald-400',
+      val: 'text-emerald-700 dark:text-emerald-300',
+      sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+      cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+    },
+    blue: {
+      card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+      glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+      iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+      tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+      title: 'text-blue-700 dark:text-blue-400',
+      val: 'text-blue-700 dark:text-blue-300',
+      sub: 'text-blue-600/80 dark:text-blue-400/80',
+      cta: 'text-blue-600/60 dark:text-blue-500/60',
+    },
+    amber: {
+      card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+      glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+      iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+      tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+      title: 'text-amber-700 dark:text-amber-400',
+      val: 'text-amber-700 dark:text-amber-300',
+      sub: 'text-amber-600/80 dark:text-amber-400/80',
+      cta: 'text-amber-600/60 dark:text-amber-500/60',
+    },
+    rose: {
+      card: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+      glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
+      iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30',
+      tag: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+      title: 'text-rose-700 dark:text-rose-400',
+      val: 'text-rose-700 dark:text-rose-300',
+      sub: 'text-rose-600/80 dark:text-rose-400/80',
+      cta: 'text-rose-600/60 dark:text-rose-500/60',
+    },
+    indigo: {
+      card: 'border-indigo-300/70 bg-gradient-to-br from-indigo-50 via-sky-50/60 to-white hover:border-indigo-400 dark:border-indigo-700/50 dark:from-indigo-950/40 dark:via-sky-950/20 dark:to-slate-900',
+      glow: 'bg-indigo-400/20 group-hover:bg-indigo-400/30',
+      iconBox: 'bg-gradient-to-br from-indigo-500 to-sky-600 text-white shadow-indigo-500/30',
+      tag: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300',
+      title: 'text-indigo-700 dark:text-indigo-400',
+      val: 'text-indigo-700 dark:text-indigo-300',
+      sub: 'text-indigo-600/80 dark:text-indigo-400/80',
+      cta: 'text-indigo-600/60 dark:text-indigo-500/60',
+    },
+    purple: {
+      card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+      glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+      iconBox: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-purple-500/30',
+      tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+      title: 'text-purple-700 dark:text-purple-400',
+      val: 'text-purple-700 dark:text-purple-300',
+      sub: 'text-purple-600/80 dark:text-purple-400/80',
+      cta: 'text-purple-600/60 dark:text-purple-500/60',
+    },
+  }
+
+  function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald', onClick }) {
+    const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+    const isClickable = typeof onClick === 'function'
+
     return (
       <motion.div
         variants={itemVariants}
-        whileHover={{ scale: 1.04, y: -2 }}
-        whileTap={{ scale: 0.96 }}
+        whileHover={{ scale: 1.02, y: -2 }}
+        whileTap={{ scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         onClick={onClick}
-        className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+        role={isClickable ? 'button' : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+        onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+        className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-sm transition-all duration-200 text-left ${
+          isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+        } ${t.card}`}
       >
-        <div className="flex items-center justify-between">
-          <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
-          <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+        {/* Ambient Glow */}
+        <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+
+        {/* Header with Gradient Icon Box & Pill Tag */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+              <Icon className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+            </div>
+          </div>
+          {tag && (
+            <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
+              {tag}
+            </span>
+          )}
         </div>
-        <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+
+        {/* Metric Value */}
+        <p className={`text-4xl font-black tabular-nums ${t.val}`}>
+          {value ?? '0'}
+        </p>
         {subtext && (
-          <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+          <p className={`mt-0.5 text-[11px] font-semibold ${t.sub}`}>
             {subtext}
+          </p>
+        )}
+
+        {/* Click Affordance Footer */}
+        {isClickable && (
+          <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+            <Eye className="h-3 w-3" /> Klik untuk detail lengkap
           </p>
         )}
       </motion.div>
@@ -223,38 +305,41 @@ export default function MonitoringDashboardPage() {
         ) : !error ? (
           <motion.div variants={itemVariants} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {cards.map(({ key, label, icon: Icon, tone, subtext }) => (
-                <KpiTintedCard
+              {cards.map(({ key, label, icon: Icon, tone, tag, subtext }) => (
+                <ModernKpiCard
                   key={key}
                   label={label}
                   value={Number(statistics[key] || 0).toLocaleString('id-ID')}
                   icon={Icon}
                   tone={tone}
+                  tag={tag}
                   subtext={subtext}
                 />
               ))}
             </div>
 
-            <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
+            {/* Indikator Perlu Perhatian Card Container */}
+            <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+              <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-emerald-500/15 dark:border-emerald-800/40">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/30">
                     <AlertTriangle className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                       Indikator Perlu Perhatian
-                    </CardTitle>
-                    <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Prioritas operasional yang dikirim oleh sistem pemantauan.
-                    </CardDescription>
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {alerts.length > 0 && (
-                    <Badge color="warning" size="sm">
+                    <span className="rounded-lg px-2.5 py-1 text-[11px] font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                       {alerts.length} Perhatian
-                    </Badge>
+                    </span>
                   )}
                   <SquircleActionButton
                     variant="view"
@@ -270,8 +355,8 @@ export default function MonitoringDashboardPage() {
                     }}
                   />
                 </div>
-              </CardHeader>
-              <CardContent className="pt-2">
+              </div>
+              <div className="pt-4">
                 {alerts.length ? (
                   <div className="space-y-2.5">
                     {alerts.map((item) => (
@@ -288,8 +373,8 @@ export default function MonitoringDashboardPage() {
                 ) : (
                   <p className="text-xs font-medium text-slate-500">Belum ada indikator kinerja pada periode ini.</p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </motion.div>
         ) : null}
 

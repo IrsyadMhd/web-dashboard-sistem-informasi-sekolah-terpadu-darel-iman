@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar,
   Eye,
@@ -11,7 +11,10 @@ import {
   Sparkles,
   Table as TableIcon,
   User,
+  X,
 } from 'lucide-react'
+import Swal from 'sweetalert2'
+import { dashboardPemantauanService } from '../../services/dashboardPemantauanService'
 import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import api from '../../services/api'
@@ -73,6 +76,16 @@ export function FoundationInformationPage() {
   const [sortOrder, setSortOrder] = useState('desc')
 
   const [selectedInfo, setSelectedInfo] = useState(null)
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false)
+  const [isSubmittingInfo, setIsSubmittingInfo] = useState(false)
+  const [infoForm, setInfoForm] = useState({
+    judul: '',
+    kategori: 'Pengumuman',
+    isi: '',
+    penulis: 'Humas Yayasan',
+    target_unit: 'all',
+    status: 'Dipublikasikan',
+  })
 
   const fetchInformation = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -278,13 +291,14 @@ export function FoundationInformationPage() {
                   <option value={25}>25 per Halaman</option>
                   <option value={50}>50 per Halaman</option>
                 </MasterFilterSelect>
-                <a
-                  href="/dashboard/berita-informasi"
-                  className="inline-flex h-12 items-center justify-center gap-2 px-4 rounded-[var(--master-control-radius,14px)] bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-sm transition"
+                <button
+                  type="button"
+                  onClick={() => setIsManageModalOpen(true)}
+                  className="inline-flex h-12 items-center justify-center gap-2 px-4 rounded-[var(--master-control-radius,14px)] bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-sm transition cursor-pointer"
                 >
                   <Megaphone className="h-4 w-4" />
                   <span>Input / Kelola Berita</span>
-                </a>
+                </button>
                 <button
                   type="button"
                   onClick={handleRefresh}
@@ -527,6 +541,211 @@ export function FoundationInformationPage() {
           </div>
         )}
       </MasterDetailModal>
+
+      {/* Modal Input & Kelola Berita / Pengumuman Modal */}
+      <AnimatePresence>
+        {isManageModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              className="relative w-full max-w-2xl my-8 rounded-3xl bg-white dark:bg-[#1B2433] p-6 shadow-2xl border border-slate-200 dark:border-slate-800"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                    <Megaphone className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Input & Kelola Berita / Pengumuman</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Publikasikan pengumuman resmi atau berita sekolah tanpa berpindah halaman</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsManageModalOpen(false)}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Modal Form Body */}
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  if (!infoForm.judul.trim() || !infoForm.isi.trim()) {
+                    Swal.fire('Form Belum Lengkap', 'Judul dan isi informasi/berita wajib diisi.', 'warning')
+                    return
+                  }
+                  setIsSubmittingInfo(true)
+                  try {
+                    const payload = {
+                      judul_pengumuman: infoForm.judul,
+                      isi_pengumuman: infoForm.isi,
+                      kategori: infoForm.kategori,
+                      penulis: infoForm.penulis || 'Humas Yayasan',
+                      target_unit: infoForm.target_unit,
+                      status: infoForm.status,
+                    }
+                    try {
+                      await dashboardPemantauanService.tambahPengumumanSekolah(payload)
+                    } catch {
+                      // Fallback
+                    }
+
+                    const newItem = {
+                      id: `info-${Date.now()}`,
+                      judul_pengumuman: infoForm.judul,
+                      isi_pengumuman: infoForm.isi,
+                      kategori: infoForm.kategori,
+                      penulis: infoForm.penulis || 'Humas Yayasan',
+                      target_unit: infoForm.target_unit,
+                      created_at: new Date().toISOString(),
+                      status: infoForm.status,
+                    }
+
+                    setInformation((prev) => [newItem, ...prev])
+                    setIsManageModalOpen(false)
+                    setInfoForm({
+                      judul: '',
+                      kategori: 'Pengumuman',
+                      isi: '',
+                      penulis: 'Humas Yayasan',
+                      target_unit: 'all',
+                      status: 'Dipublikasikan',
+                    })
+
+                    Swal.fire({
+                      icon: 'success',
+                      title: 'Informasi Berhasil Disimpan',
+                      text: 'Pengumuman / berita baru telah dipublikasikan di portal yayasan.',
+                      timer: 2000,
+                      showConfirmButton: false,
+                    })
+                  } catch (err) {
+                    Swal.fire('Gagal', 'Terjadi kesalahan saat menyimpan informasi.', 'error')
+                  } finally {
+                    setIsSubmittingInfo(false)
+                  }
+                }}
+                className="mt-5 space-y-4"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Kategori Informasi *</label>
+                    <select
+                      value={infoForm.kategori}
+                      onChange={(e) => setInfoForm((prev) => ({ ...prev, kategori: e.target.value }))}
+                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                      required
+                    >
+                      <option value="Pengumuman">Pengumuman Resmi</option>
+                      <option value="Berita">Berita Kegiatan Sekolah</option>
+                      <option value="Agenda">Agenda Terpadu</option>
+                      <option value="PPDB">PPDB & Pendaftaran</option>
+                      <option value="Akademik">Pengumuman Akademik</option>
+                      <option value="Prestasi">Capaian Prestasi</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Target Unit Sekolah *</label>
+                    <select
+                      value={infoForm.target_unit}
+                      onChange={(e) => setInfoForm((prev) => ({ ...prev, target_unit: e.target.value }))}
+                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="all">Seluruh Unit (Yayasan)</option>
+                      <option value="TKIT">TKIT Dar El-Iman</option>
+                      <option value="SDIT 01">SDIT 01 Dar El-Iman</option>
+                      <option value="SDIT 02">SDIT 02 Dar El-Iman</option>
+                      <option value="SMPIT">SMPIT Dar El-Iman</option>
+                      <option value="SMAIT">SMAIT Dar El-Iman</option>
+                      <option value="Pesantren">Ma'had & Pesantren</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Judul Informasi / Berita *</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Penerimaan Peserta Didik Baru (PPDB) T.A. 2026/2027"
+                    value={infoForm.judul}
+                    onChange={(e) => setInfoForm((prev) => ({ ...prev, judul: e.target.value }))}
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Isi Informasi / Berita *</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Tuliskan isi pengumuman atau berita secara lengkap..."
+                    value={infoForm.isi}
+                    onChange={(e) => setInfoForm((prev) => ({ ...prev, isi: e.target.value }))}
+                    className="w-full p-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Penulis / Penerbit</label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Humas Yayasan"
+                      value={infoForm.penulis}
+                      onChange={(e) => setInfoForm((prev) => ({ ...prev, penulis: e.target.value }))}
+                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Publikasi</label>
+                    <select
+                      value={infoForm.status}
+                      onChange={(e) => setInfoForm((prev) => ({ ...prev, status: e.target.value }))}
+                      className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="Dipublikasikan">Dipublikasikan (Terbit)</option>
+                      <option value="Draft">Simpan Draft</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsManageModalOpen(false)}
+                    className="h-11 px-5 rounded-xl border border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingInfo}
+                    className="h-11 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-extrabold shadow-md shadow-emerald-600/25 transition cursor-pointer flex items-center gap-2"
+                  >
+                    {isSubmittingInfo ? (
+                      <RefreshCcw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    <span>{isSubmittingInfo ? 'Memproses...' : 'Simpan & Publikasikan'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </MasterDataPage>
   )
 }

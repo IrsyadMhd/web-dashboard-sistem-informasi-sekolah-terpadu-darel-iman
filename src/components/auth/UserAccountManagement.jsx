@@ -717,7 +717,7 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
           <div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
               <FaUserShield className="text-emerald-600 dark:text-emerald-400" />
-              <span>{roleOnly ? 'Ubah Role Akun' : editing ? 'Edit Akun Login' : 'Tambah Akun Login Baru'}</span>
+              <span>{roleOnly ? 'Edit Akun Unit' : editing ? 'Edit Akun Login' : 'Tambah Akun Login Baru'}</span>
             </h3>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
               {editing
@@ -872,32 +872,28 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
 
           {/* FORM FIELDS */}
           <div className="grid gap-4 sm:grid-cols-2">
-            {!roleOnly && (
-              <label className="sm:col-span-2 text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                Nama Lengkap
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => change('name', e.target.value)}
-                  placeholder="Masukkan nama lengkap"
-                  className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
-                />
-              </label>
-            )}
+            <label className="sm:col-span-2 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+              Nama Pengguna
+              <input
+                required
+                value={form.name}
+                onChange={(e) => change('name', e.target.value)}
+                placeholder="Masukkan nama pengguna"
+                className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
+              />
+            </label>
 
-            {!roleOnly && (
-              <label className="sm:col-span-2 text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                Email Login
-                <input
-                  required
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => change('email', e.target.value)}
-                  placeholder="contoh@darel-iman.sch.id"
-                  className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
-                />
-              </label>
-            )}
+            <label className="sm:col-span-2 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+              Username / Email Login
+              <input
+                required
+                type="email"
+                value={form.email}
+                onChange={(e) => change('email', e.target.value)}
+                placeholder="contoh@darel-iman.sch.id"
+                className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600"
+              />
+            </label>
 
             {!roleOnly && (
               <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
@@ -1211,7 +1207,7 @@ export default function UserAccountManagement({
                           }}
                           onDelete={canManageGlobalAccess ? () => deleteUser(user) : undefined}
                           extraItems={
-                            canManageGlobalAccess
+                            canManageGlobalAccess || canManageUnitAccess
                               ? [
                                   {
                                     label: 'Reset Password',

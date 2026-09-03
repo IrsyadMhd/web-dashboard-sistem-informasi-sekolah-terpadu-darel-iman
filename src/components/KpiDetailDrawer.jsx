@@ -40,8 +40,8 @@ const ENDPOINT_MAP = {
 
 const TITLE_MAP = {
   unit_pendidikan: 'Detail Unit Pendidikan',
-  guru: 'Detail Guru & Pendidik',
-  pegawai: 'Detail Pegawai & Tendik',
+  guru: 'Detail Guru',
+  pegawai: 'Detail Tendik',
   siswa: 'Detail Siswa',
   orang_tua: 'Detail Orang Tua / Wali',
   alumni: 'Detail Alumni',

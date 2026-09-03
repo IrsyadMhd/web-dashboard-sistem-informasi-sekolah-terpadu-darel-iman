@@ -5,6 +5,7 @@ import { Award, FileSpreadsheet, GraduationCap, RefreshCcw, ShieldAlert, ShieldC
 import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import api from '../../services/api'
+import useDebounce from '../../hooks/useDebounce'
 import {
   MasterDataPage,
   MasterDataTable,
@@ -18,10 +19,12 @@ import {
   MasterStatCard,
   MasterStatsGrid,
   MasterStatusBadge,
+  SquircleActionButton,
 } from '../../components/master-data'
 import { PersonIdentityCell } from '../../components/ui/PersonIdentityCell'
 import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 import { FoundationExportModal } from '../../components/foundation/FoundationExportModal'
+import { FoundationUnitKpiModal } from '../../components/foundation/FoundationUnitKpiModal'
 
 const GENDER_LABEL = {
   male: 'Laki-Laki',
@@ -52,6 +55,7 @@ export function FoundationStudentsPage() {
   const [isFetching, setIsFetching] = useState(false)
 
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [selectedUnit, setSelectedUnit] = useState('all')
   const [selectedGender, setSelectedGender] = useState('all')
   const [page, setPage] = useState(1)
@@ -61,6 +65,7 @@ export function FoundationStudentsPage() {
 
   const [selectedStudentId, setSelectedStudentId] = useState(null)
   const [showExport, setShowExport] = useState(false)
+  const [activeKpiModal, setActiveKpiModal] = useState(null)
 
   const [academicYears, setAcademicYears] = useState([])
   const [selectedYear, setSelectedYear] = useState('all')
@@ -87,7 +92,7 @@ export function FoundationStudentsPage() {
     setError(false)
     try {
       const params = {
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         unit_id: selectedUnit !== 'all' ? selectedUnit : undefined,
         academic_year_id: selectedYear !== 'all' ? selectedYear : undefined,
         gender: selectedGender !== 'all' ? selectedGender : undefined,
@@ -109,27 +114,14 @@ export function FoundationStudentsPage() {
       setLoading(false)
       setIsFetching(false)
     }
-  }, [search, selectedUnit, selectedYear, selectedGender])
+  }, [debouncedSearch, selectedUnit, selectedYear, selectedGender])
 
   useEffect(() => {
     fetchStudents()
   }, [fetchStudents])
 
-  const filteredStudents = useMemo(() => students.filter((st) => {
-    const name = (st.full_name || st.nama || '').toString().toLowerCase()
-    const nis = (st.nis || st.nisn || '').toString().toLowerCase()
-    const unitName = (st.education_unit?.name || st.unit?.name || '').toString().toLowerCase()
-    const gender = (st.gender || '').toString()
-
-    const matchesSearch = name.includes(search.toLowerCase()) || nis.includes(search.toLowerCase())
-    const matchesUnit = selectedUnit === 'all' || st.unit_id === selectedUnit || unitName.includes(selectedUnit.toLowerCase())
-    const matchesGender =
-      selectedGender === 'all' ||
-      (selectedGender === 'L' && (gender === 'male' || gender === 'L')) ||
-      (selectedGender === 'P' && (gender === 'female' || gender === 'P'))
-
-    return matchesSearch && matchesUnit && matchesGender
-  }), [students, search, selectedUnit, selectedGender])
+  // Filter dilakukan di backend via params (search, unit_id, gender).
+  // FE tidak perlu filter ulang — langsung pakai data dari API.
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -141,7 +133,7 @@ export function FoundationStudentsPage() {
   }
 
   const sortedStudents = useMemo(() => {
-    return [...filteredStudents].sort((a, b) => {
+    return [...students].sort((a, b) => {
       let aVal = ''
       let bVal = ''
       if (sortKey === 'nama') {
@@ -168,7 +160,7 @@ export function FoundationStudentsPage() {
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
       return 0
     })
-  }, [filteredStudents, sortKey, sortOrder])
+  }, [students, sortKey, sortOrder])
 
   const totalItems = sortedStudents.length
   const lastPage = Math.max(1, Math.ceil(totalItems / perPage))
@@ -252,8 +244,8 @@ export function FoundationStudentsPage() {
         <motion.section variants={itemVariants} className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* 1. Siswa Aktif (Tahun Ajaran) */}
-          <a
-            href="/dashboard/yayasan/siswa"
+          <div
+            onClick={() => setActiveKpiModal('peningkatan')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-50/60 p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-emerald-800/60 dark:bg-emerald-950/40 text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -266,11 +258,11 @@ export function FoundationStudentsPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-emerald-200/80 px-2 py-1 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">Aktif</span>
-          </a>
+          </div>
 
           {/* 2. Siswa Masuk (Baru) */}
-          <a
-            href="/dashboard/yayasan/siswa-baru"
+          <div
+            onClick={() => setActiveKpiModal('siswa_mobility')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -283,11 +275,11 @@ export function FoundationStudentsPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-sky-100 px-2 py-1 text-[10px] font-extrabold text-sky-700 dark:bg-sky-900/60 dark:text-sky-300">Baru</span>
-          </a>
+          </div>
 
           {/* 3. Siswa Keluar (Mutasi) */}
-          <a
-            href="/dashboard/yayasan/mutasi-siswa"
+          <div
+            onClick={() => setActiveKpiModal('siswa_mobility')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -300,11 +292,11 @@ export function FoundationStudentsPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-amber-100 px-2 py-1 text-[10px] font-extrabold text-amber-700 dark:bg-amber-900/60 dark:text-amber-300">Mutasi</span>
-          </a>
+          </div>
 
           {/* 4. Kelulusan & Alumni */}
-          <a
-            href="/dashboard/yayasan/kelulusan-alumni"
+          <div
+            onClick={() => setActiveKpiModal('alumni')}
             className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left cursor-pointer"
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -317,7 +309,7 @@ export function FoundationStudentsPage() {
               </div>
             </div>
             <span className="shrink-0 rounded-lg bg-purple-100 px-2 py-1 text-[10px] font-extrabold text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">Alumni</span>
-          </a>
+          </div>
         </div>
       </motion.section>
 
@@ -519,6 +511,13 @@ export function FoundationStudentsPage() {
         id={selectedStudentId}
         isOpen={Boolean(selectedStudentId)}
         onClose={() => setSelectedStudentId(null)}
+      />
+
+      <FoundationUnitKpiModal
+        type={activeKpiModal || 'peningkatan'}
+        isOpen={Boolean(activeKpiModal)}
+        onClose={() => setActiveKpiModal(null)}
+        units={units}
       />
 
       <FoundationExportModal

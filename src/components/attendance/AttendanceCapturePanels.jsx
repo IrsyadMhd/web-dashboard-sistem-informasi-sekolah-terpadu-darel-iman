@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, CameraOff, CheckCircle2, ListChecks, QrCode, RefreshCw, X, XCircle } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { AlertTriangle, Camera, CameraOff, CheckCircle2, ListChecks, QrCode, RefreshCw, X, XCircle } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { lmsPresensiService } from '../../services/lmsPresensiService'
 
@@ -50,11 +51,17 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
   const [cameraLoading, setCameraLoading] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [modalInput, setModalInput] = useState('')
+
+  // Continuous scan: cooldown + in-viewfinder flash feedback
+  const [scanCooldown, setScanCooldown] = useState(false)         // true = sedang dalam jeda antar-scan
+  const [viewfinderFlash, setViewfinderFlash] = useState(null)    // 'success' | 'error' | null
+
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const detectorRef = useRef(null)
   const scanTimerRef = useRef(null)
   const busyRef = useRef(false)
+  const scanCooldownRef = useRef(false)   // ref-copy agar dapat dibaca di closure interval
 
   const stopCamera = () => {
     if (scanTimerRef.current) {
@@ -77,29 +84,6 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
       stopCamera()
     }
   }, [])
-
-  if (method === 'manual') {
-    return (
-      <div className="flex items-start gap-3.5 rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50/20 p-4.5 shadow-2xs dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-emerald-900/30 dark:to-emerald-950/20">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs mt-0.5">
-          <ListChecks size={20} />
-        </div>
-        <div>
-          <h4 className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200 uppercase tracking-wider">
-            Checklist Presensi Manual (Roll Call)
-          </h4>
-          <p className="mt-1 text-xs font-semibold text-emerald-900/90 dark:text-emerald-300/90 leading-relaxed">
-            Gunakan tombol opsi status di bawah untuk checklist kehadiran siswa satu per satu (
-            <span className="font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md">Hadir</span>,{' '}
-            <span className="font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-900/60 px-1.5 py-0.5 rounded-md">Terlambat</span>,{' '}
-            <span className="font-extrabold text-sky-700 dark:text-sky-300 bg-sky-100/90 dark:bg-sky-900/60 px-1.5 py-0.5 rounded-md">Izin</span>,{' '}
-            <span className="font-extrabold text-violet-700 dark:text-violet-300 bg-violet-100/90 dark:bg-violet-900/60 px-1.5 py-0.5 rounded-md">Sakit</span>,{' '}
-            <span className="font-extrabold text-rose-700 dark:text-rose-300 bg-rose-100/90 dark:bg-rose-900/60 px-1.5 py-0.5 rounded-md">Alpha</span>).
-          </p>
-        </div>
-      </div>
-    )
-  }
 
   const startCamera = async () => {
     setCameraLoading(true)
@@ -132,18 +116,35 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
       try {
         detectorRef.current = new window.BarcodeDetector({ formats: ['qr_code'] })
         scanTimerRef.current = window.setInterval(async () => {
-          if (!videoRef.current || videoRef.current.readyState < 2 || busyRef.current || !detectorRef.current) return
+          // Jangan proses jika kamera/detektor belum siap, atau sedang busy/cooldown
+          if (
+            !videoRef.current ||
+            videoRef.current.readyState < 2 ||
+            busyRef.current ||
+            scanCooldownRef.current ||
+            !detectorRef.current
+          ) return
+
           try {
             const codes = await detectorRef.current.detect(videoRef.current)
             const value = codes[0]?.rawValue
             if (value) {
-              stopCamera()
-              await processScanCode(value)
+              // Aktifkan cooldown agar frame berikutnya tidak memproses kode yang sama
+              scanCooldownRef.current = true
+              setScanCooldown(true)
+              // Proses langsung ke server — kamera TETAP aktif (tidak stopCamera())
+              await processScanCode(value, 'camera')
+              // Cooldown 2.5 detik sebelum bisa scan berikutnya
+              setTimeout(() => {
+                scanCooldownRef.current = false
+                setScanCooldown(false)
+                setViewfinderFlash(null)
+              }, 2500)
             }
           } catch {
             // Frame tanpa QR valid diabaikan sampai pemindaian berikutnya.
           }
-        }, 500)
+        }, 400)
       } catch {
         setCameraError('Browser tidak dapat membuat pemindai QR otomatis. Gunakan scanner USB atau input manual.')
       }
@@ -168,7 +169,18 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
     setShowCameraModal(false)
   }
 
-  const processScanCode = async (codeToScan) => {
+  // Auto-submit USB scanner: debounce 300ms setelah input terakhir
+  // Scanner USB biasanya selesai <100ms, jadi 300ms cukup aman
+  useEffect(() => {
+    if (!modalInput.trim() || disabled || !captureActive || busy) return
+    const timer = setTimeout(() => {
+      processScanCode(modalInput, 'usb')
+    }, 300)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalInput])
+
+  const processScanCode = async (codeToScan, source = 'usb') => {
     const rawCode = String(codeToScan || '').trim()
     if (!rawCode || disabled || !captureActive || busyRef.current) return
 
@@ -185,22 +197,55 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
       setResult(payload)
       if (payload.scan_status === 'success') {
         onRecorded?.(payload)
-        Swal.fire({
-          icon: 'success',
-          title: 'Presensi Berhasil',
-          text: payload.message,
-          timer: 2000,
-          showConfirmButton: false,
-        })
+        if (source === 'camera') {
+          // Flash hijau di viewfinder — kamera tetap aktif
+          setViewfinderFlash('success')
+          // Toast ringan agar tidak memblokir kamera
+          Swal.fire({
+            icon: 'success',
+            title: payload.student?.full_name || payload.student?.nama_lengkap || 'Berhasil',
+            text: payload.message,
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          })
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Presensi Berhasil',
+            text: payload.message,
+            timer: 2000,
+            showConfirmButton: false,
+          })
+        }
       } else if (payload.scan_status === 'duplicate_scan') {
-        Swal.fire({ icon: 'info', title: 'Sudah Tercatat', text: payload.message })
+        if (source === 'camera') setViewfinderFlash('duplicate')
+        Swal.fire({
+          icon: 'info',
+          title: 'Sudah Tercatat',
+          text: payload.message,
+          ...(source === 'camera' && { toast: true, position: 'top-end', timer: 2000, showConfirmButton: false }),
+        })
       } else {
-        Swal.fire({ icon: 'error', title: 'Pemindaian Ditolak', text: payload.message })
+        if (source === 'camera') setViewfinderFlash('error')
+        Swal.fire({
+          icon: 'error',
+          title: 'Pemindaian Ditolak',
+          text: payload.message,
+          ...(source === 'camera' && { toast: true, position: 'top-end', timer: 2500, showConfirmButton: false }),
+        })
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Siswa tidak ditemukan dalam roster kelas ini.'
       setResult({ scan_status: 'rejected', message: msg })
-      Swal.fire({ icon: 'error', title: 'Pemindaian Ditolak', text: msg })
+      if (source === 'camera') setViewfinderFlash('error')
+      Swal.fire({
+        icon: 'error',
+        title: 'Pemindaian Ditolak',
+        text: msg,
+        ...(source === 'camera' && { toast: true, position: 'top-end', timer: 2500, showConfirmButton: false }),
+      })
     } finally {
       setIdentifier('')
       setModalInput('')
@@ -212,13 +257,36 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
   const handleScanSubmit = (e) => {
     e?.preventDefault()
     if (!identifier.trim() || disabled || !captureActive) return
-    processScanCode(identifier)
+    processScanCode(identifier, 'usb')
   }
 
   const handleModalSubmit = (e) => {
     e?.preventDefault()
     if (!modalInput.trim() || disabled || !captureActive) return
     processScanCode(modalInput)
+  }
+
+  if (method === 'manual') {
+    return (
+      <div className="flex items-start gap-3.5 rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50/20 p-4.5 shadow-2xs dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-emerald-900/30 dark:to-emerald-950/20">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs mt-0.5">
+          <ListChecks size={20} />
+        </div>
+        <div>
+          <h4 className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200 uppercase tracking-wider">
+            Checklist Presensi Manual (Roll Call)
+          </h4>
+          <p className="mt-1 text-xs font-semibold text-emerald-900/90 dark:text-emerald-300/90 leading-relaxed">
+            Gunakan tombol opsi status di bawah untuk checklist kehadiran siswa satu per satu (
+            <span className="font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md">Hadir</span>,{' '}
+            <span className="font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-900/60 px-1.5 py-0.5 rounded-md">Terlambat</span>,{' '}
+            <span className="font-extrabold text-sky-700 dark:text-sky-300 bg-sky-100/90 dark:bg-sky-900/60 px-1.5 py-0.5 rounded-md">Izin</span>,{' '}
+            <span className="font-extrabold text-violet-700 dark:text-violet-300 bg-violet-100/90 dark:bg-violet-900/60 px-1.5 py-0.5 rounded-md">Sakit</span>,{' '}
+            <span className="font-extrabold text-rose-700 dark:text-rose-300 bg-rose-100/90 dark:bg-rose-900/60 px-1.5 py-0.5 rounded-md">Alpha</span>).
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -237,8 +305,8 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
         <button
           type="button"
           onClick={openCameraModal}
-          disabled={disabled || !captureActive || cameraLoading}
-          className="flex items-center justify-center gap-2 rounded-xl bg-[#0E5C44] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-emerald-800 whitespace-nowrap"
+          disabled={cameraLoading}
+          className="flex items-center justify-center gap-2 rounded-xl bg-[#0E5C44] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-emerald-800 disabled:opacity-60 whitespace-nowrap"
         >
           <Camera className="h-4 w-4" /> Buka Kamera Pemindai Live
         </button>
@@ -290,107 +358,266 @@ export function AttendanceCapturePanel({ method, session, onRecorded, captureAct
         </div>
       )}
 
-      {/* Live Camera Pop-up Modal */}
-      {showCameraModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-3xl bg-white shadow-2xl dark:bg-slate-900 border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in duration-200">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 p-5 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-                  <Camera className="h-5 w-5" />
+      {/* Live Camera Pop-up Modal — Premium QR Scanner with Square ID Card Viewfinder */}
+      <AnimatePresence>
+        {showCameraModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 p-4 backdrop-blur-md"
+            onClick={closeCameraModal}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Ambient Glow Blobs */}
+              <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl dark:from-emerald-500/40 dark:via-teal-400/30" />
+              <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-gradient-to-tr from-emerald-600/20 via-teal-500/15 to-transparent blur-3xl dark:from-emerald-600/30 dark:via-teal-500/20" />
+
+              {/* Modal Header — Gradient Emerald */}
+              <div className="relative z-10 flex items-center justify-between border-b border-emerald-500/15 bg-gradient-to-r from-[#0E5C44] via-emerald-700 to-teal-700 p-5 dark:border-emerald-600/20">
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 text-white shadow-md">
+                    <Camera className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-black tracking-tight text-white">
+                        Pemindai Live QR Code Kartu Siswa
+                      </h3>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-sm px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-100 border border-white/20">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-200 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                        </span>
+                        LIVE
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-medium text-emerald-100/80 mt-0.5">
+                      Presensi Mata Pelajaran
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Pemindai Live QR Code Kartu Siswa</h3>
-                  <p className="text-xs text-slate-500">Presensi Mata Pelajaran</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={closeCameraModal}
+                  className="rounded-full p-2 text-white/70 hover:bg-white/15 hover:text-white transition cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button
-                onClick={closeCameraModal}
-                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
 
-            {/* Body */}
-            <div className="p-6 space-y-4">
-              <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-inner dark:border-slate-800">
-                <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-
-                {cameraLoading && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 text-white gap-2">
-                    <RefreshCw className="h-8 w-8 animate-spin text-emerald-400" />
-                    <p className="text-xs font-semibold">Menghubungkan ke kamera...</p>
+              {/* Modal Body */}
+              <div className="relative z-10 p-5 space-y-4">
+                {/* Warning jika capture belum aktif */}
+                {!captureActive && (
+                  <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-xs font-semibold text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-300">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                    <span>Kamera aktif untuk preview, namun <b>scan belum dapat diproses</b>. Klik tombol <b>"Mulai Capture"</b> terlebih dahulu agar data presensi dapat disimpan.</span>
                   </div>
                 )}
 
-                {cameraActive && (
-                  <div className="absolute inset-0 border-2 border-dashed border-emerald-400/80 pointer-events-none rounded-2xl m-6 flex flex-col items-center justify-between p-4">
-                    <span className="bg-black/60 backdrop-blur-sm px-3 py-1 text-[11px] font-bold text-emerald-300 rounded-full">
-                      🔴 LIVE — Dekatkan QR Code Kartu Siswa
-                    </span>
+                {/* Square QR Code Viewfinder — Sized for Student ID Card */}
+                <div className="relative mx-auto aspect-square w-full max-w-[310px] overflow-hidden rounded-[22px] border-2 border-emerald-500/40 bg-slate-950 shadow-2xl shadow-emerald-500/10 dark:border-emerald-600/50">
+                  <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
+
+                  {/* Vignette + Square Reticle Overlay */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    {/* Square QR Reticle — 210px mobile / 230px desktop */}
+                    <div className="relative z-10 h-52 w-52 sm:h-56 sm:w-56 rounded-2xl border-2 border-emerald-400/90 bg-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.52)] overflow-hidden">
+                      {/* 4 Precision L-Shaped Corner Markers */}
+                      <span className="absolute top-0 left-0 h-6 w-6 border-t-[3.5px] border-l-[3.5px] border-emerald-400 rounded-tl-xl shadow-[0_0_8px_#10b981]" />
+                      <span className="absolute top-0 right-0 h-6 w-6 border-t-[3.5px] border-r-[3.5px] border-emerald-400 rounded-tr-xl shadow-[0_0_8px_#10b981]" />
+                      <span className="absolute bottom-0 left-0 h-6 w-6 border-b-[3.5px] border-l-[3.5px] border-emerald-400 rounded-bl-xl shadow-[0_0_8px_#10b981]" />
+                      <span className="absolute bottom-0 right-0 h-6 w-6 border-b-[3.5px] border-r-[3.5px] border-emerald-400 rounded-br-xl shadow-[0_0_8px_#10b981]" />
+
+                      {/* Animated Laser Scanning Beam (framer-motion) */}
+                      {cameraActive && (
+                        <>
+                          {/* Sweeping Soft Glow Beam */}
+                          <motion.div
+                            animate={{ top: ['-20%', '85%', '-20%'] }}
+                            transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                            className="absolute inset-x-0 h-14 bg-gradient-to-b from-emerald-500/20 via-teal-400/10 to-transparent pointer-events-none z-10"
+                          />
+                          {/* Sharp Laser Line */}
+                          <motion.div
+                            animate={{ top: ['4%', '94%', '4%'] }}
+                            transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                            className="absolute inset-x-1 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_16px_#10b981,0_0_24px_#34d399] z-20 pointer-events-none"
+                          />
+                        </>
+                      )}
+
+                      {/* Dynamic Badge: Ready / Cooldown / Flash State */}
+                      <div className="absolute -bottom-9 inset-x-0 flex justify-center pointer-events-none">
+                        {scanCooldown ? (
+                          <span className={`backdrop-blur-md px-3 py-0.5 text-[10px] font-black rounded-full border whitespace-nowrap shadow-xl flex items-center gap-1.5 ${
+                            viewfinderFlash === 'success'
+                              ? 'bg-emerald-600/90 text-white border-emerald-400/60'
+                              : viewfinderFlash === 'duplicate'
+                              ? 'bg-sky-700/90 text-white border-sky-400/60'
+                              : viewfinderFlash === 'error'
+                              ? 'bg-rose-600/90 text-white border-rose-400/60'
+                              : 'bg-slate-950/90 text-emerald-300 border-emerald-500/40'
+                          }`}>
+                            {viewfinderFlash === 'success' && '✓ Tersimpan — siap scan berikutnya'}
+                            {viewfinderFlash === 'duplicate' && '⚠ Sudah tercatat — cooldown...'}
+                            {viewfinderFlash === 'error' && '✗ Gagal — cooldown...'}
+                            {!viewfinderFlash && 'Memproses...'}
+                          </span>
+                        ) : (
+                          <span className="bg-slate-950/90 backdrop-blur-md px-3 py-0.5 text-[10px] font-black text-emerald-300 rounded-full border border-emerald-500/40 whitespace-nowrap shadow-xl flex items-center gap-1.5">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                            </span>
+                            Posisikan QR Code di Dalam Kotak
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Camera Loading Overlay */}
+                  {cameraLoading && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/85 text-white gap-2.5">
+                      <RefreshCw className="h-8 w-8 animate-spin text-emerald-400" />
+                      <p className="text-xs font-bold text-slate-200">Menghubungkan ke kamera...</p>
+                    </div>
+                  )}
+
+                  {/* In-Viewfinder Flash Overlay: muncul saat QR berhasil/gagal di-scan */}
+                  <AnimatePresence>
+                    {viewfinderFlash && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className={`absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 pointer-events-none ${
+                          viewfinderFlash === 'success'
+                            ? 'bg-emerald-500/25'
+                            : viewfinderFlash === 'duplicate'
+                            ? 'bg-sky-500/25'
+                            : 'bg-rose-500/25'
+                        }`}
+                      >
+                        <motion.div
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                          className={`flex h-16 w-16 items-center justify-center rounded-full shadow-2xl ${
+                            viewfinderFlash === 'success'
+                              ? 'bg-emerald-500 text-white shadow-emerald-500/50'
+                              : viewfinderFlash === 'duplicate'
+                              ? 'bg-sky-500 text-white shadow-sky-500/50'
+                              : 'bg-rose-500 text-white shadow-rose-500/50'
+                          }`}
+                        >
+                          {viewfinderFlash === 'success' && <CheckCircle2 className="h-8 w-8" />}
+                          {viewfinderFlash === 'duplicate' && <XCircle className="h-8 w-8" />}
+                          {viewfinderFlash === 'error' && <XCircle className="h-8 w-8" />}
+                        </motion.div>
+                        <span className={`rounded-full px-4 py-1 text-[11px] font-extrabold backdrop-blur-md ${
+                          viewfinderFlash === 'success'
+                            ? 'bg-emerald-900/80 text-emerald-100'
+                            : viewfinderFlash === 'duplicate'
+                            ? 'bg-sky-900/80 text-sky-100'
+                            : 'bg-rose-900/80 text-rose-100'
+                        }`}>
+                          {viewfinderFlash === 'success' && 'Presensi Tersimpan ✓'}
+                          {viewfinderFlash === 'duplicate' && 'Sudah Tercatat'}
+                          {viewfinderFlash === 'error' && 'Scan Ditolak'}
+                        </span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Camera Error Panel */}
+                {cameraError && (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50/90 p-4 text-xs dark:border-rose-900/50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 space-y-2.5">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-extrabold text-[13px] text-rose-900 dark:text-rose-100">Kamera Tidak Dapat Diakses</p>
+                        <p className="leading-relaxed">{cameraError}</p>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-rose-200/60 dark:border-rose-900/60 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[11px] text-rose-700 dark:text-rose-300">
+                        Klik ikon 🔒 di address bar → set Camera ke <b>Allow</b> → Refresh.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={startCamera}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition cursor-pointer text-xs shrink-0"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" /> Coba Lagi
+                      </button>
+                    </div>
                   </div>
                 )}
+
+                {/* Manual Input / USB Scanner Form */}
+                <form onSubmit={handleModalSubmit} className="space-y-2 pt-1">
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Input Kode / NISN Kartu
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={modalInput}
+                      onChange={(e) => setModalInput(e.target.value)}
+                      disabled={disabled || !captureActive || busy}
+                      placeholder="Hasil scan QR / Ketik NISN siswa..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white disabled:opacity-60"
+                    />
+                    <button
+                      type="submit"
+                      disabled={disabled || !captureActive || busy}
+                      className="rounded-xl bg-[#0E5C44] px-5 py-3 text-xs font-bold text-white shadow hover:bg-emerald-800 whitespace-nowrap disabled:opacity-50 transition"
+                    >
+                      Proses Scan
+                    </button>
+                  </div>
+                </form>
               </div>
 
-              {cameraError && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
-                  {cameraError}
-                </div>
-              )}
-
-              <form onSubmit={handleModalSubmit} className="space-y-2 pt-2">
-                <label className="block text-xs font-semibold text-slate-500 uppercase">Input Kode / NISN Kartu</label>
-                <div className="flex gap-2">
-                 <input
-                    type="text"
-                    autoFocus
-                   value={modalInput}
-                   onChange={(e) => setModalInput(e.target.value)}
-                   disabled={disabled || !captureActive || busy}
-                    placeholder="Hasil scan QR / Ketik NISN..."
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  />
-                  <button
-                   type="submit"
-                    disabled={disabled || !captureActive || busy}
-                    className="rounded-xl bg-[#0E5C44] px-5 py-3 text-xs font-bold text-white shadow hover:bg-emerald-800 whitespace-nowrap"
-                  >
-                    Proses Scan
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-              <button
-                type="button"
-                onClick={cameraActive ? stopCamera : startCamera}
-                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-              >
-                {cameraActive ? (
-                  <>
-                    <CameraOff className="h-3.5 w-3.5 text-rose-500" /> Matikan Kamera
-                  </>
-                ) : (
-                  <>
-                    <Camera className="h-3.5 w-3.5 text-emerald-500" /> Nyalakan Ulang Kamera
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={closeCameraModal}
-                className="rounded-xl bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200"
-              >
-                Tutup Window
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Footer */}
+              <div className="relative z-10 flex items-center justify-between border-t border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
+                <button
+                  type="button"
+                  onClick={cameraActive ? stopCamera : startCamera}
+                  className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition"
+                >
+                  {cameraActive ? (
+                    <><CameraOff className="h-3.5 w-3.5 text-rose-500" /> Matikan Kamera</>
+                  ) : (
+                    <><Camera className="h-3.5 w-3.5 text-emerald-500" /> Nyalakan Ulang Kamera</>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeCameraModal}
+                  className="rounded-xl bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 transition"
+                >
+                  Tutup
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

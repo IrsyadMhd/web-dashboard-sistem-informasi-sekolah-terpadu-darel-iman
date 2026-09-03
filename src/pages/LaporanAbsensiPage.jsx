@@ -188,36 +188,66 @@ const getBadgeColor = (status) => {
   }
 }
 
-const toneStyles = {
+const MODERN_CARD_TONES = {
   emerald: {
-    cardBg: 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/80 dark:border-emerald-900/50',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-900/80',
-    iconColor: 'text-emerald-700 dark:text-emerald-300',
-    badge: 'bg-emerald-200/80 text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200',
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600 dark:text-emerald-400',
   },
   violet: {
-    cardBg: 'bg-violet-50/70 dark:bg-violet-950/40 border-violet-200/80 dark:border-violet-900/50',
-    iconBg: 'bg-violet-100 dark:bg-violet-900/80',
-    iconColor: 'text-violet-700 dark:text-violet-300',
-    badge: 'bg-violet-200/80 text-violet-800 dark:bg-violet-900/90 dark:text-violet-200',
+    card: 'border-violet-300/70 bg-gradient-to-br from-violet-50 via-purple-50/60 to-white hover:border-violet-400 dark:border-violet-700/50 dark:from-violet-950/40 dark:via-purple-950/20 dark:to-slate-900',
+    glow: 'bg-violet-400/20 group-hover:bg-violet-400/30',
+    iconBox: 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-violet-500/30',
+    tag: 'bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-300',
+    title: 'text-violet-700 dark:text-violet-400',
+    val: 'text-violet-700 dark:text-violet-300',
+    sub: 'text-violet-600/80 dark:text-violet-400/80',
+    cta: 'text-violet-600 dark:text-violet-400',
   },
   sky: {
-    cardBg: 'bg-sky-50/70 dark:bg-sky-950/40 border-sky-200/80 dark:border-sky-900/50',
-    iconBg: 'bg-sky-100 dark:bg-sky-900/80',
-    iconColor: 'text-sky-700 dark:text-sky-300',
-    badge: 'bg-sky-200/80 text-sky-800 dark:bg-sky-900/90 dark:text-sky-200',
+    card: 'border-sky-300/70 bg-gradient-to-br from-sky-50 via-blue-50/60 to-white hover:border-sky-400 dark:border-sky-700/50 dark:from-sky-950/40 dark:via-blue-950/20 dark:to-slate-900',
+    glow: 'bg-sky-400/20 group-hover:bg-sky-400/30',
+    iconBox: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-500/30',
+    tag: 'bg-sky-100 text-sky-700 dark:bg-sky-900/60 dark:text-sky-300',
+    title: 'text-sky-700 dark:text-sky-400',
+    val: 'text-sky-700 dark:text-sky-300',
+    sub: 'text-sky-600/80 dark:text-sky-400/80',
+    cta: 'text-sky-600 dark:text-sky-400',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600 dark:text-blue-400',
   },
   amber: {
-    cardBg: 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/50',
-    iconBg: 'bg-amber-100 dark:bg-amber-900/80',
-    iconColor: 'text-amber-700 dark:text-amber-300',
-    badge: 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/90 dark:text-amber-200',
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600 dark:text-amber-400',
   },
   rose: {
-    cardBg: 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-200/80 dark:border-rose-900/50',
-    iconBg: 'bg-rose-100 dark:bg-rose-900/80',
-    iconColor: 'text-rose-700 dark:text-rose-300',
-    badge: 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/90 dark:text-rose-200',
+    card: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+    glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
+    iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30',
+    tag: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+    title: 'text-rose-700 dark:text-rose-400',
+    val: 'text-rose-700 dark:text-rose-300',
+    sub: 'text-rose-600/80 dark:text-rose-400/80',
+    cta: 'text-rose-600 dark:text-rose-400',
   },
 }
 
@@ -885,7 +915,7 @@ export default function LaporanAbsensiPage() {
       {/* Summary Cards Grid (5 Equal & Colored Cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5 mb-6">
         {cards.map(({ label, statusKey, value, icon: Icon, tone, percent }) => {
-          const style = toneStyles[tone] || toneStyles.emerald
+          const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
           return (
             <article
               key={label}
@@ -893,27 +923,35 @@ export default function LaporanAbsensiPage() {
               role="button"
               tabIndex={0}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openCardModal(statusKey, label, tone)}
-              className={`group flex flex-col justify-between h-full p-4 rounded-[18px] border shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${style.cardBg}`}
+              className={`group relative overflow-hidden rounded-[18px] border-2 p-4 sm:p-4.5 shadow-sm transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between h-full ${t.card}`}
               title={`Klik untuk melihat detail data ${label}`}
             >
+              {/* Ambient Glow */}
+              <div className={`pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full blur-2xl transition-all ${t.glow}`} />
+
+              {/* Header with 3D Gradient Icon Box & Pill Tag */}
               <div className="flex items-center justify-between gap-2 mb-3">
-                <div className={`size-10 sm:size-11 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}>
-                  <Icon className="size-5 sm:size-6" />
+                <div className={`size-10 sm:size-10.5 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${t.iconBox}`}>
+                  <Icon className="size-5" />
                 </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${style.badge}`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-extrabold shadow-2xs ${t.tag}`}>
                   {percent.toFixed(1)}%
                 </span>
               </div>
+
+              {/* Metric Label & Value */}
               <div>
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">{label}</span>
-                <strong className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
+                <span className={`text-[10.5px] font-bold uppercase tracking-wider block mb-0.5 ${t.title}`}>{label}</span>
+                <strong className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums block ${t.val}`}>
                   {formatAngka(value)}
                 </strong>
               </div>
-              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
-                <span>dari total data</span>
-                <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
-                  Detail &rarr;
+
+              {/* Click Affordance Footer */}
+              <div className="flex items-center justify-between text-[10px] font-bold pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+                <span className="text-slate-500 dark:text-slate-400">dari total data</span>
+                <span className={`inline-flex items-center gap-0.5 font-bold group-hover:translate-x-0.5 transition-transform ${t.cta}`}>
+                  <Eye className="h-3 w-3" /> Detail &rarr;
                 </span>
               </div>
             </article>
@@ -926,108 +964,111 @@ export default function LaporanAbsensiPage() {
       {/* 3-Column Equal Grid: Filter, Grafik, & Distribusi */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6 items-stretch">
         {/* Col 1: Filter Laporan */}
-        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-sm flex flex-col justify-between h-full">
-          <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Filter Laporan</h2>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
-              >
-                Reset Filter
-              </button>
-            </div>
+        <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 flex flex-col justify-between h-full">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-4 pb-3.5 border-b border-emerald-500/15">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Filter Laporan</h2>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                >
+                  Reset Filter
+                </button>
+              </div>
 
-            <div className="space-y-3">
-              {unitList.length > 0 && (
+              <div className="space-y-3">
+                {unitList.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Unit Pendidikan</label>
+                    <select
+                      value={draft.unit_id}
+                      onChange={(e) => updateDraftAndFilter({ ...draft, unit_id: e.target.value, class_id: '' })}
+                      className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="">Semua Unit Pendidikan</option>
+                      {unitList.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {unit.name || unit.nama_unit || unit.code} {unit.level ? `(${unit.level})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Unit Pendidikan</label>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Kelas / Rombel</label>
                   <select
-                    value={draft.unit_id}
-                    onChange={(e) => updateDraftAndFilter({ ...draft, unit_id: e.target.value, class_id: '' })}
+                    value={draft.class_id}
+                    onChange={(e) => {
+                      const selectedClassId = e.target.value
+                      const selectedClassObj = classList.find((c) => String(c.id) === String(selectedClassId))
+                      const targetUnitId = selectedClassObj?.unit_pendidikan_id || selectedClassObj?.unit_id || draft.unit_id
+                      updateDraftAndFilter({ ...draft, class_id: selectedClassId, unit_id: draft.unit_id || targetUnitId || '' })
+                    }}
                     className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">Semua Unit Pendidikan</option>
-                    {unitList.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.name || unit.nama_unit || unit.code} {unit.level ? `(${unit.level})` : ''}
-                      </option>
+                    <option value="">Semua Kelas</option>
+                    {classList.map((kelas) => {
+                      const uName = kelas.unit_pendidikan?.name || kelas.unit_pendidikan?.level || kelas.jenjang || ''
+                      const labelStr = uName ? `${kelas.nama_kelas || kelas.kode_kelas} (${uName})` : (kelas.nama_kelas || kelas.kode_kelas)
+                      return (
+                        <option key={kelas.id} value={kelas.id}>{labelStr}</option>
+                      )
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Mata Pelajaran</label>
+                  <select
+                    value={draft.subject_id}
+                    onChange={(e) => updateDraftAndFilter({ ...draft, subject_id: e.target.value })}
+                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="">Semua Mata Pelajaran</option>
+                    {subjectOptions.map(([id, name]) => (
+                      <option key={id} value={id}>{name}</option>
                     ))}
                   </select>
                 </div>
-              )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Kelas / Rombel</label>
-                <select
-                  value={draft.class_id}
-                  onChange={(e) => {
-                    const selectedClassId = e.target.value
-                    const selectedClassObj = classList.find((c) => String(c.id) === String(selectedClassId))
-                    const targetUnitId = selectedClassObj?.unit_pendidikan_id || selectedClassObj?.unit_id || draft.unit_id
-                    updateDraftAndFilter({ ...draft, class_id: selectedClassId, unit_id: draft.unit_id || targetUnitId || '' })
-                  }}
-                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">Semua Kelas</option>
-                  {classList.map((kelas) => {
-                    const uName = kelas.unit_pendidikan?.name || kelas.unit_pendidikan?.level || kelas.jenjang || ''
-                    const labelStr = uName ? `${kelas.nama_kelas || kelas.kode_kelas} (${uName})` : (kelas.nama_kelas || kelas.kode_kelas)
-                    return (
-                      <option key={kelas.id} value={kelas.id}>{labelStr}</option>
-                    )
-                  })}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Mata Pelajaran</label>
-                <select
-                  value={draft.subject_id}
-                  onChange={(e) => updateDraftAndFilter({ ...draft, subject_id: e.target.value })}
-                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">Semua Mata Pelajaran</option>
-                  {subjectOptions.map(([id, name]) => (
-                    <option key={id} value={id}>{name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Periode</label>
-                <select
-                  value={draft.period}
-                  onChange={(e) => changePeriod(e.target.value)}
-                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  {draft.period === 'custom' && <option value="custom">Rentang Kustom</option>}
-                  <option value="semua">Semua Data</option>
-                  <option value="minggu">7 Hari Terakhir</option>
-                  <option value="bulan">Bulan Ini</option>
-                  <option value="semester">6 Bulan Terakhir</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-1">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
-                  <input
-                    type="date"
-                    value={draft.date_from}
-                    onChange={(e) => updateDraftAndFilter({ ...draft, date_from: e.target.value, period: 'custom' })}
-                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                  />
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Periode</label>
+                  <select
+                    value={draft.period}
+                    onChange={(e) => changePeriod(e.target.value)}
+                    className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {draft.period === 'custom' && <option value="custom">Rentang Kustom</option>}
+                    <option value="semua">Semua Data</option>
+                    <option value="minggu">7 Hari Terakhir</option>
+                    <option value="bulan">Bulan Ini</option>
+                    <option value="semester">6 Bulan Terakhir</option>
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
-                  <input
-                    type="date"
-                    value={draft.date_to}
-                    onChange={(e) => updateDraftAndFilter({ ...draft, date_to: e.target.value, period: 'custom' })}
-                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                  />
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
+                    <input
+                      type="date"
+                      value={draft.date_from}
+                      onChange={(e) => updateDraftAndFilter({ ...draft, date_from: e.target.value, period: 'custom' })}
+                      className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
+                    <input
+                      type="date"
+                      value={draft.date_to}
+                      onChange={(e) => updateDraftAndFilter({ ...draft, date_to: e.target.value, period: 'custom' })}
+                      className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1035,69 +1076,75 @@ export default function LaporanAbsensiPage() {
         </article>
 
         {/* Col 2: Grafik Kehadiran */}
-        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-sm flex flex-col justify-between h-full">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Grafik Kehadiran</h2>
-            <span className="text-xs font-semibold text-slate-400">Trend Data</span>
-          </div>
-          <div className="h-64 w-full">
-            {loading ? (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">Memuat grafik...</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="hadirGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#12a968" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#12a968" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="#edf1f5" vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#718096', fontSize: 10 }} />
-                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: '#718096', fontSize: 10 }} />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="hadir" name="Hadir" stroke={warnaStatus.hadir} fill="url(#hadirGradient)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke={warnaStatus.terlambat} fill="transparent" strokeWidth={1.5} />
-                  <Area type="monotone" dataKey="izin" name="Izin" stroke={warnaStatus.izin} fill="transparent" strokeWidth={1.5} />
-                  <Area type="monotone" dataKey="sakit" name="Sakit" stroke={warnaStatus.sakit} fill="transparent" strokeWidth={1.5} />
-                  <Area type="monotone" dataKey="alpa" name="Alpha" stroke={warnaStatus.alpa} fill="transparent" strokeWidth={1.5} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
+        <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 flex flex-col justify-between h-full">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div className="flex items-center justify-between mb-4 pb-3.5 border-b border-emerald-500/15">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Grafik Kehadiran</h2>
+              <span className="text-xs font-semibold text-slate-400">Trend Data</span>
+            </div>
+            <div className="h-64 w-full">
+              {loading ? (
+                <div className="h-full flex items-center justify-center text-xs text-slate-400">Memuat grafik...</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="hadirGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#12a968" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#12a968" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="#edf1f5" vertical={false} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#718096', fontSize: 10 }} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: '#718096', fontSize: 10 }} />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="hadir" name="Hadir" stroke={warnaStatus.hadir} fill="url(#hadirGradient)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke={warnaStatus.terlambat} fill="transparent" strokeWidth={1.5} />
+                    <Area type="monotone" dataKey="izin" name="Izin" stroke={warnaStatus.izin} fill="transparent" strokeWidth={1.5} />
+                    <Area type="monotone" dataKey="sakit" name="Sakit" stroke={warnaStatus.sakit} fill="transparent" strokeWidth={1.5} />
+                    <Area type="monotone" dataKey="alpa" name="Alpha" stroke={warnaStatus.alpa} fill="transparent" strokeWidth={1.5} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </article>
 
         {/* Col 3: Distribusi Kehadiran */}
-        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-sm flex flex-col justify-between h-full">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Distribusi Kehadiran</h2>
-            <span className="text-xs font-bold text-slate-500">{formatAngka(total)} Total</span>
-          </div>
-          <div className="flex flex-col items-center justify-center flex-1">
-            <div className="relative w-40 h-40 mb-3">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={distribution} dataKey="value" innerRadius="62%" outerRadius="88%" paddingAngle={2}>
-                    {distribution.map((item) => <Cell key={item.name} fill={item.color} />)}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <strong className="text-xl font-black text-slate-900 dark:text-white">{formatAngka(total)}</strong>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total</span>
-              </div>
+        <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 flex flex-col justify-between h-full">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div className="flex items-center justify-between mb-4 pb-3.5 border-b border-emerald-500/15">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Distribusi Kehadiran</h2>
+              <span className="text-xs font-bold text-slate-500">{formatAngka(total)} Total</span>
             </div>
-
-            <div className="w-full grid grid-cols-2 gap-2 text-xs">
-              {distribution.map((item) => (
-                <div key={item.name} className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60">
-                  <span className="size-2.5 rounded-full shrink-0" style={{ background: item.color }} />
-                  <div className="flex items-center justify-between w-full min-w-0">
-                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">{item.name}</span>
-                    <span className="text-[11px] font-bold text-slate-900 dark:text-white ml-1">{formatAngka(item.value)}</span>
-                  </div>
+            <div className="flex flex-col items-center justify-center flex-1">
+              <div className="relative w-40 h-40 mb-3">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={distribution} dataKey="value" innerRadius="62%" outerRadius="88%" paddingAngle={2}>
+                      {distribution.map((item) => <Cell key={item.name} fill={item.color} />)}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <strong className="text-xl font-black text-slate-900 dark:text-white">{formatAngka(total)}</strong>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total</span>
                 </div>
-              ))}
+              </div>
+
+              <div className="w-full grid grid-cols-2 gap-2 text-xs">
+                {distribution.map((item) => (
+                  <div key={item.name} className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60">
+                    <span className="size-2.5 rounded-full shrink-0" style={{ background: item.color }} />
+                    <div className="flex items-center justify-between w-full min-w-0">
+                      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">{item.name}</span>
+                      <span className="text-[11px] font-bold text-slate-900 dark:text-white ml-1">{formatAngka(item.value)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </article>
@@ -1105,6 +1152,7 @@ export default function LaporanAbsensiPage() {
 
       {/* Table Card - TailGrids Master Data Datatable (Dual Mode: Siswa & Mata Pelajaran) */}
       <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <div className="pointer-events-none absolute -top-12 -right-12 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl dark:bg-emerald-400/15" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Rekap Absensi Pembelajaran</h2>
