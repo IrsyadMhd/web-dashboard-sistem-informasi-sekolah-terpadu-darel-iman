@@ -135,128 +135,132 @@ export function ReportKpiGrid({ items = [], details = [] }) {
         <Dialog
           isOpen={true}
           onOpenChange={(open) => !open && setActiveKpi(null)}
-          className="max-w-4xl"
+          modalClassName="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5"
+          className="w-full max-w-4xl p-0 rounded-3xl overflow-hidden bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-2xl"
           showCloseButton={false}
         >
-          <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              {activeKpi.icon && (
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${activeKpi.iconBg || 'bg-emerald-50 text-emerald-600'}`}>
-                  <activeKpi.icon className="h-5 w-5" />
+          <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+          <div className="p-6">
+            <DialogHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                {activeKpi.icon && (
+                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20`}>
+                    <activeKpi.icon className="h-5 w-5" />
+                  </div>
+                )}
+                <div>
+                  <DialogTitle className="text-base font-black text-slate-900 dark:text-white">
+                    Detail Data {activeKpi.title}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Menampilkan rincian data pembentuk angka laporan ({typeof activeKpi.value === 'number' ? activeKpi.value.toLocaleString('id-ID') : activeKpi.value} {activeKpi.unit || 'SDM'})
+                  </DialogDescription>
                 </div>
-              )}
-              <div>
-                <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-white">
-                  Detail Data {activeKpi.title}
-                </DialogTitle>
-                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-                  Menampilkan rincian data pembentuk angka laporan ({typeof activeKpi.value === 'number' ? activeKpi.value.toLocaleString('id-ID') : activeKpi.value} {activeKpi.unit || 'SDM'})
-                </DialogDescription>
               </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveKpi(null)}
-              className="flex size-8 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white transition-colors cursor-pointer"
-              aria-label="Tutup"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </DialogHeader>
+              <button
+                type="button"
+                onClick={() => setActiveKpi(null)}
+                className="flex size-8 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white transition-colors cursor-pointer"
+                aria-label="Tutup"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </DialogHeader>
 
-          <DialogBody className="space-y-4 py-4 max-h-[72vh] overflow-y-auto">
-            {/* Filter Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                value={modalSearch}
-                onChange={(e) => setModalSearch(e.target.value)}
-                placeholder={`Cari nama pegawai, NIP, unit, atau jabatan pada ${activeKpi.title}...`}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-4 py-2.5 text-xs font-medium text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500"
-              />
-            </div>
+            <DialogBody className="space-y-4 py-4 max-h-[72vh] overflow-y-auto">
+              {/* Filter Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={modalSearch}
+                  onChange={(e) => setModalSearch(e.target.value)}
+                  placeholder={`Cari nama pegawai, NIP, unit, atau jabatan pada ${activeKpi.title}...`}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-9 pr-4 py-2.5 text-xs font-medium text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:placeholder-slate-500"
+                />
+              </div>
 
-            {/* SDM Table */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-extrabold uppercase text-slate-400 dark:border-slate-800 dark:bg-slate-900/60">
-                      <th className="py-2.5 px-3">No</th>
-                      <th className="py-2.5 px-3">Nama Pegawai & NIY</th>
-                      <th className="py-2.5 px-3">Unit Pendidikan</th>
-                      <th className="py-2.5 px-3">Jenis SDM</th>
-                      <th className="py-2.5 px-3">Jabatan / Divisi</th>
-                      <th className="py-2.5 px-3 text-center">Status Pegawai</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-semibold text-slate-700 dark:text-slate-200">
-                    {modalData.length > 0 ? (
-                      modalData.map((item, idx) => {
-                        const isGuru = (item.jenis_sdm || '').toLowerCase().includes('guru')
-                        return (
-                          <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                            <td className="py-2.5 px-3 font-mono text-slate-400">{idx + 1}</td>
-                            <td className="py-2.5 px-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-[10px] shrink-0 ${isGuru ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'}`}>
-                                  {item.nama?.substring(0, 2).toUpperCase() || 'SD'}
-                                </div>
-                                <div>
-                                  <span className="font-bold text-slate-900 dark:text-white block">{item.nama}</span>
-                                  <span className="font-mono text-[10px] text-slate-400 block">{item.niy || '-'}</span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{item.unit || '-'}</td>
-                            <td className="py-2.5 px-3">
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isGuru ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'}`}>
-                                {item.jenis_sdm || 'Pegawai'}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{item.jabatan || item.divisi_mapel || '-'}</td>
-                            <td className="py-2.5 px-3 text-center">
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                {item.status_kepegawaian || 'Tetap'}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-center">
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${(item.status || '').toLowerCase() === 'aktif' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300'}`}>
-                                {item.status || 'Aktif'}
-                              </span>
-                            </td>
-                          </tr>
-                        )
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="py-8 text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
-                          {modalSearch.trim()
-                            ? `Tidak ada data pegawai yang sesuai dengan kata kunci "${modalSearch}".`
-                            : 'Belum ada rincian data pegawai terdaftar untuk kategori ini pada dataset laporan.'}
-                        </td>
+              {/* SDM Table */}
+              <div className="overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 text-[10px] font-extrabold uppercase tracking-wider">
+                        <th className="py-2.5 px-3">No</th>
+                        <th className="py-2.5 px-3">Nama Pegawai & NIY</th>
+                        <th className="py-2.5 px-3">Unit Pendidikan</th>
+                        <th className="py-2.5 px-3">Jenis SDM</th>
+                        <th className="py-2.5 px-3">Jabatan / Divisi</th>
+                        <th className="py-2.5 px-3 text-center">Status Pegawai</th>
+                        <th className="py-2.5 px-3 text-center">Status</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 font-semibold text-slate-700 dark:text-slate-200">
+                      {modalData.length > 0 ? (
+                        modalData.map((item, idx) => {
+                          const isGuru = (item.jenis_sdm || '').toLowerCase().includes('guru')
+                          return (
+                            <tr key={idx} className="hover:bg-emerald-50/40 dark:hover:bg-slate-900/50">
+                              <td className="py-2.5 px-3 font-mono text-slate-400">{idx + 1}</td>
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-[10px] shrink-0 ${isGuru ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'}`}>
+                                    {item.nama?.substring(0, 2).toUpperCase() || 'SD'}
+                                  </div>
+                                  <div>
+                                    <span className="font-bold text-slate-900 dark:text-white block">{item.nama}</span>
+                                    <span className="font-mono text-[10px] text-slate-400 block">{item.niy || '-'}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{item.unit || '-'}</td>
+                              <td className="py-2.5 px-3">
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isGuru ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'}`}>
+                                  {item.jenis_sdm || 'Pegawai'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{item.jabatan || item.divisi_mapel || '-'}</td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                  {item.status_kepegawaian || 'Tetap'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${(item.status || '').toLowerCase() === 'aktif' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300'}`}>
+                                  {item.status || 'Aktif'}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
+                            {modalSearch.trim()
+                              ? `Tidak ada data pegawai yang sesuai dengan kata kunci "${modalSearch}".`
+                              : 'Belum ada rincian data pegawai terdaftar untuk kategori ini pada dataset laporan.'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          </DialogBody>
+            </DialogBody>
 
-          <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800">
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => setActiveKpi(null)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-4.5 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-900 cursor-pointer dark:bg-emerald-600 dark:hover:bg-emerald-500 active:scale-95"
-            >
-              <X className="h-4 w-4" />
-              <span>Tutup Modal</span>
-            </motion.button>
-          </DialogFooter>
+            <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800">
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setActiveKpi(null)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 px-4.5 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-slate-900 cursor-pointer dark:bg-emerald-600 dark:hover:bg-emerald-500 active:scale-95"
+              >
+                <X className="h-4 w-4" />
+                <span>Tutup Modal</span>
+              </motion.button>
+            </DialogFooter>
+          </div>
         </Dialog>
       )}
     </>

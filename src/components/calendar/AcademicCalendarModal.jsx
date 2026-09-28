@@ -220,7 +220,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
   // Role permissions
   const canManage = useMemo(() => {
     if (lockedUnit) return false;
-    if (!user) return true
+    if (!user) return false;
     const roleStr = [
       user?.role,
       user?.role?.name,
@@ -245,7 +245,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
       roleStr.includes('tatausaha') ||
       roleStr.includes('tu')
     )
-  }, [user])
+  }, [user, lockedUnit])
 
   const userUnit = useMemo(() => {
     if (!user) return ''
@@ -264,7 +264,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
 
   const isFullAccessUser = useMemo(() => {
     if (lockedUnit) return false;
-    if (!user) return true
+    if (!user) return false;
     const roleStr = [
       user?.role,
       user?.role?.name,
@@ -282,7 +282,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
       roleStr.includes('yayasan') ||
       roleStr.includes('pengurus')
     )
-  }, [user])
+  }, [user, lockedUnit])
 
   // View States
   const [activeTab, setActiveTab] = useState('view') // 'view' | 'manage'
@@ -355,139 +355,6 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
   const [events, setEvents] = useState([])
   const [isLoading, setIsLoading] = useState(false)
 
-  // Seed sample events if backend events list is empty to match senior UX reference design
-  const defaultSampleEvents = useMemo(() => [
-    {
-      id: 'sample-1',
-      title: 'Pembelajaran Bahasa Indonesia',
-      category: 'mulai_kbm',
-      color: 'sky',
-      startDate: '2025-05-29',
-      endDate: '2025-05-29',
-      timeSlot: '08.00 - 10.00',
-      unit: 'SMP IT',
-      location: 'Ruang 203, Lantai 2, Gedung Utama',
-      targetModule: '/dashboard/master-kurikulum',
-      audience: 'Semua Civitas',
-      notes: 'Materi: Teks Narasi, Bab 4 - Menulis Cerita Inspiratif',
-      creator: 'Ahmad Fauzi, S.Pd., 28 Mei 2025, 09.30',
-      pesertaCount: 28,
-      lampiranCount: 2
-    },
-    {
-      id: 'sample-2',
-      title: 'Upacara Bendera',
-      category: 'kegiatan',
-      color: 'emerald',
-      startDate: '2025-05-26',
-      endDate: '2025-05-26',
-      timeSlot: '07.00 - 08.00',
-      unit: 'Semua Unit',
-      location: 'Lapangan Utama Sekolah',
-      targetModule: '/dashboard/berita-informasi',
-      audience: 'Semua Civitas',
-      notes: 'Petugas Upacara: Kelas 8B & Pembina: Buya Syahrul'
-    },
-    {
-      id: 'sample-3',
-      title: 'Ujian Formatif Matematika',
-      category: 'ujian',
-      color: 'purple',
-      startDate: '2025-05-27',
-      endDate: '2025-05-27',
-      timeSlot: '08.00 - 10.00',
-      unit: 'SMP IT',
-      location: 'Kelas 7A, 7B, Ruang Kelas',
-      targetModule: '/dashboard/lms/ujian',
-      audience: 'Siswa & Orang Tua',
-      notes: 'Materi Bab 1 s/d Bab 3 (Aljabar & Persamaan Linear)'
-    },
-    {
-      id: 'sample-4',
-      title: 'Pembelajaran IPA',
-      category: 'mulai_kbm',
-      color: 'sky',
-      startDate: '2025-05-28',
-      endDate: '2025-05-28',
-      timeSlot: '07.30 - 09.00',
-      unit: 'SMP IT',
-      location: 'Ruang 203, Lab Sains',
-      targetModule: '/dashboard/lms/materi',
-      audience: 'Siswa & Orang Tua',
-      notes: 'Modul Praktikum Tata Surya & Ekosistem'
-    },
-    {
-      id: 'sample-5',
-      title: 'Libur Nasional Hari Lahir Pancasila',
-      category: 'libur_sekolah',
-      color: 'rose',
-      startDate: '2025-05-31',
-      endDate: '2025-06-01',
-      timeSlot: 'Seharian',
-      unit: 'Semua Unit',
-      location: 'Nasional',
-      targetModule: '',
-      audience: 'Semua Civitas',
-      notes: 'Tanggal Merah Nasional (KBM diliburkan)'
-    },
-    {
-      id: 'sample-6',
-      title: 'Ujian Sumatif Akhir Semester',
-      category: 'ujian',
-      color: 'purple',
-      startDate: '2025-06-02',
-      endDate: '2025-06-06',
-      timeSlot: '07.30 - 12.00',
-      unit: 'SMP IT',
-      location: 'Ruang Ujian Utama',
-      targetModule: '/dashboard/lms/ujian',
-      audience: 'Siswa & Orang Tua',
-      notes: 'Pelaksanaan CBT Online & Pengawasan Steril'
-    },
-    {
-      id: 'sample-7',
-      title: 'Class Meeting',
-      category: 'kegiatan',
-      color: 'emerald',
-      startDate: '2025-06-07',
-      endDate: '2025-06-07',
-      timeSlot: '08.00 - 14.00',
-      unit: 'Semua Unit',
-      location: 'Lapangan Sekolah',
-      targetModule: '/dashboard/berita-informasi',
-      audience: 'Semua Civitas',
-      notes: 'Lomba Olahraga, Seni & Antar Kelas'
-    },
-    {
-      id: 'sample-8',
-      title: 'Penerimaan Rapor Semester Genap',
-      category: 'terima_rapor',
-      color: 'amber',
-      startDate: '2025-06-21',
-      endDate: '2025-06-21',
-      timeSlot: '08.00 - 12.00',
-      unit: 'Semua Unit',
-      location: 'Ruang Kelas Masing-Masing',
-      targetModule: '/dashboard/lms/rapor',
-      audience: 'Siswa & Orang Tua',
-      notes: 'Pengambilan Rapor oleh Orang Tua / Wali Siswa'
-    },
-    {
-      id: 'sample-9',
-      title: 'Libur Semester & Kenaikan Kelas',
-      category: 'libur_semester',
-      color: 'sky',
-      startDate: '2025-06-23',
-      endDate: '2025-07-06',
-      timeSlot: 'Dua Pekan',
-      unit: 'Semua Unit',
-      location: 'Rumah Masing-Masing',
-      targetModule: '/dashboard/master-tahun-ajaran',
-      audience: 'Semua Civitas',
-      notes: 'Libur Kenaikan Kelas Tahun Ajaran 2025/2026'
-    }
-  ], [])
-
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -495,20 +362,20 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
         academicCalendarService.getEvents(),
         academicCalendarService.getEducationUnits()
       ])
-      if (Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
+      if (Array.isArray(fetchedEvents)) {
         setEvents(fetchedEvents)
       } else {
-        setEvents(defaultSampleEvents)
+        setEvents([])
       }
       if (Array.isArray(fetchedUnits) && fetchedUnits.length > 0) {
         setUnitOptions(fetchedUnits)
       }
     } catch {
-      setEvents(defaultSampleEvents)
+      setEvents([])
     } finally {
       setIsLoading(false)
     }
-  }, [defaultSampleEvents])
+  }, [])
 
   useEffect(() => {
     if (isOpen) {
@@ -944,52 +811,41 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
     setCurrentMonthDate(new Date(year, month + step, 1))
   }
 
-  // Sample upcoming events for bottom carousel matching reference image
+  // Derive upcoming events dynamically from real events state
   const upcomingEventsList = useMemo(() => {
-    return [
-      {
-        id: 'up-1',
-        title: 'Ujian Sumatif Akhir Semester',
-        sub: 'Kelas 7, 8, 9',
-        dateStr: '2 – 6 Juni 2025',
-        color: 'purple',
-        icon: GraduationCap,
-        bgClass: 'bg-purple-50 border-purple-200 text-purple-950 dark:bg-purple-950/40 dark:border-purple-800 dark:text-purple-200'
-      },
-      {
-        id: 'up-2',
-        title: 'Class Meeting',
-        sub: 'Lapangan Sekolah',
-        dateStr: '7 Juni 2025',
-        color: 'emerald',
-        icon: Users,
-        bgClass: 'bg-emerald-50 border-emerald-200 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-200'
-      },
-      {
-        id: 'up-3',
-        title: 'Penerimaan Rapor Semester Genap',
-        sub: 'Ruang Kelas Masing-Masing',
-        dateStr: '21 Juni 2025',
-        color: 'amber',
-        icon: Award,
-        bgClass: 'bg-amber-50 border-amber-200 text-amber-950 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200'
-      },
-      {
-        id: 'up-4',
-        title: 'Libur Semester & Kenaikan Kelas',
-        sub: 'Tahun Ajaran 2025/2026',
-        dateStr: '23 Juni – 6 Juli 2025',
-        color: 'sky',
-        icon: Palmtree,
-        bgClass: 'bg-sky-50 border-sky-200 text-sky-950 dark:bg-sky-950/40 dark:border-sky-800 dark:text-sky-200'
+    if (!Array.isArray(events) || events.length === 0) return []
+    const now = new Date()
+    const todayStr = now.toISOString().split('T')[0]
+    const listToRender = events
+      .filter((e) => (e.startDate || e.start_date || '') >= todayStr)
+      .slice(0, 4)
+
+    return listToRender.map((evt, idx) => {
+      const color = evt.color || 'blue'
+      const iconMap = {
+        ujian: GraduationCap,
+        kegiatan: Users,
+        terima_rapor: Award,
+        libur_sekolah: Palmtree,
+        libur_semester: Palmtree
       }
-    ]
-  }, [])
+      const IconComp = iconMap[evt.category] || CalendarDays
+      return {
+        id: evt.id || `up-${idx}`,
+        title: evt.title,
+        sub: evt.location || evt.unit || 'Semua Civitas',
+        dateStr: evt.startDate === evt.endDate ? (evt.startDate || '-') : `${evt.startDate || ''} – ${evt.endDate || ''}`,
+        color,
+        icon: IconComp,
+        bgClass: 'bg-slate-50 border-slate-200 text-slate-900 dark:bg-slate-900/40 dark:border-slate-800 dark:text-slate-200'
+      }
+    })
+  }, [events])
 
   if (!isOpen) return null
 
   // If a detail event is selected, compute selected event details
-  const currentDetailEvent = selectedEventDetail || (events.length > 0 ? events[0] : defaultSampleEvents[0])
+  const currentDetailEvent = selectedEventDetail || (events.length > 0 ? events[0] : null)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-slate-950/65 backdrop-blur-md animate-[fadeIn_0.2s_ease-out] print:static print:inset-auto print:z-auto print:bg-white print:p-0 print:m-0 print:block print:w-full print:overflow-visible">
@@ -1835,142 +1691,13 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                           <div className="text-[11px] font-bold text-slate-400 pt-1">
                             {timeStr}
                           </div>
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative">
-                            {rowIdx === 1 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[1])}
-                                className="rounded-xl bg-emerald-100/90 border border-emerald-300 p-2 text-emerald-950 dark:bg-emerald-950/70 dark:border-emerald-700 dark:text-emerald-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-emerald-700 dark:text-emerald-400">07.00 – 08.00</span>
-                                <span className="text-xs font-black block leading-tight">Upacara Bendera</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Lapangan Sekolah</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative">
-                            {rowIdx === 2 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[2])}
-                                className="rounded-xl bg-purple-100/90 border border-purple-300 p-2 text-purple-950 dark:bg-purple-950/70 dark:border-purple-700 dark:text-purple-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-purple-700 dark:text-purple-400">08.00 – 10.00</span>
-                                <span className="text-xs font-black block leading-tight">Ujian Formatif Matematika</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Kelas 7A, 7B</span>
-                              </div>
-                            )}
-                            {rowIdx === 9 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[0])}
-                                className="rounded-xl bg-pink-100/90 border border-pink-300 p-2 text-pink-950 dark:bg-pink-950/70 dark:border-pink-700 dark:text-pink-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-pink-700 dark:text-pink-400">15.00 – 16.30</span>
-                                <span className="text-xs font-black block leading-tight">Konseling Siswa</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Ruang BK</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative">
-                            {rowIdx === 1 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[3])}
-                                className="rounded-xl bg-sky-100/90 border border-sky-300 p-2 text-sky-950 dark:bg-sky-950/70 dark:border-sky-700 dark:text-sky-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-sky-700 dark:text-sky-400">07.30 – 09.00</span>
-                                <span className="text-xs font-black block leading-tight">Pembelajaran IPA</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Kelas 7A · Ruang 203</span>
-                              </div>
-                            )}
-                            {rowIdx === 5 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[1])}
-                                className="rounded-xl bg-emerald-100/90 border border-emerald-300 p-2 text-emerald-950 dark:bg-emerald-950/70 dark:border-emerald-700 dark:text-emerald-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-emerald-700 dark:text-emerald-400">11.00 – 12.00</span>
-                                <span className="text-xs font-black block leading-tight">Rapat Guru</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Ruang Meeting</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* KAMIS 29 (ACTIVE HIGHLIGHTED DAY MATCHING USER REFERENCE IMAGE) */}
-                          <div className="border-l border-blue-200 bg-blue-50/30 dark:border-blue-900 dark:bg-blue-950/20 min-h-[48px] p-0.5 relative">
-                            {rowIdx === 2 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[0])}
-                                className="rounded-xl bg-blue-600 text-white border-2 border-blue-400 p-2 shadow-md cursor-pointer hover:scale-[1.02] transition-transform z-10"
-                              >
-                                <span className="text-[9px] font-bold block text-blue-100">08.00 – 10.00</span>
-                                <span className="text-xs font-black block leading-tight">Pembelajaran Bahasa Indonesia</span>
-                                <span className="text-[9px] font-semibold block opacity-90">Kelas 7A · Ruang 203</span>
-                              </div>
-                            )}
-                            {rowIdx === 7 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[7])}
-                                className="rounded-xl bg-amber-100/90 border border-amber-300 p-2 text-amber-950 dark:bg-amber-950/70 dark:border-amber-700 dark:text-amber-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-amber-700 dark:text-amber-400">13.00 – 15.00</span>
-                                <span className="text-xs font-black block leading-tight">Kegiatan Literasi</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Perpustakaan</span>
-                              </div>
-                            )}
-                            {rowIdx === 9 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[1])}
-                                className="rounded-xl bg-emerald-100/90 border border-emerald-300 p-2 text-emerald-950 dark:bg-emerald-950/70 dark:border-emerald-700 dark:text-emerald-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-emerald-700 dark:text-emerald-400">15.30 – 17.00</span>
-                                <span className="text-xs font-black block leading-tight">Persiapan Porseni</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Aula Sekolah</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative">
-                            {rowIdx === 3 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[3])}
-                                className="rounded-xl bg-purple-100/90 border border-purple-300 p-2 text-purple-950 dark:bg-purple-950/70 dark:border-purple-700 dark:text-purple-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-purple-700 dark:text-purple-400">09.00 – 11.00</span>
-                                <span className="text-xs font-black block leading-tight">Ujian Praktik IPA</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Lab. IPA</span>
-                              </div>
-                            )}
-                            {rowIdx === 7 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[0])}
-                                className="rounded-xl bg-sky-100/90 border border-sky-300 p-2 text-sky-950 dark:bg-sky-950/70 dark:border-sky-700 dark:text-sky-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-sky-700 dark:text-sky-400">13.00 – 14.30</span>
-                                <span className="text-xs font-black block leading-tight">Bimbingan Kelas</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Ruang Kelas</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative">
-                            {rowIdx === 3 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[7])}
-                                className="rounded-xl bg-amber-100/90 border border-amber-300 p-2 text-amber-950 dark:bg-amber-950/70 dark:border-amber-700 dark:text-amber-200 cursor-pointer shadow-2xs hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-amber-700 dark:text-amber-400">09.00 – 11.00</span>
-                                <span className="text-xs font-black block leading-tight">Pramuka</span>
-                                <span className="text-[9px] font-semibold block opacity-80">Latihan Rutin Lapangan</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative bg-rose-50/40 dark:bg-rose-950/20">
-                            {rowIdx === 1 && (
-                              <div
-                                onClick={() => setSelectedEventDetail(defaultSampleEvents[4])}
-                                className="rounded-xl bg-rose-600 text-white p-2 shadow-md cursor-pointer hover:scale-[1.02] transition-transform"
-                              >
-                                <span className="text-[9px] font-bold block text-rose-200">Libur Nasional</span>
-                                <span className="text-xs font-black block leading-tight">Hari Lahir Pancasila</span>
-                              </div>
-                            )}
-                          </div>
+                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
+                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
+                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
+                          <div className="border-l border-blue-200 bg-blue-50/30 dark:border-blue-900 dark:bg-blue-950/20 min-h-[48px] p-0.5 relative" />
+                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
+                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
+                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative bg-rose-50/40 dark:bg-rose-950/20" />
                         </div>
                       ))}
                     </div>
@@ -1994,7 +1721,12 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {upcomingEventsList.map((card) => {
+                    {upcomingEventsList.length === 0 ? (
+                      <div className="col-span-full py-6 text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
+                        Tidak ada agenda mendatang terdaftar
+                      </div>
+                    ) : (
+                      upcomingEventsList.map((card) => {
                       const IconComp = card.icon
                       return (
                         <div
@@ -2017,7 +1749,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                           </div>
                         </div>
                       )
-                    })}
+                    }))}
                   </div>
                 </div>
               </div>

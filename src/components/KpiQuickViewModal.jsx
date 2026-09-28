@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   UserX,
   FileSpreadsheet,
+  FileText,
 } from 'lucide-react'
 import api from '../services/api'
 import { useAuthStore } from '../stores/authStore'
@@ -117,6 +118,13 @@ const MODAL_CONFIGS = {
     endpoint: '/foundation/units',
     linkTo: '/dashboard/yayasan/laporan',
   },
+  total_konseling: {
+    title: 'Data Catatan Konseling BK',
+    subtitle: 'Daftar Catatan & Pendampingan Konseling Siswa Terproteksi',
+    icon: FileText,
+    endpoint: '/teacher/student-notes',
+    linkTo: '/portal-guru/workspace',
+  },
 }
 
 const KEY_ALIASES = {
@@ -165,7 +173,12 @@ const KEY_ALIASES = {
   users_without_role: 'pengguna_tanpa_role',
   laporan: 'laporan_lintas_unit',
   laporan_lintas_unit: 'laporan_lintas_unit',
+  total_konseling: 'total_konseling',
 }
+
+const kpiDataCache = new Map()
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 menit
+let cachedUnits = null
 
 export default function KpiQuickViewModal({ type, isOpen, onClose }) {
   const navigate = useNavigate()
@@ -177,7 +190,7 @@ export default function KpiQuickViewModal({ type, isOpen, onClose }) {
   const [error, setError] = useState(false)
   const [items, setItems] = useState([])
   const [stats, setStats] = useState(null)
-  const [units, setUnits] = useState([])
+  const [units, setUnits] = useState(cachedUnits || [])
 
   // Filters
   const [search, setSearch] = useState('')
@@ -193,25 +206,42 @@ export default function KpiQuickViewModal({ type, isOpen, onClose }) {
   const userPermissions = user?.permissions || []
   const canAccessDetail =
     userRoles.some((r) =>
-      ['Super Admin', 'Ketua Yayasan', 'Kepala Sekolah', 'Administrator', 'Admin', 'Operator', 'Staf', 'Guru'].includes(r)
+      ['Super Admin', 'Ketua Yayasan', 'Kepala Sekolah', 'Administrator', 'Admin', 'Operator', 'Staf', 'Guru', 'Guru BK'].includes(r)
     ) || userPermissions.length > 0
 
-  // Fetch Units for Filter Dropdown
+  // Fetch Units for Filter Dropdown with cache
   useEffect(() => {
     if (isOpen) {
+      if (cachedUnits && cachedUnits.length > 0) {
+        setUnits(cachedUnits)
+        return
+      }
       api.get('/foundation/units')
         .then((res) => {
           const raw = res.data?.data || []
-          setUnits(Array.isArray(raw) ? raw : raw.data || [])
+          const list = Array.isArray(raw) ? raw : raw.data || []
+          cachedUnits = list
+          setUnits(list)
         })
         .catch(() => {})
     }
   }, [isOpen])
 
-  // Fetch Main Table & Stats Data
+  // Fetch Main Table & Stats Data with memory cache
   const fetchData = useCallback(async () => {
     if (!config) return
-    setLoading(true)
+    const cacheKey = `${type}_${search}_${selectedUnit}_${selectedStatus}`
+    const cached = kpiDataCache.get(cacheKey)
+    const isFresh = cached && Date.now() - cached.timestamp < CACHE_TTL_MS
+
+    if (cached) {
+      setItems(cached.items)
+      setStats(cached.stats)
+      setLoading(false)
+      if (isFresh) return
+    } else {
+      setLoading(true)
+    }
     setError(false)
 
     try {
@@ -247,11 +277,17 @@ export default function KpiQuickViewModal({ type, isOpen, onClose }) {
 
       summaryData = resData?.summary || resData?.data?.summary || resData?.meta || null
 
+      kpiDataCache.set(cacheKey, {
+        items: dataList,
+        stats: summaryData,
+        timestamp: Date.now(),
+      })
+
       setItems(dataList)
       setStats(summaryData)
     } catch (err) {
       console.error(`Failed to fetch ${type} data for modal:`, err)
-      setError(true)
+      if (!cached) setError(true)
     } finally {
       setLoading(false)
     }
@@ -392,7 +428,7 @@ export default function KpiQuickViewModal({ type, isOpen, onClose }) {
             </div>
 
             <div className="flex items-center gap-2">
-              {!['unit_pendidikan', 'role', 'pengguna', 'pengguna_tanpa_role'].includes(resolvedType) && units.length > 0 && (
+              {!['unit_pendidikan', 'role', 'pengguna', 'pengguna_tanpa_role', 'total_konseling'].includes(resolvedType) && units.length > 0 && (
                 <select
                   value={selectedUnit}
                   onChange={(e) => setSelectedUnit(e.target.value)}
@@ -543,6 +579,12 @@ function RenderStatsOverview({ type, items, stats, loading }) {
       { label: 'Akun Aktif', val: items.filter((u) => u.is_active).length, trend: 'Aktif', color: 'text-emerald-600' },
       { label: 'Akun Nonaktif', val: items.filter((u) => !u.is_active).length, trend: 'Nonaktif', color: 'text-slate-600' },
       { label: 'Data Ditampilkan', val: items.length, trend: 'Baris', color: 'text-indigo-600' },
+    ],
+    total_konseling: [
+      { label: 'Total Catatan', val: stats?.total ?? items.length, trend: 'Catatan', color: 'text-emerald-600' },
+      { label: 'Siswa Didampingi', val: new Set(items.map((i) => i.student_id)).size, trend: 'Siswa', color: 'text-blue-600' },
+      { label: 'Prioritas Tinggi', val: items.filter((i) => ['tinggi', 'high', 'urgent'].includes(String(i.priority || '').toLowerCase())).length, trend: 'Prioritas', color: 'text-rose-600' },
+      { label: 'Tindak Lanjut', val: items.filter((i) => Boolean(i.follow_up)).length, trend: 'Tindak Lanjut', color: 'text-amber-600' },
     ],
   }
 
@@ -920,6 +962,42 @@ function RenderKpiTable({ type, items, onViewDetail }) {
                 <td className="px-4 py-3 text-center font-bold">{row.jumlah_izin || 0}</td>
                 <td className="px-4 py-3 text-center font-bold">{row.jumlah_pengguna || 0}</td>
                 <td className="px-4 py-3">{row.updated_at ? new Date(row.updated_at).toLocaleDateString('id-ID') : '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+
+    case 'total_konseling':
+      return (
+        <table className="w-full text-xs text-left text-slate-700 dark:text-slate-200">
+          <thead className="bg-slate-100/80 dark:bg-[#1b302c] text-slate-600 dark:text-slate-300 font-extrabold uppercase text-[10px] tracking-wider">
+            <tr>
+              <th className="px-3.5 py-3 text-center w-12">No</th>
+              <th className="px-4 py-3">Tanggal</th>
+              <th className="px-4 py-3">Nama Siswa</th>
+              <th className="px-4 py-3">Kategori</th>
+              <th className="px-4 py-3">Judul Catatan</th>
+              <th className="px-4 py-3 text-center">Prioritas</th>
+              <th className="px-4 py-3">Tindak Lanjut</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {items.map((row, i) => (
+              <tr key={row.id || i} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                <td className="px-3.5 py-3 text-center font-bold text-slate-400">{i + 1}</td>
+                <td className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300">{row.date || '-'}</td>
+                <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{row.student?.full_name || 'Siswa'}</td>
+                <td className="px-4 py-3 font-medium">
+                  <Badge variant="info">{row.category || 'Konseling'}</Badge>
+                </td>
+                <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-100">{row.title || '-'}</td>
+                <td className="px-4 py-3 text-center">
+                  <Badge variant={['tinggi', 'high', 'urgent'].includes(String(row.priority || '').toLowerCase()) ? 'danger' : 'warning'}>
+                    {row.priority || 'Normal'}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3 text-slate-600 dark:text-slate-300 truncate max-w-xs">{row.follow_up || '-'}</td>
               </tr>
             ))}
           </tbody>

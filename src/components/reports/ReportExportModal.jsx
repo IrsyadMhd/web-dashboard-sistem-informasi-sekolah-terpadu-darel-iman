@@ -38,21 +38,23 @@ export function ReportExportModal({ isOpen, onClose, onConfirmExport, defaultFor
   }
 
   return (
-    <OverlayWrapper isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <Backdrop isOpen={isOpen} onOpenChange={(open) => !open && onClose()} />
-      <Dialog className="max-w-md">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-              <Download className="h-5 w-5" />
+    <OverlayWrapper isOpen={isOpen} onOpenChange={(open) => !open && onClose()} className="z-[70]">
+      <Backdrop className="z-[70] bg-slate-950/70 backdrop-blur-md" isOpen={isOpen} onOpenChange={(open) => !open && onClose()} />
+      <Dialog className="z-[70] max-w-md w-full p-0 rounded-3xl overflow-hidden bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-2xl">
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+        <div className="p-6">
+          <DialogHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+                <Download className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-black text-slate-900 dark:text-white">Opsi Export Laporan</DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pilih format dan opsi unduhan dokumen laporan</DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle>Opsi Export Laporan</DialogTitle>
-              <DialogDescription>Pilih format dan opsi unduhan dokumen laporan</DialogDescription>
-            </div>
-          </div>
-          <DialogClose onClick={onClose} />
-        </DialogHeader>
+            <DialogClose onClick={onClose} />
+          </DialogHeader>
 
         <DialogBody className="space-y-5 py-4">
           {/* Content options */}
@@ -126,13 +128,14 @@ export function ReportExportModal({ isOpen, onClose, onConfirmExport, defaultFor
         </DialogBody>
 
         <DialogFooter className="gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose} className="rounded-xl font-bold">
             Batal
           </Button>
-          <Button variant="success" appearance="fill" onClick={handleDownload} prefixIcon={<Download className="h-4 w-4" />}>
+          <Button variant="success" appearance="fill" onClick={handleDownload} prefixIcon={<Download className="h-4 w-4" />} className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20">
             Unduh Sekarang
           </Button>
         </DialogFooter>
+        </div>
       </Dialog>
     </OverlayWrapper>
   )

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertTriangle, Camera, CameraOff, CheckCircle2, ListChecks, QrCode, RefreshCw, X, XCircle } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { lmsPresensiService } from '../../services/lmsPresensiService'
 
 const methods = [

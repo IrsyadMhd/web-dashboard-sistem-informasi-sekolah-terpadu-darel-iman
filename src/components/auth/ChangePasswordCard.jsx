@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { FiEye, FiEyeOff, FiClock, FiCheckCircle } from 'react-icons/fi'
-import Swal from 'sweetalert2'
+import { FiEye, FiEyeOff, FiClock, FiCheckCircle, FiAlertTriangle, FiXCircle, FiHelpCircle, FiX } from 'react-icons/fi'
+import { motion, AnimatePresence } from 'framer-motion'
 import { authService } from '../../services/authService'
 import { Button } from '@/components/tailgrids/core/button'
 import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
-import { Card, CardContent } from '@/components/tailgrids/core/card'
+import { Card } from '@/components/tailgrids/core/card'
 
 export default function ChangePasswordCard() {
   const [form, setForm] = useState({
@@ -17,17 +17,26 @@ export default function ChangePasswordCard() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [updated, setUpdated] = useState(false)
+  const [alertState, setAlertState] = useState(null)
+  const [helpModalOpen, setHelpModalOpen] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setAlertState(null)
 
     if (form.newPassword !== form.confirmPassword) {
-      Swal.fire('Konfirmasi Password Tidak Cocok', 'Password baru dan konfirmasi password harus sama.', 'warning')
+      setAlertState({
+        status: 'warning',
+        message: 'Konfirmasi password tidak cocok. Password baru dan konfirmasi harus sama.',
+      })
       return
     }
 
     if (form.newPassword.length < 8) {
-      Swal.fire('Password Kurang Panjang', 'Password baru minimal harus 8 karakter.', 'warning')
+      setAlertState({
+        status: 'warning',
+        message: 'Password baru kurang panjang. Minimal harus 8 karakter.',
+      })
       return
     }
 
@@ -41,42 +50,25 @@ export default function ChangePasswordCard() {
 
       setUpdated(true)
       setForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
-      Swal.fire({
-        icon: 'success',
-        title: 'Password Berhasil Diubah',
-        text: 'Password Anda telah berhasil diperbarui di server database.',
-        timer: 2000,
-        showConfirmButton: false,
+      setAlertState({
+        status: 'success',
+        message: 'Password Anda telah berhasil diperbarui di server database.',
       })
-      setTimeout(() => setUpdated(false), 3000)
+      setTimeout(() => {
+        setUpdated(false)
+        setAlertState(null)
+      }, 4000)
     } catch (err) {
       console.error('Gagal ganti password:', err)
       const msg = err.response?.data?.message || 'Gagal mengubah password. Pastikan password lama Anda benar.'
-      Swal.fire('Gagal Mengubah Password', msg, 'error')
+      setAlertState({ status: 'error', message: msg })
     } finally {
       setLoading(false)
     }
   }
 
   const handleForgotCurrentPassword = () => {
-    Swal.fire({
-      title: 'Lupa Password Saat Ini?',
-      html: `
-        <div class="text-left text-xs space-y-3 text-slate-600">
-          <p>Demi keamanan sistem, password asli Anda tersimpan dalam bentuk terenkripsi (hash <i>bcrypt</i>) di database server sehingga tidak dapat dibaca kembali dalam bentuk teks biasa.</p>
-          <p>Jika Anda lupa password lama yang sedang aktif, silakan gunakan fitur <strong>Reset Password</strong> atau hubungi <strong>Administrator Sistem / Tata Usaha</strong> untuk menyetel ulang password akun Anda.</p>
-        </div>
-      `,
-      icon: 'info',
-      showCancelButton: true,
-      confirmButtonText: 'Bantuan Reset Admin',
-      cancelButtonText: 'Tutup',
-      confirmButtonColor: '#0E5C44',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire('Bantuan Administrator', 'Silakan hubungi Administrator SIMSIT / Tata Usaha Sekolah untuk meminta reset password akun Anda.', 'success')
-      }
-    })
+    setHelpModalOpen(true)
   }
 
   return (
@@ -91,13 +83,19 @@ export default function ChangePasswordCard() {
             </p>
           </div>
 
-          {updated && (
-            <Alert status="success" className="mb-5 rounded-xl">
+          {alertState && (
+            <Alert status={alertState.status} className="mb-5 rounded-xl">
               <AlertIndicator>
-                <FiCheckCircle className="w-4 h-4" />
+                {alertState.status === 'success' ? (
+                  <FiCheckCircle className="w-4 h-4" />
+                ) : alertState.status === 'warning' ? (
+                  <FiAlertTriangle className="w-4 h-4" />
+                ) : (
+                  <FiXCircle className="w-4 h-4" />
+                )}
               </AlertIndicator>
               <AlertContent>
-                <AlertDescription>Password Anda telah berhasil diperbarui!</AlertDescription>
+                <AlertDescription>{alertState.message}</AlertDescription>
               </AlertContent>
             </Alert>
           )}
@@ -189,7 +187,7 @@ export default function ChangePasswordCard() {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
               <Button
                 type="submit"
                 variant="primary"
@@ -233,6 +231,63 @@ export default function ChangePasswordCard() {
           </div>
         </div>
       </div>
+
+      {/* Help Modal */}
+      <AnimatePresence>
+        {helpModalOpen && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.94 }}
+              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30">
+                      <FiHelpCircle className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        Bantuan Keamanan
+                      </span>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                        Lupa Password Lama?
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHelpModalOpen(false)}
+                    className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    <FiX className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="text-left text-xs space-y-3 text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+                  <p>
+                    Demi keamanan sistem, password asli Anda tersimpan dalam bentuk terenkripsi (hash <i>bcrypt</i>) di database server sehingga tidak dapat dibaca kembali dalam bentuk teks biasa.
+                  </p>
+                  <p>
+                    Jika Anda lupa password lama yang sedang aktif, silakan hubungi <strong>Administrator Sistem / Tata Usaha Sekolah</strong> untuk melakukan reset password akun Anda secara resmi.
+                  </p>
+                </div>
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setHelpModalOpen(false)}
+                    className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 transition-all cursor-pointer"
+                  >
+                    Saya Mengerti
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </Card>
   )
 }

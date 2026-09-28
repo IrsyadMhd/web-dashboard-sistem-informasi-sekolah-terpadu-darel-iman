@@ -1,63 +1,70 @@
 import * as React from 'react'
 import PropTypes from 'prop-types'
-import { cn } from '../../lib/utils'
+import {
+  Card as TailGridsCard,
+  CardHeader as TailGridsCardHeader,
+  CardTitle as TailGridsCardTitle,
+  CardDescription as TailGridsCardDescription,
+  CardAction as TailGridsCardAction,
+  CardContent as TailGridsCardContent,
+  CardFooter as TailGridsCardFooter,
+} from '../tailgrids/core/card'
 
-export const Card = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      'rounded-[18px] border border-slate-200/80 bg-white text-slate-900 shadow-sm transition-all duration-250 hover:shadow-lg hover:border-[#3FBF75]/30 dark:border-slate-800/80 dark:bg-[#1B2433] dark:text-slate-100',
-      className
-    )}
-    {...props}
-  />
+export const Card = React.forwardRef(({ className, children, ...props }, ref) => (
+  <TailGridsCard ref={ref} className={className} {...props}>
+    {children}
+  </TailGridsCard>
 ))
 Card.displayName = 'Card'
 
-export const CardHeader = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn('flex flex-col space-y-1.5 p-6 border-b border-slate-100 dark:border-slate-800/80', className)}
-    {...props}
-  />
+export const CardHeader = React.forwardRef(({ className, children, ...props }, ref) => (
+  <TailGridsCardHeader ref={ref} className={className} {...props}>
+    {children}
+  </TailGridsCardHeader>
 ))
 CardHeader.displayName = 'CardHeader'
 
-export const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn('text-lg font-bold leading-none tracking-tight text-slate-900 dark:text-white', className)}
-    {...props}
-  />
+export const CardTitle = React.forwardRef(({ className, children, ...props }, ref) => (
+  <TailGridsCardTitle ref={ref} className={className} {...props}>
+    {children}
+  </TailGridsCardTitle>
 ))
 CardTitle.displayName = 'CardTitle'
 
-export const CardDescription = React.forwardRef(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn('text-xs md:text-sm text-slate-500 leading-relaxed dark:text-slate-400', className)}
-    {...props}
-  />
+export const CardDescription = React.forwardRef(({ className, children, ...props }, ref) => (
+  <TailGridsCardDescription ref={ref} className={className} {...props}>
+    {children}
+  </TailGridsCardDescription>
 ))
 CardDescription.displayName = 'CardDescription'
 
-export const CardContent = React.forwardRef(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('p-6', className)} {...props} />
+export const CardAction = React.forwardRef(({ className, children, ...props }, ref) => (
+  <TailGridsCardAction ref={ref} className={className} {...props}>
+    {children}
+  </TailGridsCardAction>
+))
+CardAction.displayName = 'CardAction'
+
+export const CardContent = React.forwardRef(({ className, children, ...props }, ref) => (
+  <TailGridsCardContent ref={ref} className={className} {...props}>
+    {children}
+  </TailGridsCardContent>
 ))
 CardContent.displayName = 'CardContent'
 
-export const CardFooter = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn('flex items-center justify-between p-6 pt-0 border-t border-slate-100 dark:border-slate-800/80 mt-2', className)}
-    {...props}
-  />
+export const CardFooter = React.forwardRef(({ className, children, ...props }, ref) => (
+  <TailGridsCardFooter ref={ref} className={className} {...props}>
+    {children}
+  </TailGridsCardFooter>
 ))
 CardFooter.displayName = 'CardFooter'
 
-Card.propTypes = { className: PropTypes.string }
-CardHeader.propTypes = { className: PropTypes.string }
-CardTitle.propTypes = { className: PropTypes.string }
-CardDescription.propTypes = { className: PropTypes.string }
-CardContent.propTypes = { className: PropTypes.string }
-CardFooter.propTypes = { className: PropTypes.string }
+Card.propTypes = { className: PropTypes.string, children: PropTypes.node }
+CardHeader.propTypes = { className: PropTypes.string, children: PropTypes.node }
+CardTitle.propTypes = { className: PropTypes.string, children: PropTypes.node }
+CardDescription.propTypes = { className: PropTypes.string, children: PropTypes.node }
+CardAction.propTypes = { className: PropTypes.string, children: PropTypes.node }
+CardContent.propTypes = { className: PropTypes.string, children: PropTypes.node }
+CardFooter.propTypes = { className: PropTypes.string, children: PropTypes.node }
+
+export default Card

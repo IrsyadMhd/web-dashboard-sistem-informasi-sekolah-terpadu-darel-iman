@@ -1,35 +1,21 @@
 "use client";
 
 import { cn } from "@/utils/cn";
-import { ArrowLeft, ArrowRight } from "@tailgrids/icons";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cva } from "class-variance-authority";
 import { Button } from "./button";
 
 const wrapperStyles = cva(
-  "mx-auto flex w-full items-center justify-center max-sm:gap-5",
+  "mx-auto flex w-full items-center justify-center max-sm:gap-3 gap-1",
   {
     variants: {
       variant: {
-        default: "gap-0.5",
-        compact: "max-w-fit sm:divide-x sm:divide-button-outline-border"
+        default: "gap-1",
+        compact: "max-w-fit sm:divide-x sm:divide-emerald-200 dark:sm:divide-emerald-800"
       }
     }
   }
 );
-
-const sideButtonStyles = cva("max-sm:size-10 sm:h-10", {
-  variants: {
-    sideLayout: {
-      full: "py-2 pr-4 pl-3.5",
-      label: "px-4 py-2",
-      icon: "p-2"
-    },
-    variant: {
-      default: "",
-      compact: ""
-    }
-  }
-});
 
 type PropsType = {
   currentPage: number;
@@ -46,39 +32,36 @@ export function Pagination({
   totalPages,
   onPageChange,
   variant = "default",
-  sideLayout = "full"
+  sideLayout: _sideLayout = "icon"
 }: PropsType) {
   return (
     <nav
       role="navigation"
       aria-label="Pagination"
-      className="w-full text-sm font-medium text-text-50"
+      className="w-full text-sm font-medium text-slate-700 dark:text-slate-200"
     >
       <ul className={wrapperStyles({ variant })}>
         <li className="mr-auto">
           <Button
-            appearance="outline"
+            variant="primary"
+            appearance="fill"
+            iconOnly={true}
             size="sm"
-            disabled={currentPage === 1}
-            aria-label="Previous page"
+            disabled={currentPage <= 1}
+            aria-label="Halaman sebelumnya"
             onClick={() => onPageChange?.(currentPage - 1)}
-            className={cn(sideButtonStyles({ sideLayout, variant }), {
-              "sm:rounded-r-none sm:border-r-0": variant === "compact"
-            })}
-          >
-            <ArrowLeft
-              className={cn("shrink-0", sideLayout === "label" && "sm:hidden")}
-            />
-
-            {sideLayout !== "icon" && (
-              <span className="max-sm:hidden">Previous</span>
+            className={cn(
+              "flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:bg-emerald-950/40 dark:disabled:text-white/30 cursor-pointer",
+              variant === "compact" && "sm:rounded-r-none sm:border-r-0"
             )}
+          >
+            <ChevronLeft className="size-5 shrink-0 text-white" />
           </Button>
         </li>
 
         {/* Only for mobile view */}
-        <li className="sm:hidden">
-          Page {currentPage} of {totalPages}
+        <li className="sm:hidden text-xs font-bold text-slate-600 dark:text-slate-300">
+          {currentPage} / {totalPages}
         </li>
 
         {Array.from({ length: totalPages }, (_, index) => {
@@ -120,10 +103,6 @@ export function Pagination({
               );
             }
 
-            /**
-             * This logic ensures pagination buttons from 1-3 and the last 3 pages are visible
-             * and the rest in the middle are hidden and replaced with and ellipsis.
-             */
             if (index > 2 && index < totalPages - 3) {
               return null;
             }
@@ -143,22 +122,19 @@ export function Pagination({
 
         <li className="ml-auto">
           <Button
+            variant="primary"
+            appearance="fill"
+            iconOnly={true}
             size="sm"
-            appearance="outline"
-            disabled={currentPage === totalPages}
-            aria-label="Next page"
+            disabled={currentPage >= totalPages}
+            aria-label="Halaman berikutnya"
             onClick={() => onPageChange?.(currentPage + 1)}
-            className={cn(sideButtonStyles({ sideLayout, variant }), {
-              "sm:rounded-l-none sm:border-l-0": variant === "compact"
-            })}
-          >
-            {sideLayout !== "icon" && (
-              <span className="max-sm:hidden">Next</span>
+            className={cn(
+              "flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:disabled:bg-emerald-950/40 dark:disabled:text-white/30 cursor-pointer",
+              variant === "compact" && "sm:rounded-l-none sm:border-l-0"
             )}
-
-            <ArrowRight
-              className={cn("shrink-0", sideLayout === "label" && "sm:hidden")}
-            />
+          >
+            <ChevronRight className="size-5 shrink-0 text-white" />
           </Button>
         </li>
       </ul>
@@ -179,12 +155,15 @@ function PaginationButton({
 }) {
   return (
     <button
-      aria-label={`Go to page ${page}`}
+      aria-label={`Ke halaman ${page}`}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "size-10 shrink-0 rounded-lg aria-[current=page]:bg-background-soft-100 hover:bg-background-soft-100",
+        "flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer",
+        isActive
+          ? "bg-emerald-600 text-white shadow-xs dark:bg-emerald-600 dark:text-white"
+          : "text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 dark:text-slate-200 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300",
         paginationVariant === "compact" &&
-          "rounded-none border-y border-button-outline-border bg-button-outline-background"
+          "rounded-none border-y border-emerald-200/80 bg-white dark:border-emerald-800/80 dark:bg-[#1B2433]"
       )}
       onClick={() => onPageChange?.(page)}
     >
@@ -199,13 +178,14 @@ function PaginationEllipsis({
   paginationVariant: PropsType["variant"];
 }) {
   return (
-    <button
-      className={cn("pointer-events-none size-10 shrink-0", {
-        "border-y border-button-outline-border bg-button-outline-background":
+    <span
+      aria-hidden="true"
+      className={cn("pointer-events-none flex size-9 shrink-0 items-center justify-center text-xs font-bold text-slate-400 dark:text-slate-500", {
+        "border-y border-emerald-200/80 dark:border-emerald-800/80":
           paginationVariant === "compact"
       })}
     >
       ...
-    </button>
+    </span>
   );
 }

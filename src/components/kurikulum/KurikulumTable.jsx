@@ -36,18 +36,18 @@ export default function KurikulumTable({
 
   return (
     <table className="w-full min-w-245 text-left border-collapse" aria-label="Daftar kurikulum">
-          <thead>
-            <tr className="bg-[#F7F4EB] dark:bg-slate-900/80 text-gray-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider border-b border-gray-200 dark:border-slate-800">
-              <th className="py-4 px-4 w-12 text-center">NO</th>
-              <th className="py-4 px-4 w-14 text-center">LOGO</th>
-              <th className="py-4 px-4">KODE & NAMA KURIKULUM</th>
-              <th className="py-4 px-4">JENIS & JENJANG</th>
-              <th className="py-4 px-4">UNIT & TAHUN AJARAN</th>
-              <th className="py-4 px-4 text-center">STATUS</th>
-              <th className="py-4 px-4 text-center w-20">AKSI</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-xs font-medium">
+      <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+        <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+          <th className="py-3.5 px-4 w-12 text-center font-extrabold text-[11px] uppercase tracking-wider bg-transparent">NO</th>
+          <th className="py-3.5 px-4 w-16 text-center font-extrabold text-[11px] uppercase tracking-wider bg-transparent">JENJANG</th>
+          <th className="py-3.5 px-4 font-extrabold text-[11px] uppercase tracking-wider bg-transparent">KODE & NAMA KURIKULUM</th>
+          <th className="py-3.5 px-4 font-extrabold text-[11px] uppercase tracking-wider bg-transparent">JENIS & JENJANG</th>
+          <th className="py-3.5 px-4 font-extrabold text-[11px] uppercase tracking-wider bg-transparent">UNIT & TAHUN AJARAN</th>
+          <th className="py-3.5 px-4 text-center font-extrabold text-[11px] uppercase tracking-wider bg-transparent">STATUS</th>
+          <th className="py-3.5 px-4 text-center w-24 font-extrabold text-[11px] uppercase tracking-wider bg-transparent">AKSI</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs font-medium">
             {data.map((item, idx) => {
               const rowNumber = (page - 1) * perPage + idx + 1
               const isTerhapus = !!item.deleted_at
@@ -60,19 +60,19 @@ export default function KurikulumTable({
                   }`}
                 >
                   {/* No */}
-                  <td className="py-4 px-4 text-center text-gray-500 dark:text-slate-400 font-bold">
+                  <td className="py-3.5 px-4 text-center text-slate-500 dark:text-slate-400 font-bold">
                     {rowNumber}
                   </td>
 
-                  {/* Logo Badge */}
-                  <td className="py-4 px-4 text-center">
-                    <div className="w-9 h-9 rounded-full bg-emerald-800 text-white font-black text-xs flex items-center justify-center shadow-xs mx-auto border border-emerald-700">
+                  {/* Jenjang Badge */}
+                  <td className="py-3.5 px-4 text-center">
+                    <div className="size-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-xs flex items-center justify-center shadow-sm mx-auto border border-emerald-500/30">
                       {(item.jenjang || 'SD').slice(0, 3)}
                     </div>
                   </td>
 
                   {/* Kode & Nama */}
-                  <td className="py-4 px-4">
+                  <td className="py-3.5 px-4">
                     <div className="flex flex-col">
                       <span className="font-bold text-slate-900 dark:text-white text-sm leading-snug">
                         {item.nama_kurikulum}
@@ -84,7 +84,7 @@ export default function KurikulumTable({
                   </td>
 
                   {/* Jenis & Jenjang */}
-                  <td className="py-4 px-4">
+                  <td className="py-3.5 px-4">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border ${getJenisBadgeColor(
@@ -101,7 +101,7 @@ export default function KurikulumTable({
                   </td>
 
                   {/* Unit & Tahun Ajaran */}
-                  <td className="py-4 px-4">
+                  <td className="py-3.5 px-4">
                     <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
                       <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span>{item.unit_pendidikan_nama || '-'}</span>
@@ -114,20 +114,20 @@ export default function KurikulumTable({
                   </td>
 
                   {/* Status */}
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-3.5 px-4 text-center">
                     <AppBadge variant={isTerhapus ? 'danger' : item.status ? 'success' : 'warning'} dot>
                       {isTerhapus ? 'Terhapus' : item.status ? 'Aktif' : 'Nonaktif'}
                     </AppBadge>
                   </td>
 
                   {/* Action Buttons */}
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-3.5 px-4 text-center">
                     <div className="inline-flex items-center justify-center">
                       <ActionDropdown
-                        onView={() => onDetail(item)}
-                        onEdit={!isTerhapus ? () => onEdit(item) : undefined}
-                        onDelete={!isTerhapus ? () => onDelete(item) : undefined}
-                        extraItems={isTerhapus ? [{
+                        onView={onDetail ? () => onDetail(item) : undefined}
+                        onEdit={!isTerhapus && onEdit ? () => onEdit(item) : undefined}
+                        onDelete={!isTerhapus && onDelete ? () => onDelete(item) : undefined}
+                        extraItems={isTerhapus && onRestore ? [{
                           label: 'Pulihkan',
                           icon: <RotateCcw className="h-4 w-4 text-emerald-600" />,
                           onClick: () => onRestore(item),

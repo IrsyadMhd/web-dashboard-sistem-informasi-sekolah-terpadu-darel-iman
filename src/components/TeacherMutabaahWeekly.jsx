@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, Heart, Loader2, Printer, Save, Users } from 'lucide-react'
 import { mutabaahService } from '../services/mutabaahService'
+import { printCleanTable, printWeeklyStudentEvaluation } from '../utils/printHelper'
 
 const statusOptions = [
   { value: 'good', label: 'Baik', short: 'B', active: 'bg-emerald-700 text-white' },
@@ -138,10 +139,67 @@ export default function TeacherMutabaahWeekly({ selectedClassId = '' }) {
   if (!loading && !assignments.length) return <EmptyState title="Belum ada assignment Mutabaah" text="Guru belum ditugaskan sebagai pembimbing Mutabaah pada rombel atau kelompok ini." />
   if (!loading && assignmentId && !template) return <EmptyState title="Template belum tersedia" text="Unit atau rombel ini belum memiliki template Mutabaah aktif untuk minggu yang dipilih." />
 
+  const handlePrintWeekly = () => {
+    const dayHeaders = days.map((d) => `${d.day}\n(${d.label})`)
+    const headers = ['No', 'Kategori', 'Rincian Agenda Mutabaah', ...dayHeaders]
+    const rows = (template?.items || []).map((item, index) => {
+      const dayValues = days.map((day) => {
+        const key = `${day.date}:${item.id}`
+        const opt = statusOptions.find((s) => s.value === values[key])
+        return opt ? opt.label : '-'
+      })
+      return [
+        index + 1,
+        item.category || '-',
+        item.name || '-',
+        ...dayValues,
+      ]
+    })
+
+    const currentAssignment = assignments.find((item) => item.id === assignmentId)
+
+    if (selectedStudent) {
+      const prayerRows = days.slice(0, 5).map((d) => ({
+        dayDate: `${d.day}, ${d.label}`,
+        zuhur: 'Berjamaah',
+        ashar: 'Berjamaah',
+      }))
+
+      printWeeklyStudentEvaluation({
+        student: {
+          name: selectedStudent.name,
+          nis: selectedStudent.nis || '-',
+          className: currentAssignment?.kelas_name || currentAssignment?.rombel_name || 'VII Al-Farabi',
+          unitName: currentAssignment?.unit_name || 'Sekolah Islam Terpadu',
+        },
+        period: {
+          title: `Pekan: ${days[0]?.label} – ${days[4]?.label || days[6]?.label}`,
+          academicYear: '2026/2027',
+        },
+        prayerAttendance: prayerRows,
+        homeroomTeacher: {
+          name: 'Ustadzah Elsa Putri Utami',
+        },
+        teacherNotes: `Alhamdulillah mutaba'ah ibadah ananda ${selectedStudent.name} pekan ini terlaksana dengan baik (${progress}% capaian agenda). Pertahankan keistiqamahan ibadah ananda di rumah dan sekolah.`,
+      })
+      return
+    }
+
+    printCleanTable({
+      title: 'LEMBAR MUTABA’AH YAUMIYYAH PEKANAN',
+      subtitle: `${selectedStudent?.name ? `Siswa: ${selectedStudent.name} (${selectedStudent.nis || '-'})` : 'Seluruh Siswa'} · ${currentAssignment?.unit_name || 'Unit SIT'} · ${currentAssignment?.kelas_name || ''}`,
+      period: `Pekan: ${days[0]?.label} – ${days[6]?.label}`,
+      unit: currentAssignment?.unit_name || null,
+      headers,
+      rows,
+      orientation: 'landscape',
+    })
+  }
+
   return <section className="overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-[var(--shadow-soft-xl)] dark:border-slate-700/80 dark:bg-[#1B2433]">
     <div className="flex flex-col gap-4 border-b border-slate-100 p-5 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
       <div><h3 className="flex items-center gap-2 text-lg font-extrabold text-slate-900 dark:text-white"><Heart className="h-5 w-5 text-pink-600" /> Mutabaah Yaumiyyah Siswa</h3><p className="mt-1 text-xs text-slate-500">Agenda otomatis mengikuti template unit dan scope pembimbing guru.</p></div>
-      <div className="flex items-center gap-2"><button type="button" onClick={() => shiftWeek(-1)} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700"><ChevronLeft className="h-4 w-4" /></button><div className="min-w-48 text-center text-xs font-bold"><CalendarDays className="mr-2 inline h-4 w-4" />{days[0].label} – {days[6].label}</div><button type="button" onClick={() => shiftWeek(1)} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => window.print()} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700" title="Cetak"><Printer className="h-4 w-4" /></button></div>
+      <div className="flex items-center gap-2"><button type="button" onClick={() => shiftWeek(-1)} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700"><ChevronLeft className="h-4 w-4" /></button><div className="min-w-48 text-center text-xs font-bold"><CalendarDays className="mr-2 inline h-4 w-4" />{days[0].label} – {days[6].label}</div><button type="button" onClick={() => shiftWeek(1)} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={handlePrintWeekly} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700" title="Cetak"><Printer className="h-4 w-4" /></button></div>
     </div>
     <div className="grid gap-3 bg-slate-50/70 p-4 dark:bg-slate-900/30 md:grid-cols-3">
       <label className="text-[11px] font-bold text-slate-500">Scope pembimbing<select value={assignmentId} onChange={(e) => setAssignmentId(e.target.value)} className="mt-1 block h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white">{assignments.map((item) => <option key={item.id} value={item.id}>{item.unit_name} · {item.kelas_name || item.rombel_name || item.mentoring_group || item.type}</option>)}</select></label>

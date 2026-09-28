@@ -1,52 +1,25 @@
 import React from 'react'
-import { Home, ChevronRight } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { cn } from '../../lib/utils'
+import { Breadcrumbs } from '../tailgrids/core/breadcrumbs'
 
 /**
- * AppBreadcrumb - canonical breadcrumb navigation.
+ * AppBreadcrumb - Canonical Breadcrumb Navigation Component for SIMSIT.
+ *
+ * Mengimplementasikan TailGrids Breadcrumbs Component standar emas:
+ * - Ikon Beranda di awal navigasi (Home icon)
+ * - Pemisah halus (Chevron / Slash / Dot) terintegrasi Pengaturan Sistem
+ * - Hyperlink SPA dengan efek hover hijau khas SIMSIT
+ * - Highlight tebal untuk item halaman aktif
+ * - Safe truncation & print-safe
  *
  * Props:
- *  - items: [{ label, to }] — last item without `to` is the active page.
- *  - homeTo: default '/dashboard' (Home icon). Set null to hide home item.
+ *  - items: array of [{ label, href, to, path, icon }] atau array of string
+ *  - pageTitle: string (opsional jika hanya butuh 1 crumb halaman)
+ *  - dividerType: 'chevron' | 'slash' | 'dot' (default mengikuti Pengaturan / chevron)
+ *  - homeTo: string | null | boolean (default: '/dashboard')
+ *  - className: string (opsional utility classes)
  */
-export default function AppBreadcrumb({ items = [], homeTo = '/dashboard', className = '' }) {
-  const all = homeTo ? [{ label: 'Beranda', to: homeTo }, ...items] : [...items]
-
-  if (all.length === 0) return null
-
-  return (
-    <nav className={cn('flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400', className)} aria-label="Breadcrumb">
-      {all.map((item, idx) => {
-        const isLast = idx === all.length - 1
-        const target = item.to || item.href
-        return (
-          <React.Fragment key={idx}>
-            {idx > 0 && (
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" aria-hidden="true" />
-            )}
-            {isLast || !target ? (
-              <span
-                className="max-w-[200px] truncate font-bold text-slate-800 sm:max-w-xs dark:text-slate-200"
-                aria-current="page"
-                title={item.label}
-              >
-                {item.label}
-              </span>
-            ) : (
-              <Link
-                to={target}
-                aria-label={item.label === 'Beranda' ? 'Kembali ke Dashboard' : item.label}
-                className="inline-flex max-w-[150px] items-center gap-1.5 truncate font-medium transition hover:text-[#0E5C44] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E5C44]/30 rounded-md sm:max-w-xs dark:hover:text-[#3FBF75]"
-                title={item.label}
-              >
-                {item.label === 'Beranda' && <Home className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" />}
-                <span className="truncate">{item.label}</span>
-              </Link>
-            )}
-          </React.Fragment>
-        )
-      })}
-    </nav>
-  )
+export default function AppBreadcrumb(props) {
+  return <Breadcrumbs {...props} />
 }
+
+export { Breadcrumbs }

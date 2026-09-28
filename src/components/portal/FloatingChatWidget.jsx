@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   MessageCircle,
   MessageSquare,
@@ -33,64 +34,76 @@ export default function FloatingChatWidget() {
       .toLowerCase()
   }, [user, roleNames])
 
-  const isStudent = isStudentRole(roles) || roleStr.includes('siswa') || roleStr.includes('student')
-  const isParent = isParentRole(roles) || roleStr.includes('orang') || roleStr.includes('parent')
-  const isTeacher = roleNames.some((r) => ['Guru', 'Wali Kelas', 'Guru Pengajar', 'guru'].includes(r)) || roleStr.includes('guru') || roleStr.includes('walas')
+  const isSuperAdmin =
+    Boolean(user?.is_superadmin) ||
+    roleNames.some((r) => ['Super Admin', 'super_admin', 'Superadmin'].includes(r)) ||
+    roleStr.includes('super_admin') ||
+    roleStr.includes('superadmin')
+
+  const isTeacher =
+    roleNames.some((r) => ['Guru', 'Wali Kelas', 'Guru Pengajar', 'guru'].includes(r)) ||
+    roleStr.includes('guru') ||
+    roleStr.includes('walas')
 
   const canEmployeeChat =
-    !isParent &&
-    (Boolean(user?.is_superadmin) ||
-      roleStr.includes('super') ||
-      roleStr.includes('admin') ||
-      roleStr.includes('yayasan') ||
-      roleStr.includes('pengurus') ||
-      roleStr.includes('kepala') ||
-      roleStr.includes('kepsek') ||
-      roleStr.includes('pendidikan') ||
-      /\b(tu|tata_usaha)\b/i.test(roleStr) ||
-      roleStr.includes('pegawai') ||
-      roleStr.includes('staf') ||
-      permissions.includes('chat.conversation.view') ||
-      permissions.includes('chat.manage'))
+    isSuperAdmin ||
+    roleStr.includes('super') ||
+    roleStr.includes('admin') ||
+    roleStr.includes('yayasan') ||
+    roleStr.includes('pengurus') ||
+    roleStr.includes('kepala') ||
+    roleStr.includes('kepsek') ||
+    roleStr.includes('pendidikan') ||
+    /\b(tu|tata_usaha)\b/i.test(roleStr) ||
+    roleStr.includes('pegawai') ||
+    roleStr.includes('staf') ||
+    permissions.includes('chat.conversation.view') ||
+    permissions.includes('chat.manage')
 
-  const isEmployee = canEmployeeChat && !isStudent
-  const shouldRender = Boolean(user) && !isStudent && (isParent || isTeacher || isEmployee || canEmployeeChat)
+  const isStaffOrTeacher = isSuperAdmin || canEmployeeChat || isTeacher
+  const isParent = isParentRole(roles) || roleStr.includes('orang') || roleStr.includes('parent')
+  const isPureStudent = (isStudentRole(roles) || roleStr.includes('siswa') || roleStr.includes('student')) && !isStaffOrTeacher && !isParent
+
+  const isEmployee = canEmployeeChat && !isPureStudent
+  const shouldRender = Boolean(user) && !isPureStudent && (isParent || isTeacher || isEmployee || isSuperAdmin)
 
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  const [children, setChildren] = useState([])
   const [childId, setChildId] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
 
   // Widget Mode: 'employee' | 'parent' | 'teacher'
-  const defaultMode = isParent ? 'parent' : isTeacher ? 'teacher' : 'employee'
+  const defaultMode = isParent && !isStaffOrTeacher ? 'parent' : isTeacher ? 'teacher' : 'employee'
   const [widgetMode, setWidgetMode] = useState(defaultMode)
 
   useEffect(() => {
-    if (isParent) {
+    if (isParent && !isStaffOrTeacher) {
       setWidgetMode('parent')
     } else if (isTeacher) {
       setWidgetMode('teacher')
-    } else if (isEmployee) {
+    } else if (isEmployee || isSuperAdmin) {
       setWidgetMode('employee')
     }
-  }, [isEmployee, isParent, isTeacher])
+  }, [isEmployee, isParent, isTeacher, isSuperAdmin, isStaffOrTeacher])
 
-  // Fetch children list for Parent Mode
-  const loadChildren = useCallback(async () => {
-    if (!isParent) return
-    try {
-      const res = await familyPortalService.children().catch(() => ({ data: [] }))
-      const list = res?.data || []
-      const validList = Array.isArray(list) ? list : []
-      setChildren(validList)
-      if (validList.length > 0 && !childId) {
-        setChildId(validList[0].id)
-      }
-    } catch {
-      setChildren([])
+  // Fetch children list for Parent Mode with React Query caching
+  const { data: childrenQueryData } = useQuery({
+    queryKey: ['portalChildren'],
+    queryFn: () => familyPortalService.children().catch(() => ({ data: [] })),
+    enabled: Boolean(isParent),
+    staleTime: 1000 * 60 * 15,
+  })
+
+  const children = useMemo(() => {
+    const list = childrenQueryData?.data || []
+    return Array.isArray(list) ? list : []
+  }, [childrenQueryData])
+
+  useEffect(() => {
+    if (children.length > 0 && !childId) {
+      setChildId(children[0].id)
     }
-  }, [isParent, childId])
+  }, [children, childId])
 
   // Periodically check total unread messages across parent, teacher, and employee chats
   const checkUnread = useCallback(async () => {
@@ -102,7 +115,7 @@ export default function FloatingChatWidget() {
         const contacts = res.data || []
         total += contacts.reduce((sum, c) => sum + (c.unread_count || 0), 0)
       }
-      if (isTeacher && !isEmployee) {
+      if (isTeacher) {
         const res = await familyPortalService.teacherConversations().catch(() => ({ data: [] }))
         const conversations = res.data || []
         total += conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0)
@@ -117,12 +130,6 @@ export default function FloatingChatWidget() {
       // Ignore background check error
     }
   }, [isParent, isTeacher, isEmployee, shouldRender, childId])
-
-  useEffect(() => {
-    if (isParent) {
-      loadChildren()
-    }
-  }, [isParent, loadChildren])
 
   useEffect(() => {
     checkUnread()
@@ -226,11 +233,12 @@ export default function FloatingChatWidget() {
             </div>
 
             {/* Mode Switcher Tabs inside Header for dual roles / employees */}
-            {!isMinimized && (isEmployee || isTeacher) && isParent && (
+            {!isMinimized && (isTeacher || isSuperAdmin || ((isEmployee || isTeacher) && isParent)) && (
               <div className="flex border-t border-white/10 bg-black/10 px-2 py-1 text-[11px] font-bold">
                 <button
+                  type="button"
                   onClick={() => setWidgetMode('employee')}
-                  className={`flex-1 py-1 text-center rounded-md transition ${
+                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${
                     widgetMode === 'employee'
                       ? 'bg-white/20 text-white shadow-xs font-black'
                       : 'text-white/70 hover:text-white'
@@ -239,14 +247,15 @@ export default function FloatingChatWidget() {
                   Chat Pegawai
                 </button>
                 <button
-                  onClick={() => setWidgetMode(isTeacher ? 'teacher' : 'parent')}
-                  className={`flex-1 py-1 text-center rounded-md transition ${
+                  type="button"
+                  onClick={() => setWidgetMode(isParent && !isTeacher ? 'parent' : 'teacher')}
+                  className={`flex-1 py-1 text-center rounded-md transition cursor-pointer ${
                     widgetMode !== 'employee'
                       ? 'bg-white/20 text-white shadow-xs font-black'
                       : 'text-white/70 hover:text-white'
                   }`}
                 >
-                  {isTeacher ? 'Chat Orang Tua' : 'Chat Guru'}
+                  {isParent && !isTeacher ? 'Chat Guru' : 'Chat Orang Tua'}
                 </button>
               </div>
             )}

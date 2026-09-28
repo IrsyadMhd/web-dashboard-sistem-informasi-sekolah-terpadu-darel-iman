@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck, CheckCircle2 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import { KeyRound, Eye, EyeOff, Loader2, ShieldCheck, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
 import { familyPortalService } from '../../services/familyPortalService'
 import { Button } from '@/components/tailgrids/core/button'
 import { Badge } from '@/components/tailgrids/core/badge'
@@ -18,7 +17,7 @@ export default function ChildPasswordManagementCard() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [successMessage, setSuccessMessage] = useState('')
+  const [alertState, setAlertState] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -49,24 +48,24 @@ export default function ChildPasswordManagementCard() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setAlertState(null)
 
     if (!selectedChildId) {
-      Swal.fire('Pilih Anak', 'Silakan pilih anak terlebih dahulu.', 'warning')
+      setAlertState({ status: 'warning', message: 'Silakan pilih anak terlebih dahulu.' })
       return
     }
 
     if (form.password.length < 6) {
-      Swal.fire('Password Kurang Panjang', 'Password baru anak minimal harus 6 karakter.', 'warning')
+      setAlertState({ status: 'warning', message: 'Password baru anak minimal harus 6 karakter.' })
       return
     }
 
     if (form.password !== form.confirmPassword) {
-      Swal.fire('Konfirmasi Password Tidak Cocok', 'Password baru dan konfirmasi password harus sama.', 'warning')
+      setAlertState({ status: 'warning', message: 'Password baru dan konfirmasi password harus sama.' })
       return
     }
 
     setSubmitting(true)
-    setSuccessMessage('')
 
     try {
       await familyPortalService.updateChildPassword(selectedChildId, {
@@ -75,20 +74,16 @@ export default function ChildPasswordManagementCard() {
       })
 
       const childName = selectedChild?.full_name || selectedChild?.nama_lengkap || 'anak'
-      setSuccessMessage(`Password login untuk ${childName} berhasil diperbarui!`)
       setForm({ password: '', confirmPassword: '' })
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Password Anak Berhasil Diperbarui',
-        text: `Password login Portal Siswa untuk ${childName} telah berhasil diperbarui.`,
-        timer: 2500,
-        showConfirmButton: false,
+      setAlertState({
+        status: 'success',
+        message: `Password login Portal Siswa untuk ${childName} telah berhasil diperbarui di server database.`,
       })
+      setTimeout(() => setAlertState(null), 4500)
     } catch (err) {
       console.error('Gagal ganti password anak:', err)
       const msg = err.response?.data?.message || 'Gagal memperbarui password login anak.'
-      Swal.fire('Gagal Mengubah Password', msg, 'error')
+      setAlertState({ status: 'error', message: msg })
     } finally {
       setSubmitting(false)
     }
@@ -123,13 +118,19 @@ export default function ChildPasswordManagementCard() {
         </Badge>
       </div>
 
-      {successMessage && (
-        <Alert status="success" className="mt-4 rounded-xl">
+      {alertState && (
+        <Alert status={alertState.status} className="mt-4 rounded-xl">
           <AlertIndicator>
-            <CheckCircle2 className="h-5 w-5" />
+            {alertState.status === 'success' ? (
+              <CheckCircle2 className="h-5 w-5" />
+            ) : alertState.status === 'warning' ? (
+              <AlertTriangle className="h-5 w-5" />
+            ) : (
+              <XCircle className="h-5 w-5" />
+            )}
           </AlertIndicator>
           <AlertContent>
-            <AlertDescription>{successMessage}</AlertDescription>
+            <AlertDescription>{alertState.message}</AlertDescription>
           </AlertContent>
         </Alert>
       )}
@@ -216,17 +217,19 @@ export default function ChildPasswordManagementCard() {
           </div>
         </div>
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="md"
-          pending={submitting}
-          disabled={submitting || !selectedChildId}
-          className="flex items-center justify-center gap-2"
-        >
-          {!submitting && <ShieldCheck className="h-4 w-4" />}
-          <span>{submitting ? 'Menyimpan...' : 'Simpan Password Login Anak'}</span>
-        </Button>
+        <div className="pt-2 flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            pending={submitting}
+            disabled={submitting || !selectedChildId}
+            className="flex items-center justify-center gap-2"
+          >
+            {!submitting && <ShieldCheck className="h-4 w-4" />}
+            <span>{submitting ? 'Menyimpan...' : 'Simpan Password Login Anak'}</span>
+          </Button>
+        </div>
       </form>
     </Card>
   )

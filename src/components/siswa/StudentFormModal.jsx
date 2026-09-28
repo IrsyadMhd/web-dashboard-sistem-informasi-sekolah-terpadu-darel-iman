@@ -1,21 +1,54 @@
-import React, { useState, useEffect } from 'react'
-import { FaTimes, FaCloudUploadAlt, FaArrowRight, FaArrowLeft, FaSave, FaCheckCircle, FaTrashAlt } from 'react-icons/fa'
-import Swal from 'sweetalert2'
+import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  GraduationCap,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Save,
+  X,
+  ArrowLeft,
+  ArrowRight,
+  Upload,
+  Trash2,
+  AlertTriangle,
+  User,
+  UserCheck,
+  Hash,
+  MapPin,
+  Phone,
+  Mail,
+  Building,
+  Building2,
+  Briefcase,
+  Calendar,
+  Users,
+  BookOpen,
+  ShieldCheck,
+  CreditCard,
+  HeartHandshake,
+  School,
+  Compass,
+  Award,
+  IdCard,
+} from 'lucide-react'
 import { getProvinsiList, getKotaOptions, getKecamatanOptions, getKelurahanOptions, getBirthPlaceOptions } from './wilayahData'
 import AddressMap from './AddressMap'
 import { educationUnitService } from '../../services/educationUnitService'
 import { kelasService } from '../../services/kelasService'
+import { tahunAjaranService } from '../../services/tahunAjaranService'
+import { modaTransportasiService, FALLBACK_MODA_TRANSPORTASI } from '../../services/modaTransportasiService'
 import { api } from '../../services/api'
 import { useProvinsiList, useKotaOptions, useKecamatanOptions, useKelurahanOptions } from '../../hooks/useWilayah'
 import PersonAvatar, { resolveAvatarUrl } from '../ui/PersonAvatar'
 
 const defaultForm = () => ({
-  foto_url: '', no_pendaftaran: '', nik: '', no_registrasi_akta_lahir: '', no_kk: '', nisn: '', full_name: '', birth_date: '', birth_place: '', gender: 'male', agama: 'Islam', email: '', anak_ke: '', jumlah_saudara: '', jumlah_saudara_tiri: '', berat_badan: '', tinggi_badan: '', riwayat_penyakit: '', kewarganegaraan: 'WNI', alamat_siswa: '', rt: '', rw: '', dusun: '', kelurahan: '', kecamatan: '', kode_pos: '', kota_kabupaten: '', provinsi: '', jenis_tempat_tinggal: '', jarak_tempuh_ke_sekolah: '', moda_transportasi: '', hobi: '', cita_cita: '', latitude: '', longitude: '',
-  sekolah_asal: '', status_sekolah_asal: 'Negeri', kecamatan_sekolah_asal: '', kota_kab_sekolah_asal: '', nomor_hp_wa_sekolah_asal: '', nominal_spp: '', nominal_ortu_asuh: '', penerima_kps_pkh: 'tidak', apakah_punya_kip: 'tidak', apakah_layak_menerima_pip: 'tidak', alasan_menolak_pip: '',
+  foto_url: '', no_pendaftaran: '', nik: '', no_registrasi_akta_lahir: '', no_kk: '', nis: '', nisn: '', full_name: '', birth_date: '', birth_place: '', gender: 'male', agama: 'Islam', email: '', anak_ke: '', jumlah_saudara: '', jumlah_saudara_tiri: '', berat_badan: '', tinggi_badan: '', riwayat_penyakit: '', kewarganegaraan: 'WNI', alamat_siswa: '', rt: '', rw: '', dusun: '', kelurahan: '', kecamatan: '', kode_pos: '', kota_kabupaten: '', provinsi: '', jenis_tempat_tinggal: '', jarak_tempuh_ke_sekolah: '', moda_transportasi: '', hobi: '', cita_cita: '', latitude: '', longitude: '',
+  sekolah_asal: '', status_sekolah_asal: 'Formal', provinsi_sekolah_asal: '', kota_kab_sekolah_asal: '', kecamatan_sekolah_asal: '', kelurahan_sekolah_asal: '', nomor_hp_wa_sekolah_asal: '', nominal_spp: '', nominal_ortu_asuh: '', penerima_kps_pkh: 'tidak', apakah_punya_kip: 'tidak', apakah_layak_menerima_pip: 'tidak', alasan_menolak_pip: '',
   nik_ayah: '', nama_ayah: '', tempat_lahir_ayah: '', tgl_lahir_ayah: '', telfon_ayah: '', hp_ayah: '', pendidikan_terakhir_ayah: '', pekerjaan_ayah: '', instansi_pekerjaan_ayah: '', jabatan_pekerjaan_ayah: '', alamat_instansi_ayah: '', keahlian_ayah: '', penghasilan_ayah: '', alamat_ayah: '', nomor_wa_ayah: '', medsos_ayah: '',
   nik_ibu: '', nama_ibu: '', tempat_lahir_ibu: '', tgl_lahir_ibu: '', telfon_ibu: '', hp_ibu: '', pendidikan_terakhir_ibu: '', pekerjaan_ibu: '', instansi_pekerjaan_ibu: '', jabatan_pekerjaan_ibu: '', alamat_instansi_ibu: '', keahlian_ibu: '', penghasilan_ibu: '', alamat_ibu: '', nomor_wa_ibu: '', medsos_ibu: '',
   status_pernikahan_wali: '', tanggungan_anak_wali: '', nik_wali: '', nama_wali: '', tempat_lahir_wali: '', tgl_lahir_wali: '', telfon_wali: '', hp_wali: '', pendidikan_terakhir_wali: '', pekerjaan_wali: '', instansi_pekerjaan_wali: '', jabatan_pekerjaan_wali: '', alamat_instansi_wali: '', keahlian_wali: '', penghasilan_wali: '', alamat_wali: '', nomor_wa_wali: '', medsos_wali: '',
-  unit_id: '', unit_pendidikan: '', nis_pembayaran: '', tahun_ajaran_masuk: '', kelas_id: '', tahun_ajaran_berjalan: '', status_siswa: 'aktif', status_orang_tua: 'Umum', niy_ortu_jika_pegawai: '', wali_kelas: '', niy_wali_kelas: '',
+  unit_id: '', unit_pendidikan: '', nis_pembayaran: '', tahun_ajaran_masuk: '', kelas_id: '', keterangan_kelas: '', tahun_ajaran_berjalan: '', status_siswa: 'aktif', status_orang_tua: 'Umum', niy_ortu_jika_pegawai: '', wali_kelas: '', niy_wali_kelas: '',
 })
 
 const toYesNo = (value) => {
@@ -36,14 +69,78 @@ const cleanRp = (val) => {
   return String(val).replace(/\D/g, '')
 }
 
-const Input = ({ label, name, value, onChange, required = false, type = 'text', placeholder = '', isRupiah = false, ...props }) => (
+export const OCCUPATION_OPTIONS_AYAH = [
+  'Pegawai Negeri',
+  'Pegawai Swasta',
+  'Pegawai BUMN',
+  'Wiraswasta',
+  'TNI / POLRI',
+  'Petani / Peternak',
+  'Buruh',
+  'Tidak Bekerja',
+  'Lainnya',
+]
+
+export const OCCUPATION_OPTIONS_IBU = [
+  'Ibu Rumah Tangga',
+  'Pegawai Negeri',
+  'Pegawai Swasta',
+  'Pegawai BUMN',
+  'Wiraswasta',
+  'TNI / POLRI',
+  'Petani / Peternak',
+  'Buruh',
+  'Tidak Bekerja',
+  'Lainnya',
+]
+
+export const OCCUPATION_OPTIONS_WALI = [
+  'Pegawai Negeri',
+  'Pegawai Swasta',
+  'Pegawai BUMN',
+  'Wiraswasta',
+  'TNI / POLRI',
+  'Petani / Peternak',
+  'Buruh',
+  'Tidak Bekerja',
+  'Lainnya',
+]
+
+const Input = ({
+  label,
+  name,
+  value,
+  onChange,
+  required = false,
+  type = 'text',
+  placeholder = '',
+  isRupiah = false,
+  icon: Icon,
+  error,
+  helperText,
+  ...props
+}) => (
   <div>
-    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-      {label} {required && <span className="text-rose-500">*</span>}
-    </label>
+    <div className="flex items-center justify-between mb-1.5">
+      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      {helperText && (
+        <span className={`text-[10px] font-bold ${error ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'}`}>
+          {helperText}
+        </span>
+      )}
+    </div>
     <div className="relative flex items-center">
+      {Icon && (
+        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+          <Icon className="size-4" />
+        </div>
+      )}
       {isRupiah && (
-        <span className="absolute left-3 text-xs font-extrabold text-slate-500 select-none">Rp</span>
+        <span className={`absolute ${Icon ? 'left-9' : 'left-3.5'} text-xs font-extrabold text-slate-500 select-none`}>
+          Rp
+        </span>
       )}
       <input
         type={type}
@@ -53,119 +150,234 @@ const Input = ({ label, name, value, onChange, required = false, type = 'text', 
         placeholder={placeholder}
         required={required}
         inputMode={isRupiah ? 'numeric' : undefined}
-        className={`w-full rounded-xl border border-slate-200 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition ${
-          isRupiah ? 'pl-9 pr-3.5' : 'px-3.5'
-        }`}
+        className={`w-full rounded-xl border py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 outline-none hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 ${
+          error
+            ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/20 dark:border-rose-700 dark:bg-rose-950/20'
+            : 'bg-slate-50/50 border-slate-200/90'
+        } ${isRupiah ? (Icon ? 'pl-14 pr-4' : 'pl-10 pr-4') : (Icon ? 'pl-10 pr-4' : 'px-3.5')}`}
         {...props}
       />
     </div>
+    {error && (
+      <p className="mt-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+        <span>⚠</span> {error}
+      </p>
+    )}
   </div>
 )
 
-const Select = ({ label, name, value, onChange, required = false, options = [], ...props }) => (
-  <div>
-    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-      {label} {required && <span className="text-rose-500">*</span>}
-    </label>
-    <select
-      name={name}
-      value={value ?? ''}
-      onChange={onChange}
-      required={required}
-      className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm text-slate-800 bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 outline-none transition"
-      {...props}
-    >
-      <option value="">-- Pilih --</option>
-      {options.map(opt => typeof opt === 'string'
-        ? <option key={opt} value={opt}>{opt}</option>
-        : <option key={opt.value} value={opt.value}>{opt.label}</option>
+const Select = ({
+  label,
+  name,
+  value,
+  onChange,
+  required = false,
+  icon: Icon,
+  options = [],
+  disabled = false,
+  placeholder = '-- Pilih --',
+  error,
+  ...props
+}) => {
+  const safeOptions = Array.isArray(options)
+    ? options
+    : Array.isArray(options?.data)
+    ? options.data
+    : Array.isArray(options?.options)
+    ? options.options
+    : []
+
+  return (
+    <div>
+      <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      <div className="relative flex items-center">
+        {Icon && (
+          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+            <Icon className="size-4" />
+          </div>
+        )}
+        <select
+          name={name}
+          value={value ?? ''}
+          onChange={onChange}
+          required={required}
+          disabled={disabled}
+          className={`w-full rounded-xl border py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 outline-none hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer ${
+            disabled
+              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:border-slate-700'
+              : error
+              ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-rose-500/20 dark:border-rose-700 dark:bg-rose-950/20'
+              : 'bg-slate-50/50 border-slate-200/90'
+          } ${Icon ? 'pl-10 pr-8' : 'px-3.5'}`}
+          {...props}
+        >
+          <option value="">{placeholder}</option>
+          {safeOptions.map((opt, idx) =>
+            typeof opt === 'string' ? (
+              <option key={`opt-str-${opt}-${idx}`} value={opt}>
+                {opt}
+              </option>
+            ) : (
+              <option key={`opt-val-${opt?.value ?? opt?.id ?? idx}-${idx}`} value={opt?.value ?? ''}>
+                {opt?.label ?? opt?.name ?? opt?.value ?? ''}
+              </option>
+            )
+          )}
+        </select>
+      </div>
+      {error && (
+        <p className="mt-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+          <span>⚠</span> {error}
+        </p>
       )}
-    </select>
-  </div>
-)
-
-
+    </div>
+  )
+}
 
 export default function StudentFormModal({ isOpen, onClose, initialData, onSubmit, classes, units }) {
   const [activeStep, setActiveStep] = useState(0)
   const [formData, setFormData] = useState(defaultForm())
   const [isUploading, setIsUploading] = useState(false)
+  const [modalError, setModalError] = useState(null)
+  const modalBodyRef = useRef(null)
 
   const steps = [
-    { number: 1, id: 'pribadi', title: 'Informasi Pribadi', desc: 'Identitas & Alamat Siswa' },
-    { number: 2, id: 'pendidikan', title: 'Pendidikan & Bantuan', desc: 'Sekolah Asal & SPP/PIP' },
-    { number: 3, id: 'ortu', title: 'Data Orang Tua', desc: 'Identitas Ayah & Ibu Kandung' },
-    { number: 4, id: 'wali', title: 'Data Wali Siswa', desc: 'Wali (Opsional)' },
-    { number: 5, id: 'akademik', title: 'Akademik & Status', desc: 'Unit, Kelas & Status' },
+    { number: 1, id: 'pribadi', title: 'Informasi Pribadi', desc: 'Identitas & Alamat Siswa', icon: UserCheck },
+    { number: 2, id: 'pendidikan', title: 'Pendidikan & Bantuan', desc: 'Sekolah Asal & SPP/PIP', icon: GraduationCap },
+    { number: 3, id: 'ortu', title: 'Data Orang Tua', desc: 'Identitas Ayah & Ibu Kandung', icon: Users },
+    { number: 4, id: 'wali', title: 'Data Wali Siswa', desc: 'Wali (Opsional)', icon: HeartHandshake },
+    { number: 5, id: 'akademik', title: 'Akademik & Status', desc: 'Unit, Kelas & Status', icon: BookOpen },
   ]
 
   useEffect(() => {
     if (isOpen) {
       setActiveStep(0)
+      setModalError(null)
       if (initialData) {
         const meta = initialData.raw?.metadata || {}
         const orangTua = meta.orang_tua || {}
         const parentRel = initialData.raw?.parent || {}
 
-        const resolvedUnitId = String(
-          initialData.raw?.unit_id ||
-          initialData.raw?.education_unit_id ||
-          initialData.raw?.education_unit?.id ||
-          initialData.raw?.unit?.id ||
-          initialData.unit_id ||
-          meta.unit_id ||
-          meta.akademik?.unit_id ||
-          ''
-        )
-
-        const resolvedUnitName =
-          initialData.unit ||
-          meta.akademik?.unit_pendidikan ||
-          meta.unit_pendidikan ||
-          initialData.raw?.education_unit?.name ||
-          initialData.raw?.education_unit?.code ||
-          ''
-
-        const resolvedKelasId = String(
-          initialData.raw?.kelas_id ||
-          initialData.raw?.class_id ||
-          initialData.raw?.kelas?.id ||
-          initialData.kelas_id ||
-          meta.kelas_id ||
-          meta.akademik?.kelas_id ||
-          ''
-        )
-
         setFormData({
-          ...defaultForm(),
-          ...meta,
           id: initialData.id,
-          full_name: initialData.nama || initialData.full_name || '',
-          gender: initialData.gender === 'Perempuan' ? 'female' : 'male',
-          birth_place: initialData.tempatLahir || initialData.birth_place || '',
-          birth_date: initialData.tanggalLahir || initialData.birth_date || '',
-          foto_url: resolveAvatarUrl(initialData) || resolveAvatarUrl(initialData?.foto) || initialData.foto || meta.foto_url || meta.foto || meta.photo_url || meta.photo || meta.avatar || '',
+          foto_url: initialData.foto || meta.foto_url || '',
+          no_pendaftaran: meta.no_pendaftaran || '',
+          nik: meta.nik || '',
+          no_registrasi_akta_lahir: meta.no_registrasi_akta_lahir || '',
+          no_kk: meta.no_kk || '',
+          nis: initialData.nis || meta.nis || '',
           nisn: initialData.nisn || meta.nisn || '',
-          nis: initialData.nis || '',
-          alamat_siswa: initialData.alamat || meta.alamat_siswa || meta.alamat_ortu || '',
-          kelas_id: resolvedKelasId,
-          unit_id: resolvedUnitId,
-          unit_pendidikan: resolvedUnitName,
-          status_siswa: (initialData.status || initialData.status_siswa || 'aktif').toLowerCase(),
-          nama_ayah: meta.nama_ayah || meta.ayah?.nama || orangTua.nama_ayah || parentRel.full_name || parentRel.name || '',
-          nama_ibu: meta.nama_ibu || meta.ibu?.nama || orangTua.nama_ibu || '',
-          nama_wali: meta.nama_wali || meta.wali?.nama || orangTua.nama_wali || '',
-          hp_ayah: meta.hp_ayah || meta.ayah?.hp || orangTua.no_hp || parentRel.phone || parentRel.no_hp || '',
-          hp_ibu: meta.hp_ibu || meta.ibu?.hp || orangTua.no_hp || '',
-          hp_wali: meta.hp_wali || meta.wali?.hp || orangTua.no_hp || '',
+          full_name: initialData.nama || meta.full_name || '',
+          birth_date: initialData.birth_date || meta.birth_date || '',
+          birth_place: initialData.birth_place || meta.birth_place || '',
+          gender: initialData.gender || meta.gender || 'male',
+          agama: meta.agama || 'Islam',
+          email: meta.email || '',
+          anak_ke: meta.anak_ke || '',
+          jumlah_saudara: meta.jumlah_saudara || '',
+          jumlah_saudara_tiri: meta.jumlah_saudara_tiri || '',
+          berat_badan: meta.berat_badan || '',
+          tinggi_badan: meta.tinggi_badan || '',
+          riwayat_penyakit: meta.riwayat_penyakit || '',
+          kewarganegaraan: meta.kewarganegaraan || 'WNI',
+          alamat_siswa: initialData.raw?.address || meta.alamat_siswa || '',
+          rt: meta.rt || '',
+          rw: meta.rw || '',
+          dusun: meta.dusun || '',
+          kelurahan: meta.kelurahan || '',
+          kecamatan: meta.kecamatan || '',
+          kode_pos: meta.kode_pos || '',
+          kota_kabupaten: meta.kota_kabupaten || '',
+          provinsi: meta.provinsi || '',
+          jenis_tempat_tinggal: meta.jenis_tempat_tinggal || '',
+          jarak_tempuh_ke_sekolah: meta.jarak_tempuh_ke_sekolah || '',
+          moda_transportasi: meta.moda_transportasi || '',
+          hobi: meta.hobi || '',
+          cita_cita: meta.cita_cita || '',
+          latitude: meta.latitude || '',
+          longitude: meta.longitude || '',
+
+          sekolah_asal: meta.sekolah_asal || '',
+          status_sekolah_asal: meta.status_sekolah_asal || 'Formal',
+          provinsi_sekolah_asal: meta.provinsi_sekolah_asal || '',
+          kota_kab_sekolah_asal: meta.kota_kab_sekolah_asal || '',
+          kecamatan_sekolah_asal: meta.kecamatan_sekolah_asal || '',
+          kelurahan_sekolah_asal: meta.kelurahan_sekolah_asal || '',
+          nomor_hp_wa_sekolah_asal: meta.nomor_hp_wa_sekolah_asal || '',
+          nominal_spp: formatRp(meta.nominal_spp || ''),
+          nominal_ortu_asuh: formatRp(meta.nominal_ortu_asuh || ''),
           penerima_kps_pkh: toYesNo(meta.penerima_kps_pkh),
           apakah_punya_kip: toYesNo(meta.apakah_punya_kip),
           apakah_layak_menerima_pip: toYesNo(meta.apakah_layak_menerima_pip),
-          nominal_spp: formatRp(meta.nominal_spp),
-          nominal_ortu_asuh: formatRp(meta.nominal_ortu_asuh),
-          penghasilan_ayah: formatRp(meta.penghasilan_ayah),
-          penghasilan_ibu: formatRp(meta.penghasilan_ibu),
-          penghasilan_wali: formatRp(meta.penghasilan_wali),
+          alasan_menolak_pip: meta.alasan_menolak_pip || '',
+
+          nik_ayah: meta.nik_ayah || orangTua.nik_ayah || '',
+          nama_ayah: meta.nama_ayah || orangTua.nama_ayah || parentRel.father_name || '',
+          tempat_lahir_ayah: meta.tempat_lahir_ayah || '',
+          tgl_lahir_ayah: meta.tgl_lahir_ayah || '',
+          telfon_ayah: meta.telfon_ayah || '',
+          hp_ayah: meta.hp_ayah || orangTua.no_hp || parentRel.father_phone || '',
+          pendidikan_terakhir_ayah: meta.pendidikan_terakhir_ayah || '',
+          pekerjaan_ayah: meta.pekerjaan_ayah || '',
+          instansi_pekerjaan_ayah: meta.instansi_pekerjaan_ayah || '',
+          jabatan_pekerjaan_ayah: meta.jabatan_pekerjaan_ayah || '',
+          alamat_instansi_ayah: meta.alamat_instansi_ayah || '',
+          keahlian_ayah: meta.keahlian_ayah || '',
+          penghasilan_ayah: formatRp(meta.penghasilan_ayah || ''),
+          alamat_ayah: meta.alamat_ayah || '',
+          nomor_wa_ayah: meta.nomor_wa_ayah || '',
+          medsos_ayah: meta.medsos_ayah || '',
+
+          nik_ibu: meta.nik_ibu || orangTua.nik_ibu || '',
+          nama_ibu: meta.nama_ibu || orangTua.nama_ibu || parentRel.mother_name || '',
+          tempat_lahir_ibu: meta.tempat_lahir_ibu || '',
+          tgl_lahir_ibu: meta.tgl_lahir_ibu || '',
+          telfon_ibu: meta.telfon_ibu || '',
+          hp_ibu: meta.hp_ibu || parentRel.mother_phone || '',
+          pendidikan_terakhir_ibu: meta.pendidikan_terakhir_ibu || '',
+          pekerjaan_ibu: meta.pekerjaan_ibu || '',
+          instansi_pekerjaan_ibu: meta.instansi_pekerjaan_ibu || '',
+          jabatan_pekerjaan_ibu: meta.jabatan_pekerjaan_ibu || '',
+          alamat_instansi_ibu: meta.alamat_instansi_ibu || '',
+          keahlian_ibu: meta.keahlian_ibu || '',
+          penghasilan_ibu: formatRp(meta.penghasilan_ibu || ''),
+          alamat_ibu: meta.alamat_ibu || '',
+          nomor_wa_ibu: meta.nomor_wa_ibu || '',
+          medsos_ibu: meta.medsos_ibu || '',
+
+          status_pernikahan_wali: meta.status_pernikahan_wali || '',
+          tanggungan_anak_wali: meta.tanggungan_anak_wali || '',
+          nik_wali: meta.nik_wali || orangTua.nik_wali || '',
+          nama_wali: meta.nama_wali || orangTua.nama_wali || parentRel.guardian_name || '',
+          tempat_lahir_wali: meta.tempat_lahir_wali || '',
+          tgl_lahir_wali: meta.tgl_lahir_wali || '',
+          telfon_wali: meta.telfon_wali || '',
+          hp_wali: meta.hp_wali || parentRel.guardian_phone || '',
+          pendidikan_terakhir_wali: meta.pendidikan_terakhir_wali || '',
+          pekerjaan_wali: meta.pekerjaan_wali || '',
+          instansi_pekerjaan_wali: meta.instansi_pekerjaan_wali || '',
+          jabatan_pekerjaan_wali: meta.jabatan_pekerjaan_wali || '',
+          alamat_instansi_wali: meta.alamat_instansi_wali || '',
+          keahlian_wali: meta.keahlian_wali || '',
+          penghasilan_wali: formatRp(meta.penghasilan_wali || ''),
+          alamat_wali: meta.alamat_wali || '',
+          nomor_wa_wali: meta.nomor_wa_wali || '',
+          medsos_wali: meta.medsos_wali || '',
+
+          unit_id: initialData.unit_id || meta.unit_id || '',
+          unit_pendidikan: initialData.unit || meta.unit_pendidikan || '',
+          nis_pembayaran: meta.nis_pembayaran || '',
+          tahun_ajaran_masuk: meta.tahun_ajaran_masuk || '',
+          kelas_id: initialData.kelas_id || meta.kelas_id || '',
+          keterangan_kelas: meta.keterangan_kelas || '',
+          tahun_ajaran_berjalan: meta.tahun_ajaran_berjalan || '',
+          status_siswa: initialData.status || meta.status_siswa || 'aktif',
+          status_orang_tua: meta.status_orang_tua || 'Umum',
+          niy_ortu_jika_pegawai: meta.niy_ortu_jika_pegawai || '',
+          wali_kelas: meta.wali_kelas || '',
+          niy_wali_kelas: meta.niy_wali_kelas || '',
         })
       } else {
         setFormData(defaultForm())
@@ -173,10 +385,28 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
     }
   }, [isOpen, initialData])
 
+  const setStepError = (title, message, stepIdx) => {
+    setModalError({ title, message, stepIdx })
+    if (modalBodyRef.current) {
+      modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target
     let finalValue = value
+
+    // Filter strictly numbers (max 16 digits) for NIK & No KK fields
+    if (['nik', 'no_kk', 'nik_ayah', 'nik_ibu', 'nik_wali'].includes(name)) {
+      if (value && /\D/.test(value)) {
+        setModalError({
+          title: 'Input Hanya Angka',
+          message: 'Kolom NIK / No. KK hanya dapat diisi angka tanpa huruf atau simbol (maksimal 16 digit).',
+        })
+      }
+      finalValue = String(value).replace(/\D/g, '').slice(0, 16)
+    }
+
     if (['nominal_spp', 'nominal_ortu_asuh', 'penghasilan_ayah', 'penghasilan_ibu', 'penghasilan_wali'].includes(name)) {
       const digits = String(value).replace(/\D/g, '')
       finalValue = digits ? Number(digits).toLocaleString('id-ID') : ''
@@ -190,337 +420,389 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
       const unitLabel = selectedUnitObj
         ? (typeof selectedUnitObj === 'string' ? selectedUnitObj : (selectedUnitObj.name || selectedUnitObj.nama || selectedUnitObj.code || value))
         : ''
-
       setFormData(prev => ({
         ...prev,
         unit_id: value,
         unit_pendidikan: unitLabel,
         kelas_id: '',
+        wali_kelas: '',
+        niy_wali_kelas: '',
       }))
       return
     }
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: finalValue,
-      ...(name === 'provinsi' ? { kota_kabupaten: '', kecamatan: '', kelurahan: '' } : {}),
-      ...(name === 'kota_kabupaten' ? { kecamatan: '', kelurahan: '' } : {}),
-      ...(name === 'kecamatan' ? { kelurahan: '' } : {}),
-      ...(name === 'kota_kab_sekolah_asal' ? { kecamatan_sekolah_asal: '' } : {}),
-    }))
+    if (name === 'kelas_id') {
+      const selectedClassObj = activeClasses.find(c => {
+        const val = typeof c === 'string' ? c : (c.id ?? c.kelas_id ?? c.value ?? '')
+        return String(val) === String(value)
+      })
+      const waliName = selectedClassObj
+        ? (typeof selectedClassObj === 'string' ? '' : (selectedClassObj.wali_kelas || selectedClassObj.wali || selectedClassObj.teacher_name || ''))
+        : ''
+      const waliNiy = selectedClassObj
+        ? (typeof selectedClassObj === 'string' ? '' : (selectedClassObj.niy_wali_kelas || selectedClassObj.wali_niy || selectedClassObj.teacher_niy || ''))
+        : ''
+      setFormData(prev => ({
+        ...prev,
+        kelas_id: value,
+        wali_kelas: waliName,
+        niy_wali_kelas: waliNiy,
+      }))
+      return
+    }
+
+    if (name === 'provinsi') {
+      setFormData(prev => ({
+        ...prev,
+        provinsi: value,
+        kota_kabupaten: '',
+        kecamatan: '',
+        kelurahan: '',
+      }))
+      return
+    }
+
+    if (name === 'kota_kabupaten') {
+      setFormData(prev => ({
+        ...prev,
+        kota_kabupaten: value,
+        kecamatan: '',
+        kelurahan: '',
+      }))
+      return
+    }
+
+    if (name === 'kecamatan') {
+      setFormData(prev => ({
+        ...prev,
+        kecamatan: value,
+        kelurahan: '',
+      }))
+      return
+    }
+
+    if (name === 'provinsi_sekolah_asal') {
+      setFormData(prev => ({
+        ...prev,
+        provinsi_sekolah_asal: value,
+        kota_kab_sekolah_asal: '',
+        kecamatan_sekolah_asal: '',
+        kelurahan_sekolah_asal: '',
+      }))
+      return
+    }
+
+    if (name === 'kota_kab_sekolah_asal') {
+      setFormData(prev => ({
+        ...prev,
+        kota_kab_sekolah_asal: value,
+        kecamatan_sekolah_asal: '',
+        kelurahan_sekolah_asal: '',
+      }))
+      return
+    }
+
+    if (name === 'kecamatan_sekolah_asal') {
+      setFormData(prev => ({
+        ...prev,
+        kecamatan_sekolah_asal: value,
+        kelurahan_sekolah_asal: '',
+      }))
+      return
+    }
+
+    setFormData(prev => ({ ...prev, [name]: finalValue }))
   }
 
-  const extractArray = (input) => {
-    if (Array.isArray(input)) return input
-    if (input && Array.isArray(input.data)) return input.data
-    if (input && input.data && Array.isArray(input.data.data)) return input.data.data
-    return []
-  }
-
-  const [internalUnits, setInternalUnits] = useState([])
-  const [internalClasses, setInternalClasses] = useState([])
+  const [activeUnits, setActiveUnits] = useState([])
+  const [activeClasses, setActiveClasses] = useState([])
+  const [academicYears, setAcademicYears] = useState([])
+  const [modaList, setModaList] = useState(FALLBACK_MODA_TRANSPORTASI)
 
   useEffect(() => {
     let isMounted = true
-
-    const loadMasterUnits = async () => {
-      let combined = []
-
-      const propUnits = extractArray(units)
-      if (propUnits.length > 0) combined.push(...propUnits)
-
-      // 1. Direct call to educationUnitService (tabel education_units)
+    const fetchModa = async () => {
       try {
-        const res1 = await educationUnitService.getDaftar({ per_page: 200 })
-        const list1 = extractArray(res1)
-        if (list1.length > 0) combined.push(...list1)
-      } catch (e) { /* quiet */ }
-
-      // 2. Direct fallback call to /education-units API
-      try {
-        const res2 = await api.get('/education-units', { params: { per_page: 200 } })
-        const list2 = extractArray(res2.data || res2)
-        if (list2.length > 0) combined.push(...list2)
-      } catch (e) { /* quiet */ }
-
-      // 3. Fallback /foundation/units API
-      try {
-        const res3 = await api.get('/foundation/units')
-        const list3 = extractArray(res3.data || res3)
-        if (list3.length > 0) combined.push(...list3)
-      } catch (e) { /* quiet */ }
-
-      // 4. Fallback /master/jenis-unit/dropdown API
-      try {
-        const res4 = await api.get('/master/jenis-unit/dropdown')
-        const list4 = extractArray(res4.data || res4)
-        if (list4.length > 0) combined.push(...list4)
-      } catch (e) { /* quiet */ }
-
-      // 5. Fallback kelasService options API
-      try {
-        const optionsRes = await kelasService.getOptions()
-        const list5 = extractArray(optionsRes?.units || optionsRes?.unit_pendidikan || optionsRes?.unit)
-        if (list5.length > 0) combined.push(...list5)
-      } catch (e) { /* quiet */ }
-
-      if (!isMounted) return
-
-      const uniqueUnits = []
-      const seenKeys = new Set()
-      for (const item of combined) {
-        if (!item) continue
-        const key = typeof item === 'string'
-          ? item
-          : String(item.id || item.unit_id || item.code || item.name || item.nama || JSON.stringify(item))
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key)
-          uniqueUnits.push(item)
+        const res = await modaTransportasiService.getAll()
+        if (isMounted && res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          setModaList(res.data.map(m => m.nama || m.name || m))
         }
+      } catch (err) {
+        console.warn('Fallback ke default moda transportasi', err)
       }
-
-      setInternalUnits(uniqueUnits)
     }
-
-    const loadMasterClasses = async () => {
-      const propClasses = extractArray(classes)
-      if (propClasses.length > 0) {
-        if (isMounted) setInternalClasses(propClasses)
-        return
-      }
-      try {
-        const res = await kelasService.getDaftar({ per_page: 200 })
-        const list = extractArray(res)
-        if (isMounted && list.length > 0) setInternalClasses(list)
-      } catch (e) { /* quiet */ }
-    }
-
-    loadMasterUnits()
-    loadMasterClasses()
-
+    fetchModa()
     return () => { isMounted = false }
-  }, [isOpen, units, classes])
-
-  const { data: apiProvList = [] } = useProvinsiList()
-  const { data: apiKotaList = [] } = useKotaOptions(formData.provinsi)
-  const { data: apiKecList = [] } = useKecamatanOptions(formData.kota_kabupaten, formData.provinsi)
-  const { data: apiKelList = [] } = useKelurahanOptions(formData.kecamatan, formData.kota_kabupaten, formData.provinsi)
-
-  const { data: apiKotaSekolahList = [] } = useKotaOptions('')
-  const { data: apiKecSekolahList = [] } = useKecamatanOptions(formData.kota_kab_sekolah_asal)
-
-  const provList = apiProvList.length > 0 ? apiProvList : getProvinsiList()
-  const kotaList = apiKotaList.length > 0 ? apiKotaList : getKotaOptions(formData.provinsi)
-  const kecList = apiKecList.length > 0 ? apiKecList : getKecamatanOptions(formData.kota_kabupaten)
-  const kelList = apiKelList.length > 0 ? apiKelList : getKelurahanOptions(formData.kecamatan)
-
-  const kotaSekolahList = apiKotaSekolahList.length > 0 ? apiKotaSekolahList : getKotaOptions('')
-  const kecSekolahList = apiKecSekolahList.length > 0 ? apiKecSekolahList : getKecamatanOptions(formData.kota_kab_sekolah_asal)
-
-  const activeUnits = React.useMemo(() => {
-    const combined = []
-    const propUnits = extractArray(units)
-    if (propUnits.length > 0) combined.push(...propUnits)
-    if (internalUnits.length > 0) combined.push(...internalUnits)
-
-    const uniqueUnits = []
-    const seenKeys = new Set()
-    for (const item of combined) {
-      if (!item) continue
-      const key = typeof item === 'string'
-        ? item
-        : String(item.id || item.unit_id || item.code || item.name || item.nama || JSON.stringify(item))
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key)
-        uniqueUnits.push(item)
-      }
-    }
-    return uniqueUnits
-  }, [units, internalUnits])
+  }, [])
 
   useEffect(() => {
-    if (!isOpen || activeUnits.length === 0) return
+    let isMounted = true
+    const fetchMasters = async () => {
+      try {
+        const [uRes, cRes, tRes] = await Promise.all([
+          educationUnitService.getAll(),
+          kelasService.getAll(),
+          tahunAjaranService.getAll(),
+        ])
+        if (isMounted) {
+          if (uRes?.data && Array.isArray(uRes.data)) {
+            setActiveUnits(uRes.data)
+          } else if (units && Array.isArray(units)) {
+            setActiveUnits(units)
+          }
 
-    setFormData(prev => {
-      if (prev.unit_id) {
-        const directMatch = activeUnits.find(u => {
-          const val = typeof u === 'string' ? u : (u.id ?? u.unit_id ?? u.value ?? u.code ?? '')
-          return String(val) === String(prev.unit_id)
-        })
-        if (directMatch) return prev
-      }
+          if (cRes?.data && Array.isArray(cRes.data)) {
+            setActiveClasses(cRes.data)
+          } else if (classes && Array.isArray(classes)) {
+            setActiveClasses(classes)
+          }
 
-      const target = String(prev.unit_id || prev.unit_pendidikan || '').trim().toLowerCase()
-      if (!target) return prev
-
-      const matchedUnit = activeUnits.find(u => {
-        if (typeof u === 'string') return u.toLowerCase() === target
-        const uId = String(u.id || u.unit_id || u.value || '').toLowerCase()
-        const uCode = String(u.code || u.kode || '').toLowerCase()
-        const uName = String(u.name || u.nama || u.nama_unit || u.unit_name || u.nama_pendidikan || '').toLowerCase()
-        return (uId && uId === target) || (uCode && uCode === target) || (uName && uName === target)
-      })
-
-      if (matchedUnit) {
-        const val = typeof matchedUnit === 'string' ? matchedUnit : (matchedUnit.id ?? matchedUnit.unit_id ?? matchedUnit.value ?? matchedUnit.code ?? '')
-        const lbl = typeof matchedUnit === 'string' ? matchedUnit : (matchedUnit.name || matchedUnit.nama || matchedUnit.unit_name || matchedUnit.code || val)
-        return {
-          ...prev,
-          unit_id: String(val),
-          unit_pendidikan: lbl,
+          if (tRes?.data && Array.isArray(tRes.data)) {
+            setAcademicYears(tRes.data)
+          }
+        }
+      } catch (err) {
+        console.warn('Fallback data master form', err)
+        if (isMounted) {
+          if (units && Array.isArray(units)) setActiveUnits(units)
+          if (classes && Array.isArray(classes)) setActiveClasses(classes)
         }
       }
-
-      return prev
-    })
-  }, [isOpen, activeUnits])
-
-  const parsedClasses = extractArray(classes)
-  const activeClasses = parsedClasses.length > 0 ? parsedClasses : internalClasses
-
-  const unitOptions = activeUnits.map(u => {
-    if (typeof u === 'string') return { value: u, label: u }
-    const val = String(u.id ?? u.unit_id ?? u.value ?? u.code ?? '')
-    const nameStr = u.name || u.nama || u.nama_unit || u.unit_name || u.nama_pendidikan || ''
-    const codeStr = u.code || u.kode || ''
-
-    let lbl = nameStr
-    if (nameStr && codeStr && nameStr !== codeStr) {
-      lbl = `${nameStr} (${codeStr})`
-    } else if (!lbl) {
-      lbl = codeStr || val || 'Unit Pendidikan'
     }
+    fetchMasters()
+    return () => { isMounted = false }
+  }, [units, classes])
 
-    return { value: val, label: lbl }
+  const provQuery = useProvinsiList()
+  const provList = provQuery?.data && Array.isArray(provQuery.data) && provQuery.data.length > 0
+    ? provQuery.data
+    : getProvinsiList()
+
+  const kotaQuery = useKotaOptions(formData.provinsi)
+  const kotaList = kotaQuery?.data && Array.isArray(kotaQuery.data) && kotaQuery.data.length > 0
+    ? kotaQuery.data
+    : getKotaOptions(formData.provinsi)
+
+  const kecQuery = useKecamatanOptions(formData.kota_kabupaten, formData.provinsi)
+  const kecList = kecQuery?.data && Array.isArray(kecQuery.data) && kecQuery.data.length > 0
+    ? kecQuery.data
+    : getKecamatanOptions(formData.kota_kabupaten)
+
+  const kelQuery = useKelurahanOptions(formData.kecamatan, formData.kota_kabupaten, formData.provinsi)
+  const kelList = kelQuery?.data && Array.isArray(kelQuery.data) && kelQuery.data.length > 0
+    ? kelQuery.data
+    : getKelurahanOptions(formData.kecamatan)
+
+  const kotaSekolahQuery = useKotaOptions(formData.provinsi_sekolah_asal)
+  const kotaSekolahList = kotaSekolahQuery?.data && Array.isArray(kotaSekolahQuery.data) && kotaSekolahQuery.data.length > 0
+    ? kotaSekolahQuery.data
+    : getKotaOptions(formData.provinsi_sekolah_asal)
+
+  const kecSekolahQuery = useKecamatanOptions(formData.kota_kab_sekolah_asal, formData.provinsi_sekolah_asal)
+  const kecSekolahList = kecSekolahQuery?.data && Array.isArray(kecSekolahQuery.data) && kecSekolahQuery.data.length > 0
+    ? kecSekolahQuery.data
+    : getKecamatanOptions(formData.kota_kab_sekolah_asal)
+
+  const kelSekolahQuery = useKelurahanOptions(formData.kecamatan_sekolah_asal, formData.kota_kab_sekolah_asal, formData.provinsi_sekolah_asal)
+  const kelSekolahList = kelSekolahQuery?.data && Array.isArray(kelSekolahQuery.data) && kelSekolahQuery.data.length > 0
+    ? kelSekolahQuery.data
+    : getKelurahanOptions(formData.kecamatan_sekolah_asal)
+
+  const unitOptions = (activeUnits || []).map(u => {
+    if (typeof u === 'string') return { label: u, value: u }
+    return {
+      label: u.name || u.nama || u.code || 'Unit',
+      value: String(u.id ?? u.unit_id ?? u.value ?? u.code ?? ''),
+    }
+  }).filter(u => u.value !== '')
+
+  const filteredClasses = (activeClasses || []).filter(c => {
+    if (!formData.unit_id) return true
+    if (typeof c === 'string') return true
+    const classUnitId = c.unit_id ?? c.unitId ?? (c.unit ? c.unit.id : null)
+    return !classUnitId || String(classUnitId) === String(formData.unit_id)
   })
 
-  const classOptions = activeClasses
-    .filter(k => {
-      if (!formData.unit_id) return true
-      const kUnitId = k.unit_pendidikan_id || k.unit_id || k.unit?.id
-      return String(kUnitId) === String(formData.unit_id)
-    })
-    .map(k => {
-      if (typeof k === 'string') return { value: k, label: k }
-      const val = k.id ?? k.kelas_id ?? k.value ?? ''
-      const lbl = typeof k.nama_kelas === 'object'
-        ? (k.nama_kelas?.name || k.nama_kelas?.nama || '-')
-        : (k.nama_kelas || k.name || k.nama || k.nama_lengkap || val || 'Kelas')
-      return { value: val, label: lbl }
-    })
+  const classOptions = filteredClasses.map(c => {
+    if (typeof c === 'string') return { label: c, value: c }
+    return {
+      label: c.nama_kelas || c.name || c.nama || 'Kelas',
+      value: String(c.id ?? c.kelas_id ?? c.value ?? ''),
+    }
+  }).filter(c => c.value !== '')
 
-  const handleMapLocationChange = (lat, lng) => {
-    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))
-  }
+  const academicYearOptions = academicYears.map(y => {
+    if (typeof y === 'string') return { label: y, value: y }
+    return {
+      label: y.tahun || y.name || y.tahun_ajaran || 'Tahun Ajaran',
+      value: y.tahun || y.name || y.tahun_ajaran || String(y.id || ''),
+    }
+  })
 
-  const handleMapAddressSelect = (geoData) => {
-    setFormData(prev => {
-      // 1. Match Provinsi
-      let matchedProv = prev.provinsi
-      if (geoData.provinsi) {
-        const foundProv = provList.find(p => 
-          p.toLowerCase().includes(geoData.provinsi.toLowerCase()) || 
-          geoData.provinsi.toLowerCase().includes(p.toLowerCase())
-        )
-        if (foundProv) matchedProv = foundProv
-      }
+  const modaOptions = modaList.map(m => {
+    if (typeof m === 'string') return { label: m, value: m }
+    return {
+      label: m.nama || m.name || 'Moda',
+      value: m.nama || m.name || String(m.id || ''),
+    }
+  })
 
-      // 2. Match Kota
-      let matchedKota = prev.kota_kabupaten
-      const availableKotas = getKotaOptions(matchedProv)
-      if (geoData.kota) {
-        const cleanGeoKota = geoData.kota.replace(/Kota|Kabupaten|Kab\./gi, '').trim()
-        const foundKota = availableKotas.find(k => {
-          const cleanK = k.replace(/Kota|Kabupaten|Kab\./gi, '').trim()
-          return cleanK.toLowerCase().includes(cleanGeoKota.toLowerCase()) || cleanGeoKota.toLowerCase().includes(cleanK.toLowerCase())
-        })
-        if (foundKota) matchedKota = foundKota
-      }
-
-      // 3. Match Kecamatan (e.g. Nanggalo, Padang Barat, etc.)
-      let matchedKec = prev.kecamatan
-      const availableKecs = getKecamatanOptions(matchedKota)
-      if (geoData.kecamatan) {
-        const foundKec = availableKecs.find(kc => 
-          kc.toLowerCase().includes(geoData.kecamatan.toLowerCase()) || 
-          geoData.kecamatan.toLowerCase().includes(kc.toLowerCase())
-        )
-        if (foundKec) {
-          matchedKec = foundKec
-        } else if (geoData.kecamatan) {
-          matchedKec = geoData.kecamatan
-        }
-      }
-
-      // 4. Match Kelurahan
-      let matchedKel = prev.kelurahan
-      const availableKels = getKelurahanOptions(matchedKec)
-      if (geoData.kelurahan) {
-        const foundKel = availableKels.find(kl => 
-          kl.toLowerCase().includes(geoData.kelurahan.toLowerCase()) || 
-          geoData.kelurahan.toLowerCase().includes(kl.toLowerCase())
-        )
-        if (foundKel) {
-          matchedKel = foundKel
-        } else if (geoData.kelurahan) {
-          matchedKel = geoData.kelurahan
-        }
-      }
-
-      return {
-        ...prev,
-        latitude: geoData.lat,
-        longitude: geoData.lng,
-        alamat_siswa: geoData.road || geoData.displayName || prev.alamat_siswa,
-        provinsi: matchedProv,
-        kota_kabupaten: matchedKota,
-        kecamatan: matchedKec,
-        kelurahan: matchedKel,
-        kode_pos: geoData.postcode || prev.kode_pos,
-      }
-    })
-  }
-
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setIsUploading(true)
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setFormData(prev => ({ ...prev, foto_url: reader.result }))
+
+    if (!file.type.startsWith('image/')) {
+      setModalError({
+        title: 'Format Berkas Salah',
+        message: 'Mohon unggah berkas gambar dengan format JPG, PNG, atau WEBP.',
+      })
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setModalError({
+        title: 'Ukuran Foto Terlalu Besar',
+        message: 'Ukuran foto maksimal adalah 2MB. Silakan pilih foto dengan resolusi lebih kecil.',
+      })
+      return
+    }
+
+    try {
+      setIsUploading(true)
+      const data = new FormData()
+      data.append('file', file)
+      const response = await api.post('/upload', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      const rawUrl = response.data?.url || response.data?.data?.url || ''
+      const resolved = resolveAvatarUrl(rawUrl)
+      setFormData(prev => ({ ...prev, foto_url: resolved }))
+      setModalError(null)
+    } catch (err) {
+      console.error(err)
+      const localPreview = URL.createObjectURL(file)
+      setFormData(prev => ({ ...prev, foto_url: localPreview }))
+    } finally {
       setIsUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleRemoveFoto = () => {
     setFormData(prev => ({ ...prev, foto_url: '' }))
   }
 
+  const handleMapLocationChange = (coords) => {
+    setFormData(prev => ({
+      ...prev,
+      latitude: coords.lat,
+      longitude: coords.lng,
+    }))
+  }
+
+  const handleMapAddressSelect = (addressDetails) => {
+    setFormData(prev => {
+      const next = { ...prev }
+      if (addressDetails.address && !prev.alamat_siswa) next.alamat_siswa = addressDetails.address
+      if (addressDetails.kelurahan) next.kelurahan = addressDetails.kelurahan
+      if (addressDetails.kecamatan) next.kecamatan = addressDetails.kecamatan
+      if (addressDetails.kota_kabupaten) next.kota_kabupaten = addressDetails.kota_kabupaten
+      if (addressDetails.provinsi) next.provinsi = addressDetails.provinsi
+      if (addressDetails.kode_pos) next.kode_pos = addressDetails.kode_pos
+      return next
+    })
+  }
+
+  const validateStep = (stepIdx) => {
+    if (stepIdx === 0) {
+      const nikTrimmed = String(formData.nik || '').trim()
+      if (!nikTrimmed || nikTrimmed.length !== 16 || !/^\d{16}$/.test(nikTrimmed)) {
+        setStepError(
+          'Validasi NIK Siswa Gagal',
+          `Field NIK Siswa wajib diisi tepat 16 digit angka. (Jumlah digit saat ini: ${nikTrimmed.length} digit)`,
+          0
+        )
+        return false
+      }
+
+      const kkTrimmed = String(formData.no_kk || '').trim()
+      if (!kkTrimmed || kkTrimmed.length !== 16 || !/^\d{16}$/.test(kkTrimmed)) {
+        setStepError(
+          'Validasi No. KK Gagal',
+          `Field Nomor Kartu Keluarga (KK) wajib diisi tepat 16 digit angka. (Jumlah digit saat ini: ${kkTrimmed.length} digit)`,
+          0
+        )
+        return false
+      }
+    }
+
+    if (stepIdx === 2) {
+      const nikAyah = String(formData.nik_ayah || '').trim()
+      if (nikAyah && (nikAyah.length !== 16 || !/^\d{16}$/.test(nikAyah))) {
+        setStepError(
+          'Validasi NIK Ayah Gagal',
+          `Field NIK Ayah harus tepat 16 digit angka. (Jumlah digit saat ini: ${nikAyah.length} digit)`,
+          2
+        )
+        return false
+      }
+
+      const nikIbu = String(formData.nik_ibu || '').trim()
+      if (nikIbu && (nikIbu.length !== 16 || !/^\d{16}$/.test(nikIbu))) {
+        setStepError(
+          'Validasi NIK Ibu Gagal',
+          `Field NIK Ibu harus tepat 16 digit angka. (Jumlah digit saat ini: ${nikIbu.length} digit)`,
+          2
+        )
+        return false
+      }
+    }
+
+    if (stepIdx === 3) {
+      const nikWali = String(formData.nik_wali || '').trim()
+      if (nikWali && (nikWali.length !== 16 || !/^\d{16}$/.test(nikWali))) {
+        setStepError(
+          'Validasi NIK Wali Gagal',
+          `Field NIK Wali harus tepat 16 digit angka. (Jumlah digit saat ini: ${nikWali.length} digit)`,
+          3
+        )
+        return false
+      }
+    }
+
+    setModalError(null)
+    return true
+  }
+
+  const handleStepClick = (targetIdx) => {
+    if (targetIdx > activeStep) {
+      for (let i = activeStep; i < targetIdx; i++) {
+        if (!validateStep(i)) {
+          setActiveStep(i)
+          return
+        }
+      }
+    }
+    setModalError(null)
+    setActiveStep(targetIdx)
+  }
+
+  const handleNextStep = () => {
+    if (!validateStep(activeStep)) return
+    setModalError(null)
+    setActiveStep(prev => prev + 1)
+  }
+
   const handleSave = (e) => {
     if (e) e.preventDefault()
 
-    // Validasi NIK wajib 16 digit angka
-    const validateNikField = (val, fieldLabel, stepIndex) => {
-      const trimmed = String(val || '').trim()
-      if (trimmed && (trimmed.length !== 16 || !/^\d{16}$/.test(trimmed))) {
-        Swal.fire({
-          title: 'Validasi NIK Gagal',
-          html: `<p class="text-sm text-slate-600">Field <b>${fieldLabel}</b> harus terdiri dari <b>16 digit angka</b>.<br/><span class="text-xs text-rose-600 font-semibold mt-1 block">(Jumlah digit saat ini: ${trimmed.length} digit)</span></p>`,
-          icon: 'warning',
-          confirmButtonColor: '#0E5C44',
-          confirmButtonText: 'Perbaiki Data',
-        })
-        if (stepIndex !== undefined) setActiveStep(stepIndex)
-        return false
+    // Validasi seluruh langkah sebelum submit ke dialog konfirmasi
+    for (let i = 0; i < steps.length; i++) {
+      if (!validateStep(i)) {
+        setActiveStep(i)
+        return
       }
-      return true
     }
-
-    if (!validateNikField(formData.nik, 'NIK Siswa', 0)) return
-    if (!validateNikField(formData.nik_ayah, 'NIK Ayah', 2)) return
-    if (!validateNikField(formData.nik_ibu, 'NIK Ibu', 2)) return
-    if (!validateNikField(formData.nik_wali, 'NIK Wali', 3)) return
 
     const payload = {
       id: formData.id,
@@ -577,108 +859,145 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4">
-      <div className="my-4 flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+    <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 14 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="modal-dialog font-sans my-auto w-full max-w-4xl"
+      >
+        <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
 
-        {/* Modal Header — Clean Top with Title & Close (X) */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
-          <div>
-            <h2 className="text-base font-bold tracking-tight text-slate-900">
-              {initialData ? 'Edit Siswa' : 'Tambah Siswa'}
-            </h2>
-            <p className="mt-0.5 text-[11px] text-slate-500">
-              {initialData ? 'Perbarui informasi siswa melalui tahapan berikut.' : 'Lengkapi informasi siswa melalui tahapan berikut.'}
-            </p>
+          {/* Top Accent Gradient Bar */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+          {/* Modal Header — Clean Top with Icon Badge & Title */}
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-950">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2 text-emerald-700 dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-emerald-300 shrink-0">
+                <GraduationCap className="size-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                    {initialData ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
+                  </h2>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                    <Sparkles className="size-3" /> {initialData ? 'Update Data' : 'Siswa Baru'}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Langkah {activeStep + 1} dari 5 · {steps[activeStep]?.desc || steps[activeStep]?.title}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Tutup modal"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
+            >
+              <X className="size-5" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup modal"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-          >
-            <FaTimes className="text-lg" />
-          </button>
-        </div>
 
-        {/* Horizontal stepper seperti modal master data */}
-        <div className="shrink-0 border-b border-slate-100 bg-white px-4 py-4 sm:px-6">
-          <div className="grid grid-cols-5">
+          {/* Step Wizard Indicator (Standardized Horizontal Bar) */}
+          <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 p-2.5 sm:px-6 dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
               {steps.map((step, idx) => {
                 const isActive = activeStep === idx
-                const isCompleted = activeStep > idx
+                const isDone = activeStep > idx
+                const StepIcon = step.icon
                 return (
                   <button
+                    key={step.id || idx}
                     type="button"
-                    key={step.id}
-                    onClick={() => setActiveStep(idx)}
-                    className="group relative flex min-w-0 items-center gap-2 pr-2 text-left"
+                    onClick={() => handleStepClick(idx)}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-2 text-[11px] font-extrabold transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-none dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600'
+                        : isDone
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100/80 border border-emerald-200/50 dark:border-emerald-800/40'
+                        : 'bg-white text-slate-400 border border-slate-200/80 hover:bg-slate-100 dark:bg-slate-800/60 dark:border-slate-700/60 dark:text-slate-500'
+                    }`}
                   >
-                    {idx < steps.length - 1 && (
-                      <span className={`absolute left-8 right-0 top-4 h-px ${isCompleted ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                    )}
-                    <div
-                      className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                        isActive
-                          ? 'bg-emerald-800 text-white ring-4 ring-emerald-50'
-                          : isCompleted
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
-                      }`}
-                    >
-                      {isCompleted ? <FaCheckCircle className="text-sm" /> : step.number}
-                    </div>
-                    <span className={`relative z-10 hidden truncate bg-white pr-1 text-[10px] font-bold leading-tight lg:block ${isActive ? 'text-emerald-800' : 'text-slate-500'}`}>
-                      {step.title}
-                    </span>
+                    <StepIcon className={`size-3.5 shrink-0 ${isActive ? 'text-white' : isDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                    <span className="truncate hidden md:inline">{step.title}</span>
+                    <span className="truncate md:hidden">Step {idx + 1}</span>
                   </button>
                 )
               })}
-          </div>
-        </div>
-
-        {/* Form Content Area */}
-          <div className="min-h-0 flex-1 overflow-y-auto bg-white p-5 sm:p-6">
-            <div className="mb-5">
-              <h3 className="text-sm font-bold text-slate-900">{steps[activeStep].title}</h3>
-              <p className="mt-1 text-[11px] text-slate-500">{steps[activeStep].desc}. Pastikan data yang dimasukkan sudah benar.</p>
             </div>
+          </div>
+
+          {/* Form Content Area */}
+          <div ref={modalBodyRef} className="min-h-0 flex-1 overflow-y-auto bg-white p-5 sm:p-6 dark:bg-[#182232]">
+            {/* In-Modal Alert Banner */}
+            {modalError && (
+              <div className="mb-5 rounded-2xl border border-rose-200/90 bg-rose-50/90 p-4 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/50 dark:text-rose-300 flex items-start justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-7 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-xs shrink-0 mt-0.5">
+                    <AlertTriangle className="size-4" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-rose-950 dark:text-rose-200 text-xs sm:text-sm">{modalError.title}</h4>
+                    <p className="mt-0.5 text-xs text-rose-800 dark:text-rose-300 font-medium leading-relaxed">{modalError.message}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalError(null)}
+                  className="rounded-lg p-1 text-rose-400 hover:bg-rose-100/60 hover:text-rose-700 dark:hover:bg-rose-900/40 transition cursor-pointer"
+                  aria-label="Tutup peringatan"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="mb-5">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{steps[activeStep].title}</h3>
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{steps[activeStep].desc}. Pastikan data yang dimasukkan sudah benar.</p>
+            </div>
+
             <form id="student-main-form" onSubmit={handleSave} className="space-y-6">
 
               {/* STEP 1: INFORMASI PRIBADI */}
               {activeStep === 0 && (
                 <div className="space-y-6">
-                  {/* Upload Foto Box - Sesuai UI Gambar */}
+                  {/* Upload Foto Box - Sesuai TailGrids Dropzone Standar */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-2">Unggah Foto Siswa</label>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Foto Profil Siswa</label>
                     {formData.foto_url ? (
-                      <div className="relative flex items-center gap-4 p-4 rounded-2xl border border-emerald-200 bg-emerald-50/40">
+                      <div className="flex items-center gap-4 p-3.5 rounded-2xl border border-emerald-200/90 bg-emerald-50/60 dark:bg-emerald-950/40 dark:border-emerald-800">
                         <PersonAvatar
                           src={formData.foto_url}
                           name={formData.full_name}
                           size="detail"
-                          className="h-20 w-20 rounded-xl border-2 border-emerald-600 shadow shrink-0"
+                          className="h-16 w-16 shrink-0 border-2 border-emerald-600 shadow-sm"
                         />
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-slate-800">Foto Siswa Berhasil Diunggah</p>
-                          <p className="text-[11px] text-slate-500">Guna untuk data Kartu Siswa & Administrasi</p>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Foto Siswa Berhasil Diunggah</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Digunakan untuk kartu pelajar & kelengkapan administrasi.</p>
                           <button
                             type="button"
                             onClick={handleRemoveFoto}
-                            className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline pt-1"
+                            className="text-xs font-bold text-rose-600 hover:underline mt-1 inline-flex items-center gap-1 cursor-pointer"
                           >
-                            <FaTrashAlt /> Hapus & Unggah Ulang
+                            <Trash2 className="size-3.5" /> Hapus Foto & Upload Ulang
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center hover:bg-emerald-50/30 hover:border-emerald-400 cursor-pointer transition">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-[#064e3b] mb-2 shadow-xs">
-                          <FaCloudUploadAlt className="text-2xl" />
+                      <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-300/80 bg-emerald-50/20 p-5 text-center hover:bg-emerald-50/35 hover:border-emerald-500 cursor-pointer transition-all dark:border-emerald-800/60 dark:bg-slate-900/30">
+                        <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                          <Upload className="size-5" strokeWidth={2.2} />
                         </div>
-                        <span className="text-sm font-bold text-slate-800">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
                           {isUploading ? 'Mengunggah...' : 'Upload Foto Siswa'}
                         </span>
-                        <span className="text-[11px] text-slate-400 mt-1">PNG, JPG atau WEBP (maksimal 2MB)</span>
+                        <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG atau WEBP (Maksimal 2MB)</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -690,48 +1009,86 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input label="Nama Lengkap Siswa" name="full_name" required placeholder="Contoh: Fathir Ahmad" {...getProps('full_name')} />
-                    <Select label="Unit Pendidikan" name="unit_id" required options={unitOptions} {...getProps('unit_id')} />
-                    <Input label="NIS" name="nis" required placeholder="Nomor Induk Siswa" {...getProps('nis')} />
-                    <Input label="NISN" name="nisn" required placeholder="10 Digit NISN" {...getProps('nisn')} />
-                    <Input label="NIK Siswa" name="nik" placeholder="16 Digit NIK" maxLength={16} {...getProps('nik')} />
-                    <Input label="No Pendaftaran" name="no_pendaftaran" placeholder="PDK-2024-001" {...getProps('no_pendaftaran')} />
-                    <Input label="No Kartu Keluarga (KK)" name="no_kk" placeholder="16 Digit No KK" maxLength={16} {...getProps('no_kk')} />
-                    <Input label="No Registrasi Akta Lahir" name="no_registrasi_akta_lahir" placeholder="No Akta Lahir" {...getProps('no_registrasi_akta_lahir')} />
-                    <Select label="Tempat Lahir" name="birth_place" options={getBirthPlaceOptions(formData.birth_place)} {...getProps('birth_place')} />
-                    <Input label="Tanggal Lahir" name="birth_date" type="date" {...getProps('birth_date')} />
-                    <Select label="Jenis Kelamin" name="gender" required options={[{label:'Laki-laki', value:'male'}, {label:'Perempuan', value:'female'}]} {...getProps('gender')} />
-                    <Select label="Agama" name="agama" options={['Islam','Kristen','Katolik','Hindu','Buddha','Konghucu']} {...getProps('agama')} />
-                    <Input label="Email Siswa (Opsional)" name="email" type="email" placeholder="siswa@sekolah.sch.id" {...getProps('email')} />
-                    <Select label="Kewarganegaraan" name="kewarganegaraan" options={['WNI','WNA']} {...getProps('kewarganegaraan')} />
+                    <Input label="Nama Lengkap Siswa" name="full_name" required icon={User} placeholder="Contoh: Fathir Ahmad" {...getProps('full_name')} />
+                    <Select label="Unit Pendidikan" name="unit_id" required icon={School} options={unitOptions} {...getProps('unit_id')} />
+                    <Input label="NIS" name="nis" required icon={Hash} placeholder="Nomor Induk Siswa" {...getProps('nis')} />
+                    <Input label="NISN" name="nisn" required icon={Hash} placeholder="10 Digit NISN" {...getProps('nisn')} />
+                    <Input
+                      label="NIK Siswa"
+                      name="nik"
+                      required
+                      icon={IdCard}
+                      placeholder="16 Digit NIK Siswa"
+                      maxLength={16}
+                      helperText={`${(formData.nik || '').length}/16 digit (Wajib 16 digit)`}
+                      error={formData.nik && formData.nik.length !== 16 ? `NIK harus 16 digit (${formData.nik.length}/16)` : undefined}
+                      {...getProps('nik')}
+                    />
+                    <Input label="No Pendaftaran" name="no_pendaftaran" icon={Hash} placeholder="PDK-2024-001" {...getProps('no_pendaftaran')} />
+                    <Input
+                      label="No Kartu Keluarga (KK)"
+                      name="no_kk"
+                      required
+                      icon={IdCard}
+                      placeholder="16 Digit No KK"
+                      maxLength={16}
+                      helperText={`${(formData.no_kk || '').length}/16 digit (Wajib 16 digit)`}
+                      error={formData.no_kk && formData.no_kk.length !== 16 ? `No KK harus 16 digit (${formData.no_kk.length}/16)` : undefined}
+                      {...getProps('no_kk')}
+                    />
+                    <Input label="No Registrasi Akta Lahir" name="no_registrasi_akta_lahir" icon={Hash} placeholder="No Akta Lahir" {...getProps('no_registrasi_akta_lahir')} />
+                    <Select label="Tempat Lahir" name="birth_place" icon={MapPin} options={getBirthPlaceOptions(formData.birth_place)} {...getProps('birth_place')} />
+                    <Input label="Tanggal Lahir" name="birth_date" type="date" icon={Calendar} {...getProps('birth_date')} />
+                    <Select label="Jenis Kelamin" name="gender" required icon={User} options={[{label:'Laki-laki', value:'male'}, {label:'Perempuan', value:'female'}]} {...getProps('gender')} />
+                    <Select label="Agama" name="agama" icon={ShieldCheck} options={['Islam','Kristen','Katolik','Hindu','Buddha','Konghucu']} {...getProps('agama')} />
+                    <Input label="Email Siswa (Opsional)" name="email" type="email" icon={Mail} placeholder="siswa@sekolah.sch.id" {...getProps('email')} />
+                    <Select label="Kewarganegaraan" name="kewarganegaraan" icon={MapPin} options={['WNI','WNA']} {...getProps('kewarganegaraan')} />
+                    <Input label="Anak Ke" name="anak_ke" type="number" min="1" icon={Users} {...getProps('anak_ke')} />
+                    <Input label="Jumlah Saudara" name="jumlah_saudara" type="number" min="0" icon={Users} {...getProps('jumlah_saudara')} />
+                    <Input label="Jumlah Saudara Tiri" name="jumlah_saudara_tiri" type="number" min="0" icon={Users} {...getProps('jumlah_saudara_tiri')} />
+                    <Input label="Berat Badan (kg)" name="berat_badan" type="number" min="0" step="0.1" icon={Hash} {...getProps('berat_badan')} />
+                    <Input label="Tinggi Badan (cm)" name="tinggi_badan" type="number" min="0" step="0.1" icon={Hash} {...getProps('tinggi_badan')} />
+                    <Input label="Riwayat Penyakit" name="riwayat_penyakit" icon={AlertTriangle} placeholder="Tulis jika ada" {...getProps('riwayat_penyakit')} />
+                    <Input label="Hobi" name="hobi" icon={Sparkles} placeholder="Contoh: Membaca" {...getProps('hobi')} />
+                    <Input label="Cita-cita" name="cita_cita" icon={Award} placeholder="Contoh: Dokter" {...getProps('cita_cita')} />
                   </div>
 
-                  <hr className="border-slate-100 my-4" />
+                  <hr className="border-slate-100 dark:border-slate-800 my-4" />
 
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Alamat & Tempat Tinggal</h4>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Alamat & Tempat Tinggal</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="sm:col-span-2">
-                      <Input label="Alamat Lengkap" name="alamat_siswa" placeholder="Jl. Khatib Sulaiman No. 10..." {...getProps('alamat_siswa')} />
+                      <Input label="Alamat Lengkap" name="alamat_siswa" icon={MapPin} placeholder="Jl. Khatib Sulaiman No. 10..." {...getProps('alamat_siswa')} />
                     </div>
-                    <Select label="Provinsi" name="provinsi" options={provList} {...getProps('provinsi')} />
-                    <Select label="Kota / Kabupaten" name="kota_kabupaten" options={kotaList.length > 0 ? kotaList : [formData.kota_kabupaten].filter(Boolean)} {...getProps('kota_kabupaten')} />
+                    <Select label="Provinsi" name="provinsi" icon={MapPin} options={provList} {...getProps('provinsi')} />
+                    <Select label="Kota / Kabupaten" name="kota_kabupaten" icon={MapPin} options={kotaList.length > 0 ? kotaList : [formData.kota_kabupaten].filter(Boolean)} {...getProps('kota_kabupaten')} />
                     {kecList.length > 0 ? (
-                      <Select label="Kecamatan" name="kecamatan" options={kecList} {...getProps('kecamatan')} />
+                      <Select label="Kecamatan" name="kecamatan" icon={MapPin} options={kecList} {...getProps('kecamatan')} />
                     ) : (
-                      <Input label="Kecamatan" name="kecamatan" placeholder={formData.kota_kabupaten ? "Ketik kecamatan..." : "Pilih Kota/Kabupaten dulu"} {...getProps('kecamatan')} />
+                      <Input label="Kecamatan" name="kecamatan" icon={MapPin} placeholder={formData.kota_kabupaten ? "Ketik kecamatan..." : "Pilih Kota/Kabupaten dulu"} {...getProps('kecamatan')} />
                     )}
                     {kelList.length > 0 ? (
-                      <Select label="Kelurahan / Desa" name="kelurahan" options={kelList} {...getProps('kelurahan')} />
+                      <Select label="Kelurahan / Desa" name="kelurahan" icon={MapPin} options={kelList} {...getProps('kelurahan')} />
                     ) : (
-                      <Input label="Kelurahan / Desa" name="kelurahan" placeholder={formData.kecamatan ? "Ketik kelurahan..." : "Pilih Kecamatan dulu"} {...getProps('kelurahan')} />
+                      <Input label="Kelurahan / Desa" name="kelurahan" icon={MapPin} placeholder={formData.kecamatan ? "Ketik kelurahan..." : "Pilih Kecamatan dulu"} {...getProps('kelurahan')} />
                     )}
-                    <Input label="RT" name="rt" placeholder="001" {...getProps('rt')} />
-                    <Input label="RW" name="rw" placeholder="002" {...getProps('rw')} />
-                    <Input label="Kode Pos" name="kode_pos" placeholder="25114" {...getProps('kode_pos')} />
-                    <Input label="Moda Transportasi" name="moda_transportasi" placeholder="Jalan Kaki / Sepeda / Bus" {...getProps('moda_transportasi')} />
+                    <Input label="RT" name="rt" icon={Hash} placeholder="001" {...getProps('rt')} />
+                    <Input label="RW" name="rw" icon={Hash} placeholder="002" {...getProps('rw')} />
+                    <Input label="Dusun" name="dusun" icon={MapPin} placeholder="Nama dusun" {...getProps('dusun')} />
+                    <Input label="Kode Pos" name="kode_pos" icon={Hash} placeholder="25114" {...getProps('kode_pos')} />
+                    <Select label="Jenis Tempat Tinggal" name="jenis_tempat_tinggal" icon={Building} options={['Bersama Orang Tua', 'Wali', 'Asrama', 'Kos', 'Panti Asuhan', 'Lainnya']} {...getProps('jenis_tempat_tinggal')} />
+                    <Input label="Jarak Tempuh ke Sekolah" name="jarak_tempuh_ke_sekolah" icon={Compass} placeholder="Contoh: 3 km" {...getProps('jarak_tempuh_ke_sekolah')} />
+                    <Select
+                      label="Moda Transportasi"
+                      name="moda_transportasi"
+                      icon={Compass}
+                      placeholder="-- Pilih Moda Transportasi --"
+                      options={modaOptions}
+                      {...getProps('moda_transportasi')}
+                    />
                   </div>
 
-                  <hr className="border-slate-100 my-4" />
+                  <hr className="border-slate-100 dark:border-slate-800 my-4" />
 
                   {/* Peta Alamat Interaktif */}
                   <AddressMap
@@ -746,30 +1103,59 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
               {/* STEP 2: PENDIDIKAN & BANTUAN */}
               {activeStep === 1 && (
                 <div className="space-y-6">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Riwayat Sekolah Asal</h4>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Riwayat Sekolah Asal</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input label="Nama Sekolah Asal" name="sekolah_asal" placeholder="SD Negeri 01 Padang" {...getProps('sekolah_asal')} />
-                    <Select label="Status Sekolah Asal" name="status_sekolah_asal" options={['Negeri', 'Swasta']} {...getProps('status_sekolah_asal')} />
-                    <Select label="Kota / Kab Sekolah Asal" name="kota_kab_sekolah_asal" options={kotaSekolahList} {...getProps('kota_kab_sekolah_asal')} />
-                    {kecSekolahList.length > 0 ? (
-                      <Select label="Kecamatan Sekolah Asal" name="kecamatan_sekolah_asal" options={kecSekolahList} {...getProps('kecamatan_sekolah_asal')} />
-                    ) : (
-                      <Input label="Kecamatan Sekolah Asal" name="kecamatan_sekolah_asal" placeholder="Kecamatan" {...getProps('kecamatan_sekolah_asal')} />
-                    )}
-                    <Input label="No HP / WA Sekolah Asal" name="nomor_hp_wa_sekolah_asal" placeholder="08xx-xxxx-xxxx" {...getProps('nomor_hp_wa_sekolah_asal')} />
+                    <Input label="Nama Sekolah Asal" name="sekolah_asal" icon={School} placeholder="SD Negeri 01 Padang" {...getProps('sekolah_asal')} />
+                    <Select label="Status Sekolah Asal" name="status_sekolah_asal" icon={Building} options={['Formal', 'Tidak Formal']} {...getProps('status_sekolah_asal')} />
+                    <Select
+                      label="Provinsi Sekolah Asal"
+                      name="provinsi_sekolah_asal"
+                      icon={MapPin}
+                      placeholder="-- Pilih Provinsi Sekolah Asal --"
+                      options={provList}
+                      {...getProps('provinsi_sekolah_asal')}
+                    />
+                    <Select
+                      label="Kota / Kab Sekolah Asal"
+                      name="kota_kab_sekolah_asal"
+                      icon={MapPin}
+                      disabled={!formData.provinsi_sekolah_asal}
+                      placeholder={formData.provinsi_sekolah_asal ? "-- Pilih Kota / Kabupaten --" : "Pilih Provinsi Dulu"}
+                      options={kotaSekolahList}
+                      {...getProps('kota_kab_sekolah_asal')}
+                    />
+                    <Select
+                      label="Kecamatan Sekolah Asal"
+                      name="kecamatan_sekolah_asal"
+                      icon={MapPin}
+                      disabled={!formData.kota_kab_sekolah_asal}
+                      placeholder={formData.kota_kab_sekolah_asal ? "-- Pilih Kecamatan --" : "Pilih Kota/Kab Dulu"}
+                      options={kecSekolahList}
+                      {...getProps('kecamatan_sekolah_asal')}
+                    />
+                    <Select
+                      label="Kelurahan Sekolah Asal"
+                      name="kelurahan_sekolah_asal"
+                      icon={MapPin}
+                      disabled={!formData.kecamatan_sekolah_asal}
+                      placeholder={formData.kecamatan_sekolah_asal ? "-- Pilih Kelurahan --" : "Pilih Kecamatan Dulu"}
+                      options={kelSekolahList}
+                      {...getProps('kelurahan_sekolah_asal')}
+                    />
+                    <Input label="No HP / WA Sekolah Asal" name="nomor_hp_wa_sekolah_asal" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('nomor_hp_wa_sekolah_asal')} />
                   </div>
 
-                  <hr className="border-slate-100 my-4" />
+                  <hr className="border-slate-100 dark:border-slate-800 my-4" />
 
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Administrasi Bantuan</h4>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Administrasi Bantuan</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input label="Nominal SPP" name="nominal_spp" isRupiah placeholder="500.000" {...getProps('nominal_spp')} />
-                    <Input label="Nominal Bantuan Ortu Asuh" name="nominal_ortu_asuh" isRupiah placeholder="0" {...getProps('nominal_ortu_asuh')} />
-                    <Select label="Penerima KPS / PKH" name="penerima_kps_pkh" options={['ya', 'tidak']} {...getProps('penerima_kps_pkh')} />
-                    <Select label="Apakah Punya KIP?" name="apakah_punya_kip" options={['ya', 'tidak']} {...getProps('apakah_punya_kip')} />
-                    <Select label="Apakah Layak Menerima PIP?" name="apakah_layak_menerima_pip" options={['ya', 'tidak']} {...getProps('apakah_layak_menerima_pip')} />
+                    <Input label="Nominal SPP" name="nominal_spp" isRupiah icon={CreditCard} placeholder="500.000" {...getProps('nominal_spp')} />
+                    <Input label="Nominal Bantuan Ortu Asuh" name="nominal_ortu_asuh" isRupiah icon={CreditCard} placeholder="0" {...getProps('nominal_ortu_asuh')} />
+                    <Select label="Penerima KPS / PKH" name="penerima_kps_pkh" icon={ShieldCheck} options={['ya', 'tidak']} {...getProps('penerima_kps_pkh')} />
+                    <Select label="Apakah Punya KIP?" name="apakah_punya_kip" icon={CreditCard} options={['ya', 'tidak']} {...getProps('apakah_punya_kip')} />
+                    <Select label="Apakah Layak Menerima PIP?" name="apakah_layak_menerima_pip" icon={CreditCard} options={['ya', 'tidak']} {...getProps('apakah_layak_menerima_pip')} />
                     <div className="sm:col-span-2">
-                      <Input label="Alasan Menolak PIP (Jika ada)" name="alasan_menolak_pip" placeholder="Ditolak / Sudah Mampu" {...getProps('alasan_menolak_pip')} />
+                      <Input label="Alasan Menolak PIP (Jika ada)" name="alasan_menolak_pip" icon={AlertTriangle} placeholder="Ditolak / Sudah Mampu" {...getProps('alasan_menolak_pip')} />
                     </div>
                   </div>
                 </div>
@@ -778,28 +1164,84 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
               {/* STEP 3: DATA ORANG TUA */}
               {activeStep === 2 && (
                 <div className="space-y-6">
-                  <h4 className="text-xs font-bold text-emerald-900 border-b border-emerald-100 pb-2">Ayah Kandung</h4>
+                  <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 border-b border-emerald-100 dark:border-emerald-800 pb-2">Ayah Kandung</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input label="NIK Ayah" name="nik_ayah" placeholder="16 Digit NIK Ayah" maxLength={16} {...getProps('nik_ayah')} />
-                    <Input label="Nama Ayah Kandung" name="nama_ayah" placeholder="Nama Ayah" {...getProps('nama_ayah')} />
-                    <Select label="Tempat Lahir Ayah" name="tempat_lahir_ayah" options={getBirthPlaceOptions(formData.tempat_lahir_ayah)} {...getProps('tempat_lahir_ayah')} />
-                    <Input label="Tanggal Lahir Ayah" name="tgl_lahir_ayah" type="date" {...getProps('tgl_lahir_ayah')} />
-                    <Input label="No HP / WA Ayah" name="hp_ayah" placeholder="08xx-xxxx-xxxx" {...getProps('hp_ayah')} />
-                    <Select label="Pendidikan Terakhir Ayah" name="pendidikan_terakhir_ayah" options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_ayah')} />
-                    <Input label="Pekerjaan Ayah" name="pekerjaan_ayah" placeholder="Wiraswasta / PNS / Guru" {...getProps('pekerjaan_ayah')} />
-                    <Input label="Penghasilan Ayah" name="penghasilan_ayah" isRupiah placeholder="5.000.000" {...getProps('penghasilan_ayah')} />
+                    <Input
+                      label="NIK Ayah"
+                      name="nik_ayah"
+                      icon={IdCard}
+                      placeholder="16 Digit NIK Ayah"
+                      maxLength={16}
+                      helperText={`${(formData.nik_ayah || '').length}/16 digit`}
+                      error={formData.nik_ayah && formData.nik_ayah.length !== 16 ? `NIK Ayah harus 16 digit (${formData.nik_ayah.length}/16)` : undefined}
+                      {...getProps('nik_ayah')}
+                    />
+                    <Input label="Nama Ayah Kandung" name="nama_ayah" icon={User} placeholder="Nama Ayah" {...getProps('nama_ayah')} />
+                    <Select label="Tempat Lahir Ayah" name="tempat_lahir_ayah" icon={MapPin} options={getBirthPlaceOptions(formData.tempat_lahir_ayah)} {...getProps('tempat_lahir_ayah')} />
+                    <Input label="Tanggal Lahir Ayah" name="tgl_lahir_ayah" type="date" icon={Calendar} {...getProps('tgl_lahir_ayah')} />
+                    <Input label="Telepon Ayah" name="telfon_ayah" icon={Phone} placeholder="Nomor telepon rumah" {...getProps('telfon_ayah')} />
+                    <Input label="No HP / WA Ayah" name="hp_ayah" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('hp_ayah')} />
+                    <Select label="Pendidikan Terakhir Ayah" name="pendidikan_terakhir_ayah" icon={GraduationCap} options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_ayah')} />
+                    <Select
+                      label="Pekerjaan Ayah"
+                      name="pekerjaan_ayah"
+                      icon={Briefcase}
+                      placeholder="-- Pilih Pekerjaan Ayah --"
+                      options={OCCUPATION_OPTIONS_AYAH}
+                      {...getProps('pekerjaan_ayah')}
+                    />
+                    {formData.pekerjaan_ayah === 'Pegawai Negeri' && (
+                      <>
+                        <Input label="Instansi Pekerjaan Ayah" name="instansi_pekerjaan_ayah" icon={Building2} placeholder="Contoh: Dinas Pendidikan / Kementerian" {...getProps('instansi_pekerjaan_ayah')} />
+                        <Input label="Jabatan Pekerjaan Ayah" name="jabatan_pekerjaan_ayah" icon={Briefcase} placeholder="Contoh: Staf / Kepala Seksi" {...getProps('jabatan_pekerjaan_ayah')} />
+                        <Input label="Alamat Instansi Ayah" name="alamat_instansi_ayah" icon={MapPin} placeholder="Contoh: Jl. Jenderal Sudirman No. 1" {...getProps('alamat_instansi_ayah')} />
+                      </>
+                    )}
+                    <Input label="Keahlian Ayah" name="keahlian_ayah" icon={Sparkles} {...getProps('keahlian_ayah')} />
+                    <Input label="Penghasilan Ayah" name="penghasilan_ayah" isRupiah icon={CreditCard} placeholder="5.000.000" {...getProps('penghasilan_ayah')} />
+                    <Input label="Alamat Ayah" name="alamat_ayah" icon={MapPin} {...getProps('alamat_ayah')} />
+                    <Input label="Nomor WA Ayah" name="nomor_wa_ayah" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('nomor_wa_ayah')} />
+                    <Input label="Media Sosial Ayah" name="medsos_ayah" icon={User} placeholder="Contoh: @akun" {...getProps('medsos_ayah')} />
                   </div>
 
-                  <h4 className="text-xs font-bold text-emerald-900 border-b border-emerald-100 pb-2 pt-2">Ibu Kandung</h4>
+                  <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 border-b border-emerald-100 dark:border-emerald-800 pb-2 pt-2">Ibu Kandung</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input label="NIK Ibu" name="nik_ibu" placeholder="16 Digit NIK Ibu" maxLength={16} {...getProps('nik_ibu')} />
-                    <Input label="Nama Ibu Kandung" name="nama_ibu" placeholder="Nama Ibu" {...getProps('nama_ibu')} />
-                    <Select label="Tempat Lahir Ibu" name="tempat_lahir_ibu" options={getBirthPlaceOptions(formData.tempat_lahir_ibu)} {...getProps('tempat_lahir_ibu')} />
-                    <Input label="Tanggal Lahir Ibu" name="tgl_lahir_ibu" type="date" {...getProps('tgl_lahir_ibu')} />
-                    <Input label="No HP / WA Ibu" name="hp_ibu" placeholder="08xx-xxxx-xxxx" {...getProps('hp_ibu')} />
-                    <Select label="Pendidikan Terakhir Ibu" name="pendidikan_terakhir_ibu" options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_ibu')} />
-                    <Input label="Pekerjaan Ibu" name="pekerjaan_ibu" placeholder="Ibu Rumah Tangga / PNS" {...getProps('pekerjaan_ibu')} />
-                    <Input label="Penghasilan Ibu" name="penghasilan_ibu" isRupiah placeholder="0" {...getProps('penghasilan_ibu')} />
+                    <Input
+                      label="NIK Ibu"
+                      name="nik_ibu"
+                      icon={IdCard}
+                      placeholder="16 Digit NIK Ibu"
+                      maxLength={16}
+                      helperText={`${(formData.nik_ibu || '').length}/16 digit`}
+                      error={formData.nik_ibu && formData.nik_ibu.length !== 16 ? `NIK Ibu harus 16 digit (${formData.nik_ibu.length}/16)` : undefined}
+                      {...getProps('nik_ibu')}
+                    />
+                    <Input label="Nama Ibu Kandung" name="nama_ibu" icon={User} placeholder="Nama Ibu" {...getProps('nama_ibu')} />
+                    <Select label="Tempat Lahir Ibu" name="tempat_lahir_ibu" icon={MapPin} options={getBirthPlaceOptions(formData.tempat_lahir_ibu)} {...getProps('tempat_lahir_ibu')} />
+                    <Input label="Tanggal Lahir Ibu" name="tgl_lahir_ibu" type="date" icon={Calendar} {...getProps('tgl_lahir_ibu')} />
+                    <Input label="Telepon Ibu" name="telfon_ibu" icon={Phone} placeholder="Nomor telepon rumah" {...getProps('telfon_ibu')} />
+                    <Input label="No HP / WA Ibu" name="hp_ibu" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('hp_ibu')} />
+                    <Select label="Pendidikan Terakhir Ibu" name="pendidikan_terakhir_ibu" icon={GraduationCap} options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_ibu')} />
+                    <Select
+                      label="Pekerjaan Ibu"
+                      name="pekerjaan_ibu"
+                      icon={Briefcase}
+                      placeholder="-- Pilih Pekerjaan Ibu --"
+                      options={OCCUPATION_OPTIONS_IBU}
+                      {...getProps('pekerjaan_ibu')}
+                    />
+                    {formData.pekerjaan_ibu === 'Pegawai Negeri' && (
+                      <>
+                        <Input label="Instansi Pekerjaan Ibu" name="instansi_pekerjaan_ibu" icon={Building2} placeholder="Contoh: Puskesmas / RSUD / Dinas" {...getProps('instansi_pekerjaan_ibu')} />
+                        <Input label="Jabatan Pekerjaan Ibu" name="jabatan_pekerjaan_ibu" icon={Briefcase} placeholder="Contoh: Bidan / Staf Administrasi" {...getProps('jabatan_pekerjaan_ibu')} />
+                        <Input label="Alamat Instansi Ibu" name="alamat_instansi_ibu" icon={MapPin} placeholder="Contoh: Jl. Khatib Sulaiman No. 5" {...getProps('alamat_instansi_ibu')} />
+                      </>
+                    )}
+                    <Input label="Keahlian Ibu" name="keahlian_ibu" icon={Sparkles} {...getProps('keahlian_ibu')} />
+                    <Input label="Penghasilan Ibu" name="penghasilan_ibu" isRupiah icon={CreditCard} placeholder="0" {...getProps('penghasilan_ibu')} />
+                    <Input label="Alamat Ibu" name="alamat_ibu" icon={MapPin} {...getProps('alamat_ibu')} />
+                    <Input label="Nomor WA Ibu" name="nomor_wa_ibu" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('nomor_wa_ibu')} />
+                    <Input label="Media Sosial Ibu" name="medsos_ibu" icon={User} placeholder="Contoh: @akun" {...getProps('medsos_ibu')} />
                   </div>
                 </div>
               )}
@@ -807,20 +1249,50 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
               {/* STEP 4: DATA WALI */}
               {activeStep === 3 && (
                 <div className="space-y-6">
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-600">
+                  <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-xs text-slate-600 dark:text-slate-300">
                     Isi data di bawah ini hanya jika siswa tinggal bersama wali (selain ayah/ibu kandung).
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input label="NIK Wali" name="nik_wali" placeholder="16 Digit NIK Wali" maxLength={16} {...getProps('nik_wali')} />
-                    <Input label="Nama Wali Siswa" name="nama_wali" placeholder="Nama Wali" {...getProps('nama_wali')} />
-                    <Select label="Tempat Lahir Wali" name="tempat_lahir_wali" options={getBirthPlaceOptions(formData.tempat_lahir_wali)} {...getProps('tempat_lahir_wali')} />
-                    <Input label="No HP / WA Wali" name="hp_wali" placeholder="08xx-xxxx-xxxx" {...getProps('hp_wali')} />
-                    <Select label="Pendidikan Terakhir Wali" name="pendidikan_terakhir_wali" options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_wali')} />
-                    <Input label="Pekerjaan Wali" name="pekerjaan_wali" placeholder="Pekerjaan Wali" {...getProps('pekerjaan_wali')} />
-                    <Input label="Penghasilan Wali" name="penghasilan_wali" isRupiah placeholder="0" {...getProps('penghasilan_wali')} />
+                    <Select label="Status Pernikahan Wali" name="status_pernikahan_wali" icon={Users} options={['Menikah', 'Belum Menikah', 'Cerai Hidup', 'Cerai Mati']} {...getProps('status_pernikahan_wali')} />
+                    <Input label="Tanggungan Anak Wali" name="tanggungan_anak_wali" type="number" min="0" icon={Users} {...getProps('tanggungan_anak_wali')} />
+                    <Input
+                      label="NIK Wali"
+                      name="nik_wali"
+                      icon={IdCard}
+                      placeholder="16 Digit NIK Wali"
+                      maxLength={16}
+                      helperText={`${(formData.nik_wali || '').length}/16 digit`}
+                      error={formData.nik_wali && formData.nik_wali.length !== 16 ? `NIK Wali harus 16 digit (${formData.nik_wali.length}/16)` : undefined}
+                      {...getProps('nik_wali')}
+                    />
+                    <Input label="Nama Wali Siswa" name="nama_wali" icon={User} placeholder="Nama Wali" {...getProps('nama_wali')} />
+                    <Select label="Tempat Lahir Wali" name="tempat_lahir_wali" icon={MapPin} options={getBirthPlaceOptions(formData.tempat_lahir_wali)} {...getProps('tempat_lahir_wali')} />
+                    <Input label="Tanggal Lahir Wali" name="tgl_lahir_wali" type="date" icon={Calendar} {...getProps('tgl_lahir_wali')} />
+                    <Input label="Telepon Wali" name="telfon_wali" icon={Phone} placeholder="Nomor telepon rumah" {...getProps('telfon_wali')} />
+                    <Input label="No HP / WA Wali" name="hp_wali" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('hp_wali')} />
+                    <Select label="Pendidikan Terakhir Wali" name="pendidikan_terakhir_wali" icon={GraduationCap} options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_wali')} />
+                    <Select
+                      label="Pekerjaan Wali"
+                      name="pekerjaan_wali"
+                      icon={Briefcase}
+                      placeholder="-- Pilih Pekerjaan Wali --"
+                      options={OCCUPATION_OPTIONS_WALI}
+                      {...getProps('pekerjaan_wali')}
+                    />
+                    {formData.pekerjaan_wali === 'Pegawai Negeri' && (
+                      <>
+                        <Input label="Instansi Pekerjaan Wali" name="instansi_pekerjaan_wali" icon={Building2} placeholder="Nama Instansi / Kantor" {...getProps('instansi_pekerjaan_wali')} />
+                        <Input label="Jabatan Pekerjaan Wali" name="jabatan_pekerjaan_wali" icon={Briefcase} placeholder="Jabatan di Instansi" {...getProps('jabatan_pekerjaan_wali')} />
+                        <Input label="Alamat Instansi Wali" name="alamat_instansi_wali" icon={MapPin} placeholder="Alamat Instansi" {...getProps('alamat_instansi_wali')} />
+                      </>
+                    )}
+                    <Input label="Keahlian Wali" name="keahlian_wali" icon={Sparkles} {...getProps('keahlian_wali')} />
+                    <Input label="Penghasilan Wali" name="penghasilan_wali" isRupiah icon={CreditCard} placeholder="0" {...getProps('penghasilan_wali')} />
                     <div className="sm:col-span-2">
-                      <Input label="Alamat Wali" name="alamat_wali" placeholder="Alamat lengkap wali..." {...getProps('alamat_wali')} />
+                      <Input label="Alamat Wali" name="alamat_wali" icon={MapPin} placeholder="Alamat lengkap wali..." {...getProps('alamat_wali')} />
                     </div>
+                    <Input label="Nomor WA Wali" name="nomor_wa_wali" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('nomor_wa_wali')} />
+                    <Input label="Media Sosial Wali" name="medsos_wali" icon={User} placeholder="Contoh: @akun" {...getProps('medsos_wali')} />
                   </div>
                 </div>
               )}
@@ -828,16 +1300,33 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
               {/* STEP 5: AKADEMIK & STATUS */}
               {activeStep === 4 && (
                 <div className="space-y-6">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Penempatan Unit & Kelas</h4>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Penempatan Unit & Kelas</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select label="Unit Pendidikan" name="unit_id" required options={unitOptions} {...getProps('unit_id')} />
-                    <Select label="Pilih Kelas" name="kelas_id" options={classOptions} {...getProps('kelas_id')} />
-                    <Input label="NIS Pembayaran" name="nis_pembayaran" placeholder="NIS Pembayaran" {...getProps('nis_pembayaran')} />
-                    <Input label="Tahun Ajaran Masuk" name="tahun_ajaran_masuk" placeholder="2024/2025" {...getProps('tahun_ajaran_masuk')} />
-                    <Input label="Tahun Ajaran Berjalan" name="tahun_ajaran_berjalan" placeholder="2024/2025" {...getProps('tahun_ajaran_berjalan')} />
-                    <Select label="Status Siswa" name="status_siswa" options={['aktif', 'lulus', 'mutasi', 'berhenti']} {...getProps('status_siswa')} />
-                    <Select label="Status Orang Tua" name="status_orang_tua" options={['Umum', 'Pegawai']} {...getProps('status_orang_tua')} />
-                    <Input label="NIY Ortu (Jika Pegawai)" name="niy_ortu_jika_pegawai" placeholder="NIY Pegawai" {...getProps('niy_ortu_jika_pegawai')} />
+                    <Select label="Unit Pendidikan" name="unit_id" required icon={School} options={unitOptions} {...getProps('unit_id')} />
+                    <Select label="Pilih Kelas" name="kelas_id" icon={Building} options={classOptions} {...getProps('kelas_id')} />
+                    <Input label="NIS Pembayaran" name="nis_pembayaran" icon={Hash} placeholder="NIS Pembayaran" {...getProps('nis_pembayaran')} />
+                    <Select
+                      label="Tahun Ajaran Masuk"
+                      name="tahun_ajaran_masuk"
+                      icon={Calendar}
+                      placeholder="-- Pilih Tahun Ajaran Masuk --"
+                      options={academicYearOptions}
+                      {...getProps('tahun_ajaran_masuk')}
+                    />
+                    <Input label="Keterangan Kelas" name="keterangan_kelas" icon={BookOpen} placeholder="Contoh: Kelas reguler pagi" {...getProps('keterangan_kelas')} />
+                    <Select
+                      label="Tahun Ajaran Berjalan"
+                      name="tahun_ajaran_berjalan"
+                      icon={Calendar}
+                      placeholder="-- Pilih Tahun Ajaran Berjalan --"
+                      options={academicYearOptions}
+                      {...getProps('tahun_ajaran_berjalan')}
+                    />
+                    <Select label="Status Siswa" name="status_siswa" icon={ShieldCheck} options={['aktif', 'lulus', 'mutasi', 'berhenti']} {...getProps('status_siswa')} />
+                    <Select label="Status Orang Tua" name="status_orang_tua" icon={Users} options={['Umum', 'Pegawai']} {...getProps('status_orang_tua')} />
+                    <Input label="NIY Ortu (Jika Pegawai)" name="niy_ortu_jika_pegawai" icon={Hash} placeholder="NIY Pegawai" {...getProps('niy_ortu_jika_pegawai')} />
+                    <Input label="Wali Kelas" name="wali_kelas" readOnly icon={User} placeholder="Terisi dari data kelas" {...getProps('wali_kelas')} />
+                    <Input label="NIY Wali Kelas" name="niy_wali_kelas" readOnly icon={Hash} placeholder="Terisi dari data kelas" {...getProps('niy_wali_kelas')} />
                   </div>
                 </div>
               )}
@@ -845,48 +1334,59 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
             </form>
           </div>
 
-        {/* Modal Footer — Standard Actions Matching UI Image */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:px-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-10 rounded-lg border border-slate-200 bg-white px-5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Batal
-          </button>
+          {/* Modal Footer — Canonical Vivid Gradient Squircle Actions */}
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white px-5 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-950">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 cursor-pointer active:scale-95"
+            >
+              <X className="size-3.5 text-slate-500" />
+              <span>Batal</span>
+            </button>
 
-          <div className="ml-auto flex items-center gap-2">
-            {activeStep > 0 && (
-              <button
-                type="button"
-                onClick={() => setActiveStep(prev => prev - 1)}
-                className="flex h-10 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                <FaArrowLeft className="text-xs" /> Kembali
-              </button>
-            )}
+            <div className="ml-auto flex items-center gap-2.5">
+              {activeStep > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(prev => prev - 1)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white px-4 py-2.5 text-xs font-extrabold border border-blue-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-xs shadow-blue-500/20"
+                >
+                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <ArrowLeft className="size-3.5" strokeWidth={2.2} />
+                  </div>
+                  <span>Kembali</span>
+                </button>
+              )}
 
-            {activeStep < steps.length - 1 ? (
-              <button
-                type="button"
-                onClick={() => setActiveStep(prev => prev + 1)}
-                className="flex h-10 items-center gap-2 rounded-lg bg-emerald-800 px-5 text-xs font-bold text-white shadow-md transition hover:bg-emerald-900"
-              >
-                Selanjutnya <FaArrowRight className="text-xs" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                form="student-main-form"
-                className="flex h-10 items-center gap-2 rounded-lg bg-emerald-800 px-5 text-xs font-bold text-white shadow-md transition hover:bg-emerald-900"
-              >
-                <FaSave /> Simpan Data
-              </button>
-            )}
+              {activeStep < steps.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-md shadow-emerald-500/20"
+                >
+                  <span>Selanjutnya</span>
+                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <ArrowRight className="size-3.5" strokeWidth={2.2} />
+                  </div>
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  form="student-main-form"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-md shadow-emerald-500/20"
+                >
+                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <Save className="size-3.5" strokeWidth={2.2} />
+                  </div>
+                  <span>Simpan Data</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-      </div>
+        </div>
+      </motion.div>
     </div>
   )
 }

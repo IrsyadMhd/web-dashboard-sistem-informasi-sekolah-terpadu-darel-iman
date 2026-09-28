@@ -98,9 +98,9 @@ export function ReportPeriodFilter({
             whileTap={{ scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             onClick={onPrint}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200/90 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs transition-colors hover:border-indigo-300 hover:bg-indigo-100 hover:text-indigo-800 dark:border-indigo-800/60 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-2xs transition-colors hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 cursor-pointer"
           >
-            <Printer className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <Printer className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Cetak</span>
           </motion.button>
 
@@ -111,9 +111,9 @@ export function ReportPeriodFilter({
             whileTap={{ scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             onClick={onExportPdf}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200/90 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 shadow-2xs transition-colors hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/60 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-teal-300 bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700 shadow-2xs transition-colors hover:border-teal-400 hover:bg-teal-100 hover:text-teal-800 dark:border-teal-800/60 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:bg-teal-900/60 cursor-pointer"
           >
-            <FileText className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+            <FileText className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
             <span>PDF</span>
           </motion.button>
 

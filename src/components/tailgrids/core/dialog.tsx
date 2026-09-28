@@ -16,14 +16,18 @@ export interface DialogProps extends AriaDialogProps {
   isOpen?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
+  onClose?: () => void;
   showCloseButton?: boolean;
+  modalClassName?: string;
 }
 
 export function Dialog({
   isOpen,
   defaultOpen,
   onOpenChange,
+  onClose,
   className,
+  modalClassName,
   showCloseButton = true,
   children,
   ...props
@@ -31,12 +35,19 @@ export function Dialog({
   const hasCustomMaxW = className && /\bmax-w-/.test(className);
   const hasCustomPadding = className && /\b(p-0|p-\d|px-\d|py-\d)\b/.test(className);
 
+  const handleOpenChange = (open: boolean) => {
+    onOpenChange?.(open);
+    if (!open && onClose) {
+      onClose();
+    }
+  };
+
   return (
     <AriaModal
       isOpen={isOpen}
       defaultOpen={defaultOpen}
-      onOpenChange={onOpenChange}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm overflow-hidden"
+      onOpenChange={handleOpenChange}
+      className={cn("fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm overflow-hidden", modalClassName)}
     >
       <AriaDialog
         className={cn(

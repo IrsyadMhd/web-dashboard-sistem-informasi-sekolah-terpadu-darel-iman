@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Download, Smartphone, CheckCircle2, X, Sparkles, ShieldCheck } from 'lucide-react'
 
+import { usePengaturanStore } from '../../stores/pengaturanStore'
+import { resolveSystemLogoUrl } from '../../utils/printHelper'
+
 export function isPWAStandalone() {
   if (typeof window === 'undefined') return false
   return (
@@ -59,6 +62,7 @@ export function usePwaInstall() {
 
 export default function PwaInstallBanner({ forceShow = false, onClose }) {
   const { canInstall, isStandalone, triggerInstall } = usePwaInstall()
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const [dismissed, setDismissed] = useState(false)
   const [isIos, setIsIos] = useState(false)
   const [showIosGuide, setShowIosGuide] = useState(false)
@@ -112,8 +116,12 @@ export default function PwaInstallBanner({ forceShow = false, onClose }) {
         <div className="flex items-start gap-3.5 pr-6">
           <div className="relative shrink-0">
             <img
-              src="/pwa-192x192.png"
-              onError={(e) => { e.target.src = '/logo.png' }}
+              src={pengaturan?.logo_url || '/assets/images/logo.png'}
+              onError={(e) => {
+                if (e.target.src !== window.location.origin + '/logo.png') {
+                  e.target.src = '/logo.png'
+                }
+              }}
               alt="Logo SIMS Terpadu PWA"
               className="h-12 w-12 rounded-xl bg-white p-1 shadow-lg border border-white/30 object-contain"
             />

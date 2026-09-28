@@ -6,6 +6,7 @@ export function SearchableRegionInput({
   label,
   value,
   onChange,
+  onSelectOption,
   options = [],
   placeholder = 'Cari...',
   isLoading = false,
@@ -23,7 +24,13 @@ export function SearchableRegionInput({
     if (!options || !Array.isArray(options)) return []
     const q = query.trim().toLowerCase()
     if (!q) return options
-    return options.filter((item) => String(item).toLowerCase().includes(q))
+    return options.filter((item) => {
+      if (typeof item === 'object' && item !== null) {
+        const text = `${item.label || ''} ${item.value || ''} ${item.postalCode || ''}`.toLowerCase()
+        return text.includes(q)
+      }
+      return String(item).toLowerCase().includes(q)
+    })
   }, [options, query])
 
   useEffect(() => {
@@ -44,8 +51,12 @@ export function SearchableRegionInput({
   }
 
   const handleSelect = (item) => {
-    setQuery(item)
-    onChange(item)
+    const val = typeof item === 'object' && item !== null ? item.value : item
+    setQuery(val)
+    onChange(val)
+    if (onSelectOption) {
+      onSelectOption(item)
+    }
     setIsOpen(false)
   }
 
@@ -106,7 +117,10 @@ export function SearchableRegionInput({
             <div className="px-3 py-2.5 text-center text-xs text-slate-400">Memuat data wilayah...</div>
           ) : filtered.length > 0 ? (
             filtered.map((item, idx) => {
-              const isSelected = String(item).toLowerCase() === String(value).toLowerCase()
+              const val = typeof item === 'object' && item !== null ? item.value : item
+              const displayLabel = typeof item === 'object' && item !== null ? item.label || item.value : item
+              const postalBadge = typeof item === 'object' && item !== null ? item.postalCode : null
+              const isSelected = String(val).toLowerCase() === String(value).toLowerCase()
               return (
                 <button
                   key={idx}
@@ -118,8 +132,15 @@ export function SearchableRegionInput({
                       : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
-                  <span className="truncate">{item}</span>
-                  {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-[#0E5C44] dark:text-emerald-400" />}
+                  <span className="truncate">{displayLabel}</span>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {postalBadge && (
+                      <span className="rounded-md bg-emerald-50 text-[#0E5C44] border border-emerald-200/80 px-1.5 py-0.5 text-[10px] font-mono font-bold dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60">
+                        {postalBadge}
+                      </span>
+                    )}
+                    {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-[#0E5C44] dark:text-emerald-400" />}
+                  </div>
                 </button>
               )
             })
@@ -138,6 +159,7 @@ SearchableRegionInput.propTypes = {
   label: PropTypes.string,
   value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
+  onSelectOption: PropTypes.func,
   options: PropTypes.array,
   placeholder: PropTypes.string,
   isLoading: PropTypes.bool,
@@ -145,3 +167,4 @@ SearchableRegionInput.propTypes = {
 }
 
 export default SearchableRegionInput
+
