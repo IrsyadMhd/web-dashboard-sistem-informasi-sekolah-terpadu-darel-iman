@@ -38,20 +38,20 @@ export default function FloatingChatWidget() {
   const isTeacher = roleNames.some((r) => ['Guru', 'Wali Kelas', 'Guru Pengajar', 'guru'].includes(r)) || roleStr.includes('guru') || roleStr.includes('walas')
 
   const canEmployeeChat =
-    Boolean(user?.is_superadmin) ||
-    roleStr.includes('super') ||
-    roleStr.includes('admin') ||
-    roleStr.includes('yayasan') ||
-    roleStr.includes('pengurus') ||
-    roleStr.includes('kepala') ||
-    roleStr.includes('kepsek') ||
-    roleStr.includes('pendidikan') ||
-    roleStr.includes('tu') ||
-    roleStr.includes('tata_usaha') ||
-    roleStr.includes('pegawai') ||
-    roleStr.includes('staf') ||
-    permissions.includes('chat.conversation.view') ||
-    permissions.includes('chat.manage')
+    !isParent &&
+    (Boolean(user?.is_superadmin) ||
+      roleStr.includes('super') ||
+      roleStr.includes('admin') ||
+      roleStr.includes('yayasan') ||
+      roleStr.includes('pengurus') ||
+      roleStr.includes('kepala') ||
+      roleStr.includes('kepsek') ||
+      roleStr.includes('pendidikan') ||
+      /\b(tu|tata_usaha)\b/i.test(roleStr) ||
+      roleStr.includes('pegawai') ||
+      roleStr.includes('staf') ||
+      permissions.includes('chat.conversation.view') ||
+      permissions.includes('chat.manage'))
 
   const isEmployee = canEmployeeChat && !isStudent
   const shouldRender = Boolean(user) && !isStudent && (isParent || isTeacher || isEmployee || canEmployeeChat)
@@ -63,16 +63,16 @@ export default function FloatingChatWidget() {
   const [unreadCount, setUnreadCount] = useState(0)
 
   // Widget Mode: 'employee' | 'parent' | 'teacher'
-  const defaultMode = isEmployee ? 'employee' : isParent ? 'parent' : 'teacher'
+  const defaultMode = isParent ? 'parent' : isTeacher ? 'teacher' : 'employee'
   const [widgetMode, setWidgetMode] = useState(defaultMode)
 
   useEffect(() => {
-    if (isEmployee) {
-      setWidgetMode('employee')
-    } else if (isParent) {
+    if (isParent) {
       setWidgetMode('parent')
     } else if (isTeacher) {
       setWidgetMode('teacher')
+    } else if (isEmployee) {
+      setWidgetMode('employee')
     }
   }, [isEmployee, isParent, isTeacher])
 
@@ -94,7 +94,7 @@ export default function FloatingChatWidget() {
 
   // Periodically check total unread messages across parent, teacher, and employee chats
   const checkUnread = useCallback(async () => {
-    if (!shouldRender) return
+    if (!shouldRender || isOpen || (typeof document !== 'undefined' && document.hidden)) return
     let total = 0
     try {
       if (isParent && childId) {
@@ -102,7 +102,7 @@ export default function FloatingChatWidget() {
         const contacts = res.data || []
         total += contacts.reduce((sum, c) => sum + (c.unread_count || 0), 0)
       }
-      if (isTeacher) {
+      if (isTeacher && !isEmployee) {
         const res = await familyPortalService.teacherConversations().catch(() => ({ data: [] }))
         const conversations = res.data || []
         total += conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0)
@@ -126,7 +126,7 @@ export default function FloatingChatWidget() {
 
   useEffect(() => {
     checkUnread()
-    const timer = setInterval(checkUnread, 15000)
+    const timer = setInterval(checkUnread, 30000)
     return () => clearInterval(timer)
   }, [checkUnread])
 

@@ -91,6 +91,7 @@ const TahfizhReportSummaryPage = lazy(() => import('../pages/tahfizh/TahfizhRepo
 const MasterQuranSurahPage = lazy(() => import('../pages/MasterQuranSurahPage'))
 const MasterJadwalSholatPage = lazy(() => import('../pages/MasterJadwalSholatPage'))
 const MasterDoaPage = lazy(() => import('../pages/MasterDoaPage'))
+const PoinPenilaianDoaPage = lazy(() => import('../pages/PoinPenilaianDoaPage'))
 const DeleteApprovalPage = lazy(() => import('../pages/DeleteApprovalPage'))
 const GateAttendancePage = lazy(() => import('../pages/GateAttendancePage'))
 const WorshipAttendancePage = lazy(() => import('../pages/WorshipAttendancePage'))
@@ -105,6 +106,7 @@ const StudentAttendanceHistoryPage = lazy(() => import('../pages/attendance/Stud
 const AcademicLmsContainerPage = lazy(() => import('../pages/AcademicLmsContainerPage'))
 const NewsManagementPage = lazy(() => import('../pages/NewsManagementPage'))
 const BantuanPage = lazy(() => import('../pages/BantuanPage'))
+const StudentBillsManagementPage = lazy(() => import('../pages/finance/StudentBillsManagementPage'))
 
 const FoundationDashboardPage = lazy(() => import('../pages/foundation/FoundationDashboardPage').then(m => ({ default: m.FoundationDashboardPage })))
 const FoundationUnitsPage = lazy(() => import('../pages/foundation/FoundationUnitsPage').then(m => ({ default: m.FoundationUnitsPage })))
@@ -1334,6 +1336,31 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: 'keuangan/tagihan-siswa',
+            element: (
+              <PermissionElement
+                roles={[
+                  ...ROLES.SUPER_ADMIN,
+                  ...ROLES.ADMIN,
+                  ...ROLES.KEPALA_SEKOLAH,
+                  ...ROLES.TATA_USAHA,
+                  'Divisi Pendidikan',
+                  'divisi_pendidikan',
+                  'Operator',
+                  'operator',
+                ]}
+              >
+                <BungkusLazy>
+                  <StudentBillsManagementPage />
+                </BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'finance/bills',
+            element: <Navigate to="/dashboard/keuangan/tagihan-siswa" replace />,
+          },
+          {
             path: 'parents',
             element: (
               <BungkusLazy>
@@ -1384,7 +1411,7 @@ export const router = createBrowserRouter([
           {
             path: 'laporan-tahfizh',
             element: (
-              <PermissionElement any={['report.tahfizh.view', 'report.view']}>
+              <PermissionElement deniedRoles={ROLES.GURU} any={['report.tahfizh.view', 'report.view']}>
                 <BungkusLazy><LaporanTahfizhPage /></BungkusLazy>
               </PermissionElement>
             ),
@@ -1392,7 +1419,25 @@ export const router = createBrowserRouter([
           {
             path: 'tahfizh/rekapan',
             element: (
-              <PermissionElement roles={['Super Admin', 'super_admin', 'Admin', 'admin', 'Pengurus Yayasan', 'Yayasan', 'Kepala Sekolah', 'Divisi Pendidikan', 'Guru', 'guru']} any={['report.tahfizh.view', 'report.view', 'tahfizh.view', 'tahfizh.laporan_target', 'dashboard.guru.view', 'dashboard.guru-tahfizh.view']}>
+              <PermissionElement
+                roles={[
+                  ...ROLES.SUPER_ADMIN,
+                  ...ROLES.ADMIN,
+                  ...ROLES.YAYASAN,
+                  ...ROLES.DIVISI,
+                  ...ROLES.KEPALA_SEKOLAH,
+                  ...ROLES.WAKA,
+                  ...ROLES.GURU,
+                ]}
+                any={[
+                  'report.tahfizh.view',
+                  'report.view',
+                  'tahfizh.view',
+                  'tahfizh.laporan_target',
+                  'dashboard.guru.view',
+                  'dashboard.guru-tahfizh.view',
+                ]}
+              >
                 <BungkusLazy><TahfizhReportSummaryPage /></BungkusLazy>
               </PermissionElement>
             ),
@@ -1400,7 +1445,25 @@ export const router = createBrowserRouter([
           {
             path: 'laporan-rekapan-tahfizh',
             element: (
-              <PermissionElement roles={['Super Admin', 'super_admin', 'Admin', 'admin', 'Pengurus Yayasan', 'Yayasan', 'Kepala Sekolah', 'Divisi Pendidikan', 'Guru', 'guru']} any={['report.tahfizh.view', 'report.view', 'tahfizh.view', 'tahfizh.laporan_target', 'dashboard.guru.view', 'dashboard.guru-tahfizh.view']}>
+              <PermissionElement
+                roles={[
+                  ...ROLES.SUPER_ADMIN,
+                  ...ROLES.ADMIN,
+                  ...ROLES.YAYASAN,
+                  ...ROLES.DIVISI,
+                  ...ROLES.KEPALA_SEKOLAH,
+                  ...ROLES.WAKA,
+                  ...ROLES.GURU,
+                ]}
+                any={[
+                  'report.tahfizh.view',
+                  'report.view',
+                  'tahfizh.view',
+                  'tahfizh.laporan_target',
+                  'dashboard.guru.view',
+                  'dashboard.guru-tahfizh.view',
+                ]}
+              >
                 <BungkusLazy><TahfizhReportSummaryPage /></BungkusLazy>
               </PermissionElement>
             ),
@@ -1440,7 +1503,7 @@ export const router = createBrowserRouter([
           {
             path: 'laporan-alumni',
             element: (
-              <PermissionElement any={['alumni.view', 'foundation.alumni.view', 'report.view', 'kesiswaan.alumni_tujuan_lanjut', 'kesiswaan.kelulusan_per_tahun']}>
+              <PermissionElement deniedRoles={ROLES.GURU} any={['alumni.view', 'foundation.alumni.view', 'report.view', 'kesiswaan.alumni_tujuan_lanjut', 'kesiswaan.kelulusan_per_tahun']}>
                 <BungkusLazy><LaporanAlumniPage /></BungkusLazy>
               </PermissionElement>
             ),

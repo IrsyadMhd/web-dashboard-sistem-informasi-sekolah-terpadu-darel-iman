@@ -39,7 +39,7 @@ const tabs = [
   { id: 'assignments', label: 'Tugas', icon: ClipboardList, pastelColor: 'bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600 hover:shadow-md hover:shadow-rose-500/20' },
   { id: 'tahfizh', label: 'Tahfizh', icon: BookOpenCheck, pastelColor: 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 hover:shadow-md hover:shadow-emerald-500/20' },
   { id: 'grades', label: 'Nilai', icon: Award, pastelColor: 'bg-cyan-100/90 text-cyan-700 hover:bg-cyan-600 hover:text-white dark:bg-cyan-950/60 dark:text-cyan-300 dark:hover:bg-cyan-600 hover:shadow-md hover:shadow-cyan-500/20' },
-  { id: 'student-notes', label: 'Komentar Guru', icon: MessageCircle, pastelColor: 'bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 hover:shadow-md hover:shadow-indigo-500/20' },
+  { id: 'student-notes', label: 'Buku Penghubung', icon: MessageCircle, pastelColor: 'bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 hover:shadow-md hover:shadow-indigo-500/20' },
   { id: 'mutabaah', label: 'Mutabaah', icon: HeartHandshake, pastelColor: 'bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 hover:shadow-md hover:shadow-amber-500/20' },
   { id: 'attendance', label: 'Absensi', icon: CalendarCheck, pastelColor: 'bg-teal-100/90 text-teal-700 hover:bg-teal-600 hover:text-white dark:bg-teal-950/60 dark:text-teal-300 dark:hover:bg-teal-600 hover:shadow-md hover:shadow-teal-500/20' },
   { id: 'kisi', label: 'Kisi-kisi', icon: BookOpenCheck, pastelColor: 'bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-950/60 dark:text-violet-300 dark:hover:bg-violet-600 hover:shadow-md hover:shadow-violet-500/20' },
@@ -70,92 +70,6 @@ const answerPayload = (answers) => Object.entries(answers).map(([soalId, answer]
   jawaban_esai: ['esai', 'isian', 'menjodohkan'].includes(answer.type) ? answer.value : null,
 }))
 
-const MOCK_EXAM_SESSIONS = {
-  '00000000-0000-0000-0000-000000000001': {
-    sesi_id: 'mock-session-pai-1',
-    ujian: {
-      id: '00000000-0000-0000-0000-000000000001',
-      judul_ujian: 'Ujian Harian CBT — Pendidikan Agama Islam (PAI)',
-      sisa_waktu_detik: 2700,
-      durasi_menit: 45,
-    },
-    soal: [
-      {
-        id: 'q-pai-1',
-        tipe_soal: 'pg',
-        pertanyaan: 'Siapakah nabi pertama yang diutus Allah SWT ke muka bumi?',
-        poin: 25,
-        opsi: [
-          { key: 'A', text: 'Nabi Adam AS' },
-          { key: 'B', text: 'Nabi Nuh AS' },
-          { key: 'C', text: 'Nabi Ibrahim AS' },
-          { key: 'D', text: 'Nabi Muhammad SAW' },
-        ],
-      },
-      {
-        id: 'q-pai-2',
-        tipe_soal: 'benar_salah',
-        pertanyaan: 'Rukun Islam yang ketiga adalah menunaikan ibadah puasa di bulan Ramadhan.',
-        poin: 25,
-      },
-      {
-        id: 'q-pai-3',
-        tipe_soal: 'isian',
-        pertanyaan: 'Sebutkan nama kitab suci yang diturunkan kepada Nabi Isa AS!',
-        poin: 25,
-      },
-      {
-        id: 'q-pai-4',
-        tipe_soal: 'esai',
-        pertanyaan: 'Jelaskan perbedaan antara Rukun Iman dan Rukun Islam secara singkat dan jelas!',
-        poin: 25,
-      },
-    ],
-    jawaban_tersimpan: [],
-  },
-  '00000000-0000-0000-0000-000000000002': {
-    sesi_id: 'mock-session-pancasila-1',
-    ujian: {
-      id: '00000000-0000-0000-0000-000000000002',
-      judul_ujian: 'Ujian Harian CBT — Pendidikan Pancasila Kelas X',
-      sisa_waktu_detik: 2700,
-      durasi_menit: 45,
-    },
-    soal: [
-      {
-        id: 'q-pan-1',
-        tipe_soal: 'pg',
-        pertanyaan: 'Sila pertama dalam Pancasila melambangkan nilai keagamaan dan toleransi umat beragama. Apakah lambang dari Sila Pertama?',
-        poin: 25,
-        opsi: [
-          { key: 'A', text: 'Bintang Emas' },
-          { key: 'B', text: 'Rantai Emas' },
-          { key: 'C', text: 'Pohon Beringin' },
-          { key: 'D', text: 'Kepala Banteng' },
-        ],
-      },
-      {
-        id: 'q-pan-2',
-        tipe_soal: 'benar_salah',
-        pertanyaan: 'Bhinneka Tunggal Ika memiliki arti "Berbeda-beda tetapi tetap satu jua".',
-        poin: 25,
-      },
-      {
-        id: 'q-pan-3',
-        tipe_soal: 'isian',
-        pertanyaan: 'Tuliskan nama rumusan dasar negara yang disampaikan oleh Ir. Soekarno pada tanggal 1 Juni 1945!',
-        poin: 25,
-      },
-      {
-        id: 'q-pan-4',
-        tipe_soal: 'esai',
-        pertanyaan: 'Berikan 3 contoh penerapan nilai-nilai Sila Kemanusiaan yang Adil dan Beradab di lingkungan sekolah!',
-        poin: 25,
-      },
-    ],
-    jawaban_tersimpan: [],
-  },
-}
 
 function Notice({ type = 'error', children, action }) {
   const Icon = type === 'success' ? CheckCircle2 : AlertCircle
@@ -397,7 +311,7 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
     setPanelLoading(true)
     setPortalRecords([])
     api.get(`/portal/${activeTab}`).then((response) => {
-      setPortalRecords(unwrapList(response))
+      setPortalRecords(activeTab === 'grades' ? (response.data?.data || null) : unwrapList(response))
     }).catch((err) => setError(err.response?.data?.message || 'Data belum berhasil dimuat.')).finally(() => setPanelLoading(false))
   }, [activeTab])
 
@@ -466,11 +380,7 @@ export default function StudentPortalPage({ section = 'ringkasan' }) {
 
   const start = async (exam) => {
     setStartingId(exam.id); setError('')
-    if (MOCK_EXAM_SESSIONS[exam.id]) {
-      setSession(MOCK_EXAM_SESSIONS[exam.id])
-      setStartingId(null)
-      return
-    }
+// Always fetch real exam session from backend
     try { const response = await studentLmsService.startExam(exam.id); setSession(response.data) }
     catch (err) { setError(err.response?.data?.message || 'Ujian tidak dapat dimulai.') }
     finally { setStartingId(null) }
@@ -540,7 +450,7 @@ const KpiCardPastelStyles = {
     ['assignments', 'Tugas', dashboard?.active_assignments?.length || 0, 'tugas aktif', ClipboardList, 'rose'],
     ['tahfizh', 'Tahfizh', dashboard?.kpi?.total_tahfizh_ayat || 0, 'total ayat tercatat', BookOpenCheck, 'emerald'],
     ['grades', 'Nilai', dashboard?.latest_grades?.length || dashboardModules.grades?.length || 0, 'nilai terbaru', Award, 'cyan'],
-    ['student-notes', 'Komentar Guru', dashboardModules['student-notes']?.length || 0, 'komentar tersedia', MessageCircle, 'blue'],
+    ['student-notes', 'Buku Penghubung', dashboardModules['student-notes']?.length || 0, 'catatan tersedia', MessageCircle, 'blue'],
     ['mutabaah', 'Mutabaah', dashboard?.kpi?.mutabaah_status || 'Belum diisi', 'status hari ini', HeartHandshake, 'amber'],
     ['attendance', 'Absensi', dashboard?.attendance_today || 'Belum diinput', 'kehadiran hari ini', CalendarCheck, 'emerald'],
     ['kisi', 'Kisi-kisi', blueprints.length, 'kisi-kisi tersedia', BookOpenCheck, 'purple'],

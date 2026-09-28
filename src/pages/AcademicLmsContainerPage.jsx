@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react'
-import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, lazy, Suspense } from 'react'
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   CalendarDays,
   Zap,
@@ -22,30 +22,35 @@ import {
   Award,
   BarChart2,
   GraduationCap,
+  Calculator,
+  ShieldCheck,
 } from 'lucide-react'
 import AcademicModuleContainer from '../components/akademik/AcademicModuleContainer'
-import MasterTahunAjaranPage from './MasterTahunAjaranPage'
-import MasterModulSemesterPage from './MasterModulSemesterPage'
-import MasterKurikulumPage from './MasterKurikulumPage'
-import MasterKelasPage from './MasterKelasPage'
-import MasterSubjectPage from './MasterSubjectPage'
-import MasterSchedulePage from './MasterSchedulePage'
-import MasterCapaianPembelajaranPage from './MasterCapaianPembelajaranPage'
-import MasterTujuanPembelajaranPage from './MasterTujuanPembelajaranPage'
-import LmsModulAjarPage from './LmsModulAjarPage'
-import LmsMateriPage from './LmsMateriPage'
-import LmsMediaPage from './LmsMediaPage'
-import LmsReferensiPage from './LmsReferensiPage'
-import LmsAktivitasBelajarPage from './LmsAktivitasBelajarPage'
-import LmsDiskusiPage from './LmsDiskusiPage'
-import LmsPenugasanPage from './LmsPenugasanPage'
-import LmsPengumpulanTugasPage from './LmsPengumpulanTugasPage'
-import LmsKisiKisiPage from './LmsKisiKisiPage'
-import LmsBankSoalPage from './LmsBankSoalPage'
-import LmsUjianPage from './LmsUjianPage'
-import LmsPenilaianPage from './LmsPenilaianPage'
-import LmsRaporPage from './LmsRaporPage'
 import { useAuthStore } from '../stores/authStore'
+
+const MasterTahunAjaranPage = lazy(() => import('./MasterTahunAjaranPage'))
+const MasterModulSemesterPage = lazy(() => import('./MasterModulSemesterPage'))
+const MasterKurikulumPage = lazy(() => import('./MasterKurikulumPage'))
+const MasterKelasPage = lazy(() => import('./MasterKelasPage'))
+const MasterSubjectPage = lazy(() => import('./MasterSubjectPage'))
+const MasterSchedulePage = lazy(() => import('./MasterSchedulePage'))
+const MasterCapaianPembelajaranPage = lazy(() => import('./MasterCapaianPembelajaranPage'))
+const MasterTujuanPembelajaranPage = lazy(() => import('./MasterTujuanPembelajaranPage'))
+const LmsModulAjarPage = lazy(() => import('./LmsModulAjarPage'))
+const LmsMateriPage = lazy(() => import('./LmsMateriPage'))
+const LmsMediaPage = lazy(() => import('./LmsMediaPage'))
+const LmsReferensiPage = lazy(() => import('./LmsReferensiPage'))
+const LmsAktivitasBelajarPage = lazy(() => import('./LmsAktivitasBelajarPage'))
+const LmsDiskusiPage = lazy(() => import('./LmsDiskusiPage'))
+const LmsPenugasanPage = lazy(() => import('./LmsPenugasanPage'))
+const LmsPengumpulanTugasPage = lazy(() => import('./LmsPengumpulanTugasPage'))
+const LmsKisiKisiPage = lazy(() => import('./LmsKisiKisiPage'))
+const LmsBankSoalPage = lazy(() => import('./LmsBankSoalPage'))
+const LmsUjianPage = lazy(() => import('./LmsUjianPage'))
+const LmsPenilaianPage = lazy(() => import('./LmsPenilaianPage'))
+const LmsRaporPage = lazy(() => import('./LmsRaporPage'))
+const AssessmentFormulaPage = lazy(() => import('./AssessmentFormulaPage'))
+const WorshipAssessmentSettingPage = lazy(() => import('./WorshipAssessmentSettingPage'))
 
 const CONTAINERS = {
   pengaturan: {
@@ -100,6 +105,24 @@ const CONTAINERS = {
         icon: Clock,
         description: 'Waktu & Ruang',
         squircleStyle: 'bg-rose-100 text-rose-600 dark:bg-rose-950/80 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60',
+      },
+      {
+        key: 'rumus-penilaian',
+        label: 'Rumus Penilaian',
+        component: AssessmentFormulaPage,
+        icon: Calculator,
+        description: 'Akademik, Tahfizh & Mutabaah',
+        requiredPermission: 'assessment_formula.view',
+        squircleStyle: 'bg-teal-100 text-teal-700 dark:bg-teal-950/80 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60',
+      },
+      {
+        key: 'program-ibadah',
+        label: 'Program & Ibadah',
+        component: WorshipAssessmentSettingPage,
+        icon: ShieldCheck,
+        description: 'Full Day & Ramadan',
+        requiredPermission: 'worship_assessment.setting.view',
+        squircleStyle: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60',
       },
     ],
   },
@@ -294,6 +317,8 @@ export default function AcademicLmsContainerPage({ section }) {
   }, [section, userRoles])
 
   const config = CONTAINERS[section]
+  const userPermissions = useMemo(() => new Set((user?.permissions || []).map((p) => typeof p === 'string' ? p : p.name)), [user])
+  const availableTabs = useMemo(() => config.tabs.filter((tab) => !tab.requiredPermission || userPermissions.has(tab.requiredPermission) || userPermissions.has('*')), [config.tabs, userPermissions])
   const location = useLocation()
   const [searchParams] = useSearchParams()
 
@@ -301,20 +326,36 @@ export default function AcademicLmsContainerPage({ section }) {
     return <Navigate to="/dashboard" replace />
   }
   const activeTab = searchParams.get('tab')
-  const defaultTab = config.tabs[0].key
+  const defaultTab = availableTabs[0].key
   const selected = useMemo(() => {
-    return config.tabs.find((t) =>
+    return availableTabs.find((t) =>
       t.key === activeTab ||
       (activeTab === 'modul-semester' && t.key === 'semester') ||
       (activeTab === 'semester' && t.key === 'modul-semester') ||
       (activeTab === 'ujian-cbt' && t.key === 'cbt') ||
       (activeTab === 'cbt' && t.key === 'ujian-cbt')
     )
-  }, [activeTab, config.tabs])
+  }, [activeTab, availableTabs])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [activeTab])
+
+  const navigate = useNavigate()
+  const handleNavigateToBankSoal = (kisiKisiItem) => {
+    // Simpan kisi_kisi_id ke sessionStorage agar tab bank-soal bisa pre-filter
+    if (kisiKisiItem?.id) {
+      sessionStorage.setItem('bankSoal_prefill_kisi_id', kisiKisiItem.id)
+      sessionStorage.setItem('bankSoal_prefill_kisi_judul', kisiKisiItem.judul_kisi || '')
+      sessionStorage.setItem('bankSoal_prefill_mapel_id', kisiKisiItem.mata_pelajaran_id || '')
+    }
+    const params = new URLSearchParams(searchParams)
+    params.set('tab', 'bank-soal')
+    if (kisiKisiItem?.id) {
+      params.set('kisi_id', kisiKisiItem.id)
+    }
+    navigate(`${location.pathname}?${params.toString()}`)
+  }
 
   if (!selected) {
     const params = new URLSearchParams(searchParams)
@@ -323,7 +364,7 @@ export default function AcademicLmsContainerPage({ section }) {
   }
 
   const ActivePage = selected.component
-  const tabs = config.tabs.map((t) => ({
+  const tabs = availableTabs.map((t) => ({
     key: t.key,
     label: t.label,
     icon: t.icon,
@@ -346,7 +387,21 @@ export default function AcademicLmsContainerPage({ section }) {
       tabsBelowKpi={config.tabsBelowKpi}
       breadcrumbItems={breadcrumbItems}
     >
-      <ActivePage embedded hidePageHeader hideBreadcrumb />
+      <Suspense
+        fallback={
+          <div className="flex flex-col items-center justify-center p-12 text-slate-500 dark:text-slate-400 space-y-3">
+            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-sm font-medium">Memuat modul {selected.label}...</p>
+          </div>
+        }
+      >
+        <ActivePage
+          embedded
+          hidePageHeader
+          hideBreadcrumb
+          onNavigateToBankSoal={selected.key === 'kisi-kisi' ? handleNavigateToBankSoal : undefined}
+        />
+      </Suspense>
     </AcademicModuleContainer>
   )
 }
