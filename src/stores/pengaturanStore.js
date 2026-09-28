@@ -153,11 +153,15 @@ export const INITIAL_MANUALS = [
 
 export const defaultPengaturan = {
   application_name: 'Sistem Manajemen Sekolah',
-  school_name: 'YAYASAN DAR EL - IMAN',
-  logo_text: 'YDE',
+  school_name: 'Yayasan Pendidikan Islam',
+  logo_text: 'SIT',
   logo_url: '',
   favicon_url: '',
   footer_text: 'Jl. Pendidikan No. 1, Kota Padang',
+  address: '',
+  phone: '',
+  sk_pendirian: '',
+  motto: '',
   header_style: 'light',
   header_sticky: true,
   sidebar_style: 'light',
@@ -170,6 +174,8 @@ export const defaultPengaturan = {
   header_color: '#FFFFFF',
   custom_faqs: INITIAL_FAQS,
   custom_manuals: INITIAL_MANUALS,
+  breadcrumb_divider: 'chevron', // 'chevron' | 'slash' | 'dot'
+  breadcrumb_show_home: true,
 }
 
 function readCached() {
@@ -194,8 +200,8 @@ export const usePengaturanStore = create((set, get) => ({
   pengaturan: readCached(),
   loading: false,
   initialized: false,
-  async muatPengaturan() {
-    if (get().loading) return
+  async muatPengaturan(force = false) {
+    if (!force && (get().loading || get().initialized)) return
     set({ loading: true })
     try {
       const fetched = await siteSettingService.get()

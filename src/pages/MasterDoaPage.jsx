@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen,
   Search,
@@ -16,12 +16,21 @@ import {
   Bookmark,
   ShieldCheck,
   Sparkles,
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  Printer,
+  Download,
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { equranService } from '../services/equranService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { useDebounce } from '../hooks/useDebounce'
+import { Pagination } from '../components/tailgrids/core/pagination'
 import {
   MasterActionButton,
   MasterDataPage,
@@ -31,61 +40,106 @@ import {
   MasterStatCard,
 } from '../components/master-data'
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
-  const tones = {
-    emerald: {
-      card: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-emerald-50/60 to-teal-50/40 hover:bg-emerald-100/90 hover:border-emerald-300 dark:border-emerald-800/80 dark:bg-emerald-950/40',
-      title: 'text-emerald-800 dark:text-emerald-300',
-      iconBox: 'bg-emerald-600 text-white shadow-xs',
-      val: 'text-emerald-950 dark:text-white',
-      sub: 'text-emerald-700/90 dark:text-emerald-400',
-    },
-    blue: {
-      card: 'border-sky-200/90 bg-gradient-to-br from-sky-50/90 via-sky-50/60 to-blue-50/40 hover:bg-sky-100/90 hover:border-sky-300 dark:border-sky-800/80 dark:bg-sky-950/40',
-      title: 'text-sky-800 dark:text-sky-300',
-      iconBox: 'bg-sky-600 text-white shadow-xs',
-      val: 'text-sky-950 dark:text-white',
-      sub: 'text-sky-700/90 dark:text-sky-400',
-    },
-    purple: {
-      card: 'border-purple-200/90 bg-gradient-to-br from-purple-50/90 via-purple-50/60 to-indigo-50/40 hover:bg-purple-100/90 hover:border-purple-300 dark:border-purple-800/80 dark:bg-purple-950/40',
-      title: 'text-purple-800 dark:text-purple-300',
-      iconBox: 'bg-purple-600 text-white shadow-xs',
-      val: 'text-purple-950 dark:text-white',
-      sub: 'text-purple-700/90 dark:text-purple-400',
-    },
-    amber: {
-      card: 'border-amber-200/90 bg-gradient-to-br from-amber-50/90 via-amber-50/60 to-yellow-50/40 hover:bg-amber-100/90 hover:border-amber-300 dark:border-amber-800/80 dark:bg-amber-950/40',
-      title: 'text-amber-800 dark:text-amber-300',
-      iconBox: 'bg-amber-500 text-white shadow-xs',
-      val: 'text-amber-950 dark:text-white',
-      sub: 'text-amber-700/90 dark:text-amber-400',
-    },
-  }
+// ── DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS SPEC) ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-slate-900 dark:text-white',
+    sub: 'text-slate-600 dark:text-slate-400',
+    cta: 'text-emerald-700 dark:text-emerald-400',
+  },
+  blue: {
+    card: 'border-sky-300/70 bg-gradient-to-br from-sky-50 via-blue-50/60 to-white hover:border-sky-400 dark:border-sky-700/50 dark:from-sky-950/40 dark:via-blue-950/20 dark:to-slate-900',
+    glow: 'bg-sky-400/20 group-hover:bg-sky-400/30',
+    iconBox: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sm shadow-sky-500/30',
+    tag: 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300',
+    title: 'text-sky-700 dark:text-sky-400',
+    val: 'text-slate-900 dark:text-white',
+    sub: 'text-slate-600 dark:text-slate-400',
+    cta: 'text-sky-700 dark:text-sky-400',
+  },
+  purple: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-sm shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-slate-900 dark:text-white',
+    sub: 'text-slate-600 dark:text-slate-400',
+    cta: 'text-purple-700 dark:text-purple-400',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-slate-900 dark:text-white',
+    sub: 'text-slate-600 dark:text-slate-400',
+    cta: 'text-amber-700 dark:text-amber-400',
+  },
+}
 
-  const t = tones[tone] || tones.emerald
+function ModernKpiCard({ icon: Icon, label, subtext, value, tag, ctaText = 'Lihat Detail', tone = 'emerald', onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
 
   return (
-    <motion.div
-      whileHover={{ scale: 1.03, y: -2 }}
+    <motion.article
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md group`}
+      onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left flex flex-col justify-between h-full ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card}`}
     >
-      <div className="flex items-center justify-between">
-        <p className={`text-xs font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
-        {Icon && (
-          <div className={`p-2 rounded-xl ${t.iconBox} shrink-0 transition-transform group-hover:scale-110`}>
-            <Icon className="h-4 w-4" />
+      {/* Ambient Glow */}
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+
+      {/* Header dengan Icon Box & Tag */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white ${t.iconBox}`}>
+              {Icon && <Icon className="h-5 w-5" />}
+            </div>
+            <div>
+              <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+            </div>
           </div>
+          {tag && (
+            <span className={`rounded-lg px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${t.tag}`}>
+              {tag}
+            </span>
+          )}
+        </div>
+
+        {/* Nilai Utama */}
+        <p className={`text-3xl sm:text-4xl font-black tabular-nums tracking-tight ${t.val}`}>
+          {value ?? '0'}
+        </p>
+        {subtext && (
+          <p className={`mt-1 text-[11px] font-semibold ${t.sub}`}>
+            {subtext}
+          </p>
         )}
       </div>
-      <p className={`mt-2 text-3xl font-black ${t.val}`}>{value ?? 0}</p>
-      {subtext && (
-        <p className={`mt-1.5 text-xs font-semibold ${t.sub}`}>
-          {subtext}
-        </p>
+
+      {/* CTA Footer */}
+      {isClickable && (
+        <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
+          <span className={`text-[11px] font-bold ${t.cta}`}>{ctaText}</span>
+          <ChevronRight className={`h-3.5 w-3.5 ${t.cta} transition-transform group-hover:translate-x-1`} />
+        </div>
       )}
-    </motion.div>
+    </motion.article>
   )
 }
 
@@ -100,13 +154,198 @@ const emptyDoa = {
   tagInput: '',
 }
 
+function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                Hapus Data Doa?
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus doa ini dari database? Tindakan ini tidak dapat dibatalkan.
+          </p>
+
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3.5 dark:border-rose-800/60 dark:bg-rose-950/20 mb-5">
+            <p className="text-xs font-black text-rose-950 dark:text-rose-100">
+              #{item?.id} • {item?.nama}
+            </p>
+            <p className="text-[11px] text-rose-800/80 dark:text-rose-300/80 mt-0.5">
+              Kategori: {item?.grup || 'Doa Harian'}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+              Hapus Doa
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function HarmonizedDeleteAllModal({ isOpen, onClose, onConfirm, isSubmitting }) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Kosongkan Database
+              </span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                Hapus Seluruh Data Doa?
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Seluruh data doa dan dzikir lokal akan dihapus dari sistem. Anda dapat mengimpor kembali melalui katalog EQuran.id kapan saja.
+          </p>
+
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3.5 dark:border-rose-800/60 dark:bg-rose-950/20 mb-5">
+            <p className="text-xs font-bold text-rose-900 dark:text-rose-200">
+              Peringatan: Seluruh data doa &amp; dzikir lokal akan dikosongkan.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+              Ya, Kosongkan Data
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function ToastStack({ toasts, onDismiss }) {
+  return (
+    <aside
+      aria-label="Notifikasi sistem"
+      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0"
+    >
+      <AnimatePresence>
+        {toasts.map((toast) => (
+          <motion.div
+            key={toast.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
+              toast.type === 'error'
+                ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
+                : toast.type === 'warning'
+                ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
+                : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
+            }`}
+          >
+            <div
+              className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
+                toast.type === 'error'
+                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                  : toast.type === 'warning'
+                  ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
+                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+              }`}
+            >
+              {toast.type === 'error' ? (
+                <AlertTriangle className="size-4.5" />
+              ) : toast.type === 'warning' ? (
+                <AlertTriangle className="size-4.5" />
+              ) : (
+                <Check className="size-4.5" />
+              )}
+            </div>
+            <div className="flex-1 pt-0.5">
+              <p className="text-xs font-bold leading-relaxed">{toast.message}</p>
+            </div>
+            <button
+              onClick={() => onDismiss(toast.id)}
+              className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+            >
+              <X className="size-4" />
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </aside>
+  )
+}
+
 export default function MasterDoaPage() {
   const [doas, setDoas] = useState([])
   const [grupOptions, setGrupOptions] = useState([])
   const [tagOptions, setTagOptions] = useState([])
   const [stats, setStats] = useState({ total_doa: 0, total_grup: 0, total_tag: 0 })
   const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
+  const [remoteDoas, setRemoteDoas] = useState([])
+  const [showRemoteCatalog, setShowRemoteCatalog] = useState(false)
+  const [loadingRemote, setLoadingRemote] = useState(false)
+  const [importingId, setImportingId] = useState(null)
 
   // Filters for Master Data
   const [search, setSearch] = useState('')
@@ -125,6 +364,26 @@ export default function MasterDoaPage() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [selectedDoa, setSelectedDoa] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+
+  // Harmonized Modals & Toasts
+  const [toasts, setToasts] = useState([])
+  const [deleteItem, setDeleteItem] = useState(null)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false)
+  const [isDeletingAll, setIsDeletingAll] = useState(false)
+
+  const pushToast = (message, type = 'success') => {
+    const id = Date.now() + Math.random().toString(36).slice(2, 6)
+    setToasts((prev) => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 4000)
+  }
+
+  const dismissToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
 
   // Fetch Doa list from Backend Database
   const fetchDoas = async () => {
@@ -146,7 +405,7 @@ export default function MasterDoaPage() {
       }
     } catch (e) {
       console.error('Failed loading doa data', e)
-      Swal.fire('Error', 'Gagal memuat data doa dari database', 'error')
+      pushToast('Gagal memuat data doa dari database', 'error')
     } finally {
       setLoading(false)
     }
@@ -156,24 +415,52 @@ export default function MasterDoaPage() {
     fetchDoas()
   }, [grupFilter, tagFilter])
 
-  // Sync Doa & Dzikir items from EQuran.id API
-  const handleSync = async () => {
-    setSyncing(true)
+  // Load source-only catalogue. Nothing is saved until a row is imported.
+  const handleOpenRemoteCatalog = async () => {
+    setShowRemoteCatalog(true)
+    setLoadingRemote(true)
     try {
-      const res = await equranService.syncDoas()
-      await fetchDoas()
-      Swal.fire({
-        icon: 'success',
-        title: 'Sync Berhasil',
-        text: res.message || 'Data Doa & Dzikir berhasil disinkronkan ke database!',
-        timer: 1800,
-        showConfirmButton: false,
-      })
+      const res = await equranService.getRemoteDoaCatalog()
+      setRemoteDoas(res.data || [])
     } catch (e) {
       console.error(e)
-      Swal.fire('Error', 'Gagal melakukan sinkronisasi data doa dengan EQuran.id', 'error')
+      pushToast('Gagal memuat katalog dari EQuran.id', 'error')
     } finally {
-      setSyncing(false)
+      setLoadingRemote(false)
+    }
+  }
+
+  const handleImportRemoteDoa = async (remoteDoa) => {
+    setImportingId(remoteDoa.id)
+    try {
+      await equranService.importRemoteDoa(remoteDoa.id)
+      await fetchDoas()
+      pushToast(`“${remoteDoa.nama}” telah ditambahkan ke database.`, 'success')
+    } catch (e) {
+      pushToast(e.response?.data?.message || 'Gagal mengimpor data dari EQuran.id.', 'error')
+    } finally {
+      setImportingId(null)
+    }
+  }
+
+  const handleDeleteAll = () => {
+    setIsDeleteAllOpen(true)
+  }
+
+  const handleConfirmDeleteAll = async () => {
+    setIsDeletingAll(true)
+    try {
+      const res = await equranService.deleteAllDoas()
+      setDoas([])
+      setGrupOptions([])
+      setTagOptions([])
+      setStats({ total_doa: 0, total_grup: 0, total_tag: 0 })
+      setIsDeleteAllOpen(false)
+      pushToast(res.message || 'Seluruh data doa berhasil dikosongkan.', 'success')
+    } catch (e) {
+      pushToast(e.response?.data?.message || 'Gagal menghapus seluruh data doa.', 'error')
+    } finally {
+      setIsDeletingAll(false)
     }
   }
 
@@ -212,7 +499,7 @@ export default function MasterDoaPage() {
     setEditingItem(doa)
     const tagsArr = Array.isArray(doa.tag) ? doa.tag : []
     setFormData({
-      id: doa.id || '',
+      id: doa.id,
       nama: doa.nama || '',
       grup: doa.grup || 'Doa Harian',
       ar: doa.ar || '',
@@ -224,15 +511,15 @@ export default function MasterDoaPage() {
     setShowModal(true)
   }
 
-  // Save (Create or Update)
-  const handleSubmit = async (e) => {
+  // Submit Handler for Modal
+  const handleSave = async (e) => {
     e.preventDefault()
     setSaving(true)
+
     try {
       const tagsArray = formData.tagInput
-        .split(',')
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean)
+        ? formData.tagInput.split(',').map((t) => t.trim()).filter(Boolean)
+        : []
 
       const payload = {
         id: Number(formData.id),
@@ -247,10 +534,10 @@ export default function MasterDoaPage() {
 
       if (editingItem) {
         await equranService.updateDoa(editingItem.id, payload)
-        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data doa berhasil diperbarui', timer: 1400, showConfirmButton: false })
+        pushToast('Data doa berhasil diperbarui', 'success')
       } else {
         await equranService.createDoa(payload)
-        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Doa baru berhasil ditambahkan ke database', timer: 1400, showConfirmButton: false })
+        pushToast('Doa baru berhasil ditambahkan ke database', 'success')
       }
 
       setShowModal(false)
@@ -258,53 +545,73 @@ export default function MasterDoaPage() {
     } catch (e) {
       console.error(e)
       const errMessage = e.response?.data?.message || 'Gagal menyimpan data doa. Periksa form input.'
-      Swal.fire('Error', errMessage, 'error')
+      pushToast(errMessage, 'error')
     } finally {
       setSaving(false)
     }
   }
 
   // Delete Doa
-  const handleDelete = async (doa, e) => {
+  const handleDelete = (doa, e) => {
     e?.stopPropagation()
-    const result = await Swal.fire({
-      title: 'Hapus Doa?',
-      text: `Doa "${doa.nama}" (ID: ${doa.id}) akan dihapus dari database.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Ya, Hapus',
-      cancelButtonText: 'Batal',
-    })
+    setDeleteItem(doa)
+    setIsDeleteOpen(true)
+  }
 
-    if (result.isConfirmed) {
-      try {
-        await equranService.deleteDoa(doa.id)
-        Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Doa berhasil dihapus dari database', timer: 1400, showConfirmButton: false })
-        fetchDoas()
-      } catch (e) {
-        console.error(e)
-        Swal.fire('Error', 'Gagal menghapus data doa', 'error')
-      }
+  const handleConfirmDelete = async () => {
+    if (!deleteItem) return
+    setIsDeleting(true)
+    try {
+      await equranService.deleteDoa(deleteItem.id)
+      pushToast('Doa berhasil dihapus dari database', 'success')
+      setIsDeleteOpen(false)
+      setDeleteItem(null)
+      fetchDoas()
+    } catch (e) {
+      console.error(e)
+      pushToast('Gagal menghapus data doa', 'error')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
+  // Debounced search for smooth typing without jitter
+  const debouncedSearch = useDebounce(search, 350)
+
   // Filtered Doa List for Search Input
   const filteredDoas = useMemo(() => {
-    if (!search) return doas
-    const s = search.toLowerCase()
+    const s = debouncedSearch.trim().toLowerCase()
     return doas.filter((d) => {
-      const matchNama = d.nama?.toLowerCase().includes(s)
-      const matchGrup = d.grup?.toLowerCase().includes(s)
-      const matchLatin = d.tr?.toLowerCase().includes(s)
-      const matchIdn = d.idn?.toLowerCase().includes(s)
-      const matchSumber = d.tentang?.toLowerCase().includes(s)
-      const matchId = String(d.id).includes(s)
-      const matchTags = Array.isArray(d.tag) && d.tag.some((t) => t.toLowerCase().includes(s))
-      return matchNama || matchGrup || matchLatin || matchIdn || matchSumber || matchId || matchTags
+      const matchSearch =
+        !s ||
+        d.nama?.toLowerCase().includes(s) ||
+        d.grup?.toLowerCase().includes(s) ||
+        d.tr?.toLowerCase().includes(s) ||
+        d.idn?.toLowerCase().includes(s) ||
+        d.tentang?.toLowerCase().includes(s) ||
+        String(d.id).includes(s) ||
+        (Array.isArray(d.tag) && d.tag.some((t) => t.toLowerCase().includes(s)))
+
+      const matchGrup = grupFilter === 'all' || d.grup?.toLowerCase() === grupFilter.toLowerCase()
+      const matchTag = tagFilter === 'all' || (Array.isArray(d.tag) && d.tag.includes(tagFilter))
+
+      return matchSearch && matchGrup && matchTag
     })
-  }, [doas, search])
+  }, [doas, debouncedSearch, grupFilter, tagFilter])
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredDoas.length / perPage))
+  const paginatedDoas = useMemo(() => {
+    const start = (currentPage - 1) * perPage
+    return filteredDoas.slice(start, start + perPage)
+  }, [filteredDoas, currentPage, perPage])
+
+  const handleResetFilter = () => {
+    setSearch('')
+    setGrupFilter('all')
+    setTagFilter('all')
+    setCurrentPage(1)
+  }
 
   // Computed Stats
   const displayStats = useMemo(() => {
@@ -316,6 +623,15 @@ export default function MasterDoaPage() {
       totalHadits,
     }
   }, [doas, grupOptions, tagOptions])
+
+  const filteredRemoteDoas = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    if (!term) return remoteDoas
+    return remoteDoas.filter((doa) => [doa.id, doa.nama, doa.grup, doa.kategori, doa.tr, doa.idn]
+      .some((value) => String(value || '').toLowerCase().includes(term)))
+  }, [remoteDoas, search])
+
+  const importedDoaIds = useMemo(() => new Set(doas.map((doa) => Number(doa.id))), [doas])
 
   return (
     <PageContainer maxW="7xl">
@@ -353,111 +669,254 @@ export default function MasterDoaPage() {
       </div>
 
       <MasterDataPage className="education-unit-page doa-master-page space-y-6" hideBreadcrumb>
-      {/* Summary Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiTintedCard
+      {/* Summary Cards Grid (ModernKpiCard with MODERN_CARD_TONES & Ambient Glow) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <ModernKpiCard
           label="Total Doa DB"
           value={displayStats.totalDoa}
           subtext="Tersimpan di database"
+          tag="Database"
           icon={Layers}
           tone="emerald"
+          ctaText="Semua Doa"
+          onClick={() => { setGrupFilter('all'); setTagFilter('all'); setCurrentPage(1) }}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           label="Kategori / Grup"
           value={displayStats.totalGrup}
-          subtext="Grup doa harian"
+          subtext="Grup doa harian santri"
+          tag="Grup Doa"
           icon={Bookmark}
           tone="blue"
+          ctaText="Daftar Grup"
         />
-        <KpiTintedCard
+        <ModernKpiCard
           label="Total Tag Unik"
           value={displayStats.totalTag}
-          subtext="Tag pencarian doa"
+          subtext="Tag kata kunci pencarian"
+          tag="Keywords"
           icon={Tag}
           tone="purple"
+          ctaText="Semua Tag"
         />
-        <KpiTintedCard
+        <ModernKpiCard
           label="Referensi Hadits"
           value={displayStats.totalHadits}
-          subtext="Disertai sumber hadits"
+          subtext="Disertai sumber hadits shahih"
+          tag="Shahih"
           icon={ShieldCheck}
           tone="amber"
+          ctaText="Doa Berhadits"
         />
       </div>
 
       {/* Master Outer Container Datatable Emerald Zamrud Modern */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
-        {/* Toolbar Header */}
-        <div className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">
-          {/* Left Side: Search Bar */}
-          <div className="relative w-full lg:w-80 shrink-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        {/* Toolbar Header 3-Baris Terstruktur */}
+        <div className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent space-y-3.5">
+          {/* Baris 1: Judul, Subtitle, Count Pill, & 4 Soft Pastel Squircle Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  Koleksi Doa & Dzikir Yaumiyah
+                </h3>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                  {filteredDoas.length} Doa
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Katalog doa lengkap dengan transliterasi Latin, arti, dan referensi sanad hadits.
+              </p>
+            </div>
+
+            {/* 4 Soft Pastel Squircle Action Buttons dengan Floating Tooltip */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+              {/* Sync / Remote Catalog Button (Vivid Sky Blue Squircle) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Pilih dan Impor dari EQuran.id"
+                  aria-label="Pilih dan Impor dari EQuran.id"
+                  onClick={handleOpenRemoteCatalog}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <RefreshCw className="size-5 text-white" strokeWidth={2.2} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Katalog EQuran.id
+                </div>
+              </div>
+
+              {/* Cetak Doa Button (Pastel Indigo Squircle) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Cetak Kumpulan Doa"
+                  aria-label="Cetak Kumpulan Doa"
+                  onClick={() => window.print()}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <Printer className="size-5 text-white" strokeWidth={2.2} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Cetak Doa
+                </div>
+              </div>
+
+              {/* Export Data Button (Vivid Amber Squircle) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Export Data Doa (JSON)"
+                  aria-label="Export Data Doa (JSON)"
+                  onClick={() => {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(doas, null, 2))
+                    const downloadAnchor = document.createElement('a')
+                    downloadAnchor.setAttribute("href", dataStr)
+                    downloadAnchor.setAttribute("download", `master_doa_${new Date().toISOString().slice(0, 10)}.json`)
+                    document.body.appendChild(downloadAnchor)
+                    downloadAnchor.click()
+                    downloadAnchor.remove()
+                    pushToast('Data doa berhasil diexport', 'success')
+                  }}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <Download className="size-5 text-white" strokeWidth={2.2} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Export Data JSON
+                </div>
+              </div>
+
+              {/* Tambah Doa Button (Vivid Emerald Squircle) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Tambah Doa Baru Manual"
+                  aria-label="Tambah Doa Baru Manual"
+                  onClick={handleOpenAdd}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <Plus className="size-5 text-white" strokeWidth={2.5} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Tambah Doa
+                </div>
+              </div>
+
+              {/* Kosongkan Data Button (Vivid Rose Squircle) */}
+              {doas.length > 0 && (
+                <div className="group relative inline-flex">
+                  <button
+                    type="button"
+                    title="Kosongkan Seluruh Data Doa"
+                    aria-label="Kosongkan Seluruh Data Doa"
+                    onClick={handleDeleteAll}
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    <Trash2 className="size-5 text-white" strokeWidth={2.2} />
+                  </button>
+                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                    Kosongkan Data
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Baris 2: Full-width Debounced Search Input */}
+          <div className="relative w-full">
+            <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari ID, judul, arab, latin, atau tag..."
-              className="w-full h-10 pl-9 pr-8 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all"
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
+              placeholder="Cari ID, judul doa (contoh: Doa Masuk Masjid), lafadz Arab, transliterasi Latin, terjemahan, atau tag..."
+              className="w-full h-11 pl-10 pr-10 bg-white dark:bg-slate-900 border-2 border-emerald-100 dark:border-emerald-900/60 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-xs"
             />
             {search && (
               <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                onClick={() => { setSearch(''); setCurrentPage(1) }}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* Right Side: Filters & Soft Pastel Squircle Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
-            {/* Grup/Kategori Filter */}
-            <MasterFilterSelect
-              aria-label="Filter Grup Doa"
-              value={grupFilter}
-              onChange={(e) => setGrupFilter(e.target.value)}
-              className="!min-w-44"
-            >
-              <option value="all">Semua Grup</option>
-              {grupOptions.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </MasterFilterSelect>
+          {/* Baris 3: Horizontal Responsive Filter Bar dengan Reset Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                <span className="text-emerald-700 dark:text-emerald-400">Filter:</span>
+              </span>
 
-            {/* Tag Filter */}
-            <MasterFilterSelect
-              aria-label="Filter Tag Doa"
-              value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="!min-w-40 capitalize"
-            >
-              <option value="all">Semua Tag</option>
-              {tagOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </MasterFilterSelect>
+              {/* Grup/Kategori Filter */}
+              <div className="relative min-w-[160px]">
+                <select
+                  value={grupFilter}
+                  onChange={(e) => { setGrupFilter(e.target.value); setCurrentPage(1) }}
+                  className="w-full h-9 appearance-none cursor-pointer rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value="all">Semua Kategori / Grup</option>
+                  {grupOptions.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+              </div>
 
-            {/* Soft Pastel Squircle Action Buttons */}
-            <div className="flex items-center gap-2.5 shrink-0 ml-auto lg:ml-0">
-              <SquircleActionButton
-                variant="import"
-                icon={RefreshCw}
-                label="Sync EQuran.id"
-                disabled={syncing}
-                onClick={handleSync}
-              />
+              {/* Tag Filter */}
+              <div className="relative min-w-[140px]">
+                <select
+                  value={tagFilter}
+                  onChange={(e) => { setTagFilter(e.target.value); setCurrentPage(1) }}
+                  className="w-full h-9 appearance-none cursor-pointer rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 capitalize"
+                >
+                  <option value="all">Semua Tag</option>
+                  {tagOptions.map((t) => (
+                    <option key={t} value={t}>
+                      #{t}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+              </div>
 
-              <SquircleActionButton
-                variant="primary"
-                icon={Plus}
-                label="Tambah Doa Manual"
-                onClick={handleOpenAdd}
-              />
+              {/* Per Page Selector */}
+              <div className="relative min-w-[120px]">
+                <select
+                  value={perPage}
+                  onChange={(e) => { setPerPage(Number(e.target.value)); setCurrentPage(1) }}
+                  className="w-full h-9 appearance-none cursor-pointer rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <option value={10}>10 Baris</option>
+                  <option value={25}>25 Baris</option>
+                  <option value={50}>50 Baris</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+              </div>
             </div>
+
+            {/* Reset Filter Button */}
+            {(search || grupFilter !== 'all' || tagFilter !== 'all') && (
+              <button
+                type="button"
+                onClick={handleResetFilter}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300 cursor-pointer transition-all self-start sm:self-auto"
+              >
+                <RotateCcw className="size-3.5" />
+                <span>Reset Filter</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -469,76 +928,83 @@ export default function MasterDoaPage() {
           </div>
         ) : filteredDoas.length === 0 ? (
           <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-2">
-            <BookOpen className="w-10 h-10 text-slate-300" />
-            <span className="text-base font-semibold text-slate-600 dark:text-slate-300">Tidak ada data doa ditemukan</span>
-            <p className="text-xs text-slate-400">Silakan klik "Sync Data Doa" untuk menarik daftar dari EQuran.id</p>
+            <Layers className="w-12 h-12 text-slate-300 dark:text-slate-600" />
+            <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+              Tidak ada data doa yang cocok
+            </span>
+            <span className="text-xs text-slate-400">
+              Coba reset filter atau import data dari EQuran.id
+            </span>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-                <tr>
-                  <th className="w-14 bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">ID</th>
-                  <th className="bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Nama Doa & Grup</th>
-                  <th className="bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Teks Arab, Transliterasi & Terjemahan</th>
-                  <th className="bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Tag Filtering</th>
-                  <th className="w-40 bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200">
+                <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 font-extrabold text-[11px] uppercase tracking-wider">
+                  <th className="px-4 py-3.5 w-16 text-center">ID</th>
+                  <th className="px-4 py-3.5">Judul & Kategori</th>
+                  <th className="px-4 py-3.5">Lafadz, Latin & Terjemahan</th>
+                  <th className="px-4 py-3.5 w-48 hidden md:table-cell">Tag Terkait</th>
+                  <th className="px-4 py-3.5 w-24 text-center">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-200">
-                {filteredDoas.map((doa) => (
-                  <tr key={doa.id} className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer" onClick={() => handleOpenDetail(doa)}>
-                    <td className="px-4 py-3 font-black text-emerald-700 dark:text-emerald-400 text-center">
+              <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                {paginatedDoas.map((doa) => (
+                  <tr
+                    key={doa.id}
+                    className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/60 transition-colors group cursor-pointer"
+                    onClick={() => handleOpenDetail(doa)}
+                  >
+                    <td className="px-4 py-3 text-center font-mono font-bold text-xs text-emerald-800 dark:text-emerald-300">
                       #{doa.id}
                     </td>
+
                     <td className="px-4 py-3">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleOpenDetail(doa) }}
-                        className="text-left font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 flex flex-col hover:underline focus:outline-none"
-                      >
-                        <span className="text-sm flex items-center gap-1.5 font-extrabold">
-                          {doa.nama}
-                          <Eye className="w-3.5 h-3.5 text-emerald-600 opacity-60 group-hover:opacity-100 transition-opacity" />
-                        </span>
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
-                          <Bookmark className="w-3 h-3" />
+                      <div className="font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-sm">
+                        <span>{doa.nama}</span>
+                        <Eye className="w-3.5 h-3.5 text-emerald-600 opacity-60 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300">
                           {doa.grup || 'Doa Harian'}
                         </span>
-                      </button>
+                        {doa.tentang && (
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-xs font-medium">
+                            • {doa.tentang}
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 max-w-md space-y-1.5">
-                      {doa.ar && (
-                        <div className="text-right font-bold text-xl text-emerald-700 dark:text-emerald-400 font-serif leading-relaxed">
-                          {doa.ar}
-                        </div>
-                      )}
-                      {doa.tr && (
-                        <div className="text-xs text-slate-800 dark:text-slate-200 font-semibold italic">
-                          "{doa.tr}"
-                        </div>
-                      )}
-                      {doa.idn && (
-                        <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
-                          {doa.idn}
-                        </div>
-                      )}
+
+                    <td className="px-4 py-3 max-w-md">
+                      <div className="font-serif text-right text-base text-slate-900 dark:text-slate-100 leading-relaxed line-clamp-1 mb-1 font-bold">
+                        {doa.ar}
+                      </div>
+                      <div className="text-xs font-semibold text-emerald-800 dark:text-emerald-400 italic line-clamp-1 mb-0.5">
+                        "{doa.tr}"
+                      </div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                        {doa.idn}
+                      </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
+
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <div className="flex flex-wrap gap-1 max-w-xs">
                         {Array.isArray(doa.tag) && doa.tag.length > 0 ? (
-                          doa.tag.map((t, idx) => (
+                          doa.tag.slice(0, 3).map((t, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-extrabold border border-emerald-200/60 dark:border-emerald-800/60"
+                              className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold rounded-md"
                             >
                               #{t}
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-slate-400">-</span>
+                          <span className="text-xs text-slate-400 italic">-</span>
                         )}
                       </div>
                     </td>
+
                     <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center">
                         <ActionDropdown
@@ -554,65 +1020,198 @@ export default function MasterDoaPage() {
             </table>
           </div>
         )}
+
+        {/* TailGrids Pagination Footer */}
+        {filteredDoas.length > perPage && (
+          <div className="border-t border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{(currentPage - 1) * perPage + 1}</span> - <span className="font-bold text-slate-800 dark:text-slate-200">{Math.min(currentPage * perPage, filteredDoas.length)}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{filteredDoas.length}</span> doa
+            </div>
+            <div className="max-w-xs">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(p) => setCurrentPage(p)}
+                sideLayout="icon"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* MODAL READER DETAIL DOA (Full Arabic, Latin, Translation & Hadith) */}
-      {showDetailModal && selectedDoa && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col border border-gray-100">
-            {/* Header Modal */}
-            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 p-6 text-white flex items-start justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider">
-                  <Hash className="w-3.5 h-3.5" />
-                  <span>ID Doa #{selectedDoa.id}</span>
-                  <span>•</span>
-                  <span>{selectedDoa.grup || 'Doa Harian'}</span>
+      {/* MODAL PILIH & IMPOR KATALOG EQURAN.ID (Harmonized Remote Modal - z-[70]) */}
+      {showRemoteCatalog && (
+        <div className="fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94 }}
+            className="relative w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-sky-950/20 dark:border-slate-800 dark:bg-[#1B2433] flex flex-col"
+          >
+            {/* Top Sky Accent Line */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-sky-400 via-sky-500 to-blue-600 shrink-0" />
+
+            {/* Header dengan Squircle 3D Icon Badge */}
+            <div className="p-5 sm:p-6 border-b border-sky-100/80 dark:border-sky-900/40 bg-gradient-to-r from-sky-500/10 via-blue-500/5 to-transparent flex items-start justify-between gap-4 shrink-0">
+              <div className="flex items-start gap-3.5">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/30 border border-sky-300/40">
+                  <RefreshCw className="size-6 text-white" />
                 </div>
-                <h2 className="text-2xl font-extrabold tracking-tight">{selectedDoa.nama}</h2>
+                <div>
+                  <span className="inline-block rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">
+                    Katalog Sumber EQuran.id
+                  </span>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                    Pilih & Impor Koleksi Doa
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Pilih satu atau sinkronkan seluruh doa resmi ke database sekolah.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={syncingAll || loadingRemote}
+                  onClick={handleSyncAllFromCatalog}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-sky-600/25 hover:brightness-105 disabled:opacity-60 transition cursor-pointer"
+                >
+                  <RefreshCw className={`size-3.5 ${syncingAll ? 'animate-spin' : ''}`} />
+                  {syncingAll ? 'Sinkron Seluruh…' : 'Impor Semua Sekaligus'}
+                </button>
+                <button
+                  onClick={() => setShowRemoteCatalog(false)}
+                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="border-b border-sky-100 bg-sky-50/60 px-5 py-2.5 text-xs font-semibold text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200 shrink-0">
+              {loadingRemote ? 'Mengambil katalog EQuran.id…' : `${filteredRemoteDoas.length} item sumber tersedia. Item yang sudah ada dapat diimpor ulang untuk memperbarui isinya.`}
+            </div>
+
+            <div className="overflow-y-auto p-4 sm:p-5 flex-1 bg-slate-50/50 dark:bg-slate-900/30">
+              {loadingRemote ? (
+                <div className="flex items-center justify-center gap-2 p-12 text-slate-500">
+                  <Loader2 className="size-5 animate-spin text-sky-600" />
+                  <span className="text-xs font-medium">Memuat katalog resmi…</span>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1B2433]">
+                  {filteredRemoteDoas.map((doa) => {
+                    const id = Number(doa.id)
+                    const imported = importedDoaIds.has(id)
+                    return (
+                      <div key={id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-sky-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-slate-900 dark:text-white text-sm">#{id} · {doa.nama || doa.judul || 'Tanpa judul'}</p>
+                          <p className="mt-1 text-xs font-semibold text-sky-700 dark:text-sky-300">{doa.grup || doa.kategori || 'Doa Harian'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={importingId === id}
+                          onClick={() => handleImportRemoteDoa(doa)}
+                          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 px-3.5 py-2 text-xs font-extrabold text-white transition disabled:cursor-wait disabled:opacity-60 cursor-pointer shadow-xs"
+                        >
+                          {importingId === id ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+                          {imported ? 'Impor Ulang' : 'Impor ke DB'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-[#1B2433] border-t border-slate-200/80 dark:border-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Data resmi Kementerian Agama RI via EQuran.id
+              </span>
+              <button
+                onClick={() => setShowRemoteCatalog(false)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Tutup Katalog
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* MODAL READER DETAIL DOA (Harmonized Reader Detail Modal - z-[70]) */}
+      {showDetailModal && selectedDoa && (
+        <div className="fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94 }}
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433] flex flex-col"
+          >
+            {/* Top Emerald Accent Line */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+            {/* Header dengan Squircle 3D Icon Badge */}
+            <div className="p-5 sm:p-6 border-b border-emerald-100/80 dark:border-emerald-900/40 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent flex items-start justify-between gap-4 shrink-0">
+              <div className="flex items-start gap-3.5">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30 border border-emerald-300/40">
+                  <Bookmark className="size-6 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                      ID Doa #{selectedDoa.id} • {selectedDoa.grup || 'Doa Harian'}
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
+                    {selectedDoa.nama}
+                  </h2>
+                </div>
               </div>
 
               <button
                 onClick={() => setShowDetailModal(false)}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1 bg-slate-50/50 dark:bg-slate-900/30">
               {loadingDetail ? (
-                <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-2">
+                <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-2">
                   <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
                   <span className="text-sm font-medium">Memuat rincian doa...</span>
                 </div>
               ) : (
                 <>
                   {/* Teks Arab (Large Right Aligned) */}
-                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-right text-3xl font-serif leading-loose text-emerald-950 tracking-wide font-medium">
+                  <div className="bg-white dark:bg-[#1C2637] p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs text-right text-3xl font-serif leading-loose text-slate-900 dark:text-white tracking-wide font-medium">
                     {selectedDoa.ar}
                   </div>
 
                   {/* Transliterasi Latin */}
-                  <div className="bg-emerald-50/80 border-l-4 border-emerald-500 p-4 rounded-r-2xl text-emerald-950 text-sm font-semibold italic shadow-sm">
+                  <div className="bg-emerald-50/80 dark:bg-emerald-950/30 border-l-4 border-emerald-500 p-4 rounded-r-2xl text-emerald-900 dark:text-emerald-200 text-sm font-semibold italic shadow-xs">
                     "{selectedDoa.tr}"
                   </div>
 
                   {/* Terjemahan Indonesia */}
-                  <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-2">
-                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  <div className="bg-white dark:bg-[#1C2637] p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1.5">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                       Terjemahan Bahasa Indonesia:
                     </div>
-                    <div className="text-gray-800 text-sm leading-relaxed font-normal">
+                    <div className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed font-normal">
                       {selectedDoa.idn}
                     </div>
                   </div>
 
                   {/* Referensi Sumber Hadits */}
                   {selectedDoa.tentang && (
-                    <div className="bg-amber-50/80 border border-amber-200/80 p-4 rounded-2xl text-amber-900 text-xs leading-relaxed space-y-1">
-                      <div className="font-extrabold text-amber-800 flex items-center gap-1.5">
+                    <div className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 p-4 rounded-2xl text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-1 shadow-xs">
+                      <div className="font-extrabold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
                         <ShieldCheck className="w-4 h-4 text-amber-600" />
                         <span>Referensi Sumber Hadits / Keterangan:</span>
                       </div>
@@ -623,11 +1222,11 @@ export default function MasterDoaPage() {
                   {/* Tags Badges */}
                   {Array.isArray(selectedDoa.tag) && selectedDoa.tag.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap pt-2">
-                      <span className="text-xs font-bold text-gray-400">Tag Keyword:</span>
+                      <span className="text-xs font-bold text-slate-400">Tag Keyword:</span>
                       {selectedDoa.tag.map((t, i) => (
                         <span
                           key={i}
-                          className="px-2.5 py-1 bg-white text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 shadow-xs"
+                          className="px-2.5 py-1 bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-lg border border-emerald-200 dark:border-emerald-800/80 shadow-2xs"
                         >
                           #{t}
                         </span>
@@ -639,151 +1238,186 @@ export default function MasterDoaPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between">
-              <span className="text-xs text-gray-500">
+            <div className="bg-white dark:bg-[#1B2433] border-t border-slate-200/80 dark:border-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 Konten Referensi Doa Resmi EQuran.id
               </span>
               <button
                 onClick={() => setShowDetailModal(false)}
-                className="px-5 py-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold rounded-xl transition-all"
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 Tutup Pembaca Doa
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 
-      {/* MODAL FORM ADD / EDIT DOA */}
+      {/* MODAL FORM ADD / EDIT DOA (Harmonized Form Modal - z-[70]) */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-gray-100">
-            <div className="bg-gradient-to-r from-emerald-800 to-teal-800 px-6 py-4 text-white flex items-center justify-between">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-emerald-300" />
-                <span>{editingItem ? 'Edit Data Doa' : 'Tambah Doa Baru'}</span>
-              </h3>
-              <button onClick={() => setShowModal(false)} className="text-emerald-100 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94 }}
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+          >
+            {/* Top Accent Line (Amber for edit, Emerald for new) */}
+            <div className={`h-1.5 w-full bg-gradient-to-r ${editingItem ? 'from-amber-500 via-amber-600 to-orange-600' : 'from-emerald-500 via-teal-400 to-emerald-600'}`} />
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+            <div className="p-6">
+              {/* Dialog Header dengan Squircle 3D Icon Badge */}
+              <div className="flex items-center gap-3.5 mb-5">
+                <div className={`flex size-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${editingItem ? 'bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 shadow-amber-500/30' : 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/30'}`}>
+                  <BookOpen className="size-6 text-white" />
+                </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">ID Doa</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={formData.id}
-                    onChange={(e) => setFormData({ ...formData, id: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  />
+                  <span className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${editingItem ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'}`}>
+                    {editingItem ? 'Perbarui Data' : 'Doa Baru'}
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                    {editingItem ? `Edit Doa: ${editingItem.nama}` : 'Tambah Doa Baru Manual'}
+                  </h3>
+                </div>
+              </div>
+
+              <form onSubmit={handleSave} className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">ID Doa</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={formData.id}
+                      onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Kategori / Grup Doa</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.grup}
+                      onChange={(e) => setFormData({ ...formData, grup: e.target.value })}
+                      placeholder="Contoh: Doa Sebelum dan Sesudah Tidur"
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
 
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Kategori / Grup Doa</label>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Judul Doa</label>
                   <input
                     type="text"
                     required
-                    value={formData.grup}
-                    onChange={(e) => setFormData({ ...formData, grup: e.target.value })}
-                    placeholder="Contoh: Doa Sebelum dan Sesudah Tidur"
-                    className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    value={formData.nama}
+                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                    placeholder="Contoh: Doa Sebelum Tidur"
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Nama Judul Doa</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.nama}
-                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                  placeholder="Contoh: Doa Sebelum Tidur"
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Teks Arab (dengan Harakat)</label>
+                  <textarea
+                    rows="2"
+                    dir="rtl"
+                    value={formData.ar}
+                    onChange={(e) => setFormData({ ...formData, ar: e.target.value })}
+                    placeholder="بِسْمِكَ اللَّهُمَّ..."
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl text-xs font-serif font-bold text-right text-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Teks Arab (dengan Harakat)</label>
-                <textarea
-                  rows="2"
-                  dir="rtl"
-                  value={formData.ar}
-                  onChange={(e) => setFormData({ ...formData, ar: e.target.value })}
-                  placeholder="بِسْمِكَ اللَّهُمَّ..."
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-serif text-right text-lg"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Transliterasi Latin</label>
+                  <input
+                    type="text"
+                    value={formData.tr}
+                    onChange={(e) => setFormData({ ...formData, tr: e.target.value })}
+                    placeholder="Bismikallāhumma aḥyā..."
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Transliterasi Latin</label>
-                <input
-                  type="text"
-                  value={formData.tr}
-                  onChange={(e) => setFormData({ ...formData, tr: e.target.value })}
-                  placeholder="Bismikallāhumma aḥyā..."
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Terjemahan Bahasa Indonesia</label>
+                  <textarea
+                    rows="2"
+                    value={formData.idn}
+                    onChange={(e) => setFormData({ ...formData, idn: e.target.value })}
+                    placeholder="Dengan nama-Mu ya Allah..."
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Terjemahan Bahasa Indonesia</label>
-                <textarea
-                  rows="2"
-                  value={formData.idn}
-                  onChange={(e) => setFormData({ ...formData, idn: e.target.value })}
-                  placeholder="Dengan nama-Mu ya Allah..."
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Referensi Sumber Hadits (Opsional)</label>
+                  <input
+                    type="text"
+                    value={formData.tentang}
+                    onChange={(e) => setFormData({ ...formData, tentang: e.target.value })}
+                    placeholder="Contoh: HR. Bukhari no. 6312"
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Referensi Sumber Hadits (Opsional)</label>
-                <input
-                  type="text"
-                  value={formData.tentang}
-                  onChange={(e) => setFormData({ ...formData, tentang: e.target.value })}
-                  placeholder="Contoh: HR. Bukhari no. 6312"
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tag Keywords (pisahkan dengan koma)</label>
+                  <input
+                    type="text"
+                    value={formData.tagInput}
+                    onChange={(e) => setFormData({ ...formData, tagInput: e.target.value })}
+                    placeholder="Contoh: tidur, malam, sebelum tidur"
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Tag Keywords (pisahkan dengan koma)</label>
-                <input
-                  type="text"
-                  value={formData.tagInput}
-                  onChange={(e) => setFormData({ ...formData, tagInput: e.target.value })}
-                  placeholder="Contoh: tidur, malam, sebelum tidur"
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  <span>{editingItem ? 'Simpan Perubahan' : 'Tambah Doa'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>{editingItem ? 'Simpan Perubahan' : 'Tambah Doa'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
         </div>
       )}
+
+      <HarmonizedDeleteModal
+        isOpen={isDeleteOpen}
+        onClose={() => {
+          setIsDeleteOpen(false)
+          setDeleteItem(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        item={deleteItem}
+        isSubmitting={isDeleting}
+      />
+
+      <HarmonizedDeleteAllModal
+        isOpen={isDeleteAllOpen}
+        onClose={() => setIsDeleteAllOpen(false)}
+        onConfirm={handleConfirmDeleteAll}
+        isSubmitting={isDeletingAll}
+      />
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </MasterDataPage>
     </PageContainer>
   )

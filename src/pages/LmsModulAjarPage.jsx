@@ -1,13 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import Swal from 'sweetalert2'
 import {
   BookOpen,
   Search,
-  CheckCircle,
+  CheckCircle2,
   XCircle,
-  Edit2,
   Trash2,
   RefreshCw,
   Eye,
@@ -21,20 +19,201 @@ import {
   User,
   Pencil,
   Sparkles,
+  ShieldCheck,
+  Plus,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft,
+  ArrowRight,
+  Save,
+  Upload,
+  AlertTriangle,
+  RotateCcw,
+  FileSpreadsheet,
+  GraduationCap,
+  Calendar,
+  Building2,
+  Clock,
+  Compass,
+  FileCheck,
 } from 'lucide-react'
 import { lmsModulAjarService } from '../services/lmsModulAjarService'
 import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
-import {
-  MasterActionButton,
-  MasterDataPage,
-  MasterPageHeader,
-  MasterStatCard,
-  MasterStatsGrid,
-  SquircleActionButton,
-  PrintOptionModal,
-} from '../components/master-data'
+import { useDebounce } from '../hooks/useDebounce'
+import { PrintOptionModal } from '../components/master-data'
+import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
+
+// ── 1. DEFINISI TONE WARNA KARTU KPI MODERN ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+  },
+  purple: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+    cta: 'text-purple-600/60 dark:text-purple-500/60',
+  },
+}
+
+function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald', onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card}`}
+    >
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+          </div>
+        </div>
+        {tag && (
+          <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
+            {tag}
+          </span>
+        )}
+      </div>
+
+      <p className={`text-3xl font-black tabular-nums ${t.val}`}>
+        {value ?? '0'}
+      </p>
+      {subtext && (
+        <p className={`mt-0.5 text-[11px] font-semibold ${t.sub}`}>
+          {subtext}
+        </p>
+      )}
+
+      {isClickable && (
+        <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+          <Eye className="h-3 w-3" /> Klik untuk rincian
+        </p>
+      )}
+    </motion.div>
+  )
+}
+
+// ── 2. TOAST NOTIFICATION STACK HOOK ──
+function useNotifications() {
+  const [items, setItems] = useState([])
+  const push = (title, message, tone = 'success') => {
+    const id = `${Date.now()}-${Math.random()}`
+    setItems((prev) => [...prev, { id, title, message, tone }])
+    window.setTimeout(() => setItems((prev) => prev.filter((n) => n.id !== id)), 5000)
+  }
+  const dismiss = (id) => setItems((prev) => prev.filter((n) => n.id !== id))
+  return { items, push, dismiss }
+}
+
+function ToastStack({ items, onDismiss }) {
+  if (!items.length) return null
+  return (
+    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
+      {items.map((n) => {
+        const isError = n.tone === 'error' || n.tone === 'danger'
+        const isWarning = n.tone === 'warning'
+        return (
+          <motion.div
+            key={n.id}
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className={`pointer-events-auto relative overflow-hidden rounded-2xl border bg-white p-4 shadow-xl dark:bg-slate-900 ${
+              isError
+                ? 'border-rose-300 dark:border-rose-800 shadow-rose-950/10'
+                : isWarning
+                ? 'border-amber-300 dark:border-amber-800 shadow-amber-950/10'
+                : 'border-emerald-300 dark:border-emerald-800 shadow-emerald-950/10'
+            }`}
+          >
+            <div
+              className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${
+                isError
+                  ? 'from-rose-500 via-rose-600 to-red-700'
+                  : isWarning
+                  ? 'from-amber-400 via-amber-500 to-orange-600'
+                  : 'from-emerald-500 via-teal-400 to-emerald-600'
+              }`}
+            />
+            <div className="flex items-start gap-3 mt-0.5">
+              <div
+                className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-xs ${
+                  isError
+                    ? 'bg-gradient-to-br from-rose-500 to-red-600'
+                    : isWarning
+                    ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                    : 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                }`}
+              >
+                {isError ? <XCircle className="size-4.5" /> : isWarning ? <AlertTriangle className="size-4.5" /> : <CheckCircle2 className="size-4.5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">{n.title}</h4>
+                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{n.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onDismiss(n.id)}
+                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
 
 const FASE_LIST = ['Fase A', 'Fase B', 'Fase C', 'Fase D', 'Fase E', 'Fase F']
 const STATUS_LIST = ['Draft', 'Review', 'Publish', 'Arsip']
@@ -43,100 +222,183 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.02,
-    },
+    transition: { staggerChildren: 0.05, delayChildren: 0.02 },
   },
 }
 
 const itemVariants = {
   hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.35, ease: 'easeOut' },
-  },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 }
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) {
-  const tones = {
-    emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-    },
-    blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
-    },
-    amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
-    },
-    purple: {
-      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
-      title: 'text-purple-700 dark:text-purple-400',
-      icon: 'text-purple-500',
-      val: 'text-purple-600 dark:text-purple-300',
-      sub: 'text-purple-600/70 dark:text-purple-400/70',
-    },
-  }
-  const t = tones[tone] || tones.emerald
+// ── HARMONIZED BATCH EXPORT MODAL ──
+function HarmonizedBatchExportModal({
+  isOpen,
+  onClose,
+  onExport,
+  isExporting,
+  totalCount,
+  moduleTitle = 'Modul Ajar',
+}) {
+  const [exportFormat, setExportFormat] = useState('xlsx')
+
+  if (!isOpen) return null
+
   return (
-    <motion.div
-      variants={itemVariants}
-      whileHover={{ scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-default group`}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !isExporting) onClose()
+      }}
     >
-      <div className="flex items-center justify-between">
-        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
-      </div>
-      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
-      {subtext && (
-        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
-          {subtext}
-        </p>
-      )}
-    </motion.div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 14 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="w-full max-w-lg"
+      >
+        <div className="flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-amber-200/80 bg-white shadow-2xl shadow-amber-950/20 dark:border-amber-900/50 dark:bg-[#182232]">
+          <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600 shrink-0" />
+
+          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white p-2.5 shadow-md shadow-amber-500/25 border border-amber-300/40 shrink-0">
+                <Download className="h-5 w-5 text-white" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Export Data {moduleTitle}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60">
+                    <Sparkles className="size-3" /> Unduh Data
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pilih format berkas untuk mengekspor data sesuai filter aktif.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={onClose}
+              aria-label="Tutup modal"
+              className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0 disabled:opacity-50"
+            >
+              <X className="size-4 text-white" strokeWidth={2.25} />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                ['xlsx', 'Excel (.xlsx)', FileSpreadsheet, 'Format spreadsheet modern Microsoft Excel.'],
+                ['xls', 'Excel (.xls)', FileSpreadsheet, 'Format kompatibilitas Excel 97-2003.'],
+                ['csv', 'CSV (.csv)', FileText, 'Format teks koma terpisah universal.'],
+              ].map(([value, label, Icon, desc]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setExportFormat(value)}
+                  className={`rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${
+                    exportFormat === value
+                      ? 'border-emerald-500 bg-emerald-50/70 shadow-sm dark:border-emerald-700 dark:bg-emerald-950/40'
+                      : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Icon
+                      className={`size-4 ${
+                        exportFormat === value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
+                      }`}
+                    />
+                    <span className="text-xs font-black text-slate-900 dark:text-white">{label}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-snug">{desc}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 dark:bg-amber-950/30 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
+              <p className="font-bold flex items-center gap-1.5 mb-0.5">
+                <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400" />
+                Filter Ekspor Aktif
+              </p>
+              <p className="text-[11px] text-amber-800/90 dark:text-amber-300/80">
+                Data yang diekspor akan mencakup seluruh entitas terfilter ({totalCount} butir {moduleTitle.toLowerCase()}).
+              </p>
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2.5 bg-slate-50/50 dark:bg-slate-900/40 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-sm shadow-rose-500/20"
+            >
+              <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                <X className="size-3.5 text-white" strokeWidth={2.2} />
+              </div>
+              <span>Batal</span>
+            </button>
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={() => onExport(exportFormat)}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white px-5 py-2.5 text-xs font-extrabold shadow-md shadow-amber-500/25 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 cursor-pointer border border-amber-300/40"
+            >
+              <Download className="size-4" />
+              {isExporting ? 'Menyiapkan...' : 'Unduh Berkas'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
   )
 }
 
+// ── 3. KOMPONEN UTAMA HALAMAN MODUL AJAR ──
 export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const queryClient = useQueryClient()
+  const { items: toastList, push: pushToast, dismiss: dismissToast } = useNotifications()
 
-  // State Filter & Paginasi
-  const [search, setSearch] = useState('')
+  // State Filter & Pencarian dengan Debounce
+  const [searchInput, setSearchInput] = useState('')
+  const debouncedSearch = useDebounce(searchInput, 350)
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('')
   const [selectedMapelFilter, setSelectedMapelFilter] = useState('')
   const [selectedFaseFilter, setSelectedFaseFilter] = useState('')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
   const [denganSampahFilter, setDenganSampahFilter] = useState('')
   const [page, setPage] = useState(1)
-  const [perPage] = useState(10)
+  const [perPage, setPerPage] = useState(10)
 
-  // State Modal
+  // State Modals
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const [selectedModul, setSelectedModul] = useState(null)
-  const [formStep, setFormStep] = useState(1) // 1: Identitas, 2: Content, 3: Aktivitas, 4: Asesmen
+  const [formStep, setFormStep] = useState(1) // 1: Identitas, 2: Rancangan, 3: Aktivitas, 4: Asesmen
+
+  // Import states
+  const [importFile, setImportFile] = useState(null)
+  const [importDragging, setImportDragging] = useState(false)
+  const [importPreviewData, setImportPreviewData] = useState([])
+  const [importLoading, setImportLoading] = useState(false)
 
   // Form State
-  const [formData, setFormData] = useState({
+  const initialFormState = () => ({
     unit_pendidikan_id: '',
     tahun_ajaran_id: '',
     semester_id: '',
@@ -147,7 +409,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     rombel_id: '',
     cp_id: '',
     tp_id: '',
-    kode_modul: '',
+    kode_modul: 'MA-' + Math.floor(100 + Math.random() * 900),
     judul_modul: '',
     fase: 'Fase D',
     semester: 'Ganjil',
@@ -174,19 +436,20 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     catatan_revisi: '',
   })
 
+  const [formData, setFormData] = useState(initialFormState)
+
   // Queries
   const { data: optionsData } = useQuery({
     queryKey: ['lmsModulOptions'],
     queryFn: () => lmsModulAjarService.getOptions(),
   })
-
   const options = optionsData?.data || {}
 
   const { data: modulsData, isLoading, refetch } = useQuery({
-    queryKey: ['lmsModuls', search, selectedUnitFilter, selectedMapelFilter, selectedFaseFilter, selectedStatusFilter, denganSampahFilter, page],
+    queryKey: ['lmsModuls', debouncedSearch, selectedUnitFilter, selectedMapelFilter, selectedFaseFilter, selectedStatusFilter, denganSampahFilter, page, perPage],
     queryFn: () =>
       lmsModulAjarService.getAll({
-        search,
+        search: debouncedSearch,
         unit_pendidikan_id: selectedUnitFilter,
         mata_pelajaran_id: selectedMapelFilter,
         fase: selectedFaseFilter,
@@ -213,10 +476,12 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     onSuccess: () => {
       queryClient.invalidateQueries(['lmsModuls'])
       setIsFormModalOpen(false)
-      Swal.fire('Berhasil!', 'Modul Ajar berhasil dibuat.', 'success')
+      setShowSaveConfirmModal(false)
+      pushToast('Berhasil Disimpan', 'Modul Ajar baru berhasil dibuat.', 'success')
     },
     onError: (err) => {
-      Swal.fire('Gagal!', err?.response?.data?.message || 'Terjadi kesalahan saat menyimpan.', 'error')
+      setShowSaveConfirmModal(false)
+      pushToast('Gagal Menyimpan', err?.response?.data?.message || 'Terjadi kesalahan saat menyimpan modul ajar.', 'error')
     },
   })
 
@@ -225,10 +490,12 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     onSuccess: () => {
       queryClient.invalidateQueries(['lmsModuls'])
       setIsFormModalOpen(false)
-      Swal.fire('Berhasil!', 'Modul Ajar berhasil diperbarui.', 'success')
+      setShowSaveConfirmModal(false)
+      pushToast('Berhasil Diperbarui', 'Perubahan Modul Ajar berhasil disimpan.', 'success')
     },
     onError: (err) => {
-      Swal.fire('Gagal!', err?.response?.data?.message || 'Terjadi kesalahan saat mengedit.', 'error')
+      setShowSaveConfirmModal(false)
+      pushToast('Gagal Memperbarui', err?.response?.data?.message || 'Terjadi kesalahan saat mengedit modul ajar.', 'error')
     },
   })
 
@@ -236,7 +503,12 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     mutationFn: (id) => lmsModulAjarService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['lmsModuls'])
-      Swal.fire('Terhapus!', 'Modul Ajar telah dipindahkan ke sampah.', 'success')
+      setDeleteTarget(null)
+      pushToast('Berhasil Dihapus', 'Modul Ajar berhasil dipindahkan ke folder sampah.', 'success')
+    },
+    onError: (err) => {
+      setDeleteTarget(null)
+      pushToast('Gagal Menghapus', err?.response?.data?.message || 'Gagal menghapus modul ajar.', 'error')
     },
   })
 
@@ -244,7 +516,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     mutationFn: (id) => lmsModulAjarService.restore(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['lmsModuls'])
-      Swal.fire('Dipulihkan!', 'Modul Ajar telah dipulihkan.', 'success')
+      pushToast('Berhasil Dipulihkan', 'Modul Ajar berhasil dipulihkan ke data aktif.', 'success')
+    },
+    onError: (err) => {
+      pushToast('Gagal Memulihkan', err?.response?.data?.message || 'Gagal memulihkan modul ajar.', 'error')
     },
   })
 
@@ -252,7 +527,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     mutationFn: (id) => lmsModulAjarService.publish(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['lmsModuls'])
-      Swal.fire('Dipublikasikan!', 'Modul Ajar berstatus Publish.', 'success')
+      pushToast('Dipublikasikan', 'Modul Ajar kini berstatus Publish dan siap digunakan di KBM.', 'success')
+    },
+    onError: (err) => {
+      pushToast('Gagal Publikasi', err?.response?.data?.message || 'Gagal mempublikasikan modul ajar.', 'error')
     },
   })
 
@@ -260,14 +538,18 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     mutationFn: (id) => lmsModulAjarService.duplicate(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['lmsModuls'])
-      Swal.fire('Tersalin!', 'Salinan Modul Ajar berhasil dibuat sebagai Draft.', 'success')
+      pushToast('Berhasil Diduplikasi', 'Salinan Modul Ajar berhasil dibuat sebagai Draft.', 'success')
+    },
+    onError: (err) => {
+      pushToast('Gagal Duplikasi', err?.response?.data?.message || 'Gagal membuat salinan modul ajar.', 'error')
     },
   })
 
-  // Handlers
+  // Handlers Modals
   const handleOpenAddModal = () => {
     setSelectedModul(null)
     setFormData({
+      ...initialFormState(),
       unit_pendidikan_id: options.education_units?.[0]?.id || '',
       tahun_ajaran_id: options.academic_years?.[0]?.id || '',
       semester_id: options.semesters?.[0]?.id || '',
@@ -275,34 +557,8 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
       mata_pelajaran_id: options.subjects?.[0]?.id || '',
       guru_id: options.teachers?.[0]?.id || '',
       kelas_id: options.classes?.[0]?.id || '',
-      rombel_id: '',
       cp_id: options.capaian_pembelajaran?.[0]?.id || '',
       tp_id: options.tujuan_pembelajaran?.[0]?.id || '',
-      kode_modul: 'MA-' + Math.floor(100 + Math.random() * 900),
-      judul_modul: '',
-      fase: 'Fase D',
-      semester: 'Ganjil',
-      alokasi_waktu_jp: 4,
-      tujuan_pembelajaran: '',
-      profil_pelajar_pancasila: 'Beriman dan Bertakwa kepada Tuhan YME, Mandiri, Bernalar Kritis',
-      target_peserta_didik: 'Peserta Didik Reguler (28-32 Siswa)',
-      model_pembelajaran: 'Problem Based Learning (PBL)',
-      metode_pembelajaran: 'Diskusi, Ceramah Interaktif, Presentasi Kelompok',
-      media_pembelajaran: 'Slide PPT Interaktif, Video Pembelajaran, Canva, LKPD',
-      sumber_belajar: 'Buku Cetak Kemendikbudristek & Portal LMS Sekolah',
-      kegiatan_pendahuluan: '1. Salam, Doa pembuka, dan apersepsi.\n2. Guru menjelaskan tujuan pembelajaran harian.',
-      kegiatan_inti: '1. Siswa membentuk kelompok dan mengamati materi.\n2. Diskusi dan penyusunan laporan kelompok.',
-      kegiatan_penutup: '1. Refleksi pembelajaran.\n2. Kesimpulan bersama dan doa penutup.',
-      asesmen_awal: 'Kuis diagnosis 5 pertanyaan singkat.',
-      asesmen_proses: 'Observasi keaktifan diskusi dan kerja kelompok.',
-      asesmen_akhir: 'Penilaian produk LKPD dan tes tertulis.',
-      rencana_penilaian: 'Pengetahuan 40%, Keterampilan 40%, Sikap 20%',
-      refleksi_guru: '',
-      status: 'Draft',
-      deskripsi: '',
-      versi: '1.0',
-      naikkan_versi: false,
-      catatan_revisi: '',
     })
     setFormStep(1)
     setIsFormModalOpen(true)
@@ -351,13 +607,17 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     setIsFormModalOpen(true)
   }
 
-  const handleSubmitForm = (e) => {
-    e.preventDefault()
-    if (!formData.judul_modul) {
-      Swal.fire('Peringatan', 'Judul Modul wajib diisi!', 'warning')
+  const handleTriggerSave = (e) => {
+    e?.preventDefault()
+    if (!formData.judul_modul?.trim()) {
+      pushToast('Peringatan', 'Judul Modul Ajar wajib diisi!', 'warning')
+      setFormStep(1)
       return
     }
+    setShowSaveConfirmModal(true)
+  }
 
+  const handleConfirmSave = () => {
     if (selectedModul) {
       updateMutation.mutate({ id: selectedModul.id, payload: formData })
     } else {
@@ -365,53 +625,50 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     }
   }
 
-  const handleDelete = (id) => {
-    Swal.fire({
-      title: 'Hapus Modul Ajar?',
-      text: 'Modul ajar ini akan dipindahkan ke folder sampah.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      confirmButtonText: 'Ya, Hapus',
-      cancelButtonText: 'Batal',
-    }).then((res) => {
-      if (res.isConfirmed) {
-        deleteMutation.mutate(id)
-      }
-    })
-  }
-
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
-
-  const handleExportCSV = () => {
-    const listToExport = items || []
-    if (listToExport.length === 0) {
-      Swal.fire('Info', 'Tidak ada data Modul Ajar untuk diekspor.', 'info')
-      return
+  const handleConfirmDelete = () => {
+    if (deleteTarget?.id) {
+      deleteMutation.mutate(deleteTarget.id)
     }
-    const headers = ['NO', 'KODE MODUL', 'NAMA MODUL', 'MATA PELAJARAN', 'JENJANG / KURIKULUM', 'ALOKASI JAM', 'STATUS']
-    let csvStr = headers.join(',') + '\n'
-    listToExport.forEach((row, i) => {
-      const line = [
-        i + 1,
-        `"${row.kode_modul || ''}"`,
-        `"${row.nama_modul || ''}"`,
-        `"${row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-'}"`,
-        `"${row.jenjang || ''} (${row.kurikulum || ''})"`,
-        `"${row.alokasi_jam || 0} JP (${row.jumlah_pertemuan || 0} Pertemuan)"`,
-        `"${row.status || 'Draft'}"`,
-      ].join(',')
-      csvStr += line + '\n'
-    })
-    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `export_modul_ajar_${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
   }
 
+  // Export Spreadsheet (xlsx, xls, csv)
+  const handleExportSpreadsheet = async (format) => {
+    try {
+      setIsExporting(true)
+      const listToExport = moduls || []
+      if (listToExport.length === 0) {
+        pushToast('Informasi', 'Tidak ada data Modul Ajar untuk diekspor.', 'warning')
+        setIsExportModalOpen(false)
+        return
+      }
+
+      const exportData = listToExport.map((row, i) => ({
+        'No': i + 1,
+        'Kode Modul': row.kode_modul || `MA-${row.id || i + 1}`,
+        'Judul Modul': row.judul_modul || row.nama_modul || '-',
+        'Mata Pelajaran': row.subject?.nama_mapel || row.subject?.name || '-',
+        'Guru Pengampu': row.guru?.nama_lengkap || row.user?.nama_lengkap || row.teacher?.nama_lengkap || '-',
+        'Kelas / Fase': `${row.kelas?.nama_kelas || '-'} (${row.fase || '-'})`,
+        'Alokasi Waktu': `${row.alokasi_waktu_jp || row.alokasi_jam || 0} JP`,
+        'Status': row.status || 'Draft',
+      }))
+
+      downloadSpreadsheetTemplate(
+        exportData,
+        `modul_ajar_${new Date().toISOString().slice(0, 10)}`,
+        format,
+        'Modul Ajar'
+      )
+      setIsExportModalOpen(false)
+      pushToast('Export Berhasil', `Berkas Modul Ajar .${format.toUpperCase()} berhasil diunduh.`, 'success')
+    } catch (err) {
+      pushToast('Gagal Export', err?.message || 'Terjadi kesalahan saat menyiapkan berkas ekspor.', 'error')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Single Modul Print
   const handlePrintSingleModul = (modul) => {
     if (!modul) return
 
@@ -594,7 +851,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
             <p>Padang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             <p><strong>Guru Mata Pelajaran</strong></p>
             <div class="sig-space"></div>
-            <p><strong>${modul.user?.nama_lengkap || modul.teacher?.nama_lengkap || modul.teacher?.name || modul.guru?.nama_lengkap || 'Guru'}</strong></p>
+            <p><strong>${modul.user?.nama_lengkap || modul.teacher?.nama_lengkap || modul.teacher?.name || modul.guru?.nama_lengkap || 'Guru Pengampu'}</strong></p>
           </div>
         </div>
       </body>
@@ -608,957 +865,1823 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     }, 300)
   }
 
-  const pageActions = (
-    <div className="flex items-center gap-2">
-      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
-      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
-      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
-      <SquircleActionButton variant="primary" label="Buat Modul Ajar" onClick={handleOpenAddModal} />
-    </div>
-  )
+  // Import File Drag & Handlers
+  const handleDownloadTemplate = () => {
+    const headers = ['KODE MODUL', 'JUDUL MODUL', 'FASE', 'MATA PELAJARAN', 'GURU', 'KELAS', 'ALOKASI JP', 'TUJUAN PEMBELAJARAN', 'STATUS']
+    const sample = ['MA-101', 'Toleransi & Keberagaman', 'Fase D', 'Pendidikan Agama Islam', 'Ustadz Ahmad, S.Pd', 'Kelas 7A', '4', 'Memahami konsep toleransi', 'Draft']
+    const csvContent = [headers.join(','), sample.map((v) => `"${v}"`).join(',')].join('\n')
+    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Template_Import_Modul_Ajar.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (file) processImportFile(file)
+  }
+
+  const processImportFile = (file) => {
+    setImportFile(file)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const text = e.target.result
+        const lines = text.split('\n').filter((l) => l.trim().length > 0)
+        if (lines.length > 1) {
+          const preview = lines.slice(1, 6).map((line) => {
+            const cols = line.split(',').map((c) => c.replace(/(^"|"$)/g, '').trim())
+            return {
+              kode: cols[0] || 'MA-NEW',
+              judul: cols[1] || 'Modul Baru',
+              fase: cols[2] || 'Fase D',
+              mapel: cols[3] || '-',
+              guru: cols[4] || '-',
+            }
+          })
+          setImportPreviewData(preview)
+        }
+      } catch (err) {
+        console.error('Error parsing preview', err)
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleExecuteImport = async () => {
+    if (!importFile) {
+      pushToast('Peringatan', 'Silakan pilih berkas spreadsheet terlebih dahulu.', 'warning')
+      return
+    }
+    setImportLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      await lmsModulAjarService.importExcel(formData)
+      queryClient.invalidateQueries(['lmsModuls'])
+      setIsImportModalOpen(false)
+      setImportFile(null)
+      setImportPreviewData([])
+      pushToast('Import Berhasil', 'Data Modul Ajar berhasil diimpor ke sistem.', 'success')
+    } catch (err) {
+      pushToast('Gagal Import', err?.response?.data?.message || 'Terjadi kesalahan saat mengunggah berkas modul ajar.', 'error')
+    } finally {
+      setImportLoading(false)
+    }
+  }
+
+  const hasActiveFilters = Boolean(searchInput || selectedUnitFilter || selectedMapelFilter || selectedFaseFilter || selectedStatusFilter || denganSampahFilter)
+
+  const handleResetFilters = () => {
+    setSearchInput('')
+    setSelectedUnitFilter('')
+    setSelectedMapelFilter('')
+    setSelectedFaseFilter('')
+    setSelectedStatusFilter('')
+    setDenganSampahFilter('')
+    setPage(1)
+    refetch()
+  }
+
+  const totalPages = meta.lastPage || meta.last_page || 1
+  const totalItems = meta.total ?? moduls.length
 
   return (
     <PageContainer maxW="7xl">
-      {!(embedded || hideBreadcrumb) && (
-        <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Modul Ajar' }]} />
-      )}
-      <MasterDataPage className="education-unit-page modul-ajar-master-page" hideBreadcrumb={embedded || hideBreadcrumb}>
-      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      <PrintOptionModal
-        isOpen={isPrintModalOpen}
-        onClose={() => setIsPrintModalOpen(false)}
-        title="Modul Ajar (RPP Digital)"
-        onPrint={() => {
-          const rowsToPrint = Array.isArray(items) ? items : []
-          printCleanTable({
-            title: 'Laporan Data Modul Ajar (RPP Digital)',
-            subtitle: 'Daftar Perencanaan Modul Ajar Sekolah Islam Terpadu',
-            headers: ['NO', 'KODE MODUL', 'NAMA MODUL', 'MATA PELAJARAN', 'JENJANG & KURIKULUM', 'ALOKASI WAKTU', 'STATUS'],
-            rows: rowsToPrint.map((row, i) => [
-              i + 1,
-              row.kode_modul || '-',
-              row.nama_modul || '-',
-              row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-',
-              `${row.jenjang || '-'} (${row.kurikulum || '-'})`,
-              `${row.alokasi_jam || 0} JP (${row.jumlah_pertemuan || 0} Pertemuan)`,
-              row.status || 'Draft',
-            ]),
-          })
-        }}
-        onDownload={() => {
-          const rowsToPrint = Array.isArray(items) ? items : []
-          downloadPdfTable({
-            title: 'Laporan Data Modul Ajar (RPP Digital)',
-            subtitle: 'Daftar Perencanaan Modul Ajar Sekolah Islam Terpadu',
-            headers: ['NO', 'KODE MODUL', 'NAMA MODUL', 'MATA PELAJARAN', 'JENJANG & KURIKULUM', 'ALOKASI WAKTU', 'STATUS'],
-            rows: rowsToPrint.map((row, i) => [
-              i + 1,
-              row.kode_modul || '-',
-              row.nama_modul || '-',
-              row.mata_pelajaran?.nama_mapel || row.mata_pelajaran?.name || '-',
-              `${row.jenjang || '-'} (${row.kurikulum || '-'})`,
-              `${row.alokasi_jam || 0} JP (${row.jumlah_pertemuan || 0} Pertemuan)`,
-              row.status || 'Draft',
-            ]),
-            filename: 'laporan_modul_ajar.pdf',
-          })
-        }}
-      />
-      {!hidePageHeader && (
-        <motion.div variants={itemVariants}>
-        <MasterPageHeader
-          tone="brand"
-          icon={BookOpen}
-          title="Modul Ajar (RPP Digital)"
-          description="Pusat perencanaan aktivitas guru yang terintegrasi dengan Kurikulum, CP, TP, penugasan, evaluasi, dan rapor."
-          actions={pageActions}
-        />
-        </motion.div>
-      )}
-
-      {/* KPI Cards Grid */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
-        <KpiTintedCard icon={BookOpen} label="Total Modul" value={stats.total_modul || 0} subtext="Terdaftar di sistem" tone="emerald" />
-        <KpiTintedCard icon={FileText} label="Draft & Review" value={(stats.total_draft || 0) + (stats.total_review || 0)} subtext="Dalam penyusunan" tone="amber" />
-        <KpiTintedCard icon={CheckCircle} label="Dipublikasikan" value={stats.total_published || 0} subtext="Siap digunakan" tone="blue" />
-        <KpiTintedCard icon={Layers} label="TP Ter-cover" value={stats.total_tp_tercover || 0} subtext="Terhubung ke modul" tone="purple" />
-      </motion.div>
-
-      {/* Tab Navigation Card (below KPI grid, above filter) */}
-      {tabNav && (
-        <motion.div variants={itemVariants} className="print:hidden">
-          {typeof tabNav === 'function' ? tabNav() : tabNav}
-        </motion.div>
-      )}
-
-      {/* Search & Filter Bar (2-Row Layout) */}
-      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5 print:hidden">
-        {/* Baris 1: Field Pencarian Full-Width */}
-        <div className="w-full">
-          <div className="relative w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari modul, kode modul, atau judul modul ajar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+      <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
+        {/* ── Breadcrumbs Navigation ── */}
+        {!(embedded || hideBreadcrumb) && (
+          <motion.div variants={itemVariants} className="print:hidden">
+            <AppBreadcrumb
+              items={[
+                { label: 'LMS & Akademik', href: '/dashboard' },
+                { label: 'Modul Ajar' },
+              ]}
             />
-          </div>
-        </div>
+          </motion.div>
+        )}
 
-        {/* Baris 2: Dropdown Filter & Sortir */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
-            Filter & Sortir:
-          </span>
-
-          {options.education_units && options.education_units.length > 0 && (
-            <select
-              value={selectedUnitFilter}
-              onChange={(e) => setSelectedUnitFilter(e.target.value)}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">-- Semua Unit --</option>
-              {options.education_units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name || u.nama}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {options.subjects && options.subjects.length > 0 && (
-            <select
-              value={selectedMapelFilter}
-              onChange={(e) => setSelectedMapelFilter(e.target.value)}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">-- Semua Mapel --</option>
-              {options.subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nama_mapel || s.name || s.kode_mapel || s.code}
-                </option>
-              ))}
-            </select>
-          )}
-
-          <select
-            value={selectedFaseFilter}
-            onChange={(e) => setSelectedFaseFilter(e.target.value)}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+        {/* ── MODERN VIVID EMERALD HERO HEADER CARD ── */}
+        {!hidePageHeader && (
+          <motion.div
+            variants={itemVariants}
+            className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden"
           >
-            <option value="">-- Semua Fase --</option>
-            {FASE_LIST.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+            {/* Dual Multi-Tone Ambient Glow Blobs */}
+            <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-          <select
-            value={selectedStatusFilter}
-            onChange={(e) => setSelectedStatusFilter(e.target.value)}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          >
-            <option value="">-- Semua Status --</option>
-            {STATUS_LIST.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+                <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <BookOpen className="size-5 sm:size-7" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                      Modul Ajar &amp; RPP Digital
+                    </h1>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Kurikulum Merdeka &amp; KBM
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                    Pusat perencanaan terpadu modul ajar berbasis Capaian Pembelajaran (CP), Alur Tujuan Pembelajaran (ATP/TP), media ajar, dan instrumen asesmen.
+                  </p>
+                </div>
+              </div>
 
-          <select
-            value={denganSampahFilter}
-            onChange={(e) => setDenganSampahFilter(e.target.value)}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          >
-            <option value="">Data Aktif</option>
-            <option value="1">Termasuk Sampah</option>
-          </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSearch('')
-              setSelectedUnitFilter('')
-              setSelectedMapelFilter('')
-              setSelectedFaseFilter('')
-              setSelectedStatusFilter('')
-              setDenganSampahFilter('')
-              refetch()
-            }}
-            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            title="Reset Filter"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Reset</span>
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Main Card Data Table */}
-      <motion.div variants={itemVariants}>
-      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
-        {/* Section Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Data Modul Ajar (RPP Digital)</h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Data sesuai alur perencanaan dan kewenangan pengguna.</p>
-          </div>
-          {pageActions}
-        </div>
-
-        {/* Table Content */}
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-left text-sm">
-            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-              <tr>
-                <th className="w-[36%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Kode &amp; Judul Modul</th>
-                <th className="w-[24%] bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Mata Pelajaran &amp; Guru</th>
-                <th className="hidden w-[16%] bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Kelas &amp; Fase</th>
-                <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Alokasi</th>
-                <th className="hidden w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-4 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider xl:table-cell">Versi</th>
-                <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-400">
-                    <div className="flex justify-center items-center gap-2">
-                      <RefreshCw className="h-5 w-5 animate-spin text-[#0E5C44]" />
-                      Memuat data Modul Ajar...
-                    </div>
-                  </td>
-                </tr>
-              ) : moduls.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-400">
-                    Tidak ada data Modul Ajar ditemukan.
-                  </td>
-                </tr>
-              ) : (
-                moduls.map((item) => (
-                  <tr
-                    key={item.id}
-                    onClick={() => {
-                      setSelectedModul(item)
-                      setIsDetailModalOpen(true)
-                    }}
-                    title="Klik untuk membuka Detail Overview & Opsi Aksi Modul"
-                    className="group border-b border-slate-100 dark:border-slate-800/60 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/30 transition-all duration-200 cursor-pointer"
-                  >
-                    <td className="px-5 sm:px-6 md:px-8 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 dark:text-white group-hover:text-[#0E5C44] dark:group-hover:text-[#3FBF75] transition-colors">
-                          {item.judul_modul}
-                        </span>
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md shrink-0">
-                          👁️ Klik untuk Overview & Aksi
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-400 font-mono mt-0.5">{item.kode_modul || 'MA-AUTO'}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="font-medium text-slate-800 dark:text-slate-200">
-                        {item.subject?.nama_mapel || item.subject?.name || '-'}
-                      </div>
-                      <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                        <User className="h-3 w-3" />
-                        {item.user?.nama_lengkap || item.teacher?.nama_lengkap || item.teacher?.name || 'Guru'}
-                      </div>
-                    </td>
-                    <td className="hidden px-4 py-4 md:table-cell">
-                      <div className="font-semibold text-slate-700 dark:text-slate-300">
-                        {item.kelas?.nama_kelas || item.school_class?.name || '-'}
-                      </div>
-                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                        Fase {item.fase || 'A'}
-                      </span>
-                    </td>
-                    <td className="hidden px-4 py-4 text-center font-medium text-slate-600 dark:text-slate-300 lg:table-cell">
-                      {item.alokasi_jam || 2} JP
-                    </td>
-                    <td className="hidden px-4 py-4 text-center font-mono text-xs text-slate-500 xl:table-cell">
-                      v{item.versi || '1.0'}
-                    </td>
-                    <td className="px-5 sm:px-6 md:px-8 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                          item.status === 'Publish'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                            : item.status === 'Review'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                            : item.status === 'Arsip'
-                            ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                            : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Bar */}
-        <div className="px-5 py-4 sm:px-6 md:px-8 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div>
-            Menampilkan {meta.from || 0} - {meta.to || 0} dari total {meta.total || 0} modul
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              Sebelumnya
-            </button>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              {meta.current_page || 1} / {meta.last_page || 1}
-            </span>
-            <button
-              disabled={page >= (meta.last_page || 1)}
-              onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800"
-            >
-              Selanjutnya
-            </button>
-          </div>
-        </div>
-      </div>
-      </motion.div>
-
-      {/* Modal Add / Edit (Multi-Step Form Wizard) */}
-      {isFormModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md p-4 sm:p-6 flex justify-center items-start sm:items-center">
-          <div className="relative w-full max-w-4xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-auto max-h-[90vh] flex flex-col">
-            <div className="bg-[#0E5C44] px-6 py-4 text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                {selectedModul ? 'Edit Modul Ajar' : 'Buat Modul Ajar Baru'}
-              </h3>
-              <button onClick={() => setIsFormModalOpen(false)} className="hover:opacity-80">
-                <XCircle className="h-6 w-6" />
-              </button>
+              {/* Right Feature Indicator Badge */}
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>LMS &amp; RPP Digital</span>
+                </div>
+              </div>
             </div>
+          </motion.div>
+        )}
 
-            {/* Step Wizard Header */}
-            <div className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs">
-              {[
-                { id: 1, name: 'Identitas & Pemetaan' },
-                { id: 2, name: 'Rancangan & Media' },
-                { id: 3, name: 'Skenario Aktivitas' },
-                { id: 4, name: 'Asesmen & Revisi' },
-              ].map((step) => (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => setFormStep(step.id)}
-                  className={`flex-1 py-3 px-4 text-center font-bold border-b-2 transition-all ${
-                    formStep === step.id
-                      ? 'border-[#0E5C44] text-[#0E5C44] dark:text-emerald-400 bg-white dark:bg-[#1B2433]'
-                      : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {step.id}. {step.name}
-                </button>
-              ))}
-            </div>
+        {/* ── 4 KARTU KPI MODERN (MULTI-TONE) ── */}
+        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
+          <ModernKpiCard
+            label="Total Modul"
+            value={stats.total_modul || 0}
+            icon={BookOpen}
+            tone="emerald"
+            tag={`${stats.total_modul || 0} Modul`}
+            subtext="Terdaftar di sistem sekolah"
+          />
+          <ModernKpiCard
+            label="Draft & Review"
+            value={(stats.total_draft || 0) + (stats.total_review || 0)}
+            icon={FileText}
+            tone="amber"
+            tag="Penyusunan"
+            subtext="Dalam penyusunan guru"
+          />
+          <ModernKpiCard
+            label="Dipublikasikan"
+            value={stats.total_published || 0}
+            icon={CheckCircle2}
+            tone="blue"
+            tag="Aktif KBM"
+            subtext="Siap digunakan di KBM"
+          />
+          <ModernKpiCard
+            label="TP Ter-cover"
+            value={stats.total_tp_tercover || 0}
+            icon={Layers}
+            tone="purple"
+            tag="Tercakup"
+            subtext="Terhubung ke silabus TP"
+          />
+        </motion.div>
 
-            <form onSubmit={handleSubmitForm} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
-              {/* Step 1: Identitas */}
-              {formStep === 1 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Judul Modul Ajar *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.judul_modul}
-                      onChange={(e) => setFormData({ ...formData, judul_modul: e.target.value })}
-                      placeholder="Contoh: Toleransi & Indahnya Keberagaman dalam Islam"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-[#0E5C44]"
-                    />
-                  </div>
+        {/* Tab Navigation Slot if provided by Container */}
+        {tabNav && (
+          <motion.div variants={itemVariants} className="print:hidden">
+            {typeof tabNav === 'function' ? tabNav() : tabNav}
+          </motion.div>
+        )}
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kode Modul</label>
-                    <input
-                      type="text"
-                      value={formData.kode_modul}
-                      onChange={(e) => setFormData({ ...formData, kode_modul: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Fase Pembelajaran</label>
-                    <select
-                      value={formData.fase}
-                      onChange={(e) => setFormData({ ...formData, fase: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    >
-                      {FASE_LIST.map((f) => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Mata Pelajaran</label>
-                    <select
-                      value={formData.mata_pelajaran_id}
-                      onChange={(e) => setFormData({ ...formData, mata_pelajaran_id: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    >
-                      <option value="">-- Pilih Mata Pelajaran --</option>
-                      {options.subjects?.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.nama_mapel || s.name || s.kode_mapel || s.code}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Guru Pengampu</label>
-                    <select
-                      value={formData.guru_id}
-                      onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    >
-                      <option value="">-- Pilih Guru Pengampu --</option>
-                      {options.teachers?.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.nama_lengkap || t.nama || t.name || t.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kelas Target</label>
-                    <select
-                      value={formData.kelas_id}
-                      onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    >
-                      <option value="">-- Pilih Kelas Target --</option>
-                      {options.classes?.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nama_kelas || c.name || c.kode_kelas}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Alokasi Jam (JP)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.alokasi_waktu_jp}
-                      onChange={(e) => setFormData({ ...formData, alokasi_waktu_jp: parseInt(e.target.value) || 2 })}
-                      className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    />
-                  </div>
+        {/* ── CANONICAL EMERALD DATATABLE CONTAINER ── */}
+        <motion.div variants={itemVariants}>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+            {/* ── TOOLBAR BARIS 1: Header + 4 Vivid Gradient Squircle Buttons ── */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:from-emerald-950/50 dark:via-teal-950/30">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40 shrink-0">
+                  <BookOpen className="size-5 text-white" strokeWidth={2.2} />
                 </div>
-              )}
-
-              {/* Step 2: Rancangan */}
-              {formStep === 2 && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Tujuan Pembelajaran (TP)</label>
-                    <textarea
-                      rows="3"
-                      value={formData.tujuan_pembelajaran}
-                      onChange={(e) => setFormData({ ...formData, tujuan_pembelajaran: e.target.value })}
-                      placeholder="Tuliskan poin-poin Alur Tujuan Pembelajaran..."
-                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Profil Pelajar Pancasila & Rahmatan Lil Alamin</label>
-                    <input
-                      type="text"
-                      value={formData.profil_pelajar_pancasila}
-                      onChange={(e) => setFormData({ ...formData, profil_pelajar_pancasila: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Model Pembelajaran</label>
-                      <input
-                        type="text"
-                        value={formData.model_pembelajaran}
-                        onChange={(e) => setFormData({ ...formData, model_pembelajaran: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Metode Pembelajaran</label>
-                      <input
-                        type="text"
-                        value={formData.metode_pembelajaran}
-                        onChange={(e) => setFormData({ ...formData, metode_pembelajaran: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Media & Sumber Belajar</label>
-                    <input
-                      type="text"
-                      value={formData.media_pembelajaran}
-                      onChange={(e) => setFormData({ ...formData, media_pembelajaran: e.target.value })}
-                      placeholder="Slide PPT, Video YouTube, LKPD..."
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3: Skenario Activity */}
-              {formStep === 3 && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kegiatan Pendahuluan</label>
-                    <textarea
-                      rows="3"
-                      value={formData.kegiatan_pendahuluan}
-                      onChange={(e) => setFormData({ ...formData, kegiatan_pendahuluan: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kegiatan Inti Pembelajaran</label>
-                    <textarea
-                      rows="4"
-                      value={formData.kegiatan_inti}
-                      onChange={(e) => setFormData({ ...formData, kegiatan_inti: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Kegiatan Penutup</label>
-                    <textarea
-                      rows="3"
-                      value={formData.kegiatan_penutup}
-                      onChange={(e) => setFormData({ ...formData, kegiatan_penutup: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Step 4: Asesmen & Status */}
-              {formStep === 4 && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Asesmen Awal</label>
-                      <textarea
-                        rows="2"
-                        value={formData.asesmen_awal}
-                        onChange={(e) => setFormData({ ...formData, asesmen_awal: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Asesmen Proses</label>
-                      <textarea
-                        rows="2"
-                        value={formData.asesmen_proses}
-                        onChange={(e) => setFormData({ ...formData, asesmen_proses: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Asesmen Akhir</label>
-                      <textarea
-                        rows="2"
-                        value={formData.asesmen_akhir}
-                        onChange={(e) => setFormData({ ...formData, asesmen_akhir: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Status Publikasi</label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-bold"
-                    >
-                      {STATUS_LIST.map((st) => (
-                        <option key={st} value={st}>{st}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {selectedModul && (
-                    <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 space-y-2">
-                      <label className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
-                        <input
-                          type="checkbox"
-                          checked={formData.naikkan_versi}
-                          onChange={(e) => setFormData({ ...formData, naikkan_versi: e.target.checked })}
-                          className="rounded text-[#0E5C44]"
-                        />
-                        Naikkan Versi Modul (Increment Version)
-                      </label>
-                      {formData.naikkan_versi && (
-                        <input
-                          type="text"
-                          placeholder="Catatan revisi versi baru..."
-                          value={formData.catatan_revisi}
-                          onChange={(e) => setFormData({ ...formData, catatan_revisi: e.target.value })}
-                          className="w-full p-2 rounded-lg text-xs border border-amber-300"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Form Action Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div>
-                  {formStep > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setFormStep((s) => s - 1)}
-                      className="px-4 py-2 rounded-xl border border-slate-300 text-sm font-semibold hover:bg-slate-100"
-                    >
-                      Kembali
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {formStep < 4 ? (
-                    <button
-                      type="button"
-                      onClick={() => setFormStep((s) => s + 1)}
-                      className="px-5 py-2 rounded-xl bg-[#0E5C44] text-white text-sm font-bold shadow-md hover:bg-emerald-700"
-                    >
-                      Lanjut Step {formStep + 1}
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                      className="px-6 py-2.5 rounded-xl bg-[#0E5C44] text-white text-sm font-bold shadow-lg hover:bg-emerald-800 transition-transform active:scale-95"
-                    >
-                      {selectedModul ? 'Simpan Perubahan' : 'Simpan Modul Ajar'}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                      Data Modul Ajar (RPP Digital)
+                    </h2>
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:text-emerald-200 border border-emerald-300/60">
+                      {Number(totalItems).toLocaleString('id-ID')} Modul
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Daftar perencanaan aktivitas guru terintegrasi CP, TP, dan capaian kurikulum.
+                  </p>
                 </div>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Modal Detail Overview */}
-      {isDetailModalOpen && selectedModul && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md p-4 sm:p-6 flex justify-center items-start sm:items-center">
-          <div className="relative w-full max-w-3xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-auto max-h-[90vh] flex flex-col">
-            <div className="bg-[#0E5C44] p-6 text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
-              <div>
-                <span className="text-xs uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full font-bold">
-                  {selectedModul.fase}
-                </span>
-                <h2 className="text-xl font-extrabold mt-1">{selectedModul.judul_modul}</h2>
-                <p className="text-xs text-emerald-100 mt-0.5">{selectedModul.kode_modul} • Versi {selectedModul.versi}</p>
+              {/* 4 Vivid Gradient Squircle Action Buttons (Standar Emas) */}
+              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+                {/* 1. Cetak Datatable Button (Vivid Indigo-Violet Squircle) */}
+                <div className="group relative inline-flex">
+                  <button
+                    type="button"
+                    title="Cetak & Export PDF"
+                    aria-label="Cetak & Export PDF"
+                    onClick={() => setIsPrintModalOpen(true)}
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    <Printer className="size-5 text-white" strokeWidth={2.2} />
+                  </button>
+                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                    Cetak &amp; Export
+                  </div>
+                </div>
+
+                {/* 2. Import Button (Vivid Sky Blue Squircle) */}
+                <div className="group relative inline-flex">
+                  <button
+                    type="button"
+                    title="Import Data Modul Ajar"
+                    aria-label="Import Data Modul Ajar"
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    <Upload className="size-5 text-white" strokeWidth={2.2} />
+                  </button>
+                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                    Import Data
+                  </div>
+                </div>
+
+                {/* 3. Export Button (Vivid Amber-Orange Squircle) */}
+                <div className="group relative inline-flex">
+                  <button
+                    type="button"
+                    title="Export Data (Excel / CSV)"
+                    aria-label="Export Data (Excel / CSV)"
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    <Download className="size-5 text-white" strokeWidth={2.2} />
+                  </button>
+                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                    Export Data (Excel / CSV)
+                  </div>
+                </div>
+
+                {/* 4. Tambah Modul Ajar Button (Vivid Emerald-Teal Squircle) */}
+                <div className="group relative inline-flex">
+                  <button
+                    type="button"
+                    title="Buat Modul Ajar Baru"
+                    aria-label="Buat Modul Ajar Baru"
+                    onClick={handleOpenAddModal}
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="size-5 text-white" strokeWidth={2.5} />
+                  </button>
+                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                    Tambah Modul Ajar
+                  </div>
+                </div>
               </div>
-              <button onClick={() => setIsDetailModalOpen(false)} className="text-white hover:opacity-80">
-                <XCircle className="h-6 w-6" />
-              </button>
             </div>
 
-            {/* Action Bar inside Modal Overview */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
-              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                Opsi Aksi Modul:
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDetailModalOpen(false)
-                    handleOpenEditModal(selectedModul)
+            {/* ── TOOLBAR BARIS 2: Full-Width Search Input dengan Debounce ── */}
+            <div className="px-5 pt-4 sm:px-6 md:px-8">
+              <div className="relative w-full">
+                <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center text-slate-400 dark:text-slate-500">
+                  <Search className="size-4" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Cari judul modul, kode modul, guru pengampu, atau mata pelajaran..."
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value)
+                    setPage(1)
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/60 transition cursor-pointer"
-                >
-                  <Pencil className="w-3.5 h-3.5" /> Edit Modul
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    handlePrintSingleModul(selectedModul)
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 text-xs font-bold hover:bg-sky-100 dark:hover:bg-sky-900/60 transition cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" /> Cetak RPP
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDetailModalOpen(false)
-                    handleDuplicate(selectedModul)
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/60 transition cursor-pointer"
-                >
-                  <Copy className="w-3.5 h-3.5" /> Duplikasi
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDetailModalOpen(false)
-                    setIsRevisionModalOpen(true)
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition cursor-pointer"
-                >
-                  <History className="w-3.5 h-3.5" /> Riwayat
-                </button>
-
-                {selectedModul.status !== 'Publish' && (
+                  className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                />
+                {searchInput && (
                   <button
                     type="button"
                     onClick={() => {
-                      setIsDetailModalOpen(false)
-                      handlePublish(selectedModul.id)
+                      setSearchInput('')
+                      setPage(1)
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                   >
-                    <Send className="w-3.5 h-3.5" /> Publikasi
+                    <X className="size-4" />
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* ── TOOLBAR BARIS 3: Horizontal Filter Bar ── */}
+            <div className="px-4 py-3 sm:px-6 md:px-8 border-b border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30 mt-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-900 dark:text-emerald-300 shrink-0">
+                Filter Data:
+              </span>
+
+              {/* Unit Dropdown */}
+              {options.education_units && options.education_units.length > 0 && (
+                <select
+                  value={selectedUnitFilter}
+                  onChange={(e) => {
+                    setSelectedUnitFilter(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="">Semua Unit</option>
+                  {options.education_units.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name || u.nama}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Mapel Dropdown */}
+              {options.subjects && options.subjects.length > 0 && (
+                <select
+                  value={selectedMapelFilter}
+                  onChange={(e) => {
+                    setSelectedMapelFilter(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="">Semua Mapel</option>
+                  {options.subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nama_mapel || s.name || s.kode_mapel || s.code}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Fase Dropdown */}
+              <select
+                value={selectedFaseFilter}
+                onChange={(e) => {
+                  setSelectedFaseFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
+              >
+                <option value="">Semua Fase</option>
+                {FASE_LIST.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+
+              {/* Status Dropdown */}
+              <select
+                value={selectedStatusFilter}
+                onChange={(e) => {
+                  setSelectedStatusFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
+              >
+                <option value="">Semua Status</option>
+                {STATUS_LIST.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+
+              {/* Data Sampah Dropdown */}
+              <select
+                value={denganSampahFilter}
+                onChange={(e) => {
+                  setDenganSampahFilter(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
+              >
+                <option value="">Data Aktif</option>
+                <option value="1">Termasuk Sampah</option>
+              </select>
+
+              {/* Reset Filter Button */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 h-9 w-full sm:w-auto sm:ml-auto justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer"
+                  title="Reset Filter"
+                >
+                  <RefreshCw className="size-3.5" />
+                  <span>Reset Filter</span>
+                </button>
+              )}
+            </div>
+
+            {/* ── LEMBAR DATA TABLE UTAMA ── */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm" aria-label="Daftar Modul Ajar">
+                <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                  <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                    <th className="w-10 sm:w-12 px-2.5 sm:px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                      No
+                    </th>
+                    <th className="w-auto sm:w-[38%] md:w-[42%] px-3.5 sm:px-6 md:px-8 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
+                      Kode &amp; Judul Modul
+                    </th>
+                    <th className="hidden sm:table-cell w-[24%] px-3.5 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
+                      Mata Pelajaran &amp; Guru
+                    </th>
+                    <th className="hidden md:table-cell w-[14%] px-3.5 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">
+                      Kelas &amp; Fase
+                    </th>
+                    <th className="hidden lg:table-cell w-[10%] px-2.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                      Alokasi
+                    </th>
+                    <th className="hidden xl:table-cell w-[8%] px-2.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                      Versi
+                    </th>
+                    <th className="hidden sm:table-cell w-[12%] px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="w-14 sm:w-20 px-2 sm:px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-slate-700 dark:text-slate-200">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan="8" className="px-6 py-14 text-center text-slate-400">
+                        <div className="flex flex-col justify-center items-center gap-2">
+                          <RefreshCw className="h-6 w-6 animate-spin text-[#0E5C44]" />
+                          <span className="text-xs font-semibold">Memuat data Modul Ajar...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : moduls.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="px-6 py-14 text-center text-slate-400">
+                        <div className="flex flex-col justify-center items-center gap-2">
+                          <BookOpen className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+                          <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Tidak ada data Modul Ajar ditemukan</p>
+                          <p className="text-xs text-slate-400">Coba ubah kriteria pencarian atau tambahkan modul ajar baru.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    moduls.map((item, idx) => (
+                      <tr
+                        key={item.id}
+                        className="group border-b border-emerald-100/90 dark:border-emerald-900/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all duration-150"
+                      >
+                        {/* No */}
+                        <td className="px-2.5 sm:px-3.5 py-3.5 text-center text-xs font-bold text-slate-400">
+                          {(meta.from || 1) + idx}
+                        </td>
+
+                        {/* Kode & Judul Modul */}
+                        <td className="px-3.5 sm:px-6 md:px-8 py-3.5">
+                          <div
+                            onClick={() => {
+                              setSelectedModul(item)
+                              setIsDetailModalOpen(true)
+                            }}
+                            className="cursor-pointer group/title"
+                          >
+                            <div className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white group-hover/title:text-[#0E5C44] dark:group-hover/title:text-[#3FBF75] transition-colors leading-snug">
+                              {item.judul_modul || item.nama_modul}
+                            </div>
+                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 px-2 py-0.5 rounded-md">
+                                {item.kode_modul || 'MA-AUTO'}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                {item.semester ? `Sem. ${item.semester}` : ''}
+                              </span>
+                            </div>
+
+                            {/* Mobile Compact Metadata Row */}
+                            <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100/80 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                                {item.subject?.nama_mapel || item.subject?.name || '-'}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                {item.kelas?.nama_kelas || item.school_class?.name || '-'}
+                              </span>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                                  item.status === 'Publish'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300'
+                                    : item.status === 'Review'
+                                    ? 'bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/80 dark:text-blue-300'
+                                    : item.status === 'Arsip'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300'
+                                    : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300'
+                                }`}
+                              >
+                                {item.status}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Mapel & Guru */}
+                        <td className="hidden sm:table-cell px-3.5 py-3.5">
+                          <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                            {item.subject?.nama_mapel || item.subject?.name || '-'}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[9px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                              <User className="size-3" />
+                            </span>
+                            <span className="truncate">
+                              {item.user?.nama_lengkap || item.teacher?.nama_lengkap || item.teacher?.name || item.guru?.nama_lengkap || 'Guru Pengampu'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Kelas & Fase */}
+                        <td className="hidden md:table-cell px-3.5 py-3.5">
+                          <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                            {item.kelas?.nama_kelas || item.school_class?.name || '-'}
+                          </div>
+                          <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                            {item.fase || 'Fase D'}
+                          </span>
+                        </td>
+
+                        {/* Alokasi Jam */}
+                        <td className="hidden lg:table-cell px-2.5 py-3.5 text-center text-xs font-bold tabular-nums text-slate-700 dark:text-slate-300">
+                          {item.alokasi_jam || item.alokasi_waktu_jp || 2} JP
+                        </td>
+
+                        {/* Versi */}
+                        <td className="hidden xl:table-cell px-2.5 py-3.5 text-center font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                          v{item.versi || '1.0'}
+                        </td>
+
+                        {/* Status */}
+                        <td className="hidden sm:table-cell px-3.5 py-3.5 text-center">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold border ${
+                              item.status === 'Publish'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800'
+                                : item.status === 'Review'
+                                ? 'bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/80 dark:text-blue-300 dark:border-blue-800'
+                                : item.status === 'Arsip'
+                                ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                : 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800'
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+
+                        {/* Aksi Baris */}
+                        <td className="px-2 sm:px-3.5 py-3.5 text-center">
+                          <div className="flex items-center justify-center">
+                            <ActionDropdown
+                              onView={() => {
+                                setSelectedModul(item)
+                                setIsDetailModalOpen(true)
+                              }}
+                              onEdit={() => handleOpenEditModal(item)}
+                              onDelete={() => setDeleteTarget(item)}
+                              extraItems={[
+                                {
+                                  label: 'Cetak Dokumen RPP',
+                                  icon: <Printer className="h-4 w-4 text-indigo-600" />,
+                                  onClick: () => handlePrintSingleModul(item),
+                                },
+                                {
+                                  label: 'Salin / Duplikasi',
+                                  icon: <Copy className="h-4 w-4 text-blue-600" />,
+                                  onClick: () => duplicateMutation.mutate(item.id),
+                                },
+                                {
+                                  label: 'Riwayat Versi',
+                                  icon: <History className="h-4 w-4 text-purple-600" />,
+                                  onClick: () => {
+                                    setSelectedModul(item)
+                                    setIsRevisionModalOpen(true)
+                                  },
+                                },
+                                ...(item.status !== 'Publish'
+                                  ? [
+                                      {
+                                        label: 'Publikasikan',
+                                        icon: <Send className="h-4 w-4 text-emerald-600" />,
+                                        onClick: () => publishMutation.mutate(item.id),
+                                      },
+                                    ]
+                                  : []),
+                              ]}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── PAGINATION BAR EMERALD SQUIRCLE ── */}
+            <div className="px-5 py-4 sm:px-6 md:px-8 border-t border-emerald-200/90 dark:border-emerald-800/70 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <div className="flex items-center gap-2">
+                <span>
+                  Menampilkan <strong className="text-slate-900 dark:text-white">{meta.from || 0}</strong> -{' '}
+                  <strong className="text-slate-900 dark:text-white">{meta.to || 0}</strong> dari{' '}
+                  <strong className="text-slate-900 dark:text-white">{meta.total || 0}</strong> modul
+                </span>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <select
+                  value={perPage}
+                  onChange={(e) => {
+                    setPerPage(Number(e.target.value))
+                    setPage(1)
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 cursor-pointer"
+                >
+                  <option value={5}>5 baris</option>
+                  <option value={10}>10 baris</option>
+                  <option value={20}>20 baris</option>
+                  <option value={50}>50 baris</option>
+                </select>
+              </div>
+
+              {/* Previous & Next Icon-Only Squircle Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  title="Halaman Sebelumnya"
+                  aria-label="Halaman Sebelumnya"
+                  className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none cursor-pointer"
+                >
+                  <ChevronLeft className="size-5 text-white" />
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = i + 1
+                    if (totalPages > 5) {
+                      const start = Math.max(1, Math.min(page - 2, totalPages - 4))
+                      pageNum = start + i
+                    }
+                    const isActive = page === pageNum
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setPage(pageNum)}
+                        className={`size-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                </div>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsDetailModalOpen(false)
-                    handleDelete(selectedModul.id)
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/60 transition cursor-pointer"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  title="Halaman Selanjutnya"
+                  aria-label="Halaman Selanjutnya"
+                  className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Hapus
+                  <ChevronRight className="size-5 text-white" />
                 </button>
               </div>
             </div>
+          </div>
+        </motion.div>
 
-            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto text-sm">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl">
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Mata Pelajaran</p>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">
-                    {selectedModul.subject?.nama_mapel || selectedModul.subject?.name || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Guru Pengampu</p>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">
-                    {selectedModul.guru?.nama_lengkap || selectedModul.guru?.nama || selectedModul.guru?.name || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Kelas / Rombel</p>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">
-                    {selectedModul.kelas?.nama_kelas || selectedModul.kelas?.name || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Alokasi Waktu</p>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">{selectedModul.alokasi_waktu_jp} JP</p>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-[#0E5C44] dark:text-emerald-400 uppercase text-xs tracking-wider mb-2">
-                  Tujuan Pembelajaran (TP)
-                </h4>
-                <p className="whitespace-pre-line text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border">
-                  {selectedModul.tujuan_pembelajaran || 'Belum diisi.'}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-[#0E5C44] dark:text-emerald-400 uppercase text-xs tracking-wider mb-2">
-                  Profil Pelajar Pancasila
-                </h4>
-                <p className="text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border">
-                  {selectedModul.profil_pelajar_pancasila || '-'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border">
-                  <h5 className="font-bold text-xs uppercase text-slate-500 mb-1">Kegiatan Pendahuluan</h5>
-                  <p className="whitespace-pre-line text-xs">{selectedModul.kegiatan_pendahuluan || '-'}</p>
-                </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border">
-                  <h5 className="font-bold text-xs uppercase text-slate-500 mb-1">Kegiatan Inti</h5>
-                  <p className="whitespace-pre-line text-xs">{selectedModul.kegiatan_inti || '-'}</p>
-                </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border">
-                  <h5 className="font-bold text-xs uppercase text-slate-500 mb-1">Kegiatan Penutup</h5>
-                  <p className="whitespace-pre-line text-xs">{selectedModul.kegiatan_penutup || '-'}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end">
-              <button
-                onClick={() => setIsDetailModalOpen(false)}
-                className="px-5 py-2 bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-bold hover:bg-slate-300"
+        {/* ── MODAL FORM TAMBAH / EDIT MODUL (4-STEP WIZARD) ── */}
+        <AnimatePresence>
+          {isFormModalOpen && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-md sm:p-4"
+              role="dialog"
+              aria-modal="true"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="my-auto flex max-h-[calc(100vh-2.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
               >
-                Tutup Overview
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                {/* Top Accent Gradient Bar */}
+                <div
+                  className={`h-1.5 w-full shrink-0 bg-gradient-to-r ${
+                    selectedModul
+                      ? 'from-amber-400 via-amber-500 to-orange-500'
+                      : 'from-emerald-500 via-teal-400 to-emerald-600'
+                  }`}
+                />
 
-      {/* Modal Riwayat Revisi */}
-      {isRevisionModalOpen && selectedModul && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md p-4 sm:p-6 flex justify-center items-start sm:items-center">
-          <div className="relative w-full max-w-2xl rounded-[18px] bg-white dark:bg-[#1B2433] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 my-auto max-h-[90vh] flex flex-col">
-            <div className="bg-[#0E5C44] p-5 text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
-              <h3 className="font-bold flex items-center gap-2">
-                <History className="h-5 w-5" /> Riwayat Revisi Versi - {selectedModul.kode_modul}
-              </h3>
-              <button onClick={() => setIsRevisionModalOpen(false)} className="text-white hover:opacity-80">
-                <XCircle className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-              {!revisionsData?.data || revisionsData.data.length === 0 ? (
-                <p className="text-center text-slate-400 py-8">Belum ada riwayat revisi tercatat.</p>
-              ) : (
-                revisionsData.data.map((rev, idx) => (
-                  <div key={rev.id || idx} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs bg-[#0E5C44] text-white px-2 py-0.5 rounded font-bold">
-                        v{rev.versi}
-                      </span>
-                      <span className="text-xs text-slate-400">{rev.created_at || 'Baru saja'}</span>
+                {/* Modal Header */}
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2 text-emerald-700 dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-emerald-300 shrink-0">
+                      <BookOpen className="size-5 text-[#0E5C44] dark:text-emerald-300" />
                     </div>
-                    <p className="font-semibold text-sm text-slate-900 dark:text-white mt-1">{rev.judul_modul}</p>
-                    <p className="text-xs text-slate-500 italic">{rev.catatan_revisi || 'Pembaruan data modul.'}</p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                          {selectedModul ? 'Ubah Modul Ajar' : 'Buat Modul Ajar Baru'}
+                        </h3>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                          <Sparkles className="size-3" />
+                          {selectedModul ? 'Update Modul' : 'Perencanaan KBM'}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        Langkah {formStep} dari 4 ·{' '}
+                        {formStep === 1
+                          ? 'Identitas & Pemetaan'
+                          : formStep === 2
+                          ? 'Rancangan & Media Ajar'
+                          : formStep === 3
+                          ? 'Skenario Aktivitas Belajar'
+                          : 'Asesmen & Publikasi'}
+                      </p>
+                    </div>
                   </div>
-                ))
-              )}
+
+                  <button
+                    type="button"
+                    onClick={() => setIsFormModalOpen(false)}
+                    aria-label="Tutup modal"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                  >
+                    <X className="size-4 text-white" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                {/* Stepper Wizard Navigation */}
+                <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 p-2.5 sm:px-6 dark:border-slate-800 dark:bg-slate-900/50">
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                    {[
+                      { id: 1, name: 'Identitas & Mapel' },
+                      { id: 2, name: 'Rancangan & Media' },
+                      { id: 3, name: 'Skenario Aktivitas' },
+                      { id: 4, name: 'Asesmen & Status' },
+                    ].map((step) => {
+                      const isActive = formStep === step.id
+                      const isDone = formStep > step.id
+                      return (
+                        <button
+                          key={step.id}
+                          type="button"
+                          onClick={() => setFormStep(step.id)}
+                          className={`flex items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-bold transition-all cursor-pointer text-left ${
+                            isActive
+                              ? 'bg-emerald-700 text-white shadow-sm shadow-emerald-700/20 dark:bg-emerald-600'
+                              : isDone
+                              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
+                              : 'border border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'
+                          }`}
+                        >
+                          <span
+                            className={`flex size-5 items-center justify-center rounded-lg text-[10px] font-black shrink-0 ${
+                              isActive
+                                ? 'bg-white/20 text-white'
+                                : isDone
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+                            }`}
+                          >
+                            {isDone ? '✓' : step.id}
+                          </span>
+                          <span className="truncate hidden sm:inline">{step.name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Form Body Scrollable */}
+                <form onSubmit={handleTriggerSave} className="flex min-h-0 flex-1 flex-col">
+                  <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+                    {/* STEP 1: Identitas & Pemetaan */}
+                    {formStep === 1 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Judul Modul Ajar <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative flex items-center">
+                            <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400">
+                              <BookOpen className="size-4" />
+                            </div>
+                            <input
+                              type="text"
+                              required
+                              value={formData.judul_modul}
+                              onChange={(e) => setFormData({ ...formData, judul_modul: e.target.value })}
+                              placeholder="Contoh: Toleransi & Indahnya Keberagaman dalam Islam"
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Kode Modul
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.kode_modul}
+                            onChange={(e) => setFormData({ ...formData, kode_modul: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Fase Pembelajaran
+                          </label>
+                          <select
+                            value={formData.fase}
+                            onChange={(e) => setFormData({ ...formData, fase: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
+                          >
+                            {FASE_LIST.map((f) => (
+                              <option key={f} value={f}>{f}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Unit Pendidikan
+                          </label>
+                          <select
+                            value={formData.unit_pendidikan_id}
+                            onChange={(e) => setFormData({ ...formData, unit_pendidikan_id: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
+                          >
+                            <option value="">-- Pilih Unit Pendidikan --</option>
+                            {options.education_units?.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name || u.nama}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Mata Pelajaran
+                          </label>
+                          <select
+                            value={formData.mata_pelajaran_id}
+                            onChange={(e) => setFormData({ ...formData, mata_pelajaran_id: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
+                          >
+                            <option value="">-- Pilih Mata Pelajaran --</option>
+                            {options.subjects?.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.nama_mapel || s.name || s.kode_mapel || s.code}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Guru Pengampu
+                          </label>
+                          <select
+                            value={formData.guru_id}
+                            onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
+                          >
+                            <option value="">-- Pilih Guru Pengampu --</option>
+                            {options.teachers?.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.nama_lengkap || t.nama || t.name || t.full_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Kelas Target
+                          </label>
+                          <select
+                            value={formData.kelas_id}
+                            onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
+                          >
+                            <option value="">-- Pilih Kelas Target --</option>
+                            {options.classes?.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.nama_kelas || c.name || c.kode_kelas}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Alokasi Waktu (JP)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={formData.alokasi_waktu_jp}
+                            onChange={(e) => setFormData({ ...formData, alokasi_waktu_jp: parseInt(e.target.value) || 2 })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Target Peserta Didik
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.target_peserta_didik}
+                            onChange={(e) => setFormData({ ...formData, target_peserta_didik: e.target.value })}
+                            placeholder="Contoh: Peserta Didik Reguler (28-32 Siswa)"
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* STEP 2: Rancangan & Media */}
+                    {formStep === 2 && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Alur Tujuan Pembelajaran (TP)
+                          </label>
+                          <textarea
+                            rows="3"
+                            value={formData.tujuan_pembelajaran}
+                            onChange={(e) => setFormData({ ...formData, tujuan_pembelajaran: e.target.value })}
+                            placeholder="Tuliskan tujuan pembelajaran yang ingin dicapai..."
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-3 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 resize-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Profil Pelajar Pancasila &amp; Rahmatan Lil Alamin
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.profil_pelajar_pancasila}
+                            onChange={(e) => setFormData({ ...formData, profil_pelajar_pancasila: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                              Model Pembelajaran
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.model_pembelajaran}
+                              onChange={(e) => setFormData({ ...formData, model_pembelajaran: e.target.value })}
+                              placeholder="Problem Based Learning (PBL)"
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                              Metode Pembelajaran
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.metode_pembelajaran}
+                              onChange={(e) => setFormData({ ...formData, metode_pembelajaran: e.target.value })}
+                              placeholder="Diskusi, Ceramah Interaktif, Presentasi"
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Media &amp; Sumber Belajar
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.media_pembelajaran}
+                            onChange={(e) => setFormData({ ...formData, media_pembelajaran: e.target.value })}
+                            placeholder="Slide PPT Interaktif, Video Pembelajaran, Canva, LKPD..."
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* STEP 3: Skenario Aktivitas */}
+                    {formStep === 3 && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Kegiatan Pendahuluan (Apersepsi)
+                          </label>
+                          <textarea
+                            rows="3"
+                            value={formData.kegiatan_pendahuluan}
+                            onChange={(e) => setFormData({ ...formData, kegiatan_pendahuluan: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-3 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 resize-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Kegiatan Inti Pembelajaran
+                          </label>
+                          <textarea
+                            rows="4"
+                            value={formData.kegiatan_inti}
+                            onChange={(e) => setFormData({ ...formData, kegiatan_inti: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-3 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 resize-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Kegiatan Penutup &amp; Refleksi
+                          </label>
+                          <textarea
+                            rows="3"
+                            value={formData.kegiatan_penutup}
+                            onChange={(e) => setFormData({ ...formData, kegiatan_penutup: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-3 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 resize-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* STEP 4: Asesmen & Status */}
+                    {formStep === 4 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                              Asesmen Awal
+                            </label>
+                            <textarea
+                              rows="3"
+                              value={formData.asesmen_awal}
+                              onChange={(e) => setFormData({ ...formData, asesmen_awal: e.target.value })}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 resize-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                              Asesmen Proses
+                            </label>
+                            <textarea
+                              rows="3"
+                              value={formData.asesmen_proses}
+                              onChange={(e) => setFormData({ ...formData, asesmen_proses: e.target.value })}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 resize-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                              Asesmen Akhir
+                            </label>
+                            <textarea
+                              rows="3"
+                              value={formData.asesmen_akhir}
+                              onChange={(e) => setFormData({ ...formData, asesmen_akhir: e.target.value })}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                            Status Publikasi Modul
+                          </label>
+                          <select
+                            value={formData.status}
+                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
+                          >
+                            {STATUS_LIST.map((st) => (
+                              <option key={st} value={st}>{st}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {selectedModul && (
+                          <div className="p-3.5 bg-amber-50/80 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800 space-y-2">
+                            <label className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-300 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={formData.naikkan_versi}
+                                onChange={(e) => setFormData({ ...formData, naikkan_versi: e.target.checked })}
+                                className="rounded text-[#0E5C44] focus:ring-emerald-500"
+                              />
+                              Naikkan Versi Modul (Increment Version)
+                            </label>
+                            {formData.naikkan_versi && (
+                              <input
+                                type="text"
+                                placeholder="Catatan revisi versi baru..."
+                                value={formData.catatan_revisi}
+                                onChange={(e) => setFormData({ ...formData, catatan_revisi: e.target.value })}
+                                className="w-full rounded-xl border border-amber-300 bg-white p-2 text-xs font-medium dark:bg-slate-900"
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="flex shrink-0 items-center justify-between border-t border-slate-100 bg-white px-5 py-4 sm:px-6 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      onClick={() => setIsFormModalOpen(false)}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-sm shadow-rose-500/20"
+                    >
+                      <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                        <X className="size-3.5 text-white" strokeWidth={2.2} />
+                      </div>
+                      <span>Batal</span>
+                    </button>
+
+                    <div className="flex items-center gap-2.5">
+                      {formStep > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setFormStep((s) => s - 1)}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white px-4 py-2.5 text-xs font-extrabold border border-blue-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+                        >
+                          <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                            <ArrowLeft className="size-3.5" strokeWidth={2.2} />
+                          </div>
+                          <span>Kembali</span>
+                        </button>
+                      )}
+
+                      {formStep < 4 ? (
+                        <button
+                          type="button"
+                          onClick={() => setFormStep((s) => s + 1)}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer"
+                        >
+                          <span>Lanjut Step {formStep + 1}</span>
+                          <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                            <ArrowRight className="size-3.5 text-white" strokeWidth={2.2} />
+                          </div>
+                        </button>
+                      ) : (
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-emerald-700/20"
+                        >
+                          <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                            <Save className="size-3.5 text-white" strokeWidth={2.2} />
+                          </div>
+                          <span>{selectedModul ? 'Simpan Perubahan' : 'Simpan Modul Ajar'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </form>
+              </motion.div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </AnimatePresence>
 
-      {/* Modal Preview / Cetak Dokumen RPP PDF */}
-      {isPreviewModalOpen && selectedModul && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md p-4 sm:p-6 flex justify-center items-start sm:items-center">
-          <div className="relative w-full max-w-4xl rounded-[18px] bg-white text-slate-900 shadow-2xl overflow-hidden my-auto max-h-[88vh] flex flex-col border border-slate-200 dark:border-slate-800">
-            <div className="bg-slate-900 text-white p-4 flex items-center justify-between shrink-0 sticky top-0 z-10 print:hidden">
-              <span className="text-xs font-mono">PREVIEW DOKUMEN CETAK RPP DIGITAL</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handlePrintSingleModul(selectedModul)}
-                  className="px-4 py-1.5 bg-[#0E5C44] hover:bg-emerald-600 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Printer className="h-4 w-4" /> Cetak / Download PDF
-                </button>
-                <button onClick={() => setIsPreviewModalOpen(false)} className="text-white hover:opacity-80">
-                  <XCircle className="h-6 w-6" />
-                </button>
-              </div>
+        {/* ── HARMONIZED SAVE / UPDATE CONFIRMATION MODAL ── */}
+        <AnimatePresence>
+          {showSaveConfirmModal && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+              >
+                <div
+                  className={`h-1.5 w-full bg-gradient-to-r ${
+                    selectedModul
+                      ? 'from-amber-400 via-amber-500 to-orange-500'
+                      : 'from-emerald-500 via-teal-400 to-emerald-600'
+                  }`}
+                />
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className={`flex size-11 shrink-0 items-center justify-center rounded-2xl border shadow-md ${
+                        selectedModul
+                          ? 'bg-gradient-to-br from-amber-50 to-orange-50 text-amber-700 border-amber-200'
+                          : 'bg-gradient-to-br from-emerald-50 to-teal-50 text-emerald-700 border-emerald-200'
+                      }`}
+                    >
+                      {selectedModul ? <Pencil className="size-5" /> : <BookOpen className="size-5" />}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                        {selectedModul ? 'Konfirmasi Pembaruan Modul' : 'Konfirmasi Simpan Modul'}
+                      </h4>
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        {selectedModul ? 'Simpan revisi data modul ajar' : 'Tambahkan modul ajar baru ke sistem'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 space-y-1 dark:border-slate-800 dark:bg-slate-900/50">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{formData.judul_modul}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                      Kode: {formData.kode_modul} • {formData.fase} • Alokasi: {formData.alokasi_waktu_jp} JP
+                    </p>
+                  </div>
+
+                  <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Pastikan seluruh data tujuan pembelajaran, kegiatan, dan instrumen asesmen telah sesuai sebelum menyimpan.
+                  </p>
+
+                  <div className="mt-6 flex items-center justify-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowSaveConfirmModal(false)}
+                      className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      onClick={handleConfirmSave}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2 text-xs font-black text-white border border-emerald-300/40 hover:scale-[1.02] active:scale-95 transition-all shadow-md shadow-emerald-700/20 cursor-pointer"
+                    >
+                      {createMutation.isPending || updateMutation.isPending ? (
+                        <RefreshCw className="size-3.5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="size-3.5" />
+                      )}
+                      <span>Ya, Simpan Modul</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             </div>
+          )}
+        </AnimatePresence>
 
-            {/* Printable Document Sheet */}
-            <div className="p-8 space-y-6 text-sm font-sans bg-white leading-relaxed overflow-y-auto grow">
-              <div className="text-center border-b-2 border-slate-900 pb-4">
-                <h2 className="text-xl font-extrabold uppercase tracking-wide">PERENCANAAN PELAKSANAAN PEMBELAJARAN (MODUL AJAR)</h2>
-                <h3 className="text-lg font-bold text-[#0E5C44]">{selectedModul.judul_modul}</h3>
-                <p className="text-xs text-slate-500 mt-1">Kode: {selectedModul.kode_modul} | Versi {selectedModul.versi} | Status: {selectedModul.status}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-lg border">
-                <div><strong>Satuan Pendidikan:</strong> {selectedModul.unit_pendidikan?.nama || selectedModul.unit_pendidikan?.name || 'Sekolah Terpadu'}</div>
-                <div><strong>Mata Pelajaran:</strong> {selectedModul.subject?.nama_mapel || selectedModul.subject?.name || '-'}</div>
-                <div><strong>Fase / Semester:</strong> {selectedModul.fase} / {selectedModul.semester}</div>
-                <div><strong>Guru Pengampu:</strong> {selectedModul.guru?.nama_lengkap || selectedModul.guru?.nama || selectedModul.guru?.name || '-'}</div>
-                <div><strong>Alokasi Waktu:</strong> {selectedModul.alokasi_waktu_jp} JP</div>
-                <div><strong>Target Peserta Didik:</strong> {selectedModul.target_peserta_didik || 'Reguler'}</div>
-              </div>
-
-              <div>
-                <h4 className="font-bold border-b border-slate-300 pb-1 uppercase text-xs text-[#0E5C44]">I. TUJUAN PEMBELAJARAN & PROFIL PELAJAR</h4>
-                <p className="mt-2 text-xs whitespace-pre-line">{selectedModul.tujuan_pembelajaran || '-'}</p>
-                <p className="mt-2 text-xs italic">Profil Pelajar Pancasila: {selectedModul.profil_pelajar_pancasila || '-'}</p>
-              </div>
-
-              <div>
-                <h4 className="font-bold border-b border-slate-300 pb-1 uppercase text-xs text-[#0E5C44]">II. KEGIATAN PEMBELAJARAN</h4>
-                <div className="mt-2 space-y-3 text-xs">
-                  <div>
-                    <strong>A. Pendahuluan:</strong>
-                    <p className="whitespace-pre-line text-slate-700">{selectedModul.kegiatan_pendahuluan || '-'}</p>
+        {/* ── HARMONIZED DELETE CONFIRMATION MODAL ── */}
+        <AnimatePresence>
+          {deleteTarget && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="w-full max-w-md overflow-hidden rounded-3xl border border-rose-200/80 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/60 dark:bg-slate-950"
+              >
+                <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+                <div className="p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30 border border-rose-300/40">
+                      <Trash2 className="size-5 text-white" strokeWidth={2.2} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                          Pindahkan ke Sampah?
+                        </h4>
+                        <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold text-rose-700 dark:bg-rose-950/80 dark:text-rose-300">
+                          Soft Delete
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        Data dapat dipulihkan kapan saja dari filter sampah
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <strong>B. Kegiatan Inti ({selectedModul.model_pembelajaran}):</strong>
-                    <p className="whitespace-pre-line text-slate-700">{selectedModul.kegiatan_inti || '-'}</p>
-                  </div>
-                  <div>
-                    <strong>C. Penutup:</strong>
-                    <p className="whitespace-pre-line text-slate-700">{selectedModul.kegiatan_penutup || '-'}</p>
-                  </div>
-                </div>
-              </div>
 
-              <div>
-                <h4 className="font-bold border-b border-slate-300 pb-1 uppercase text-xs text-[#0E5C44]">III. ASESMEN & PENILAIAN</h4>
-                <div className="mt-2 grid grid-cols-3 gap-2 text-xs bg-slate-50 p-3 rounded border">
-                  <div><strong>Asesmen Awal:</strong> <p>{selectedModul.asesmen_awal || '-'}</p></div>
-                  <div><strong>Asesmen Proses:</strong> <p>{selectedModul.asesmen_proses || '-'}</p></div>
-                  <div><strong>Asesmen Akhir:</strong> <p>{selectedModul.asesmen_akhir || '-'}</p></div>
-                </div>
-              </div>
+                  <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-3.5 space-y-1 dark:border-rose-900/50 dark:bg-rose-950/20">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                      {deleteTarget.judul_modul || deleteTarget.nama_modul}
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-mono">
+                      Kode: {deleteTarget.kode_modul || '-'} • Mapel: {deleteTarget.subject?.nama_mapel || deleteTarget.subject?.name || '-'}
+                    </p>
+                  </div>
 
-              <div className="pt-8 flex justify-between text-xs text-center">
-                <div>
-                  <p>Mengetahui,</p>
-                  <p className="font-bold mt-12">Kepala Sekolah</p>
+                  <p className="mt-3 text-xs text-rose-700/80 dark:text-rose-400 font-medium leading-relaxed">
+                    Modul ajar ini akan dinonaktifkan dari jadwal KBM aktif hingga dipulihkan kembali oleh guru pengampu atau kurikulum.
+                  </p>
+
+                  <div className="mt-6 flex items-center justify-end gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(null)}
+                      className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deleteMutation.isPending}
+                      onClick={handleConfirmDelete}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 px-5 py-2 text-xs font-black text-white border border-rose-300/40 hover:scale-[1.02] active:scale-95 transition-all shadow-md shadow-rose-700/20 cursor-pointer"
+                    >
+                      {deleteMutation.isPending ? (
+                        <RefreshCw className="size-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3.5" />
+                      )}
+                      <span>Ya, Pindahkan</span>
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <p>Guru Pengampu,</p>
-                  <p className="font-bold mt-12">{selectedModul.guru?.nama_lengkap || selectedModul.guru?.nama || selectedModul.guru?.name || 'Guru Mapel'}</p>
-                </div>
-              </div>
+              </motion.div>
             </div>
-          </div>
-        </div>
-      )}
-    </motion.div>
-    </MasterDataPage>
+          )}
+        </AnimatePresence>
+
+        {/* ── MODAL DETAIL OVERVIEW & OPSI AKSI ── */}
+        <AnimatePresence>
+          {isDetailModalOpen && selectedModul && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="my-auto flex max-h-[calc(100vh-2.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
+              >
+                <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+                <div className="bg-[#0E5C44] px-6 py-4 text-white flex items-center justify-between shrink-0">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full font-bold">
+                      {selectedModul.fase} • Versi {selectedModul.versi || '1.0'}
+                    </span>
+                    <h3 className="text-lg font-extrabold mt-1 leading-snug">{selectedModul.judul_modul}</h3>
+                    <p className="text-xs text-emerald-100 mt-0.5 font-mono">Kode: {selectedModul.kode_modul || 'MA-AUTO'}</p>
+                  </div>
+                  <button
+                    onClick={() => setIsDetailModalOpen(false)}
+                    className="rounded-xl p-1.5 text-emerald-100 hover:bg-white/10 hover:text-white cursor-pointer"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                {/* Quick Action Toolbar inside Overview */}
+                <div className="px-6 py-3 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                    <Sparkles className="size-3.5 text-amber-500" />
+                    Opsi Tindakan:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDetailModalOpen(false)
+                        handleOpenEditModal(selectedModul)
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/60 transition cursor-pointer"
+                    >
+                      <Pencil className="size-3.5" /> Edit Modul
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrintSingleModul(selectedModul)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer"
+                    >
+                      <Printer className="size-3.5" /> Cetak RPP
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDetailModalOpen(false)
+                        duplicateMutation.mutate(selectedModul.id)
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-900/60 transition cursor-pointer"
+                    >
+                      <Copy className="size-3.5" /> Duplikasi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDetailModalOpen(false)
+                        setIsRevisionModalOpen(true)
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900/60 transition cursor-pointer"
+                    >
+                      <History className="size-3.5" /> Riwayat
+                    </button>
+                    {selectedModul.status !== 'Publish' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDetailModalOpen(false)
+                          publishMutation.mutate(selectedModul.id)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition cursor-pointer"
+                      >
+                        <Send className="size-3.5" /> Publikasi
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDetailModalOpen(false)
+                        setDeleteTarget(selectedModul)
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/60 transition cursor-pointer"
+                    >
+                      <Trash2 className="size-3.5" /> Hapus
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content Details */}
+                <div className="p-6 space-y-5 overflow-y-auto text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Mata Pelajaran</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                        {selectedModul.subject?.nama_mapel || selectedModul.subject?.name || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Guru Pengampu</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                        {selectedModul.guru?.nama_lengkap || selectedModul.user?.nama_lengkap || selectedModul.teacher?.nama_lengkap || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Kelas Target</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                        {selectedModul.kelas?.nama_kelas || selectedModul.kelas?.name || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Alokasi Jam</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                        {selectedModul.alokasi_waktu_jp || selectedModul.alokasi_jam || 2} JP
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-[#0E5C44] dark:text-emerald-400 uppercase text-[11px] tracking-wider mb-1.5">
+                      Tujuan Pembelajaran (TP)
+                    </h4>
+                    <p className="whitespace-pre-line text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 leading-relaxed">
+                      {selectedModul.tujuan_pembelajaran || 'Belum diisi.'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-[#0E5C44] dark:text-emerald-400 uppercase text-[11px] tracking-wider mb-1.5">
+                      Profil Pelajar Pancasila
+                    </h4>
+                    <p className="text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                      {selectedModul.profil_pelajar_pancasila || '-'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                      <h5 className="font-bold text-[10px] uppercase text-slate-400 mb-1">Pendahuluan</h5>
+                      <p className="whitespace-pre-line leading-relaxed">{selectedModul.kegiatan_pendahuluan || '-'}</p>
+                    </div>
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                      <h5 className="font-bold text-[10px] uppercase text-slate-400 mb-1">Kegiatan Inti</h5>
+                      <p className="whitespace-pre-line leading-relaxed">{selectedModul.kegiatan_inti || '-'}</p>
+                    </div>
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                      <h5 className="font-bold text-[10px] uppercase text-slate-400 mb-1">Penutup</h5>
+                      <p className="whitespace-pre-line leading-relaxed">{selectedModul.kegiatan_penutup || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsDetailModalOpen(false)}
+                    className="px-5 py-2 bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-bold hover:bg-slate-300 cursor-pointer"
+                  >
+                    Tutup Rincian
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* ── HARMONIZED BATCH IMPORT MODAL ── */}
+        <AnimatePresence>
+          {isImportModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#182232]"
+              >
+                <div className="h-1.5 w-full bg-gradient-to-r from-sky-400 via-sky-500 to-blue-600" />
+                <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-gradient-to-br from-sky-500 via-sky-600 to-blue-600 text-white p-2.5 shadow-md shadow-sky-500/30 border border-sky-300/30 shrink-0">
+                      <Upload className="size-5 text-white" strokeWidth={2.2} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Import Modul Ajar</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300">
+                          <Sparkles className="size-3" /> Batch Import
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Unggah berkas spreadsheet (.xlsx atau .csv) untuk impor data perencanaan modul ajar.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsImportModalOpen(false)}
+                    className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4 text-xs text-slate-700 dark:text-slate-200">
+                  {/* Unduh Format Berkas */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-sky-200/70 bg-gradient-to-r from-sky-50/50 via-teal-50/20 to-white p-4 dark:border-sky-800/50 dark:bg-slate-900/40">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 via-sky-600 to-blue-600 text-white border border-sky-300/30 shrink-0">
+                        <Download className="size-4.5 text-white" strokeWidth={2.2} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Unduh Format Berkas</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Gunakan berkas template resmi agar pemetaan kolom presisi</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadTemplate}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-[#0E5C44] px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <Download className="size-3.5" />
+                      <span>Template CSV</span>
+                    </button>
+                  </div>
+
+                  {/* Dropzone Upload */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setImportDragging(true)
+                    }}
+                    onDragLeave={() => setImportDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setImportDragging(false)
+                      const file = e.dataTransfer.files?.[0]
+                      if (file) processImportFile(file)
+                    }}
+                    className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-all cursor-pointer ${
+                      importDragging
+                        ? 'border-sky-500 bg-sky-50/40 dark:bg-sky-950/30'
+                        : importFile
+                        ? 'border-emerald-400 bg-emerald-50/30 dark:border-emerald-700 dark:bg-emerald-950/20'
+                        : 'border-slate-300 hover:border-sky-400 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/50'
+                    }`}
+                    onClick={() => document.getElementById('modul-import-file-input')?.click()}
+                  >
+                    <input
+                      id="modul-import-file-input"
+                      type="file"
+                      accept=".csv, .xlsx, .xls"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <div className="flex size-12 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-600 mb-2">
+                      <FileSpreadsheet className="size-6" />
+                    </div>
+                    {importFile ? (
+                      <div>
+                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{importFile.name}</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">{(importFile.size / 1024).toFixed(1)} KB • Klik untuk ganti berkas</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Tarik berkas ke sini atau <span className="text-sky-600 underline">pilih dari perangkat</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-1">Mendukung format .csv, .xlsx, .xls (Maks. 5MB)</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mini Preview Datatable */}
+                  {importPreviewData.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pratinjau Data Impor (5 baris pertama):</p>
+                      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                            <tr>
+                              <th className="p-2">Kode</th>
+                              <th className="p-2">Judul Modul</th>
+                              <th className="p-2">Fase</th>
+                              <th className="p-2">Mapel</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {importPreviewData.map((row, i) => (
+                              <tr key={i}>
+                                <td className="p-2 font-mono">{row.kode}</td>
+                                <td className="p-2 font-semibold">{row.judul}</td>
+                                <td className="p-2">{row.fase}</td>
+                                <td className="p-2">{row.mapel}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                  <button
+                    type="button"
+                    onClick={() => setIsImportModalOpen(false)}
+                    className="h-10 rounded-xl border border-slate-200 bg-white px-5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!importFile || importLoading}
+                    onClick={handleExecuteImport}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-sky-500 via-sky-600 to-blue-700 text-white px-5 py-2.5 text-xs font-extrabold border border-sky-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    {importLoading ? <RefreshCw className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                    <span>{importLoading ? 'Mengimpor...' : 'Mulai Impor Berkas'}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* ── HARMONIZED RIWAYAT REVISI MODAL ── */}
+        <AnimatePresence>
+          {isRevisionModalOpen && selectedModul && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="my-auto flex max-h-[calc(100vh-2.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-purple-200 bg-white shadow-2xl dark:border-purple-900/60 dark:bg-slate-950"
+              >
+                <div className="h-1.5 w-full bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600" />
+                <div className="bg-gradient-to-br from-purple-700 via-indigo-700 to-purple-900 p-5 text-white flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-white/20 text-white">
+                      <History className="size-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm">Riwayat Revisi Versi Modul</h3>
+                      <p className="text-xs text-purple-200 font-mono">{selectedModul.kode_modul} • {selectedModul.judul_modul}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsRevisionModalOpen(false)}
+                    className="rounded-xl p-1 text-purple-200 hover:text-white cursor-pointer"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-3.5 max-h-[60vh] overflow-y-auto">
+                  {!revisionsData?.data || revisionsData.data.length === 0 ? (
+                    <div className="text-center py-10 text-slate-400">
+                      <History className="size-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                      <p className="text-xs font-semibold">Belum ada riwayat revisi versi tercatat.</p>
+                      <p className="text-[10px] text-slate-400">Centang opsi 'Naikkan Versi' saat menyimpan untuk menambah catatan versi baru.</p>
+                    </div>
+                  ) : (
+                    revisionsData.data.map((rev, idx) => (
+                      <div
+                        key={rev.id || idx}
+                        className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[11px] bg-purple-700 text-white px-2.5 py-0.5 rounded-lg font-bold">
+                            v{rev.versi}
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-400">{rev.created_at || 'Tercatat'}</span>
+                        </div>
+                        <p className="font-bold text-xs text-slate-900 dark:text-white">{rev.judul_modul}</p>
+                        <p className="text-xs text-slate-500 italic leading-relaxed">{rev.catatan_revisi || 'Pembaruan isi dan aktivitas modul.'}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsRevisionModalOpen(false)}
+                    className="px-5 py-2 bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-bold hover:bg-slate-300 cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* ── PRINT OPTION MODAL ── */}
+        <PrintOptionModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          title="Modul Ajar (RPP Digital)"
+          onPrint={() => {
+            const rowsToPrint = Array.isArray(moduls) ? moduls : []
+            printCleanTable({
+              title: 'Laporan Data Modul Ajar (RPP Digital)',
+              subtitle: 'Daftar Perencanaan Modul Ajar Sekolah Islam Terpadu',
+              headers: ['NO', 'KODE MODUL', 'JUDUL MODUL', 'MATA PELAJARAN', 'GURU PENGAMPU', 'ALOKASI WAKTU', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.kode_modul || '-',
+                row.judul_modul || row.nama_modul || '-',
+                row.subject?.nama_mapel || row.subject?.name || '-',
+                row.guru?.nama_lengkap || row.user?.nama_lengkap || row.teacher?.nama_lengkap || '-',
+                `${row.alokasi_jam || row.alokasi_waktu_jp || 0} JP`,
+                row.status || 'Draft',
+              ]),
+            })
+          }}
+          onDownload={() => {
+            const rowsToPrint = Array.isArray(moduls) ? moduls : []
+            downloadPdfTable({
+              title: 'Laporan Data Modul Ajar (RPP Digital)',
+              subtitle: 'Daftar Perencanaan Modul Ajar Sekolah Islam Terpadu',
+              headers: ['NO', 'KODE MODUL', 'JUDUL MODUL', 'MATA PELAJARAN', 'GURU PENGAMPU', 'ALOKASI WAKTU', 'STATUS'],
+              rows: rowsToPrint.map((row, i) => [
+                i + 1,
+                row.kode_modul || '-',
+                row.judul_modul || row.nama_modul || '-',
+                row.subject?.nama_mapel || row.subject?.name || '-',
+                row.guru?.nama_lengkap || row.user?.nama_lengkap || row.teacher?.nama_lengkap || '-',
+                `${row.alokasi_jam || row.alokasi_waktu_jp || 0} JP`,
+                row.status || 'Draft',
+              ]),
+              filename: 'laporan_modul_ajar.pdf',
+            })
+          }}
+        />
+
+        {/* ── HARMONIZED BATCH EXPORT MODAL ── */}
+        <HarmonizedBatchExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          onExport={handleExportSpreadsheet}
+          isExporting={isExporting}
+          totalCount={totalItems}
+          moduleTitle="Modul Ajar"
+        />
+
+        {/* Floating Semantic Toast Stack */}
+        <ToastStack items={toastList} onDismiss={dismissToast} />
+      </motion.div>
     </PageContainer>
   )
 }

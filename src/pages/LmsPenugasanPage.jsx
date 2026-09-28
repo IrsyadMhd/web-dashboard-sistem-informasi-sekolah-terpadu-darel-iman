@@ -10,7 +10,9 @@ import {
   Trash2,
   RefreshCw,
   CheckCircle2,
+  XCircle,
   AlertCircle,
+  AlertTriangle,
   X,
   Send,
   GraduationCap,
@@ -29,8 +31,13 @@ import {
   Lock,
   Info,
   Calendar,
+  Sparkles,
+  Printer,
+  Upload,
+  Download,
+  FileSpreadsheet,
+  RotateCcw,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
 import { lmsPenugasanService } from '../services/lmsPenugasanService'
 import { subjectService } from '../services/subjectService'
 import { useAuthStore } from '../stores/authStore'
@@ -45,7 +52,311 @@ import {
   PrintOptionModal,
 } from '../components/master-data'
 import CsvImportModal from '../components/master-data/CsvImportModal'
-import { RotateCcw, Printer } from 'lucide-react'
+import { useDebounce } from '../hooks/useDebounce'
+import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
+
+// ── 1. DEFINISI TONE WARNA KARTU KPI MODERN ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
+  },
+  purple: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+    cta: 'text-purple-600/60 dark:text-purple-500/60',
+  },
+  teal: {
+    card: 'border-teal-300/70 bg-gradient-to-br from-teal-50 via-emerald-50/60 to-white hover:border-teal-400 dark:border-teal-700/50 dark:from-teal-950/40 dark:via-emerald-950/20 dark:to-slate-900',
+    glow: 'bg-teal-400/20 group-hover:bg-teal-400/30',
+    iconBox: 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-teal-500/30',
+    tag: 'bg-teal-100 text-teal-700 dark:bg-teal-900/60 dark:text-teal-300',
+    title: 'text-teal-700 dark:text-teal-400',
+    val: 'text-teal-700 dark:text-teal-300',
+    sub: 'text-teal-600/80 dark:text-teal-400/80',
+    cta: 'text-teal-600/60 dark:text-teal-500/60',
+  },
+}
+
+function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald', className = '', onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-3.5 sm:p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card} ${className}`}
+    >
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className={`flex size-8 sm:size-9 items-center justify-center rounded-xl text-white shadow-sm shrink-0 ${t.iconBox}`}>
+            <Icon className="size-4 sm:size-4.5" />
+          </div>
+          <div>
+            <p className={`text-[10px] sm:text-[11px] font-bold uppercase tracking-wider line-clamp-1 ${t.title}`}>{label}</p>
+          </div>
+        </div>
+        {tag && (
+          <span className={`hidden xs:inline-block rounded-lg px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold shrink-0 ${t.tag}`}>
+            {tag}
+          </span>
+        )}
+      </div>
+
+      <p className={`text-2xl sm:text-3xl font-black tabular-nums ${t.val}`}>
+        {value ?? '0'}
+      </p>
+      {subtext && (
+        <p className={`mt-0.5 text-[10px] sm:text-[11px] font-semibold line-clamp-1 ${t.sub}`}>
+          {subtext}
+        </p>
+      )}
+
+      {isClickable && (
+        <p className={`mt-2 sm:mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+          <Eye className="size-3" /> Filter status
+        </p>
+      )}
+    </motion.div>
+  )
+}
+
+// ── 2. TOAST NOTIFICATION STACK HOOK ──
+function useNotifications() {
+  const [items, setItems] = useState([])
+  const push = (title, message, tone = 'success') => {
+    const id = `${Date.now()}-${Math.random()}`
+    setItems((prev) => [...prev, { id, title, message, tone }])
+    window.setTimeout(() => setItems((prev) => prev.filter((n) => n.id !== id)), 5000)
+  }
+  const dismiss = (id) => setItems((prev) => prev.filter((n) => n.id !== id))
+  return { items, push, dismiss }
+}
+
+function ToastStack({ items, onDismiss }) {
+  if (!items.length) return null
+  return (
+    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
+      {items.map((n) => {
+        const isError = n.tone === 'error' || n.tone === 'danger'
+        const isWarning = n.tone === 'warning'
+        return (
+          <motion.div
+            key={n.id}
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className={`pointer-events-auto relative overflow-hidden rounded-2xl border bg-white p-4 shadow-xl dark:bg-slate-900 ${
+              isError
+                ? 'border-rose-300 dark:border-rose-800 shadow-rose-950/10'
+                : isWarning
+                ? 'border-amber-300 dark:border-amber-800 shadow-amber-950/10'
+                : 'border-emerald-300 dark:border-emerald-800 shadow-emerald-950/10'
+            }`}
+          >
+            <div
+              className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${
+                isError
+                  ? 'from-rose-500 via-rose-600 to-red-700'
+                  : isWarning
+                  ? 'from-amber-400 via-amber-500 to-orange-600'
+                  : 'from-emerald-500 via-teal-400 to-emerald-600'
+              }`}
+            />
+            <div className="flex items-start gap-3 mt-0.5">
+              <div
+                className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-xs ${
+                  isError
+                    ? 'bg-gradient-to-br from-rose-500 to-red-600'
+                    : isWarning
+                    ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                    : 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                }`}
+              >
+                {isError ? <XCircle className="size-4.5" /> : isWarning ? <AlertTriangle className="size-4.5" /> : <CheckCircle2 className="size-4.5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">{n.title}</h4>
+                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{n.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onDismiss(n.id)}
+                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── 3. HARMONIZED BATCH EXPORT MODAL ──
+function HarmonizedBatchExportModal({
+  isOpen,
+  onClose,
+  onExport,
+  isExporting,
+  totalCount,
+  moduleTitle = 'Penugasan & Asesmen',
+}) {
+  const [exportFormat, setExportFormat] = useState('xlsx')
+
+  if (!isOpen) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !isExporting) onClose()
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 14 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="w-full max-w-lg"
+      >
+        <div className="flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-amber-200/80 bg-white shadow-2xl shadow-amber-950/20 dark:border-amber-900/50 dark:bg-[#182232]">
+          <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600 shrink-0" />
+
+          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white p-2.5 shadow-md shadow-amber-500/25 border border-amber-300/40 shrink-0">
+                <Download className="h-5 w-5 text-white" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Export Data {moduleTitle}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60">
+                    <Sparkles className="size-3" /> Unduh Data
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pilih format berkas untuk mengekspor data sesuai filter aktif.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={onClose}
+              className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                ['xlsx', 'Excel (.xlsx)', FileSpreadsheet, 'Format spreadsheet modern Microsoft Excel.'],
+                ['xls', 'Excel (.xls)', FileSpreadsheet, 'Format kompatibilitas Excel 97-2003.'],
+                ['csv', 'CSV (.csv)', FileText, 'Format teks koma terpisah universal.'],
+              ].map(([value, label, Icon, desc]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setExportFormat(value)}
+                  className={`rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${
+                    exportFormat === value
+                      ? 'border-emerald-500 bg-emerald-50/70 shadow-sm dark:border-emerald-700 dark:bg-emerald-950/40'
+                      : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Icon
+                      className={`size-4 ${
+                        exportFormat === value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
+                      }`}
+                    />
+                    <span className="text-xs font-black text-slate-900 dark:text-white">{label}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-snug">{desc}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 dark:bg-amber-950/30 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
+              <p className="font-bold flex items-center gap-1.5 mb-0.5">
+                <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400" />
+                Filter Ekspor Aktif
+              </p>
+              <p className="text-[11px] text-amber-800/90 dark:text-amber-300/80">
+                Data yang diekspor akan mencakup seluruh entitas terfilter ({totalCount} butir {moduleTitle.toLowerCase()}).
+              </p>
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-2.5 bg-slate-50/50 dark:bg-slate-900/40 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={() => onExport(exportFormat)}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white px-5 py-2.5 text-xs font-extrabold shadow-md shadow-amber-500/25 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 cursor-pointer border border-amber-300/40"
+            >
+              <Download className="size-4" />
+              {isExporting ? 'Menyiapkan...' : 'Unduh Berkas'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -67,69 +378,8 @@ const itemVariants = {
   },
 }
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
-  const tones = {
-    emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-    },
-    blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
-    },
-    amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
-    },
-    purple: {
-      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
-      title: 'text-purple-700 dark:text-purple-400',
-      icon: 'text-purple-500',
-      val: 'text-purple-600 dark:text-purple-300',
-      sub: 'text-purple-600/70 dark:text-purple-400/70',
-    },
-    teal: {
-      card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
-      title: 'text-teal-700 dark:text-teal-400',
-      icon: 'text-teal-500',
-      val: 'text-teal-600 dark:text-teal-300',
-      sub: 'text-teal-600/70 dark:text-teal-400/70',
-    },
-  }
-  const t = tones[tone] || tones.emerald
-  return (
-    <motion.div
-      variants={itemVariants}
-      whileHover={{ scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      onClick={onClick}
-      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
-    >
-      <div className="flex items-center justify-between">
-        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
-      </div>
-      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
-      {subtext && (
-        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
-          {subtext}
-        </p>
-      )}
-    </motion.div>
-  )
-}
-
-export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
+export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
+  const { items: toastList, push: pushToast, dismiss: dismissToast } = useNotifications()
   const user = useAuthStore((state) => state.user)
   const activeUnit = useUnitStore((state) => state.activeUnit)
 
@@ -185,8 +435,9 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
-  // Filters & Pagination
-  const [search, setSearch] = useState('')
+  // Filters & Pagination with Debounce
+  const [searchInput, setSearchInput] = useState('')
+  const debouncedSearch = useDebounce(searchInput, 350)
   const [selectedModulAjar, setSelectedModulAjar] = useState('')
   const [selectedTipe, setSelectedTipe] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
@@ -199,38 +450,55 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
     per_page: 15,
   })
 
-  // Print & Import State
+  // Print, Export & Import State
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  const handleExportCSV = () => {
-    if (!dataPenugasan.length) return
-    const headers = ['ID', 'Judul', 'Tipe', 'Jenis', 'Status', 'Deadline']
-    const rows = dataPenugasan.map((item) => [
-      item.id,
-      `"${(item.judul || item.judul_tugas || '').replace(/"/g, '""')}"`,
-      item.tipe || 'individu',
-      item.jenis_tugas || 'tugas',
-      item.status || 'draft',
-      item.deadline || '-',
-    ])
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `penugasan_evaluasi_${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleExportSpreadsheet = (format = 'xlsx') => {
+    try {
+      setIsExporting(true)
+      if (!dataPenugasan.length) {
+        pushToast('Data Kosong', 'Tidak ada data penugasan untuk diekspor.', 'warning')
+        return
+      }
+      const exportData = dataPenugasan.map((item, idx) => ({
+        'No': idx + 1,
+        'ID': item.id,
+        'Judul Penugasan': item.judul || item.judul_tugas || '-',
+        'Modul Ajar': item.modul_ajar?.judul || '-',
+        'Kelas': item.kelas?.nama_kelas || item.kelas?.name || 'Semua Kelas',
+        'Guru Pengampu': item.guru?.nama || item.guru?.nama_lengkap || '-',
+        'Tipe': item.tipe || 'individu',
+        'Jenis Tugas': item.jenis_tugas || 'tugas',
+        'Nilai Maksimal': item.nilai_maksimal || 100,
+        'Bobot Nilai (%)': item.bobot_persen ?? 10,
+        'Tanggal Mulai': item.tanggal_mulai || '-',
+        'Deadline': item.deadline || item.tanggal_selesai || '-',
+        'Total Pengumpulan': item.total_pengumpulan ?? 0,
+        'Total Dinilai': item.total_dinilai ?? 0,
+        'Status': item.is_published || item.status === 'dipublikasikan' ? 'Dipublikasikan' : 'Draft',
+      }))
+      downloadSpreadsheetTemplate(
+        exportData,
+        `penugasan_siswa_${new Date().toISOString().slice(0, 10)}`,
+        format,
+        'Penugasan'
+      )
+      setIsExportModalOpen(false)
+      pushToast('Export Berhasil', `Berkas Penugasan .${format.toUpperCase()} berhasil diunduh.`, 'success')
+    } catch (err) {
+      pushToast('Gagal Export', err?.message || 'Terjadi kesalahan saat menyiapkan berkas ekspor.', 'error')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleImport = (file) => {
-    Swal.fire({
-      icon: 'success',
-      title: 'Import Berhasil',
-      text: `File ${file.name} telah diproses.`,
-      confirmButtonColor: '#0E5C44',
-    })
+    pushToast('Import Berhasil', `File ${file.name} telah diproses.`, 'success')
   }
 
   // Modal Form State (Create / Edit Penugasan)
@@ -281,7 +549,7 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
 
   useEffect(() => {
     fetchPenugasan()
-  }, [page, search, selectedModulAjar, selectedTipe, selectedStatus, selectedKelas, userUnitId, activeUnit])
+  }, [page, debouncedSearch, selectedModulAjar, selectedTipe, selectedStatus, selectedKelas, userUnitId, activeUnit])
 
   const fetchOptions = async () => {
     try {
@@ -347,7 +615,7 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
       const params = {
         page,
         per_page: 15,
-        search,
+        search: debouncedSearch,
         modul_ajar_id: selectedModulAjar,
         tipe: selectedTipe,
         status: selectedStatus,
@@ -438,10 +706,10 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
     try {
       if (editId) {
         await lmsPenugasanService.update(editId, formData)
-        setSuccessMsg('Penugasan berhasil diperbarui.')
+        pushToast('Penugasan Diperbarui', 'Penugasan berhasil diperbarui.', 'success')
       } else {
         await lmsPenugasanService.create(formData)
-        setSuccessMsg('Penugasan baru berhasil ditambahkan.')
+        pushToast('Penugasan Ditambahkan', 'Penugasan baru berhasil ditambahkan.', 'success')
       }
       setIsModalOpen(false)
       fetchPenugasan()
@@ -453,27 +721,23 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
     }
   }
 
-  const handleDelete = async (id, judul) => {
-    const result = await Swal.fire({
-      title: 'Hapus Penugasan?',
-      text: `Apakah Anda yakin ingin menghapus "${judul}"? Data pengumpulan siswa terkait juga akan terdampak.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#0E5C44',
-      confirmButtonText: 'Ya, Hapus!',
-      cancelButtonText: 'Batal',
-    })
+  const handleRequestDelete = (item) => {
+    setDeleteTarget(item)
+  }
 
-    if (result.isConfirmed) {
-      try {
-        await lmsPenugasanService.delete(id)
-        Swal.fire('Terhapus!', 'Penugasan berhasil dihapus.', 'success')
-        fetchPenugasan()
-        fetchStats()
-      } catch (err) {
-        Swal.fire('Gagal!', err?.response?.data?.message || 'Gagal menghapus penugasan.', 'error')
-      }
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget?.id) return
+    setIsDeleting(true)
+    try {
+      await lmsPenugasanService.delete(deleteTarget.id)
+      pushToast('Penugasan Dihapus', `Penugasan "${deleteTarget.judul || deleteTarget.judul_tugas}" berhasil dihapus.`, 'success')
+      setDeleteTarget(null)
+      fetchPenugasan()
+      fetchStats()
+    } catch (err) {
+      pushToast('Gagal Menghapus', err?.response?.data?.message || 'Gagal menghapus penugasan.', 'error')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -481,7 +745,7 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
     try {
       const res = await lmsPenugasanService.togglePublish(item.id)
       if (res.success) {
-        setSuccessMsg(res.message)
+        pushToast('Status Diperbarui', res.message || 'Status publikasi penugasan berhasil diperbarui.', 'success')
         fetchPenugasan()
         fetchStats()
       }
@@ -527,7 +791,7 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
 
       const res = await lmsPenugasanService.gradeSubmission(selectedPenugasan.id, payload)
       if (res.success) {
-        Swal.fire('Berhasil!', 'Nilai tugas siswa berhasil disimpan.', 'success')
+        pushToast('Nilai Disimpan', 'Nilai tugas siswa berhasil disimpan.', 'success')
         setGradingStudentId(null)
         // Refresh detail
         const updated = await lmsPenugasanService.getById(selectedPenugasan.id)
@@ -538,65 +802,54 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
         fetchStats()
       }
     } catch (err) {
-      Swal.fire('Gagal!', err?.response?.data?.message || 'Gagal menyimpan nilai.', 'error')
+      pushToast('Gagal Menyimpan', err?.response?.data?.message || 'Gagal menyimpan nilai.', 'error')
     } finally {
       setGradingLoading(false)
     }
   }
 
-  const pageActions = (
-    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
-      <SquircleActionButton
-        variant="import"
-        label="Import"
-        onClick={() => setImportOpen(true)}
-      />
-      <SquircleActionButton
-        variant="export"
-        label="Export"
-        onClick={handleExportCSV}
-      />
-      <SquircleActionButton
-        variant="view"
-        label="Cetak"
-        icon={Printer}
-        onClick={() => setIsPrintModalOpen(true)}
-      />
-      <SquircleActionButton
-        variant="primary"
-        label="Buat Penugasan Baru"
-        onClick={handleOpenCreateModal}
-      />
-    </div>
-  )
-
   const pageContent = (
     <div className="education-unit-page lms-penugasan-page space-y-6">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      {/* HEADER BANNER */}
+      {/* ── MODERN VIVID EMERALD HERO HEADER CARD ── */}
       {!embedded && !hidePageHeader && (
-        <motion.div variants={itemVariants}>
-        <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#0E5C44] via-[#1E8E5A] to-[#3FBF75] p-6 sm:p-8 text-white shadow-xl">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 mb-3">
-                <Sparkles className="w-3.5 h-3.5" /> LMS — Manajemen Penugasan Siswa
+        <motion.div
+          variants={itemVariants}
+          className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden"
+        >
+          {/* Dual Multi-Tone Ambient Glow Blobs */}
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+              <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <ClipboardList className="size-5 sm:size-7" />
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Penugasan &amp; Asesmen</h1>
-              <p className="text-white/80 text-sm mt-1 max-w-xl">
-                Kelola instruksi tugas, deadline, lampiran berkas, dan evaluasi hasil kerja siswa terhubung dengan Modul Ajar.
-              </p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Penugasan &amp; Asesmen
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    LMS &amp; Evaluasi Siswa
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  Kelola instruksi tugas, deadline, lampiran berkas, dan evaluasi hasil kerja siswa terhubung langsung dengan Modul Ajar.
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleOpenCreateModal}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-[#0E5C44] font-bold text-sm shadow-lg hover:bg-emerald-50 hover:scale-[1.03] active:scale-95 transition-all duration-200"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" /> Buat Tugas Baru
-              </button>
+
+            {/* Right Feature Indicator Badge */}
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <GraduationCap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Tugas &amp; Proyek</span>
+              </div>
             </div>
           </div>
-        </div>
         </motion.div>
       )}
 
@@ -625,12 +878,13 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
         </div>
       )}
 
-      {/* KPI STATS CARDS */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <KpiTintedCard
+      {/* ── 5 KARTU KPI MODERN (MULTI-TONE RESPONSIVE) ── */}
+      <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+        <ModernKpiCard
           icon={ClipboardList}
           label="Total Penugasan"
           value={stats.total}
+          tag={`${stats.total} Tugas`}
           subtext="Tercatat di sistem"
           tone="emerald"
           onClick={() => {
@@ -638,10 +892,11 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
             setPage(1)
           }}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={Globe}
           label="Dipublikasikan"
           value={stats.published}
+          tag="Aktif"
           subtext="Dapat diakses siswa"
           tone="blue"
           onClick={() => {
@@ -649,10 +904,11 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
             setPage(1)
           }}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={Lock}
           label="Draft"
           value={stats.draft}
+          tag="Penyusunan"
           subtext="Belum dipublish"
           tone="amber"
           onClick={() => {
@@ -660,23 +916,26 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
             setPage(1)
           }}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={Users}
-          label="Pengumpulan Siswa"
+          label="Pengumpulan"
           value={stats.total_pengumpulan}
-          subtext="Submission terkirim"
+          tag="Submisi"
+          subtext="Tugas terkirim"
           tone="purple"
           onClick={() => {
             setSelectedStatus('dipublikasikan')
             setPage(1)
           }}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={Award}
           label="Tugas Dinilai"
           value={stats.total_dinilai}
+          tag="Selesai"
           subtext="Sudah diberi nilai"
           tone="teal"
+          className="col-span-2 sm:col-span-1"
           onClick={() => {
             setSelectedStatus('dipublikasikan')
             setPage(1)
@@ -684,346 +943,523 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
         />
       </motion.div>
 
-      {/* Tab Navigation (Pindahkan di atas card datatable) */}
+      {/* Tab Navigation Slot if provided */}
       {tabNav && <div className="my-2">{typeof tabNav === 'function' ? tabNav() : tabNav}</div>}
 
-      {/* SEARCH & FILTER BAR (2-ROW LAYOUT) */}
-      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
-        {/* Baris 1: Full-width Search Input */}
-        <div className="relative w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Cari judul, deskripsi, instruksi penugasan..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-            className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          />
-        </div>
+      {/* ── CANONICAL EMERALD DATATABLE CONTAINER ── */}
+      <motion.div variants={itemVariants}>
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          {/* ── TOOLBAR BARIS 1: Header + 4 Vivid Gradient Squircle Buttons ── */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:from-emerald-950/50 dark:via-teal-950/30">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40 shrink-0">
+                <ClipboardList className="size-5 text-white" strokeWidth={2.2} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    Daftar Penugasan &amp; Proyek Siswa
+                  </h2>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:text-emerald-200 border border-emerald-300/60">
+                    {Number(pagination.total || dataPenugasan.length).toLocaleString('id-ID')} Penugasan
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  Kelola instruksi tugas, bobot nilai, publikasi, dan evaluasi per kelas
+                </p>
+              </div>
+            </div>
 
-        {/* Baris 2: Dropdown Filters & Reset Button */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5 flex-1">
-            <select
-              value={selectedModulAjar}
-              onChange={(e) => {
-                setSelectedModulAjar(e.target.value)
-                setPage(1)
-              }}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">Semua Modul Ajar</option>
-              {(options.modul_ajar || []).map((m) => (
-                <option key={m.value || m.id} value={m.value || m.id}>
-                  {m.label || m.judul || m.judul_modul}
-                </option>
-              ))}
-            </select>
+            {/* 4 Vivid Gradient Squircle Action Buttons (Standar Emas) */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+              {/* 1. Cetak Datatable Button (Vivid Indigo Squircle) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Cetak & Export PDF"
+                  aria-label="Cetak & Export PDF"
+                  onClick={() => setIsPrintModalOpen(true)}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <Printer className="size-5 text-white" strokeWidth={2.2} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Cetak &amp; Export
+                </div>
+              </div>
 
-            <select
-              value={selectedKelas}
-              onChange={(e) => {
-                setSelectedKelas(e.target.value)
-                setPage(1)
-              }}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">Semua Kelas</option>
-              {(options.kelas || []).map((k) => (
-                <option key={k.value || k.id} value={k.value || k.id}>
-                  {k.label || k.nama_kelas || k.name}
-                </option>
-              ))}
-            </select>
+              {/* 2. Import Button (Vivid Sky Blue Squircle) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Import Data Penugasan"
+                  aria-label="Import Data Penugasan"
+                  onClick={() => setImportOpen(true)}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <Upload className="size-5 text-white" strokeWidth={2.2} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Import Data
+                </div>
+              </div>
 
-            <select
-              value={selectedTipe}
-              onChange={(e) => {
-                setSelectedTipe(e.target.value)
-                setPage(1)
-              }}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">Semua Tipe</option>
-              {options.tipe.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+              {/* 3. Export Button (Vivid Amber-Orange Squircle) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Export Data (Excel / CSV)"
+                  aria-label="Export Data (Excel / CSV)"
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <Download className="size-5 text-white" strokeWidth={2.2} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Export Data (Excel / CSV)
+                </div>
+              </div>
 
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value)
-                setPage(1)
-              }}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">Semua Status</option>
-              {options.status.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+              {/* 4. Tambah Penugasan Baru (Vivid Emerald-Teal Squircle) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Buat Penugasan Baru"
+                  aria-label="Buat Penugasan Baru"
+                  onClick={handleOpenCreateModal}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <Plus className="size-5 text-white" strokeWidth={2.5} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Buat Penugasan Baru
+                </div>
+              </div>
+            </div>
+          </div>
 
-            {(search || selectedModulAjar || selectedKelas || selectedTipe || selectedStatus) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch('')
-                  setSelectedModulAjar('')
-                  setSelectedKelas('')
-                  setSelectedTipe('')
-                  setSelectedStatus('')
+          {/* ── TOOLBAR BARIS 2: Full-Width Search Input dengan Debounce ── */}
+          <div className="px-5 pt-4 sm:px-6 md:px-8">
+            <div className="relative w-full">
+              <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center text-slate-400 dark:text-slate-500">
+                <Search className="size-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="Cari judul, deskripsi, instruksi penugasan..."
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value)
                   setPage(1)
                 }}
-                className="inline-flex h-12 items-center gap-1.5 rounded-[14px] border border-slate-200 bg-slate-50 px-3.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white transition-colors"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* MAIN DATATABLE SECTION */}
-      <motion.div variants={itemVariants}>
-      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-700">
-          <div>
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">
-              Daftar Penugasan & Proyek Siswa
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Kelola instruksi tugas, bobot nilai, dan publikasi per kelas
-            </p>
-          </div>
-          {pageActions}
-        </div>
-
-        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-          {loading ? (
-            <div className="p-12 text-center text-slate-500">
-              <RefreshCw className="animate-spin mx-auto mb-2 text-[#0E5C44]" size={28} />
-              <p className="text-sm font-medium">Memuat data penugasan...</p>
+                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-10 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('')
+                    setPage(1)
+                  }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </div>
-          ) : dataPenugasan.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
-                <ClipboardList size={32} />
+          </div>
+
+          {/* ── TOOLBAR BARIS 3: Horizontal Filter Bar (Responsive Grid on Mobile) ── */}
+          <div className="px-3.5 py-3 sm:px-6 md:px-8 border-b border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30 mt-3">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
+              <select
+                aria-label="Filter Modul Ajar"
+                value={selectedModulAjar}
+                onChange={(e) => {
+                  setSelectedModulAjar(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
+              >
+                <option value="">Semua Modul Ajar</option>
+                {(options.modul_ajar || []).map((m) => (
+                  <option key={m.value || m.id} value={m.value || m.id}>
+                    {m.label || m.judul || m.judul_modul}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label="Filter Kelas"
+                value={selectedKelas}
+                onChange={(e) => {
+                  setSelectedKelas(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 w-full sm:w-auto min-w-[130px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
+              >
+                <option value="">Semua Kelas</option>
+                {(options.kelas || []).map((k) => (
+                  <option key={k.value || k.id} value={k.value || k.id}>
+                    {k.label || k.nama_kelas || k.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label="Filter Tipe"
+                value={selectedTipe}
+                onChange={(e) => {
+                  setSelectedTipe(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 w-full sm:w-auto min-w-[120px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
+              >
+                <option value="">Semua Tipe</option>
+                {options.tipe.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label="Filter Status"
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 w-full sm:w-auto min-w-[130px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
+              >
+                <option value="">Semua Status</option>
+                {options.status.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+
+              {(searchInput || selectedModulAjar || selectedKelas || selectedTipe || selectedStatus) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('')
+                    setSelectedModulAjar('')
+                    setSelectedKelas('')
+                    setSelectedTipe('')
+                    setSelectedStatus('')
+                    setPage(1)
+                  }}
+                  className="col-span-2 sm:col-span-1 sm:ml-auto h-9 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <RotateCcw size={13} />
+                  <span>Reset Filter</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+            {loading ? (
+              <div className="p-12 text-center text-slate-500">
+                <RefreshCw className="animate-spin mx-auto mb-2 text-[#0E5C44]" size={28} />
+                <p className="text-sm font-medium">Memuat data penugasan...</p>
               </div>
-              <h3 className="text-base font-semibold text-slate-800 dark:text-white">Belum ada penugasan</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                Silakan tambahkan penugasan atau proyek baru yang terikat dengan Modul Ajar untuk kelas Anda.
-              </p>
-              <button
-                onClick={handleOpenCreateModal}
-                className="mt-4 inline-flex items-center gap-2 bg-[#0E5C44] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#1E8E5A] transition-colors"
-              >
-                <Plus size={16} />
-                <span>Tambah Penugasan</span>
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto min-h-[340px] pb-12">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Penugasan & Modul Ajar</th>
-                    <th className="py-3.5 px-4">Kelas & Guru</th>
-                    <th className="py-3.5 px-4">Tipe & Jenis</th>
-                    <th className="py-3.5 px-4">Tgl Mulai & Deadline</th>
-                    <th className="py-3.5 px-4">Pengumpulan</th>
-                    <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800 text-sm">
+            ) : dataPenugasan.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                  <ClipboardList size={32} />
+                </div>
+                <h3 className="text-base font-semibold text-slate-800 dark:text-white">Belum ada penugasan</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                  Silakan tambahkan penugasan atau proyek baru yang terikat dengan Modul Ajar untuk kelas Anda.
+                </p>
+                <button
+                  onClick={handleOpenCreateModal}
+                  className="mt-4 inline-flex items-center gap-2 bg-[#0E5C44] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#1E8E5A] transition-colors"
+                >
+                  <Plus size={16} />
+                  <span>Tambah Penugasan</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* ── MOBILE VIEW: Dedicated Responsive Card List (< md) ── */}
+                <div className="block md:hidden divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {dataPenugasan.map((item) => (
-                    <tr
+                    <div
                       key={item.id}
-                      className="group relative hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
-                      onClick={(e) => {
-                        if (e.target.closest('button, a, [data-no-rowclick]')) return
-                        setRowDetailItem(item)
-                        setShowRowDetailModal(true)
-                      }}
+                      className="p-4 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors"
                     >
-                      {/* Judul & Modul Ajar — with hover card */}
-                      <td className="py-4 px-4 relative">
-                        {/* Hover Card */}
-                        <div className="pointer-events-none absolute left-4 top-full mt-1.5 z-50 w-64 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out">
-                          <div className="bg-white dark:bg-[#1B2433] rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-3 space-y-1.5">
-                            <div className="flex items-center gap-1.5 pb-1.5 border-b border-slate-100 dark:border-slate-700">
-                              <ClipboardList className="w-3.5 h-3.5 text-[#0E5C44] shrink-0" />
-                              <p className="text-xs font-bold text-slate-800 dark:text-white line-clamp-2">{item.judul || item.judul_tugas}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                              <div>
-                                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Tipe</p>
-                                <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 capitalize">{item.tipe || 'individu'}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Jenis</p>
-                                <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 capitalize">{item.jenis_tugas || 'tugas'}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Deadline</p>
-                                <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">{item.deadline || item.tanggal_selesai || '-'}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Status</p>
-                                <p className={`text-[11px] font-bold ${item.status === 'dipublikasikan' || item.is_published ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                  {item.status === 'dipublikasikan' || item.is_published ? 'Publik' : 'Draft'}
-                                </p>
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700">Klik baris untuk detail lengkap</p>
-                          </div>
-                          <div className="absolute -top-1.5 left-6 border-4 border-transparent border-b-white dark:border-b-[#1B2433] drop-shadow" />
-                        </div>
-
-                        <div className="font-semibold text-slate-800 dark:text-white line-clamp-1">
-                          {item.judul || item.judul_tugas}
-                        </div>
-                        {item.modul_ajar && (
-                          <div className="flex items-center gap-1 text-xs text-[#0E5C44] dark:text-emerald-400 mt-1 font-medium">
-                            <BookOpen size={12} />
-                            <span className="line-clamp-1">{item.modul_ajar.judul}</span>
-                          </div>
-                        )}
-                        {item.lampiran && (
-                          <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                            <Paperclip size={10} />
-                            <span className="truncate max-w-[200px]">{item.lampiran}</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Kelas & Guru */}
-                      <td className="py-4 px-4">
-                        <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          {item.kelas?.nama_kelas || 'Semua Kelas'}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          Guru: {item.guru?.nama || '-'}
-                        </div>
-                      </td>
-
-                      {/* Tipe & Jenis */}
-                      <td className="py-4 px-4">
-                        <div className="flex flex-col gap-1 items-start">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
-                              item.tipe === 'kelompok' || item.tipe_tugas === 'kelompok'
-                                ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200 dark:border-purple-800'
-                                : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
-                            }`}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div
+                            onClick={() => {
+                              setRowDetailItem(item)
+                              setShowRowDetailModal(true)
+                            }}
+                            className="font-bold text-slate-900 dark:text-white text-sm hover:text-emerald-700 dark:hover:text-emerald-400 cursor-pointer leading-snug"
                           >
-                            {item.tipe === 'kelompok' || item.tipe_tugas === 'kelompok' ? 'Kelompok' : 'Individu'}
-                          </span>
-                          <span className="text-[11px] text-slate-500 capitalize">
-                            {item.jenis_tugas || 'tugas'} ({item.nilai_maksimal || 100} poin)
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Tanggal Mulai & Deadline */}
-                      <td className="py-4 px-4">
-                        <div className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                          <Clock size={12} className="text-slate-400" />
-                          <span>{item.deadline || item.tanggal_selesai || '-'}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          Mulai: {item.tanggal_mulai || '-'}
-                        </div>
-                      </td>
-
-                      {/* Pengumpulan */}
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="text-xs font-semibold text-slate-800 dark:text-white">
-                            {item.total_pengumpulan ?? 0} Siswa
+                            {item.judul || item.judul_tugas}
                           </div>
-                          {item.total_dinilai > 0 && (
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-medium">
-                              {item.total_dinilai} dinilai
-                            </span>
+
+                          {item.modul_ajar && (
+                            <div className="flex items-center gap-1 text-xs text-[#0E5C44] dark:text-emerald-400 mt-1 font-semibold">
+                              <BookOpen size={12} className="shrink-0" />
+                              <span className="truncate">{item.modul_ajar.judul}</span>
+                            </div>
+                          )}
+
+                          {item.lampiran && (
+                            <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
+                              <Paperclip size={10} className="shrink-0" />
+                              <span className="truncate">{item.lampiran}</span>
+                            </div>
                           )}
                         </div>
-                      </td>
 
-                      {/* Status */}
-                      <td className="py-4 px-4">
+                        {/* Action Dropdown */}
+                        <div className="shrink-0">
+                          <ActionDropdown
+                            onView={() => handleOpenDetail(item)}
+                            onEdit={() => handleOpenEditModal(item)}
+                            onDelete={() => handleRequestDelete(item)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Metadata Pill Badges */}
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5 pt-2 border-t border-emerald-100/60 dark:border-emerald-900/40">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <GraduationCap className="size-3 text-slate-500" />
+                          {item.kelas?.nama_kelas || 'Semua Kelas'}
+                        </span>
+
+                        {item.guru?.nama && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-lg">
+                            Guru: {item.guru.nama}
+                          </span>
+                        )}
+
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide border ${
+                            item.tipe === 'kelompok' || item.tipe_tugas === 'kelompok'
+                              ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 border-purple-200 dark:border-purple-800'
+                              : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                          }`}
+                        >
+                          {item.tipe === 'kelompok' || item.tipe_tugas === 'kelompok' ? 'Kelompok' : 'Individu'}
+                        </span>
+
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-lg border border-emerald-200/80 dark:border-emerald-800/60">
+                          <Clock className="size-3 text-emerald-600" />
+                          {item.deadline || item.tanggal_selesai || '-'}
+                        </span>
+
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
+                          <Users className="size-3 text-slate-500" />
+                          {item.total_pengumpulan ?? 0} Submisi
+                          {item.total_dinilai > 0 && (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">({item.total_dinilai} dinilai)</span>
+                          )}
+                        </span>
+
                         <button
+                          type="button"
                           onClick={() => handleTogglePublish(item)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer border ${
                             item.is_published || item.status === 'dipublikasikan'
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
-                              : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-700'
                           }`}
                         >
                           {item.is_published || item.status === 'dipublikasikan' ? (
                             <>
-                              <Globe size={12} />
+                              <Globe size={11} />
                               <span>Dipublikasikan</span>
                             </>
                           ) : (
                             <>
-                              <Lock size={12} />
+                              <Lock size={11} />
                               <span>Draft</span>
                             </>
                           )}
                         </button>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-4 px-4 text-right">
-                        <ActionDropdown
-                          onView={() => handleOpenDetail(item)}
-                          onEdit={() => handleOpenEditModal(item)}
-                          onDelete={() => handleDelete(item.id, item.judul || item.judul_tugas)}
-                        />
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </div>
 
-          {/* Pagination */}
-          {pagination.last_page > 1 && (
-            <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
-              <div>
-                Halaman <strong>{pagination.current_page}</strong> dari <strong>{pagination.last_page}</strong> (Total {pagination.total} penugasan)
+                {/* ── DESKTOP & TABLET VIEW: Canonical Table (hidden on < md, min-w-[850px]) ── */}
+                <div className="hidden md:block overflow-x-auto min-h-[340px] pb-12">
+                  <table className="w-full min-w-[850px] text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-xs font-black text-slate-800 dark:text-emerald-200 uppercase tracking-wider">
+                        <th className="py-3.5 px-4 w-[32%]">Penugasan &amp; Modul Ajar</th>
+                        <th className="py-3.5 px-4 w-[18%]">Kelas &amp; Guru</th>
+                        <th className="py-3.5 px-4 w-[14%]">Tipe &amp; Jenis</th>
+                        <th className="py-3.5 px-4 w-[14%]">Deadline</th>
+                        <th className="py-3.5 px-4 w-[11%]">Pengumpulan</th>
+                        <th className="py-3.5 px-4 w-[11%]">Status</th>
+                        <th className="py-3.5 px-4 text-center w-16">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+                      {dataPenugasan.map((item) => (
+                        <tr
+                          key={item.id}
+                          className="group relative hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            if (e.target.closest('button, a, [data-no-rowclick]')) return
+                            setRowDetailItem(item)
+                            setShowRowDetailModal(true)
+                          }}
+                        >
+                          {/* Judul & Modul Ajar */}
+                          <td className="py-4 px-4">
+                            <div className="font-semibold text-slate-800 dark:text-white line-clamp-2">
+                              {item.judul || item.judul_tugas}
+                            </div>
+                            {item.modul_ajar && (
+                              <div className="flex items-center gap-1 text-xs text-[#0E5C44] dark:text-emerald-400 mt-1 font-medium">
+                                <BookOpen size={12} className="shrink-0" />
+                                <span className="line-clamp-1">{item.modul_ajar.judul}</span>
+                              </div>
+                            )}
+                            {item.lampiran && (
+                              <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
+                                <Paperclip size={10} className="shrink-0" />
+                                <span className="truncate max-w-[200px]">{item.lampiran}</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Kelas & Guru */}
+                          <td className="py-4 px-4">
+                            <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              {item.kelas?.nama_kelas || 'Semua Kelas'}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              Guru: {item.guru?.nama || '-'}
+                            </div>
+                          </td>
+
+                          {/* Tipe & Jenis */}
+                          <td className="py-4 px-4">
+                            <div className="flex flex-col gap-1 items-start">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                                  item.tipe === 'kelompok' || item.tipe_tugas === 'kelompok'
+                                    ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400 border border-purple-200 dark:border-purple-800'
+                                    : 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
+                                }`}
+                              >
+                                {item.tipe === 'kelompok' || item.tipe_tugas === 'kelompok' ? 'Kelompok' : 'Individu'}
+                              </span>
+                              <span className="text-[11px] text-slate-500 capitalize">
+                                {item.jenis_tugas || 'tugas'} ({item.nilai_maksimal || 100} poin)
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Tanggal Mulai & Deadline */}
+                          <td className="py-4 px-4">
+                            <div className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                              <Clock size={12} className="text-slate-400 shrink-0" />
+                              <span>{item.deadline || item.tanggal_selesai || '-'}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              Mulai: {item.tanggal_mulai || '-'}
+                            </div>
+                          </td>
+
+                          {/* Pengumpulan */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="text-xs font-semibold text-slate-800 dark:text-white">
+                                {item.total_pengumpulan ?? 0} Siswa
+                              </div>
+                              {item.total_dinilai > 0 && (
+                                <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-medium">
+                                  {item.total_dinilai} dinilai
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={() => handleTogglePublish(item)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                                item.is_published || item.status === 'dipublikasikan'
+                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+                              }`}
+                            >
+                              {item.is_published || item.status === 'dipublikasikan' ? (
+                                <>
+                                  <Globe size={12} />
+                                  <span>Dipublikasikan</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Lock size={12} />
+                                  <span>Draft</span>
+                                </>
+                              )}
+                            </button>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-4 px-4 text-center w-16">
+                            <ActionDropdown
+                              onView={() => handleOpenDetail(item)}
+                              onEdit={() => handleOpenEditModal(item)}
+                              onDelete={() => handleRequestDelete(item)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {/* Pagination */}
+            {pagination.last_page > 1 && (
+              <div className="px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30 border-t border-emerald-200/80 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
+                <div className="text-center sm:text-left">
+                  Halaman <strong>{pagination.current_page}</strong> dari <strong>{pagination.last_page}</strong> (Total {pagination.total} penugasan)
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 transition cursor-pointer shadow-xs"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page >= pagination.last_page}
+                    onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
+                    className="p-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 transition cursor-pointer shadow-xs"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  disabled={page >= pagination.last_page}
-                  onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
-                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-        </MasterDataTable>
-      </section>
+            )}
+          </MasterDataTable>
+        </div>
       </motion.div>
 
       {/* CREATE / EDIT MODAL */}
@@ -1631,21 +2067,23 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
               </button>
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setShowRowDetailModal(false)
-                    handleDelete(rowDetailItem.id, rowDetailItem.judul || rowDetailItem.judul_tugas)
+                    handleRequestDelete(rowDetailItem)
                   }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Hapus
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowRowDetailModal(false)
                     handleOpenEditModal(rowDetailItem)
                   }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0E5C44] text-white text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0E5C44] text-white text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-sm cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   Edit Data
@@ -1655,6 +2093,90 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
           </div>
         </div>
       )}
+
+      {/* ── HARMONIZED BATCH EXPORT MODAL ── */}
+      <HarmonizedBatchExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExportSpreadsheet}
+        isExporting={isExporting}
+        totalCount={pagination.total || dataPenugasan.length}
+        moduleTitle="Penugasan & Asesmen"
+      />
+
+      {/* ── HARMONIZED DELETE CONFIRMATION MODAL ── */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="w-full max-w-md overflow-hidden rounded-3xl border border-rose-200/80 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/60 dark:bg-slate-950"
+            >
+              <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30 border border-rose-300/40">
+                    <Trash2 className="size-5 text-white" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                        Hapus Penugasan?
+                      </h4>
+                      <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold text-rose-700 dark:bg-rose-950/80 dark:text-rose-300">
+                        Hapus Permanen
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      Data pengumpulan siswa terkait juga akan terdampak
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-3.5 space-y-1 dark:border-rose-900/50 dark:bg-rose-950/20">
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                    {deleteTarget.judul || deleteTarget.judul_tugas}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Kelas: {deleteTarget.kelas?.nama_kelas || deleteTarget.kelas?.name || 'Semua Kelas'} • Tipe: {deleteTarget.tipe || 'individu'}
+                  </p>
+                </div>
+
+                <p className="mt-3 text-xs text-rose-700/80 dark:text-rose-400 font-medium leading-relaxed">
+                  Apakah Anda yakin ingin menghapus penugasan ini? Tindakan ini tidak dapat dibatalkan.
+                </p>
+
+                <div className="mt-6 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={() => setDeleteTarget(null)}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={handleConfirmDelete}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 px-5 py-2 text-xs font-black text-white border border-rose-300/40 hover:scale-[1.02] active:scale-95 transition-all shadow-md shadow-rose-700/20 cursor-pointer disabled:opacity-50"
+                  >
+                    {isDeleting ? (
+                      <RefreshCw className="size-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-3.5" />
+                    )}
+                    <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus'}</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Print Option Modal */}
       <PrintOptionModal
@@ -1703,9 +2225,24 @@ export default function LmsPenugasanPage({ embedded, hidePageHeader, tabNav }) {
         onImport={handleImport}
         templateFields={['judul', 'deskripsi', 'tipe', 'jenis_tugas', 'deadline', 'status']}
       />
+
+      {/* ── TOAST NOTIFICATION STACK ── */}
+      <ToastStack items={toastList} onDismiss={dismissToast} />
       </motion.div>
     </div>
   )
 
-  return <PageContainer maxW="7xl">{pageContent}</PageContainer>
+  return (
+    <PageContainer maxW="7xl">
+      {!(embedded || hideBreadcrumb) && (
+        <AppBreadcrumb
+          items={[
+            { label: 'LMS & Akademik', href: '/dashboard' },
+            { label: 'Penugasan & Asesmen' },
+          ]}
+        />
+      )}
+      {pageContent}
+    </PageContainer>
+  )
 }

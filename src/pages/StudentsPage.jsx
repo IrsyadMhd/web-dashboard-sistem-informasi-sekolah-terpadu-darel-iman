@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -24,9 +24,13 @@ import {
   FaUser,
   FaUserGraduate,
 } from 'react-icons/fa'
-import Swal from 'sweetalert2'
+import { cn } from '../lib/utils'
 import CetakKartuSiswaModal from '../components/siswa/CetakKartuSiswaModal'
-import StudentFormModal from '../components/siswa/StudentFormModal'
+
+// ── 1. TOP-LEVEL MODULE SCOPE LAZY IMPORT (ATURAN EMAS 1) ──
+// Modal formulir siswa 5-langkah dipisah ke chunk terpisah dan hanya dimuat saat tombol Tambah/Edit ditekan
+const StudentFormModal = lazy(() => import('../components/siswa/StudentFormModal'))
+
 import StudentLeaderAnalyticsSection from '../components/siswa/StudentLeaderAnalyticsSection'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { Button } from '../components/tailgrids/core/button'
@@ -42,11 +46,36 @@ import PersonAvatar, { resolveAvatarUrl } from '../components/ui/PersonAvatar'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
 import { hasAnyRole } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 import PageContainer from '../components/app/PageContainer'
-import { Printer, ShieldCheck, Sparkles, MessageSquare, Phone, Send, MessageCircle } from 'lucide-react'
+import {
+  Printer,
+  ShieldCheck,
+  Sparkles,
+  MessageSquare,
+  Phone,
+  Send,
+  MessageCircle,
+  CheckCircle2,
+  XCircle,
+  Trash2,
+  AlertTriangle,
+  X,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  Info,
+  GraduationCap,
+  Plus,
+  Pencil,
+  School,
+  Save,
+} from 'lucide-react'
 import { OverlayWrapper, Backdrop } from '../components/tailgrids/core/overlay'
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/tailgrids/core/dialog'
 import { Download1, Upload1, Plus as PlusIcon } from '@tailgrids/icons'
+import { handleApiExport } from '../utils/exportUtils'
+import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterActionButton,
   MasterDataPage,
@@ -55,6 +84,7 @@ import {
   MasterPageHeader,
   MasterStatCard,
   MasterStatsGrid,
+  PrintOptionModal,
 } from '../components/master-data'
 
 const initialForm = () => ({
@@ -94,70 +124,186 @@ const initialForm = () => ({
   catatan: '',
 })
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', active, onClick }) {
-  const tones = {
-    emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      activeCard: 'ring-2 ring-emerald-500 shadow-md',
-      title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-    },
-    blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      activeCard: 'ring-2 ring-blue-500 shadow-md',
-      title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
-    },
-    rose: {
-      card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
-      activeCard: 'ring-2 ring-rose-500 shadow-md',
-      title: 'text-rose-700 dark:text-rose-400',
-      icon: 'text-rose-500',
-      val: 'text-rose-600 dark:text-rose-300',
-      sub: 'text-rose-600/70 dark:text-rose-400/70',
-    },
-    amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      activeCard: 'ring-2 ring-amber-500 shadow-md',
-      title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
-    },
-  }
+const MODERN_CARD_TONES = {
+  emerald: {
+    container: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    activeCard: 'ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20',
+    glow: 'bg-emerald-400/20',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30 border-emerald-300/30',
+    title: 'text-slate-600 dark:text-slate-300',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-700/80 dark:text-emerald-400/80',
+  },
+  blue: {
+    container: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    activeCard: 'ring-2 ring-blue-500 shadow-md shadow-blue-500/20',
+    glow: 'bg-blue-400/20',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30 border-blue-300/30',
+    title: 'text-slate-600 dark:text-slate-300',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-700/80 dark:text-blue-400/80',
+  },
+  rose: {
+    container: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+    activeCard: 'ring-2 ring-rose-500 shadow-md shadow-rose-500/20',
+    glow: 'bg-rose-400/20',
+    iconBox: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-rose-500/30 border-rose-300/30',
+    title: 'text-slate-600 dark:text-slate-300',
+    val: 'text-rose-700 dark:text-rose-300',
+    sub: 'text-rose-700/80 dark:text-rose-400/80',
+  },
+  amber: {
+    container: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    activeCard: 'ring-2 ring-amber-500 shadow-md shadow-amber-500/20',
+    glow: 'bg-amber-400/20',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30 border-amber-300/30',
+    title: 'text-slate-600 dark:text-slate-300',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-700/80 dark:text-amber-400/80',
+  },
+}
 
-  const t = tones[tone] || tones.emerald
+function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', active, onClick, isLoading = false }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
 
   return (
     <motion.button
       type="button"
-      whileHover={{ scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={{ scale: 1.025, y: -2 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={onClick}
-      className={`text-left rounded-2xl border ${t.card} ${active ? t.activeCard : ''} p-5 shadow-xs transition-all hover:shadow-md cursor-pointer group`}
-    >
-      <div className="flex items-center justify-between">
-        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
-      </div>
-      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
-      {subtext && (
-        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
-          {subtext}
-        </p>
+      className={cn(
+        "group relative overflow-hidden rounded-[22px] border-2 p-5 text-left transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md",
+        t.container,
+        active && t.activeCard
       )}
+    >
+      {/* Ambient Backlight Glow */}
+      <div className={cn("pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full blur-2xl transition-opacity duration-300 opacity-40 group-hover:opacity-80", t.glow)} />
+
+      <div className="relative z-10 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className={cn("text-xs font-black uppercase tracking-wider", t.title)}>{label}</p>
+          {isLoading ? (
+            <div className="mt-2 h-9 w-24 animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-700/80" />
+          ) : (
+            <p className={cn("mt-1.5 text-3xl font-black tabular-nums tracking-tight", t.val)}>
+              {Number(value ?? 0).toLocaleString('id-ID')}
+            </p>
+          )}
+          {subtext && (
+            <p className={cn("mt-1 text-[11px] font-semibold flex items-center gap-1", t.sub)}>
+              {subtext}
+            </p>
+          )}
+        </div>
+
+        {/* 3D Squircle Icon Badge */}
+        <div className={cn("flex size-11 shrink-0 items-center justify-center rounded-2xl border shadow-md transition-transform duration-300 group-hover:scale-110", t.iconBox)}>
+          <Icon className="size-5" />
+        </div>
+      </div>
     </motion.button>
+  )
+}
+
+// ── Toast Stack Notification System ──────────────────────────────────────────
+function ToastStack({ items, onDismiss }) {
+  if (!items || !items.length) return null
+  return (
+    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
+      {items.map((n) => {
+        const isDanger = n.tone === 'danger' || n.tone === 'error'
+        const isWarning = n.tone === 'warning'
+        const isInfo = n.tone === 'info'
+        const isSuccess = !isDanger && !isWarning && !isInfo
+
+        return (
+          <div
+            key={n.id}
+            className={cn(
+              "relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300",
+              isSuccess && "border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50",
+              isDanger && "border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50",
+              isWarning && "border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50",
+              isInfo && "border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50"
+            )}
+          >
+            {/* Top Accent Gradient Line */}
+            <div
+              className={cn(
+                "absolute top-0 left-0 right-0 h-1",
+                isSuccess && "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600",
+                isDanger && "bg-gradient-to-r from-rose-500 via-rose-600 to-red-700",
+                isWarning && "bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600",
+                isInfo && "bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600"
+              )}
+            />
+
+            <div className="flex items-start gap-3 mt-0.5">
+              {/* Squircle Icon Badge */}
+              <div
+                className={cn(
+                  "flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
+                  isSuccess && "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30",
+                  isDanger && "bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30",
+                  isWarning && "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30",
+                  isInfo && "bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30"
+                )}
+              >
+                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
+                {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
+                {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
+                {isInfo && <Info className="size-5" strokeWidth={2.3} />}
+              </div>
+
+              {/* Text Body */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                    {n.title}
+                  </h4>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border",
+                      isSuccess && "bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80",
+                      isDanger && "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80",
+                      isWarning && "bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80",
+                      isInfo && "bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80"
+                    )}
+                  >
+                    {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
+                  </span>
+                </div>
+                {n.message && (
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                    {n.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Dismiss Button */}
+              <button
+                type="button"
+                onClick={() => onDismiss(n.id)}
+                className="size-6 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors pointer-events-auto"
+                aria-label="Tutup notifikasi"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
 export default function StudentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const user = useAuthStore((state) => state.user)
+  const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
   const permissions = user?.permissions || []
   const userRoles = useMemo(() => user?.roles || [], [user])
   const isSuperAdmin = hasAnyRole(userRoles, ['Super Admin', 'super_admin'])
@@ -205,10 +351,30 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [activeDetailTab, setActiveDetailTab] = useState('siswa')
   const [studentToPrint, setStudentToPrint] = useState(null)
+  const [showPrintOptionModal, setShowPrintOptionModal] = useState(false)
 
   // Form State
   const [formData, setFormData] = useState(initialForm())
   const [isEdit, setIsEdit] = useState(false)
+
+  // Toast Notification Stack
+  const [toasts, setToasts] = useState([])
+  const pushToast = (title, message, tone = 'success') => {
+    const id = `${Date.now()}-${Math.random()}`
+    setToasts((prev) => [...prev, { id, title, message, tone }])
+    window.setTimeout(() => setToasts((prev) => prev.filter((n) => n.id !== id)), 6000)
+  }
+  const dismissToast = (id) => setToasts((prev) => prev.filter((n) => n.id !== id))
+
+  // Delete Confirmation Dialog state
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [hasConfirmedDeleteCheck, setHasConfirmedDeleteCheck] = useState(false)
+
+  // Save / Update Confirmation Dialog state (Harmonized Modal)
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
+  const [pendingSavePayload, setPendingSavePayload] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (searchParams.get('action') !== 'add') return
@@ -241,6 +407,8 @@ export default function StudentsPage() {
     per_page: itemsPerPage,
     search: searchQuery || undefined,
     unit_id: unitFilter || undefined,
+    kelas_id: kelasFilter || undefined,
+    status: statusFilter || undefined,
   })
   const { data: daftarKelasData } = useDaftarKelas(
     { per_page: 300 },
@@ -250,7 +418,7 @@ export default function StudentsPage() {
     queryKey: ['education-units', 'student-filters-all'],
     queryFn: async () => {
       try {
-        const res1 = await educationUnitService.getDaftar({ per_page: 200 })
+        const res1 = await educationUnitService.getDaftar({ per_page: 100 })
         const list1 = extractArray(res1)
         if (list1.length > 0) return list1
       } catch (e) { /* quiet */ }
@@ -259,12 +427,6 @@ export default function StudentsPage() {
         const res2 = await api.get('/foundation/units')
         const list2 = extractArray(res2.data || res2)
         if (list2.length > 0) return list2
-      } catch (e) { /* quiet */ }
-
-      try {
-        const res3 = await api.get('/master/jenis-unit/dropdown')
-        const list3 = extractArray(res3.data || res3)
-        if (list3.length > 0) return list3
       } catch (e) { /* quiet */ }
 
       return []
@@ -305,20 +467,20 @@ export default function StudentsPage() {
     const selectedUnitObj = rawUnits.find((u) => {
       const uName = (u.nama_unit || u.name || u.nama || u.unit_name || '').toLowerCase()
       const uCode = (u.code || u.kode || '').toLowerCase()
-      const uId = String(u.id || '')
+      const uId = String(u.id || '').toLowerCase()
       return uId === filterVal || (uName && (uName.includes(filterVal) || filterVal.includes(uName))) || (uCode && uCode === filterVal)
     })
 
-    const targetUnitId = selectedUnitObj ? String(selectedUnitObj.id) : filterVal
+    const targetUnitId = selectedUnitObj ? String(selectedUnitObj.id).toLowerCase() : filterVal
     const targetUnitName = selectedUnitObj
       ? (selectedUnitObj.nama_unit || selectedUnitObj.name || selectedUnitObj.nama || '').toLowerCase()
       : filterVal
 
     const filtered = rawClasses.filter((c) => {
-      const cUnitId = String(c.unit_pendidikan_id || c.unit_id || c.unit?.id || c.education_unit_id || '')
+      const cUnitId = String(c.unit_pendidikan_id || c.unit_id || c.unit?.id || c.education_unit_id || '').toLowerCase()
       const cUnitName = String(c.unit_name || c.unit_nama || c.unit?.name || c.unit_pendidikan || c.nama_unit || c.unit || '').toLowerCase()
 
-      if (cUnitId && cUnitId === targetUnitId) return true
+      if (cUnitId && (cUnitId === targetUnitId || cUnitId === filterVal)) return true
       if (cUnitName && targetUnitName && (cUnitName.includes(targetUnitName) || targetUnitName.includes(cUnitName))) return true
 
       return false
@@ -360,53 +522,55 @@ export default function StudentsPage() {
   // --- Handlers Import ---
   const handleDownloadTemplateSiswa = () => {
     const headers = [
-      // Identitas Siswa
-      'No Pendaftaran', 'NIK', 'No Registrasi Akta Lahir', 'No KK', 'NIS', 'NISN', 'Nama Lengkap',
-      'Tempat Lahir', 'Tanggal Lahir', 'Jenis Kelamin (L/P)', 'Agama', 'Kewarganegaraan', 'Email',
-      'Anak Ke', 'Jumlah Saudara', 'Jumlah Saudara Tiri', 'Berat Badan (kg)', 'Tinggi Badan (cm)',
-      'Riwayat Penyakit', 'Foto URL',
-      // Alamat
-      'Alamat Siswa', 'RT', 'RW', 'Dusun', 'Kelurahan', 'Kecamatan', 'Kota/Kabupaten',
-      'Provinsi', 'Kode Pos', 'Jenis Tempat Tinggal', 'Jarak ke Sekolah (km)', 'Moda Transportasi',
-      'Hobi', 'Cita-cita',
-      // Sekolah & Bantuan
-      'Sekolah Asal', 'Status Sekolah Asal', 'Kecamatan Sekolah Asal', 'Kota/Kab Sekolah Asal',
-      'HP/WA Sekolah Asal', 'Nominal SPP', 'Nominal Bantuan Ortu Asuh', 'Penerima KPS/PKH (ya/tidak)',
-      'Punya KIP (ya/tidak)', 'Layak PIP (ya/tidak)', 'Alasan Menolak PIP',
-      // Data Ayah
+      'No Pendaftaran', 'NIK', 'No Registrasi Akta Lahir', 'No KK', 'Nama Lengkap',
+      'Tanggal Lahir', 'Tempat Lahir', 'Jenis Kelamin', 'Agama', 'Email',
+      'Anak Ke', 'Jumlah Saudara', 'Jumlah Saudara tiri', 'Berat Badan', 'Tinggi Badan',
+      'Riwayat Penyakit', 'Kewarganegaraan', 'Alamat Siswa', 'RT', 'RW', 'Dusun', 'Kelurahan',
+      'Kecamatan', 'Kode Pos', 'Kota/Kabupaten', 'Provinsi', 'Jenis Tempat Tinggal',
+      'Jarak tempuh ke sekolah', 'Modal Transportasi', 'Sekolah Asal',
+      'Status sekolah Asal (Formal/Tidak)', 'Kecamatan Sekolah Asal', 'Kota/Kab Sekolah Asal',
+      'Nomor Hp/Wa Sekolah Asal', 'Hobi', 'Cita-cita', 'Nominal Spp', 'Nominal Ortu Asuh',
+      'Penerima KPS/PKH (ya/tidak)', 'Apakah Punya KIP (ya/tidak)',
+      'Apakah layak Menerima PIP (ya/tidak)', 'Alasan Menolak PIP (Sudah mampu/dilarang pemda/menerima bantuan serupa)',
       'NIK Ayah', 'Nama Ayah', 'Tempat Lahir Ayah', 'Tgl Lahir Ayah', 'Telfon Ayah', 'HP Ayah',
-      'WA Ayah', 'Medsos Ayah', 'Pendidikan Terakhir Ayah', 'Pekerjaan Ayah',
-      'Instansi Pekerjaan Ayah', 'Jabatan Ayah', 'Keahlian Ayah', 'Penghasilan Ayah',
-      'Alamat Instansi Ayah', 'Alamat Rumah Ayah',
-      // Data Ibu
-      'NIK Ibu', 'Nama Ibu', 'Tempat Lahir Ibu', 'Tgl Lahir Ibu', 'Telfon Ibu', 'HP Ibu',
-      'WA Ibu', 'Medsos Ibu', 'Pendidikan Terakhir Ibu', 'Pekerjaan Ibu',
-      'Instansi Pekerjaan Ibu', 'Jabatan Ibu', 'Keahlian Ibu', 'Penghasilan Ibu',
-      'Alamat Instansi Ibu', 'Alamat Rumah Ibu',
-      // Data Wali
-      'NIK Wali', 'Nama Wali', 'HP Wali', 'WA Wali', 'Pekerjaan Wali', 'Alamat Wali',
-      'PDK-2024-001', '1371234567890123', 'AK.2014.001', '1371234567890001', '23010', '0098123456', 'Fathir Ahmad',
-      'Padang', '2014-05-12', 'L', 'Islam', 'WNI', 'fathir@example.com',
+      'Pendidikan Terakhir Ayah', 'Pekerjaan Ayah', 'Instansi Pekerjaan Ayah', 'Jabatan Pekerjaan Ayah',
+      'Alamat Instansi Ayah', 'Keahlian Ayah', 'Penghasilan Ayah', 'Alamat Ayah', 'Nomor WA Ayah',
+      'Medsos Ayah', 'Nama Ibu', 'NIK Ibu', 'Tempat Lahir Ibu', 'Tgl Lahir Ibu', 'Telfon Ibu',
+      'HP Ibu', 'Pendidikan Terakhir Ibu', 'Pekerjaan Ibu', 'Instansi Pekerjaan Ibu',
+      'Jabatan Pekerjaan Ibu', 'Alamat Instansi Ibu', 'Keahlian Ibu', 'Penghasilan Ibu',
+      'Alamat Ibu', 'Nomor WA Ibu', 'Medsos Ibu', 'Status Pernikahan', 'Tanggungan Anak',
+      'NIK Wali', 'Nama Wali', 'Tempat Lahir Wali', 'Tgl Lahir Wali', 'Telfon Wali', 'HP Wali',
+      'Pendidikan Terakhir Wali', 'Pekerjaan Wali', 'Instansi Pekerjaan Wali', 'Jabatan Pekerjaan Wali',
+      'Alamat Instansi Wali', 'Keahlian Wali', 'Penghasilan Wali', 'Alamat Wali', 'Nomor WA Wali',
+      'Medsos Wali', 'Unit Pendidikan', 'NIS (Sekolah)', 'NISN (Nasional)', 'NIP (Pembayaran)',
+      'Tahun Ajaran Masuk', 'Kelas', 'Keterangan Kelas', 'Tahun Ajaran Berjalan',
+      'Status Siswa (aktif atau tidak)', 'Status Orang Tua (Umum atau pegawai)',
+      'NIY Ortu Jika Pegawai', 'Wali Kelas', 'NIY Wali Kelas', 'email',
+    ]
+    const sampleRow = [
+      'PDK-2024-001', '1371012345678901', 'AK.2014.001', '1371012345678000', 'Fathir Ahmad',
+      '2014-05-12', 'Padang', 'Laki-Laki', 'Islam', 'fathir@example.com',
       '1', '2', '0', '35', '130',
-      '-', 'https://example.com/foto.jpg',
-      'Jl. Khatib Sulaiman No. 10', '04', '02', 'Lolong', 'Lolong Belanti', 'Padang Utara', 'Padang',
-      'Sumatera Barat', '25114', 'Milik Sendiri', '2', 'Jalan Kaki',
-      'Membaca', 'Dokter',
-      'SD Negeri 01 Padang', 'Negeri', 'Padang Utara', 'Padang',
-      '0812-0000-0001', '500000', '0', 'tidak',
-      'tidak', 'tidak', '-',
-      '1371098765432101', 'Rahmat Hidayat', 'Padang', '1985-03-10', '0751-000001', '081299887766',
-      '081299887766', '-', 'S1/D4', 'Wiraswasta',
-      'CV Rahmat Jaya', 'Direktur', 'Manajemen', '7500000',
-      'Jl. Sudirman No. 5 Padang', 'Jl. Khatib Sulaiman No. 10',
-      '1371098765432102', 'Siti Aminah', 'Bukittinggi', '1988-07-22', '0751-000002', '081299887777',
-      '081299887777', '-', 'S1/D4', 'Guru',
-      'SMA Negeri 1 Padang', 'Guru Matematika', 'Pendidikan', '4500000',
-      'Jl. Hamka No. 10 Padang', 'Jl. Khatib Sulaiman No. 10',
+      '-', 'WNI', 'Jl. Khatib Sulaiman No. 10', '004', '002', 'Lolong', 'Lolong Belanti',
+      'Padang Utara', '25114', 'Kota Padang', 'Sumatera Barat', 'Bersama Orang Tua',
+      '2 km', 'Jalan Kaki', 'SD Negeri 01 Padang',
+      'Formal', 'Padang Utara', 'Kota Padang',
+      '0812-0000-0001', 'Membaca', 'Dokter', '500.000', '0',
+      'tidak', 'tidak', 'tidak', '-',
+      '1371010101850001', 'Rahmat Hidayat', 'Padang', '1985-03-10', '0751-000001', '081299887766',
+      'S1/D4', 'Pegawai Negeri', 'Dinas Pendidikan', 'Kepala Seksi',
+      'Jl. Sudirman No. 5', 'Manajemen', '7.500.000', 'Jl. Khatib Sulaiman No. 10', '081299887766',
+      '@rahmat', 'Siti Aminah', '1371010101880002', 'Bukittinggi', '1988-07-22', '0751-000002',
+      '081299887777', 'S1/D4', 'Ibu Rumah Tangga', '-',
+      '-', '-', 'Tata Boga', '0',
+      'Jl. Khatib Sulaiman No. 10', '081299887777', '@siti', 'Menikah', '2',
       '-', '-', '-', '-', '-', '-',
-      'SDIT 2 Dar el-Iman - Padang', '23010', '2024/2025', '2024/2025',
-      'aktif', 'Umum', '-',
-      'Budi Santoso S.Pd', 'NIY-2024-001',
+      '-', '-', '-', '-',
+      '-', '-', '-', '-', '-',
+      '-', 'SDIT 2 Dar el-Iman', '23010', '0098123456', 'PBY-23010',
+      '2024/2025', '1A', 'Kelas reguler', '2026/2027',
+      'aktif', 'Umum',
+      '-', 'Ustadz Ahmad S.Pd', 'NIY-2024-001', 'fathir@example.com',
     ]
     const csvContent = [headers.join(','), sampleRow.join(',')].join('\n')
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -451,80 +615,34 @@ export default function StudentsPage() {
     if (!importFile) return
     setIsImporting(true)
     try {
-      if (importPreviewData.length > 0) {
-        let count = 0
-        for (const row of importPreviewData) {
-          const payload = {
-            nisn: row.nisn || '',
-            nis: row.nis || '',
-            full_name: row.nama || 'Siswa Baru',
-            gender: (row.gender === 'P' || row.gender === 'Perempuan') ? 'female' : 'male',
-            status_siswa: 'aktif',
-            unit_pendidikan: row.unit || '',
-            metadata: {
-              nama_ayah: row.namaAyah || '',
-              hp_ayah: row.hpAyah || '',
-              kelas: row.kelas || '',
-              alamat_siswa: row.alamat || '',
-            }
-          }
-          try {
-            await tambah.mutateAsync(payload)
-            count++
-          } catch (e) {
-            count++
-          }
-        }
-        Swal.fire('Berhasil Import', `${count} data siswa dari file berhasil diimpor ke sistem.`, 'success')
+      const formData = new FormData()
+      formData.append('file', importFile)
+
+      const response = await api.post('/students/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      const resData = response.data
+      const { total, berhasil, duplikat, gagal, errors = [] } = resData.data || {}
+
+      if (gagal > 0 && berhasil === 0) {
+        pushToast('Impor Gagal', `Seluruh baris (${gagal}) gagal diimpor.${errors.length ? ' Catatan: ' + errors[0] : ''}`, 'error')
+      } else if (duplikat > 0 || gagal > 0) {
+        pushToast('Impor Selesai dengan Catatan', `Berhasil: ${berhasil || 0}, Duplikat: ${duplikat || 0}, Gagal: ${gagal || 0}`, 'warning')
       } else {
-        const text = await importFile.text()
-        const lines = text.split('\n').filter(l => l.trim())
-        if (lines.length > 1) {
-          let count = 0
-          const dataRows = lines.slice(1)
-          for (const line of dataRows) {
-            const cols = line.split(',').map(c => c.replace(/^"|"$/g, '').trim())
-            if (cols.length >= 3 && (cols[6] || cols[2])) {
-              const payload = {
-                no_pendaftaran: cols[0] || '',
-                nik: cols[1] || '',
-                nis: cols[4] || '',
-                nisn: cols[5] || '',
-                full_name: cols[6] || cols[2] || 'Siswa Import',
-                birth_place: cols[7] || '',
-                birth_date: cols[8] || '',
-                gender: cols[9] === 'P' ? 'female' : 'male',
-                agama: cols[10] || 'Islam',
-                status_siswa: 'aktif',
-                metadata: {
-                  alamat_siswa: cols[20] || '',
-                  sekolah_asal: cols[34] || '',
-                  nama_ayah: cols[42] || '',
-                  nama_ibu: cols[58] || '',
-                }
-              }
-              try {
-                await tambah.mutateAsync(payload)
-                count++
-              } catch (e) {
-                count++
-              }
-            }
-          }
-          Swal.fire('Berhasil Import', `${count > 0 ? count : dataRows.length} data siswa berhasil diimpor ke sistem.`, 'success')
-        } else {
-          Swal.fire('Format File Tidak Valid', 'File yang diunggah tidak berisi baris data.', 'warning')
-        }
+        pushToast('Impor Berhasil', `Sebanyak ${berhasil || 0} data siswa berhasil diimpor ke sistem.`, 'success')
+      }
+
+      if (typeof refetch === 'function') {
+        refetch()
       }
       setShowImportModal(false)
       setImportFile(null)
       setImportPreviewData([])
     } catch (err) {
       console.error('Import error:', err)
-      Swal.fire('Berhasil Import', 'Data siswa berhasil diimpor ke sistem.', 'success')
-      setShowImportModal(false)
-      setImportFile(null)
-      setImportPreviewData([])
+      const msg = err.response?.data?.message || err.message || 'Gagal memproses import data.'
+      pushToast('Gagal Import', msg, 'error')
     } finally {
       setIsImporting(false)
     }
@@ -618,7 +736,9 @@ export default function StudentsPage() {
           nisn: item.nisn || meta.nisn || '-',
           nama: item.full_name || item.nama || '-',
           unit: meta.akademik?.unit_pendidikan || meta.unit_pendidikan || item.education_unit?.name || '-',
+          unitId: item.unit_id || item.education_unit_id || item.education_unit?.id || '',
           kelas: item.kelas?.nama_kelas || '-',
+          kelasId: item.kelas_id || item.class_id || item.kelas?.id || '',
           orangTua: ortuObj,
           noHp: hpObj,
           status: statusText,
@@ -638,9 +758,17 @@ export default function StudentsPage() {
   // Filtered Students
   const filteredStudents = useMemo(() => {
     return formattedStudents.filter((item) => {
-      const matchUnit = !unitFilter || item.unit.toLowerCase().includes(unitFilter.toLowerCase())
-      const matchKelas = !kelasFilter || item.kelas.toLowerCase().includes(kelasFilter.toLowerCase())
-      const matchStatus = !statusFilter || item.status.toLowerCase() === statusFilter.toLowerCase()
+      const matchUnit =
+        !unitFilter ||
+        String(item.unitId) === String(unitFilter) ||
+        item.unit.toLowerCase().includes(unitFilter.toLowerCase())
+      const matchKelas =
+        !kelasFilter ||
+        String(item.kelasId) === String(kelasFilter) ||
+        item.kelas.toLowerCase().includes(kelasFilter.toLowerCase())
+      const matchStatus =
+        !statusFilter ||
+        item.status.toLowerCase() === statusFilter.toLowerCase()
       const matchSearch =
         !searchInput ||
         item.nama.toLowerCase().includes(searchInput.toLowerCase()) ||
@@ -654,7 +782,21 @@ export default function StudentsPage() {
   const statModalItems = useMemo(() => {
     if (!statCardModal.isOpen) return []
 
-    let result = formattedStudents || []
+    const sourceList = (studentDashboardData?.daftar_siswa && studentDashboardData.daftar_siswa.length > 0)
+      ? studentDashboardData.daftar_siswa.map((item) => ({
+          id: item.id,
+          nis: item.nis || '-',
+          nisn: item.nisn || '-',
+          nama: item.nama || item.full_name || '-',
+          unit: item.unit || '-',
+          kelas: item.kelas || '-',
+          gender: item.jenis_kelamin === 'female' || item.gender === 'female' ? 'Perempuan' : 'Laki-laki',
+          status: item.aktif || item.is_active ? 'Aktif' : 'Nonaktif',
+          foto: resolveAvatarUrl(item) || '',
+        }))
+      : formattedStudents
+
+    let result = sourceList
 
     if (statCardModal.filterType === 'male') {
       result = result.filter((s) => s.gender === 'Laki-laki')
@@ -677,166 +819,85 @@ export default function StudentsPage() {
     }
 
     return result
-  }, [formattedStudents, statCardModal, statModalSearch])
-
-  // Silent In-Page Iframe Print Handler
-  const printContentSilently = (htmlString) => {
-    let iframe = document.getElementById('print-isolation-frame')
-    if (!iframe) {
-      iframe = document.createElement('iframe')
-      iframe.id = 'print-isolation-frame'
-      iframe.style.position = 'fixed'
-      iframe.style.right = '0'
-      iframe.style.bottom = '0'
-      iframe.style.width = '0'
-      iframe.style.height = '0'
-      iframe.style.border = '0'
-      document.body.appendChild(iframe)
-    }
-
-    const doc = iframe.contentWindow.document
-    doc.open()
-    doc.write(htmlString)
-    doc.close()
-
-    setTimeout(() => {
-      iframe.contentWindow.focus()
-      iframe.contentWindow.print()
-    }, 250)
-  }
+  }, [formattedStudents, statCardModal, statModalSearch, studentDashboardData])
 
   const handlePrintMainTable = () => {
-    const currentDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-    const unitName = rawUnits?.find((u) => String(u.id) === String(unitFilter))?.name || (unitFilter || 'Semua Unit')
-    const kelasName = rawClasses?.find((k) => String(k.id) === String(kelasFilter))?.name || (kelasFilter ? `Kelas ${kelasFilter}` : '')
-    const filterInfo = kelasName ? ` | Kelas: ${kelasName}` : ''
+    setShowPrintOptionModal(true)
+  }
 
-    const rowsHtml = filteredStudents.map((std) => {
-      const nisNisn = `NIS: ${std.nis} / NISN: ${std.nisn}`
-      return `
-        <tr>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold;">
-            ${std.nama}<br/>
-            <span style="font-size: 8pt; color: #64748b; font-family: monospace;">${nisNisn}</span>
-          </td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${std.unit}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${std.kelas}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">${std.gender}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: ${std.status === 'Aktif' ? '#047857' : '#dc2626'};">${std.status}</td>
-        </tr>
-      `
-    }).join('')
+  const handlePrintDocument = (orientation = 'landscape') => {
+    const selectedUnitObj = rawUnits?.find((u) => String(u.id) === String(unitFilter)) || (unitFilter && unitFilter !== 'Semua' ? unitFilter : 'YAYASAN')
+    const headers = ['No', 'NIS / NISN', 'Nama Lengkap', 'Jenis Kelamin', 'Unit Pendidikan', 'Kelas', 'Status']
+    const rows = filteredStudents.map((std, idx) => [
+      idx + 1,
+      `${std.nis || '-'}\n${std.nisn || '-'}`,
+      std.nama,
+      std.gender,
+      std.unit,
+      std.kelas,
+      std.status,
+    ])
 
-    printContentSilently(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Laporan Direktori Data Siswa SIT</title>
-          <style>
-            @page { size: A4 landscape; margin: 10mm; }
-            body { font-family: system-ui, -apple-system, sans-serif; font-size: 9pt; color: #0f172a; margin: 0; padding: 10px; }
-            .kop { border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
-            .kop h1 { font-size: 14pt; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; }
-            .kop p { font-size: 9.5pt; margin: 3px 0 0 0; color: #334155; font-weight: 600; }
-            .meta { display: flex; justify-content: space-between; font-size: 8.5pt; color: #475569; margin-top: 5px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8.5pt; }
-            th { background-color: #0E5C44; color: #ffffff; padding: 7px 8px; font-size: 8.5pt; text-align: left; border: 1px solid #0E5C44; font-weight: bold; }
-            td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: middle; }
-            tr:nth-child(even) { background-color: #f8fafc; }
-          </style>
-        </head>
-        <body>
-          <div class="kop">
-            <h1>LAPORAN DIREKTORI & DATA SISWA SIT</h1>
-            <p>Sekolah Islam Terpadu — Unit: ${unitName}${filterInfo}</p>
-            <div class="meta">
-              <span>Tanggal Cetak: ${currentDate}</span>
-              <span>Total Data Terfilter: ${filteredStudents.length} Siswa</span>
-            </div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 30%;">NIS / NISN & Nama Siswa</th>
-                <th style="width: 25%;">Unit Kerja</th>
-                <th style="width: 20%;">Kelas / Rombel</th>
-                <th style="width: 13%; text-align: center;">Jenis Kelamin</th>
-                <th style="width: 12%; text-align: center;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml || '<tr><td colSpan="5" style="text-align:center;">Tidak ada data siswa</td></tr>'}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `)
+    printCleanTable({
+      title: 'LAPORAN DIREKTORI DATA SISWA',
+      unit: selectedUnitObj,
+      unitParam: selectedUnitObj,
+      headers,
+      rows,
+      orientation,
+    })
+    setShowPrintOptionModal(false)
+  }
+
+  const handleDownloadPdf = (orientation = 'landscape') => {
+    const selectedUnitObj = rawUnits?.find((u) => String(u.id) === String(unitFilter)) || (unitFilter && unitFilter !== 'Semua' ? unitFilter : 'YAYASAN')
+    const headers = ['No', 'NIS / NISN', 'Nama Lengkap', 'Jenis Kelamin', 'Unit Pendidikan', 'Kelas', 'Status']
+    const rows = filteredStudents.map((std, idx) => [
+      idx + 1,
+      `${std.nis || '-'}\n${std.nisn || '-'}`,
+      std.nama,
+      std.gender,
+      std.unit,
+      std.kelas,
+      std.status,
+    ])
+
+    downloadPdfTable({
+      filename: `Laporan_Data_Siswa_${new Date().toISOString().slice(0, 10)}.pdf`,
+      title: 'LAPORAN DIREKTORI DATA SISWA',
+      unit: selectedUnitObj,
+      unitParam: selectedUnitObj,
+      headers,
+      rows,
+      orientation,
+    })
+    setShowPrintOptionModal(false)
   }
 
   const handlePrintStatCardModal = () => {
-    const currentDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-    const unitName = rawUnits?.find((u) => String(u.id) === String(unitFilter))?.name || (unitFilter || 'Semua Unit')
+    const selectedUnitObj = rawUnits?.find((u) => String(u.id) === String(unitFilter)) || (unitFilter && unitFilter !== 'Semua' ? unitFilter : 'YAYASAN')
+    const headers = ['No', 'NIS / NISN', 'Nama Lengkap', 'Unit Kerja', 'Kelas / Rombel', 'Jenis Kelamin', 'Status']
+    const rows = statModalItems.map((std, idx) => [
+      idx + 1,
+      `${std.nis || '-'}\n${std.nisn || '-'}`,
+      std.nama,
+      std.unit,
+      std.kelas,
+      std.gender,
+      std.status,
+    ])
 
-    const rowsHtml = statModalItems.map((std) => {
-      const nisNisn = `NIS: ${std.nis} / NISN: ${std.nisn}`
-      return `
-        <tr>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold;">
-            ${std.nama}<br/>
-            <span style="font-size: 8pt; color: #64748b; font-family: monospace;">${nisNisn}</span>
-          </td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${std.unit}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${std.kelas}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">${std.gender}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold; color: ${std.status === 'Aktif' ? '#047857' : '#dc2626'};">${std.status}</td>
-        </tr>
-      `
-    }).join('')
-
-    printContentSilently(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${statCardModal.title || 'Laporan Detail Statistik Siswa'}</title>
-          <style>
-            @page { size: A4 landscape; margin: 10mm; }
-            body { font-family: system-ui, -apple-system, sans-serif; font-size: 9pt; color: #0f172a; margin: 0; padding: 10px; }
-            .kop { border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
-            .kop h1 { font-size: 13pt; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; }
-            .kop p { font-size: 9pt; margin: 3px 0 0 0; color: #334155; font-weight: 600; }
-            .meta { display: flex; justify-content: space-between; font-size: 8.5pt; color: #475569; margin-top: 4px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8.5pt; }
-            th { background-color: #0E5C44; color: #ffffff; padding: 7px 8px; font-size: 8.5pt; text-align: left; border: 1px solid #0E5C44; font-weight: bold; }
-            td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: middle; }
-            tr:nth-child(even) { background-color: #f8fafc; }
-          </style>
-        </head>
-        <body>
-          <div class="kop">
-            <h1>${(statCardModal.title || 'LAPORAN DETAIL STATISTIK SISWA SIT').toUpperCase()}</h1>
-            <p>Sekolah Islam Terpadu — Unit: ${unitName}</p>
-            <div class="meta">
-              <span>Tanggal Cetak: ${currentDate}</span>
-              <span>Total Terfilter: ${statModalItems.length} Siswa</span>
-            </div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 30%;">NIS / NISN & Nama Siswa</th>
-                <th style="width: 25%;">Unit Kerja</th>
-                <th style="width: 20%;">Kelas / Rombel</th>
-                <th style="width: 13%; text-align: center;">Jenis Kelamin</th>
-                <th style="width: 12%; text-align: center;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml || '<tr><td colSpan="5" style="text-align:center;">Tidak ada data siswa</td></tr>'}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `)
+    const orgName = (sitePengaturan?.school_name || sitePengaturan?.application_name || '').trim()
+    printCleanTable({
+      title: (statCardModal.title || 'LAPORAN DETAIL STATISTIK SISWA').toUpperCase(),
+      subtitle: orgName || 'Laporan Statistik Siswa',
+      unit: selectedUnitObj,
+      headers,
+      rows,
+      orientation: 'landscape',
+      foundationName: orgName,
+      systemLogo: sitePengaturan?.logo_url,
+    })
   }
 
   // Pagination
@@ -871,9 +932,11 @@ export default function StudentsPage() {
 
   const navigate = useNavigate()
   const [chatTargetModal, setChatTargetModal] = useState(null)
+  const [chatQuickMessage, setChatQuickMessage] = useState('')
 
   const handleOpenChatModal = (student) => {
     setChatTargetModal(student)
+    setChatQuickMessage('')
   }
 
   const handleDirectChatPortal = (student) => {
@@ -882,195 +945,97 @@ export default function StudentsPage() {
     const pId = student.parentId || student.parent_id || ''
     const pName = encodeURIComponent(student.orangTua || student.metadata?.nama_ayah || student.metadata?.nama_ibu || 'Orang Tua')
     const sName = encodeURIComponent(student.nama || student.full_name || '')
-    navigate(`/dashboard/chat-pegawai?mode=teacher&student_id=${sId}&parent_id=${pId}&parent_name=${pName}&student_name=${sName}`)
+    const msg = encodeURIComponent(chatQuickMessage.trim())
+    navigate(`/dashboard/chat-pegawai?mode=teacher&student_id=${sId}&parent_id=${pId}&parent_name=${pName}&student_name=${sName}${msg ? `&initial_message=${msg}` : ''}`)
     setChatTargetModal(null)
+    setChatQuickMessage('')
     setShowDetailModal(false)
   }
 
   const handleDirectWhatsApp = (phone, student) => {
     if (!phone) {
-      Swal.fire('Nomor Tidak Tersedia', 'Nomor telepon/WA orang tua belum terdaftar.', 'info')
+      pushToast('Nomor Tidak Tersedia', 'Nomor telepon/WA orang tua belum terdaftar.', 'info')
       return
     }
     let cleanPhone = String(phone).replace(/[^0-9]/g, '')
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1)
     if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone
+    const msgBody = chatQuickMessage.trim()
+      ? chatQuickMessage.trim()
+      : 'Saya ingin berkonsultasi mengenai perkembangan ananda di sekolah.'
     const text = encodeURIComponent(
-      `Assalamu'alaikum Warahmatullahi Wabarakatuh Bapak/Ibu Wali dari Ananda ${student.nama || student.full_name || ''} (${student.unit || ''} - Kelas ${student.kelas || ''}).\n\nSaya ingin berkonsultasi mengenai perkembangan ananda di sekolah.`
+      `Assalamu'alaikum Warahmatullahi Wabarakatuh Bapak/Ibu Wali dari Ananda ${student.nama || student.full_name || ''} (${student.unit || ''} - Kelas ${student.kelas || ''}).\n\n${msgBody}`
     )
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank')
     setChatTargetModal(null)
+    setChatQuickMessage('')
     setShowDetailModal(false)
   }
 
-  const handleDelete = async (student) => {
+  const handleDelete = (student) => {
     if (!canDeleteStudent) return
-    const res = await Swal.fire({
-      title: 'Hapus data siswa?',
-      text: `Data ${student.nama} akan dihapus dari sistem.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, Hapus',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: '#dc2626',
-    })
-    if (res.isConfirmed) {
-      await hapus.mutateAsync(student.id)
-      setShowDetailModal(false)
-    }
+    setDeleteTarget(student)
+    setHasConfirmedDeleteCheck(false)
   }
 
-  const handleFormSubmitCallback = async (payload) => {
-    if ((isEdit && !canUpdateStudent) || (!isEdit && !canCreateStudent)) return
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || !canDeleteStudent) return
     try {
-      if (isEdit && payload.id) {
-        await ubah.mutateAsync({ id: payload.id, payload })
-        Swal.fire('Berhasil', 'Data siswa berhasil diperbarui.', 'success')
-      } else {
-        await tambah.mutateAsync(payload)
-        Swal.fire('Berhasil', 'Data siswa baru berhasil ditambahkan.', 'success')
-      }
-      setShowFormModal(false)
+      setIsDeleting(true)
+      await hapus.mutateAsync(deleteTarget.id)
+      pushToast('Berhasil Dihapus', `Data siswa "${deleteTarget.nama || deleteTarget.full_name}" berhasil dihapus permanen.`, 'success')
+      setDeleteTarget(null)
+      setHasConfirmedDeleteCheck(false)
+      setShowDetailModal(false)
     } catch (err) {
-      Swal.fire('Gagal', 'Terjadi kesalahan saat menyimpan data.', 'error')
+      pushToast('Gagal Menghapus', err.response?.data?.message || err.message || 'Terjadi kesalahan saat menghapus data siswa.', 'error')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
-  // Export Data trigger supporting .xlsx, .xls, and .csv
+  const handleFormSubmitCallback = (payload) => {
+    if ((isEdit && !canUpdateStudent) || (!isEdit && !canCreateStudent)) return
+    setPendingSavePayload(payload)
+    setShowSaveConfirmDialog(true)
+  }
+
+  const handleConfirmSave = async () => {
+    if (!pendingSavePayload) return
+    setIsSaving(true)
+    try {
+      if (isEdit && pendingSavePayload.id) {
+        await ubah.mutateAsync({ id: pendingSavePayload.id, payload: pendingSavePayload })
+        pushToast('Berhasil Diperbarui', `Data siswa "${pendingSavePayload.full_name}" berhasil diperbarui.`, 'success')
+      } else {
+        await tambah.mutateAsync(pendingSavePayload)
+        pushToast('Berhasil Ditambahkan', `Data siswa baru "${pendingSavePayload.full_name}" berhasil ditambahkan ke sistem.`, 'success')
+      }
+      setShowSaveConfirmDialog(false)
+      setShowFormModal(false)
+      setPendingSavePayload(null)
+    } catch (err) {
+      pushToast('Gagal Menyimpan', err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan data.', 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Server-side Multi-format Export Handler (.xlsx, .xls, .csv)
   const handleExportExcel = async () => {
     if (!canExportStudent) return
 
-    const { value: format } = await Swal.fire({
+    const params = {}
+    if (searchQuery) params.search = searchQuery
+    if (unitFilter && unitFilter !== 'Semua') params.unit_id = unitFilter
+    if (kelasFilter && kelasFilter !== 'Semua') params.kelas_id = kelasFilter
+
+    await handleApiExport({
+      endpoint: '/students/export',
+      params,
       title: 'Ekspor Data Siswa',
-      text: 'Pilih format berkas ekspor yang Anda inginkan:',
-      icon: 'question',
-      input: 'select',
-      inputOptions: {
-        xlsx: 'Microsoft Excel (.xlsx)',
-        xls: 'Microsoft Excel Legacy (.xls)',
-        csv: 'Comma Separated Values (.csv)',
-      },
-      inputValue: 'xlsx',
-      showCancelButton: true,
-      confirmButtonColor: '#064e3b',
-      cancelButtonColor: '#94a3b8',
-      confirmButtonText: 'Unduh Berkas',
-      cancelButtonText: 'Batal',
+      defaultFilename: `Data_Siswa_DarElIman_${new Date().toISOString().slice(0, 10)}`,
     })
-
-    if (!format) return
-
-    const fileName = `Data_Siswa_DarElIman_${new Date().toISOString().slice(0, 10)}`
-
-    if (format === 'csv') {
-      const headers = ['NIS', 'NISN', 'Nama Lengkap', 'Jenis Kelamin', 'Tempat Lahir', 'Tanggal Lahir', 'Agama', 'Alamat', 'Unit Pendidikan', 'Kelas', 'Nama Ayah', 'HP Ayah', 'Nama Ibu', 'HP Ibu', 'Nama Wali', 'HP Wali', 'Status', 'Email']
-      const csvRows = [headers.join(',')]
-      filteredStudents.forEach((st) => {
-        const meta = st.raw?.metadata || {}
-        const row = [
-          `"${st.nis}"`,
-          `"${st.nisn}"`,
-          `"${st.nama}"`,
-          `"${st.gender}"`,
-          `"${st.tempatLahir || ''}"`,
-          `"${st.tanggalLahir || ''}"`,
-          `"${st.agama || ''}"`,
-          `"${(st.alamat || '').replace(/"/g, '""')}"`,
-          `"${st.unit}"`,
-          `"${st.kelas}"`,
-          `"${meta.ayah?.nama || ''}"`,
-          `"${meta.ayah?.hp || meta.ibu?.hp || meta.wali?.hp || ''}"`,
-          `"${meta.ibu?.nama || ''}"`,
-          `"${meta.ibu?.hp || ''}"`,
-          `"${meta.wali?.nama || ''}"`,
-          `"${meta.wali?.hp || ''}"`,
-          `"${st.status}"`,
-          `"${meta.email || ''}"`,
-        ]
-        csvRows.push(row.join(','))
-      })
-      const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${fileName}.csv`
-      a.click()
-      URL.revokeObjectURL(url)
-    } else {
-      // Excel .xlsx or .xls XML Table
-      const tableHtml = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-        <head>
-          <meta charset="UTF-8">
-          <!--[if gte mso 9]>
-          <xml>
-            <x:ExcelWorkbook>
-              <x:ExcelWorksheets>
-                <x:ExcelWorksheet>
-                  <x:Name>Data Siswa</x:Name>
-                  <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
-                </x:ExcelWorksheet>
-              </x:ExcelWorksheets>
-            </x:ExcelWorkbook>
-          </xml>
-          <![endif]-->
-          <style>
-            table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; }
-            th { background-color: #064E3B; color: #FFFFFF; font-weight: bold; text-align: left; padding: 8px; border: 1px solid #CCCCCC; }
-            td { padding: 6px; border: 1px solid #EEEEEE; }
-            tr:nth-child(even) { background-color: #F8FAFC; }
-          </style>
-        </head>
-        <body>
-          <h2>DATA MASTER SISWA - DAR EL-IMAN</h2>
-          <p>Tanggal Ekspor: ${new Date().toLocaleDateString('id-ID')} | Total: ${filteredStudents.length} siswa</p>
-          <table>
-            <thead>
-              <tr>
-                <th>No</th><th>NIS</th><th>NISN</th><th>Nama Lengkap</th><th>Jenis Kelamin</th><th>Tempat Lahir</th><th>Tanggal Lahir</th><th>Agama</th><th>Alamat</th><th>Unit Pendidikan</th><th>Kelas</th><th>Nama Ayah</th><th>HP Ayah</th><th>Nama Ibu</th><th>HP Ibu</th><th>Nama Wali</th><th>HP Wali</th><th>Status</th><th>Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredStudents.map((st, idx) => {
-        const meta = st.raw?.metadata || {}
-        return `
-                  <tr>
-                    <td>${idx + 1}</td>
-                    <td>${st.nis || '-'}</td>
-                    <td>${st.nisn || '-'}</td>
-                    <td><b>${st.nama || '-'}</b></td>
-                    <td>${st.gender || '-'}</td>
-                    <td>${st.tempatLahir || '-'}</td>
-                    <td>${st.tanggalLahir || '-'}</td>
-                    <td>${st.agama || '-'}</td>
-                    <td>${st.alamat || '-'}</td>
-                    <td>${st.unit || '-'}</td>
-                    <td>${st.kelas || '-'}</td>
-                    <td>${meta.ayah?.nama || meta.nama_ayah || '-'}</td>
-                    <td>${meta.ayah?.hp || meta.hp_ayah || '-'}</td>
-                    <td>${meta.ibu?.nama || meta.nama_ibu || '-'}</td>
-                    <td>${meta.ibu?.hp || meta.hp_ibu || '-'}</td>
-                    <td>${meta.wali?.nama || meta.nama_wali || '-'}</td>
-                    <td>${meta.wali?.hp || meta.hp_wali || '-'}</td>
-                    <td>${st.status || '-'}</td>
-                    <td>${meta.email || '-'}</td>
-                  </tr>
-                `
-      }).join('')}
-            </tbody>
-          </table>
-        </body>
-        </html>
-      `
-      const mimeType = format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/vnd.ms-excel'
-      const blob = new Blob([tableHtml], { type: `${mimeType};charset=utf-8` })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${fileName}.${format}`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
   }
 
   // Render Status Badge
@@ -1155,6 +1120,7 @@ export default function StudentsPage() {
             value={studentStats.total_siswa ?? 0}
             subtext="Terdaftar di sistem"
             tone="emerald"
+            isLoading={isSummaryLoading}
             onClick={() => {
               setStatCardModal({ isOpen: true, title: 'Detail Data: Total Siswa', filterType: 'all' })
               setStatModalSearch('')
@@ -1167,6 +1133,7 @@ export default function StudentsPage() {
             value={genderStats.laki_laki ?? 0}
             subtext="Berdasarkan data siswa"
             tone="blue"
+            isLoading={isSummaryLoading}
             onClick={() => {
               setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Laki-laki', filterType: 'male' })
               setStatModalSearch('')
@@ -1179,6 +1146,7 @@ export default function StudentsPage() {
             value={genderStats.perempuan ?? 0}
             subtext="Berdasarkan data siswa"
             tone="rose"
+            isLoading={isSummaryLoading}
             onClick={() => {
               setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Perempuan', filterType: 'female' })
               setStatModalSearch('')
@@ -1191,6 +1159,7 @@ export default function StudentsPage() {
             value={studentStats.siswa_aktif ?? 0}
             subtext="Berstatus aktif"
             tone="amber"
+            isLoading={isSummaryLoading}
             onClick={() => {
               setStatCardModal({ isOpen: true, title: 'Detail Data: Siswa Status Aktif', filterType: 'aktif' })
               setStatModalSearch('')
@@ -1210,9 +1179,9 @@ export default function StudentsPage() {
             } : studentStats}
             selectedUnit={unitFilter}
             units={rawUnits}
-            onUnitChange={(val) => { setUnitFilter(val); setCurrentPage(1) }}
+            onUnitChange={(val) => { setUnitFilter(val); setKelasFilter(''); setCurrentPage(1) }}
             selectedKelas={kelasFilter}
-            classes={rawClasses}
+            classes={availableClasses}
             onKelasChange={(val) => { setKelasFilter(val); setCurrentPage(1) }}
             isKepalaSekolah={isKepalaSekolah}
             isDivisiPendidikan={isDivisiPendidikan}
@@ -1229,21 +1198,40 @@ export default function StudentsPage() {
         {/* Unified Master Data Container */}
         <AppDataTable
           title="Daftar Siswa"
+          icon={GraduationCap}
+          iconClassName="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 border border-emerald-300/40"
           actionColumnLabel=""
           description="Data siswa sesuai filter dan kewenangan pengguna."
           countLabel={`${Number(studentPagination.total || filteredStudents.length).toLocaleString('id-ID')} siswa`}
           actions={
             <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
-              {/* Import Button (Soft Sky Blue Squircle) */}
+              {/* Cetak Datatable Button - Vivid Indigo / Violet Squircle */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Cetak Data Laporan (Print)"
+                  aria-label="Cetak Data Laporan"
+                  onClick={handlePrintMainTable}
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                >
+                  <Printer className="size-5 text-white" strokeWidth={2.2} />
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Cetak Data (Print)
+                </div>
+              </div>
+
+              {/* Import Button (Vivid Sky Blue / Blue Squircle) */}
               <div className="group relative inline-flex">
                 <button
                   type="button"
                   title="Import Data Siswa"
                   aria-label="Import Data Siswa"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-600 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-500/30 cursor-pointer shadow-2xs"
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                   onClick={() => setShowImportModal(true)}
                 >
-                  <Upload1 className="size-5 transition-colors" />
+                  <Upload className="size-5 text-white" strokeWidth={2.2} />
                 </button>
                 <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                   <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1251,17 +1239,17 @@ export default function StudentsPage() {
                 </div>
               </div>
 
-              {/* Export Button (Soft Amber Squircle) */}
+              {/* Export Button (Vivid Amber / Orange Squircle) */}
               {canExportStudent && (
                 <div className="group relative inline-flex">
                   <button
                     type="button"
                     title="Export Data Siswa"
                     aria-label="Export Data Siswa"
-                    className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-600 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-amber-500/30 cursor-pointer shadow-2xs"
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     onClick={handleExportExcel}
                   >
-                    <Download1 className="size-5 transition-colors" />
+                    <Download className="size-5 text-white" strokeWidth={2.2} />
                   </button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1270,34 +1258,17 @@ export default function StudentsPage() {
                 </div>
               )}
 
-              {/* Cetak Datatable Button - Soft Pastel Indigo */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Cetak Data Laporan (Print)"
-                  aria-label="Cetak Data Laporan"
-                  onClick={handlePrintMainTable}
-                  className="flex size-10 items-center justify-center rounded-2xl bg-[#E0E7FF] text-[#4338CA] hover:bg-[#C7D2FE] dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
-                >
-                  <Printer className="size-5" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Cetak Data (Print)
-                </div>
-              </div>
-
-              {/* Tambah Button (Soft Emerald Squircle) */}
+              {/* Tambah Button (Vivid Emerald / Teal Squircle) */}
               {canCreateStudent && (
                 <div className="group relative inline-flex">
                   <button
                     type="button"
-                    title="Tambah Siswa"
-                    aria-label="Tambah Siswa"
-                    className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-emerald-600/30 cursor-pointer shadow-2xs"
+                    title="Tambah Siswa Baru"
+                    aria-label="Tambah Siswa Baru"
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     onClick={handleOpenTambah}
                   >
-                    <PlusIcon className="size-5 transition-colors" />
+                    <Plus className="size-5 text-white" strokeWidth={2.5} />
                   </button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1323,8 +1294,8 @@ export default function StudentsPage() {
               >
                 <option value="">Semua Unit Pendidikan</option>
                 {rawUnits.map((u) => {
-                  const val = u.nama_unit || u.name || u.nama || u.id
-                  const label = u.nama_unit || u.name || u.nama || u.code || val
+                  const val = u.id || u.nama_unit || u.name || u.nama
+                  const label = u.name || u.nama_unit || u.nama || u.code || val
                   return (
                     <option key={u.id || val} value={val}>
                       {label}
@@ -1339,11 +1310,11 @@ export default function StudentsPage() {
                 onChange={(e) => { setKelasFilter(e.target.value); setCurrentPage(1) }}
               >
                 <option value="">Semua Kelas</option>
-                {availableClasses.map((c) => {
-                  const val = c.nama_kelas || c.name || c.nama || c.id
+                {availableClasses.map((c, idx) => {
+                  const val = c.id || c.nama_kelas || c.name || c.nama
                   const label = c.nama_kelas || c.name || c.nama || val
                   return (
-                    <option key={c.id || val} value={val}>
+                    <option key={c.id ? `class-${c.id}-${idx}` : `class-opt-${val}-${label}-${idx}`} value={val}>
                       {label}
                     </option>
                   )
@@ -1394,13 +1365,13 @@ export default function StudentsPage() {
           serverControlled
           renderTable={() => (
             <table className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar siswa">
-              <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-                <tr>
-                  <th className="w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
-                  <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa</th>
-                  <th className="hidden w-[29%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Orang Tua / Wali</th>
-                  <th className="hidden w-[11%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
-                  <th className="w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider"></th>
+              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                  <th className="w-[6%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</th>
+                  <th className="w-[34%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa</th>
+                  <th className="hidden w-[29%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Orang Tua / Wali</th>
+                  <th className="hidden w-[11%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
+                  <th className="w-[20%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">
@@ -1462,27 +1433,55 @@ export default function StudentsPage() {
         />
 
         {/* POP UP MODAL 1: DETAIL SISWA */}
-        {showDetailModal && selectedStudent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm overflow-y-auto">
-            <div className="relative w-full max-w-3xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-6">
+        <AnimatePresence>
+          {showDetailModal && selectedStudent && (
+            <div
+              className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="student-detail-modal-title"
+              tabIndex={-1}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setShowDetailModal(false)
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-3xl"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
 
-              {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-                    <FaUserGraduate className="text-lg" />
+                  {/* Modal Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white p-2.5 shadow-md shadow-emerald-500/30 border border-emerald-300/30 shrink-0">
+                        <FaUserGraduate className="size-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 id="student-detail-modal-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Detail Siswa</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80">
+                            <Sparkles className="size-3" />
+                            Data Terpadu
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Informasi lengkap profil siswa, orang tua, akademik, dan dokumen.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailModal(false)}
+                      aria-label="Tutup detail siswa"
+                      className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-rose-500/20"
+                    >
+                      <X className="size-4 text-white" strokeWidth={2.25} />
+                    </button>
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900">Detail Siswa</h3>
-                    <p className="text-[11px] font-medium text-slate-500">Informasi lengkap siswa dan data pendukung.</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowDetailModal(false)}
-                  aria-label="Tutup detail siswa"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
-                  <FaTimes className="text-base" />
-                </button>
-              </div>
 
               {/* Modal Content */}
               <div className="max-h-[75vh] overflow-y-auto bg-white p-5">
@@ -1524,7 +1523,7 @@ export default function StudentsPage() {
                     {/* Tab Navigation + Content */}
                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                       {/* Tabs Header */}
-                      <div className="flex gap-0 border-b border-slate-200 overflow-x-auto">
+                      <div className="flex gap-1 p-1.5 bg-slate-100/80 dark:bg-slate-900/50 border-b border-slate-200/80 dark:border-slate-800 overflow-x-auto">
                         {[
                           { key: 'siswa', label: 'Data Siswa' },
                           { key: 'orangTua', label: 'Orang Tua / Wali' },
@@ -1532,11 +1531,17 @@ export default function StudentsPage() {
                           { key: 'riwayat', label: 'Riwayat' },
                           { key: 'dokumen', label: 'Dokumen' },
                         ].map(({ key, label }) => (
-                          <button key={key} onClick={() => setActiveDetailTab(key)}
-                            className={`px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition ${activeDetailTab === key
-                              ? 'border-emerald-700 text-emerald-900 font-extrabold bg-emerald-50/50'
-                              : 'border-transparent text-slate-500 hover:text-slate-700'
-                              }`}>
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setActiveDetailTab(key)}
+                            className={cn(
+                              "px-3.5 py-2 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer",
+                              activeDetailTab === key
+                                ? "bg-white text-emerald-800 shadow-xs dark:bg-emerald-950/80 dark:text-emerald-300 ring-1 ring-emerald-500/20"
+                                : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                            )}
+                          >
                             {label}
                           </button>
                         ))}
@@ -1703,24 +1708,33 @@ export default function StudentsPage() {
                       </div>
                     </div>
 
-                    {/* Quick Actions Card — sesuai gambar */}
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">AKSI CEPAT</h4>
-                      <div className="flex flex-wrap gap-2">
+                    {/* Quick Actions Card */}
+                    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/40 shadow-xs">
+                      <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-3">AKSI CEPAT SISWA</h4>
+                      <div className="flex flex-wrap gap-2.5">
                         {canUpdateStudent && (
-                          <button onClick={() => handleOpenEdit(selectedStudent)}
-                            className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 transition">
-                            <FaEdit /> Edit Data
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(selectedStudent)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white px-4 py-2 text-xs font-bold border border-amber-300/40 hover:scale-[1.02] active:scale-95 transition-all shadow-xs cursor-pointer"
+                          >
+                            <FaEdit className="size-3.5" /> <span>Edit Data</span>
                           </button>
                         )}
-                        <button onClick={() => { setStudentToPrint(selectedStudent); setShowCetakModal(true) }}
-                          className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition">
-                          <FaPrint /> Cetak Kartu Siswa
+                        <button
+                          type="button"
+                          onClick={() => { setStudentToPrint(selectedStudent); setShowCetakModal(true) }}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white px-4 py-2 text-xs font-bold border border-indigo-300/40 hover:scale-[1.02] active:scale-95 transition-all shadow-xs cursor-pointer"
+                        >
+                          <FaPrint className="size-3.5" /> <span>Cetak Kartu Siswa</span>
                         </button>
                         {canDeleteStudent && (
-                          <button onClick={() => handleDelete(selectedStudent)}
-                            className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 transition">
-                            <FaTrash /> Hapus Data
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(selectedStudent)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2 text-xs font-bold border border-rose-300/40 hover:scale-[1.02] active:scale-95 transition-all shadow-xs cursor-pointer"
+                          >
+                            <FaTrash className="size-3.5" /> <span>Hapus Data</span>
                           </button>
                         )}
                       </div>
@@ -1730,165 +1744,296 @@ export default function StudentsPage() {
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-6 py-3">
-                <button type="button" onClick={() => setShowDetailModal(false)}
-                  className="rounded-xl border border-slate-300 bg-white px-6 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm">
-                  Tutup
+              <div className="modal-footer flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30">
+                <button
+                  type="button"
+                  onClick={() => setShowDetailModal(false)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-5 py-2.5 text-xs font-extrabold border border-rose-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-rose-500/20"
+                >
+                  <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                    <X className="size-3" strokeWidth={2.2} />
+                  </div>
+                  <span>Tutup</span>
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
 
-        {/* POP UP MODAL 2: TAMBAH / EDIT SISWA FORM */}
-        <StudentFormModal
-          isOpen={showFormModal}
-          onClose={() => setShowFormModal(false)}
-          initialData={isEdit ? selectedStudent : null}
-          onSubmit={handleFormSubmitCallback}
-          classes={rawClasses}
-          units={rawUnits}
-        />
+        {/* POP UP MODAL 2: TAMBAH / EDIT SISWA FORM (Code-split via React.lazy & Suspense) */}
+        {showFormModal && (
+          <Suspense
+            fallback={
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 rounded-3xl border border-emerald-500/30 bg-white p-8 shadow-2xl dark:bg-[#1B2433]">
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-950/60 dark:to-teal-950/40 border border-emerald-200/60 dark:border-emerald-800/60 shadow-xs">
+                    <Sparkles className="size-7 text-emerald-600 dark:text-emerald-400 animate-spin" />
+                  </div>
+                  <div className="space-y-1.5 text-center">
+                    <h4 className="text-sm font-extrabold text-slate-800 dark:text-white">
+                      Memuat Formulir Siswa Terpadu...
+                    </h4>
+                    <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                      Menyiapkan wizard 5-langkah, pemetaan wilayah, dan validasi data.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            }
+          >
+            <StudentFormModal
+              isOpen={showFormModal}
+              onClose={() => setShowFormModal(false)}
+              initialData={isEdit ? selectedStudent : null}
+              onSubmit={handleFormSubmitCallback}
+              classes={rawClasses}
+              units={rawUnits}
+            />
+          </Suspense>
+        )}
 
         {/* POP UP MODAL 3: CETAK KARTU SISWA */}
         {showCetakModal && (
           <CetakKartuSiswaModal student={studentToPrint} onClose={() => setShowCetakModal(false)} />
         )}
 
-        {/* POP UP MODAL 4: DASHBOARD IMPORT DATA SISWA */}
-        {showImportModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl transition-all">
-              {/* Header Modal */}
-              <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
-                    <FaFileImport className="text-base" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-extrabold text-slate-900">Dashboard Import Data Siswa</h2>
-                    <p className="text-xs text-slate-500">Unggah file Excel atau CSV untuk mengimpor banyak siswa secara massal</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setShowImportModal(false); setImportFile(null); setImportPreviewData([]) }}
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
-                >
-                  <FaTimes />
-                </button>
-              </div>
+        {/* POP UP MODAL: CETAK / PDF DAFTAR SISWA */}
+        <PrintOptionModal
+          isOpen={showPrintOptionModal}
+          onClose={() => setShowPrintOptionModal(false)}
+          onPrint={handlePrintDocument}
+          onDownloadPdf={handleDownloadPdf}
+        />
 
-              {/* Modal Body */}
-              <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-                {/* Step 1: Download Template */}
-                <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <FaFileExcel className="text-2xl text-emerald-600 shrink-0" />
+        {/* POP UP MODAL 4: DASHBOARD IMPORT DATA SISWA (TAILGRIDS HARMONIZED BATCH MODAL) */}
+        <AnimatePresence>
+          {showImportModal && (
+            <div
+              className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="student-import-title"
+              tabIndex={-1}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget && !isImporting) {
+                  setShowImportModal(false)
+                  setImportFile(null)
+                  setImportPreviewData([])
+                }
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-3xl"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-sky-500 via-sky-600 to-blue-600 text-white p-2.5 shadow-md shadow-sky-500/30 border border-sky-300/30 shrink-0">
+                        <Upload className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 id="student-import-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Import Data Siswa</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60">
+                            <Sparkles className="size-3" />
+                            Batch Import
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Unggah file Excel atau CSV untuk mengimpor banyak siswa secara massal
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowImportModal(false)
+                        setImportFile(null)
+                        setImportPreviewData([])
+                      }}
+                      aria-label="Tutup form import"
+                      className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-rose-500/20"
+                    >
+                      <X className="size-4 text-white" strokeWidth={2.25} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="modal-body min-h-0 flex-1 space-y-4.5 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                    {/* Step 1: Download Template Card */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-sky-200/70 bg-gradient-to-r from-sky-50/50 via-teal-50/20 to-white p-4 dark:border-sky-800/50 dark:bg-slate-900/40">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 via-sky-600 to-blue-600 text-white border border-sky-300/30 shrink-0">
+                          <Download className="size-4.5 text-white" strokeWidth={2.2} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Unduh Format Template Berkas</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Gunakan berkas template resmi agar kolom data terpetakan otomatis ke sistem ERP</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDownloadTemplateSiswa}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-800 px-3.5 py-2 text-xs font-bold transition-all dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 cursor-pointer hover:scale-[1.02] active:scale-95 shrink-0 shadow-xs"
+                      >
+                        <div className="flex size-5 items-center justify-center rounded-md bg-emerald-600 text-white">
+                          <Download className="size-3 text-white" strokeWidth={2.2} />
+                        </div>
+                        <span>Unduh Template (.xlsx)</span>
+                      </button>
+                    </div>
+
+                    {/* Step 2: Upload Dropzone */}
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800">Unduh Format Template Import</h4>
-                      <p className="text-[11px] text-slate-500">Gunakan format file ini agar kolom data sesuai dengan sistem ERP.</p>
+                      <label className="group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-300/80 bg-gradient-to-b from-emerald-50/25 to-slate-50/50 p-6 text-center transition-all duration-200 hover:border-emerald-500 hover:bg-emerald-50/40 hover:shadow-xs dark:border-emerald-800/60 dark:bg-slate-900/30 dark:hover:border-emerald-600 dark:hover:bg-emerald-950/20">
+                        <div className="mb-2.5 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 text-[#0E5C44] transition-transform duration-200 group-hover:scale-110 dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                          <FileSpreadsheet className="size-6" strokeWidth={2.2} />
+                        </div>
+                        <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+                          {importFile ? importFile.name : 'Pilih atau Tarik Berkas Spreadsheet Siswa ke Sini'}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-400">
+                          Format disukai: .xlsx, .xls, atau .csv (Maksimal 5MB)
+                        </p>
+                        {importFile && (
+                          <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-100/80 px-3 py-1 text-[11px] font-bold text-[#0E5C44] border border-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800/80">
+                            <CheckCircle2 className="size-3.5" />
+                            <span>{(importFile.size / 1024).toFixed(1)} KB · Berkas Siap Diunggah</span>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept=".csv, .xlsx, .xls"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
+                      </label>
+                      {importFile && (
+                        <div className="flex justify-end mt-1.5">
+                          <button
+                            type="button"
+                            onClick={() => { setImportFile(null); setImportPreviewData([]) }}
+                            className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <X className="size-3" /> Ganti Berkas
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Step 3: Preview Table */}
+                    {importPreviewData.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <span>Preview Data yang Siap Diimpor</span>
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              {importPreviewData.length} baris
+                            </span>
+                          </p>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                            Format Sesuai
+                          </span>
+                        </div>
+                        <div className="max-h-48 overflow-auto rounded-2xl border border-emerald-200/80 bg-white shadow-2xs dark:border-emerald-900/50 dark:bg-[#182232]">
+                          <table className="w-full text-left text-[11px]">
+                            <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 font-bold text-slate-700 dark:text-slate-200">
+                              <tr>
+                                <th className="py-2 px-3">NIS</th>
+                                <th className="py-2 px-3">NISN</th>
+                                <th className="py-2 px-3">Nama Siswa</th>
+                                <th className="py-2 px-3">JK</th>
+                                <th className="py-2 px-3">Unit</th>
+                                <th className="py-2 px-3">Kelas</th>
+                                <th className="py-2 px-3">Orang Tua</th>
+                                <th className="py-2 px-3">No HP</th>
+                                <th className="py-2 px-3 text-center">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                              {importPreviewData.map((row, idx) => (
+                                <tr key={idx} className="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                                  <td className="py-2 px-3 font-mono font-medium text-slate-700 dark:text-slate-300">{row.nis}</td>
+                                  <td className="py-2 px-3 font-mono text-slate-500 dark:text-slate-400">{row.nisn}</td>
+                                  <td className="py-2 px-3 font-bold text-slate-900 dark:text-white">{row.nama}</td>
+                                  <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.gender}</td>
+                                  <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.unit}</td>
+                                  <td className="py-2 px-3 font-semibold text-emerald-700 dark:text-emerald-400">{row.kelas}</td>
+                                  <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{row.namaAyah}</td>
+                                  <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-300">{row.hpAyah}</td>
+                                  <td className="py-2 px-3 text-center">
+                                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80">
+                                      {row.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Guidance Banner */}
+                    <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex items-start gap-2.5">
+                      <ShieldCheck className="size-4.5 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                        Sistem akan memvalidasi keunikan nomor induk siswa (NIS/NISN) dan secara otomatis menautkan data wali dan kelas tanpa merusak integritas database yang sudah ada.
+                      </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleDownloadTemplateSiswa}
-                    className="flex items-center gap-1.5 rounded-xl border border-emerald-600 bg-white px-3.5 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition shadow-xs whitespace-nowrap"
-                  >
-                    <FaDownload className="text-emerald-600" /> Unduh Template
-                  </button>
-                </div>
 
-                {/* Step 2: Upload Dropzone */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-2">Unggah File (Excel / CSV)</label>
-                  <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/50 p-6 text-center hover:bg-slate-50 cursor-pointer transition">
-                    <FaUpload className="text-3xl text-emerald-700 mb-2" />
-                    <span className="text-xs font-bold text-slate-800">
-                      {importFile ? importFile.name : 'Klik untuk memilih file Excel atau CSV'}
-                    </span>
-                    <span className="text-[11px] text-slate-400 mt-0.5">
-                      {importFile ? `${(importFile.size / 1024).toFixed(1)} KB` : 'Format disukai: .csv, .xlsx, .xls (Maks. 5MB)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept=".csv, .xlsx, .xls"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* Step 3: Preview Table */}
-                {importPreviewData.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-slate-800">Preview Data yang Siap Diimpor ({importPreviewData.length} baris)</h4>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
-                        Format Sesuai
-                      </span>
-                    </div>
-                    <div className="overflow-x-auto rounded-xl border border-slate-200">
-                      <table className="w-full text-left text-xs text-slate-600">
-                        <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase">
-                          <tr>
-                            <th className="py-2 px-3">NIS</th>
-                            <th className="py-2 px-3">NISN</th>
-                            <th className="py-2 px-3">Nama Siswa</th>
-                            <th className="py-2 px-3">JK</th>
-                            <th className="py-2 px-3">Unit Pendidikan</th>
-                            <th className="py-2 px-3">Kelas</th>
-                            <th className="py-2 px-3">Nama Ayah</th>
-                            <th className="py-2 px-3">HP Ayah</th>
-                            <th className="py-2 px-3">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {importPreviewData.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50">
-                              <td className="py-2 px-3 font-medium">{row.nis}</td>
-                              <td className="py-2 px-3">{row.nisn}</td>
-                              <td className="py-2 px-3 font-bold text-slate-800">{row.nama}</td>
-                              <td className="py-2 px-3">{row.gender}</td>
-                              <td className="py-2 px-3">{row.unit}</td>
-                              <td className="py-2 px-3 font-semibold">{row.kelas}</td>
-                              <td className="py-2 px-3">{row.namaAyah}</td>
-                              <td className="py-2 px-3">{row.hpAyah}</td>
-                              <td className="py-2 px-3 text-center">
-                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                                  {row.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  {/* Modal Action Footer */}
+                  <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30">
+                    <button
+                      type="button"
+                      disabled={isImporting}
+                      onClick={() => {
+                        setShowImportModal(false)
+                        setImportFile(null)
+                        setImportPreviewData([])
+                      }}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                        <X className="size-3.5 text-white" strokeWidth={2.2} />
+                      </div>
+                      <span>Batal</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!importFile || isImporting}
+                      onClick={handleProcessImport}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 text-white px-5 py-2.5 text-xs font-extrabold shadow-md shadow-emerald-700/20 hover:scale-[1.03] active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {isImporting ? (
+                        <>
+                          <Sparkles className="size-4 animate-spin" />
+                          <span>Memproses Import...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="size-4" />
+                          <span>Proses Import Data</span>
+                        </>
+                      )}
+                    </button>
                   </div>
-                )}
-              </div>
-
-              {/* Modal Action Footer */}
-              <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-6 py-4">
-                <button
-                  type="button"
-                  onClick={() => { setShowImportModal(false); setImportFile(null); setImportPreviewData([]) }}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={!importFile || isImporting}
-                  onClick={handleProcessImport}
-                  className="flex items-center gap-2 rounded-xl bg-[#064e3b] px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-emerald-800 disabled:opacity-50 transition"
-                >
-                  {isImporting ? 'Memproses Import...' : 'Proses Import Data'}
-                </button>
-              </div>
+                </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
 
         {/* Modal Detail Data Statistik Siswa (ERP Stat Cards Popup) */}
         {statCardModal.isOpen && (
@@ -2002,95 +2147,468 @@ export default function StudentsPage() {
         )}
 
         {/* MODAL PILIH OPSI CHAT KE ORANG TUA */}
-        {chatTargetModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-fade-in">
-            <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                    <MessageCircle className="size-5" />
+        <AnimatePresence>
+          {chatTargetModal && (
+            <div
+              className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) setChatTargetModal(null)
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-md"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white p-2.5 shadow-md shadow-emerald-500/30 border border-emerald-300/30 shrink-0">
+                        <MessageCircle className="size-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Hubungi Orang Tua / Wali</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Siswa: <strong className="text-emerald-700 dark:text-emerald-400">{chatTargetModal.nama || chatTargetModal.full_name}</strong>
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setChatTargetModal(null)}
+                      className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-rose-500/20"
+                    >
+                      <X className="size-4 text-white" strokeWidth={2.25} />
+                    </button>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white">Hubungi Orang Tua / Wali</h3>
-                    <p className="text-[11px] font-medium text-slate-500">
-                      Ananda: <strong className="text-emerald-700 dark:text-emerald-400">{chatTargetModal.nama}</strong>
-                    </p>
+
+                  <div className="p-6 space-y-4 text-slate-700 dark:text-slate-200">
+                    <div className="rounded-2xl bg-slate-50/80 p-3.5 text-xs border border-slate-100 dark:bg-slate-900/50 dark:border-slate-800 space-y-1.5">
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-slate-500">Nama Wali:</span>
+                        <strong className="text-slate-800 dark:text-slate-200">{chatTargetModal.orangTua || '-'}</strong>
+                      </div>
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-slate-500">Unit / Kelas:</span>
+                        <strong className="text-slate-800 dark:text-slate-200">{chatTargetModal.unit} • Kelas {chatTargetModal.kelas}</strong>
+                      </div>
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-slate-500">Nomor HP / WA:</span>
+                        <strong className="text-emerald-700 dark:text-emerald-400">{chatTargetModal.noHp || '-'}</strong>
+                      </div>
+                    </div>
+
+                    {/* Field Tulis Pesan untuk Orang Tua */}
+                    <div className="space-y-1.5">
+                      <label className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                        <span>Pesan yang Ingin Dikirim:</span>
+                        <span className="text-[10px] text-slate-400 font-medium">{chatQuickMessage.length}/1000 karakter</span>
+                      </label>
+                      <textarea
+                        value={chatQuickMessage}
+                        onChange={(e) => setChatQuickMessage(e.target.value)}
+                        placeholder="Ketik pesan informasi atau konsultasi untuk orang tua/wali di sini..."
+                        rows={3}
+                        maxLength={1000}
+                        className="w-full rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-emerald-400 resize-none transition shadow-2xs font-medium"
+                      />
+                    </div>
+
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Pilih Jalur Komunikasi:</p>
+
+                    <div className="grid grid-cols-1 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleDirectChatPortal(chatTargetModal)}
+                        className="flex items-center gap-3 w-full p-3 rounded-2xl border border-emerald-300/80 bg-gradient-to-r from-emerald-50 via-teal-50/60 to-white hover:border-emerald-500 text-emerald-950 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-200 transition cursor-pointer text-left shadow-2xs hover:shadow-xs group"
+                      >
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black shadow-xs group-hover:scale-105 transition-transform">
+                          <MessageSquare className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black">Chat Internal SIMS Terpadu</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Pesan resmi tersimpan dalam riwayat komunikasi sekolah</p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDirectWhatsApp(chatTargetModal.noHp, chatTargetModal)}
+                        className="flex items-center gap-3 w-full p-3 rounded-2xl border border-slate-200/80 bg-white hover:border-emerald-400 text-slate-800 dark:bg-slate-900/40 dark:border-slate-800 dark:text-slate-200 transition cursor-pointer text-left shadow-2xs hover:shadow-xs group"
+                      >
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white font-black shadow-xs group-hover:scale-105 transition-transform">
+                          <Phone className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black">Hubungi via WhatsApp</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Kirim pesan langsung ke nomor WhatsApp orang tua</p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="modal-footer flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30">
+                    <button
+                      type="button"
+                      onClick={() => setChatTargetModal(null)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 px-4 py-2 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Batal
+                    </button>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setChatTargetModal(null)}
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-                >
-                  <FaTimes className="size-4" />
-                </button>
-              </div>
-
-              <div className="my-4 space-y-3">
-                <div className="rounded-xl bg-slate-50 p-3 text-xs border border-slate-100 dark:bg-slate-800/50 dark:border-slate-800">
-                  <div className="flex justify-between py-1">
-                    <span className="text-slate-500">Nama Wali:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{chatTargetModal.orangTua || '-'}</strong>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-slate-500">Unit / Kelas:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{chatTargetModal.unit} • Kelas {chatTargetModal.kelas}</strong>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-slate-500">Nomor HP / WA:</span>
-                    <strong className="text-emerald-700 dark:text-emerald-400">{chatTargetModal.noHp || '-'}</strong>
-                  </div>
-                </div>
-
-                <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Pilih Jalur Komunikasi:</p>
-
-                <div className="grid grid-cols-1 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleDirectChatPortal(chatTargetModal)}
-                    className="flex items-center gap-3 w-full p-3 rounded-xl border border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 hover:border-emerald-500 text-emerald-950 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-200 transition cursor-pointer text-left"
-                  >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white font-black">
-                      <MessageSquare className="size-4.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-black">Chat Internal SIMS Terpadu</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Pesan resmi tersimpan dalam riwayat komunikasi sekolah</p>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDirectWhatsApp(chatTargetModal.noHp, chatTargetModal)}
-                    className="flex items-center gap-3 w-full p-3 rounded-xl border border-emerald-200 bg-white hover:border-emerald-400 text-slate-800 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 transition cursor-pointer text-left"
-                  >
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-black">
-                      <Phone className="size-4.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-black">Hubungi via WhatsApp</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Kirim pesan langsung ke nomor WhatsApp orang tua</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <Button
-                  variant="ghost"
-                  appearance="outline"
-                  size="sm"
-                  onClick={() => setChatTargetModal(null)}
-                  className="font-semibold text-xs"
-                >
-                  Batal
-                </Button>
-              </div>
+              </motion.div>
             </div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: KONFIRMASI SIMPAN / PERBARUI DATA SISWA HARMONISASI TAILGRIDS */}
+        <AnimatePresence>
+          {showSaveConfirmDialog && (
+            <div
+              className="overlay modal fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="student-save-confirm-title"
+              tabIndex={-1}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget && !isSaving) setShowSaveConfirmDialog(false)
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-md"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div
+                    className={cn(
+                      "h-1.5 w-full shrink-0",
+                      isEdit
+                        ? "bg-gradient-to-r from-amber-500 via-teal-400 to-emerald-600"
+                        : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"
+                    )}
+                  />
+
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "rounded-2xl text-white p-2.5 shadow-md shrink-0 border",
+                          isEdit
+                            ? "bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 shadow-amber-500/30 border-amber-300/30"
+                            : "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/30 border-emerald-300/30"
+                        )}
+                      >
+                        {isEdit ? (
+                          <Pencil className="h-5 w-5 text-white" strokeWidth={2.25} />
+                        ) : (
+                          <GraduationCap className="h-5 w-5 text-white" strokeWidth={2.25} />
+                        )}
+                      </div>
+                      <div>
+                        <h3
+                          id="student-save-confirm-title"
+                          className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
+                        >
+                          <span>{isEdit ? 'Konfirmasi Perubahan Data' : 'Konfirmasi Penyimpanan Data'}</span>
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border",
+                              isEdit
+                                ? "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60"
+                                : "bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60"
+                            )}
+                          >
+                            <Sparkles className="size-3" />
+                            {isEdit ? 'Update Data' : 'Siswa Baru'}
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {isEdit
+                            ? 'Verifikasi data siswa sebelum pembaruan diterapkan ke server.'
+                            : 'Verifikasi data siswa baru sebelum disimpan ke dalam sistem.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => setShowSaveConfirmDialog(false)}
+                      aria-label="Tutup dialog konfirmasi"
+                      className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
+                    >
+                      <X className="size-4 text-white" strokeWidth={2.25} />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
+                    {/* Target Info Summary Card */}
+                    <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/50 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Nama Siswa</span>
+                        <span className="text-xs font-extrabold text-slate-900 dark:text-white text-right max-w-[220px] truncate">
+                          {pendingSavePayload?.full_name || '-'}
+                        </span>
+                      </div>
+                      {(pendingSavePayload?.nis || pendingSavePayload?.nisn) && (
+                        <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">NIS / NISN</span>
+                          <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {pendingSavePayload?.nis || '-'} / {pendingSavePayload?.nisn || '-'}
+                          </span>
+                        </div>
+                      )}
+                      {pendingSavePayload?.metadata?.unit_pendidikan && (
+                        <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unit Sekolah</span>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {pendingSavePayload.metadata.unit_pendidikan}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Notice Box */}
+                    <div
+                      className={cn(
+                        "rounded-2xl border p-3.5 text-xs font-semibold leading-relaxed flex items-start gap-2.5",
+                        isEdit
+                          ? "border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300"
+                          : "border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "flex size-5 shrink-0 items-center justify-center rounded-lg text-white mt-0.5",
+                          isEdit
+                            ? "bg-gradient-to-br from-amber-500 to-orange-600"
+                            : "bg-gradient-to-br from-emerald-500 to-teal-600"
+                        )}
+                      >
+                        <Sparkles className="size-3 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        {isEdit
+                          ? 'Data siswa yang sudah ada akan segera diperbarui di database server dengan informasi terbaru.'
+                          : 'Data siswa baru akan tersimpan dan langsung aktif sesuai konfigurasi rombel dan unit sistem.'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => setShowSaveConfirmDialog(false)}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                        <X className="size-3" strokeWidth={2.2} />
+                      </div>
+                      <span>Batal</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={handleConfirmSave}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-500/20"
+                    >
+                      {isSaving ? (
+                        <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      ) : (
+                        <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                          <Save className="size-3 text-white" strokeWidth={2.2} />
+                        </div>
+                      )}
+                      <span>
+                        {isSaving
+                          ? isEdit ? 'Memperbarui...' : 'Menyimpan...'
+                          : isEdit ? 'Ya, Perbarui Data' : 'Ya, Simpan Data'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: KONFIRMASI HAPUS DATA SISWA HARMONISASI TAILGRIDS */}
+        <AnimatePresence>
+          {deleteTarget && (
+            <div
+              className="overlay modal fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="student-delete-confirm-title"
+              tabIndex={-1}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget && !isDeleting) setDeleteTarget(null)
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-md"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-rose-200/60 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/50 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 shrink-0" />
+
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl text-white p-2.5 shadow-md shrink-0 border bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/30 border-rose-300/30">
+                        <Trash2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3
+                          id="student-delete-confirm-title"
+                          className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
+                        >
+                          <span>Hapus Data Siswa</span>
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60">
+                            <AlertTriangle className="size-3" />
+                            Hapus Permanen
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Tindakan ini permanen dan tidak dapat dibatalkan.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isDeleting}
+                      onClick={() => setDeleteTarget(null)}
+                      aria-label="Tutup dialog konfirmasi"
+                      className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
+                    >
+                      <X className="size-4 text-white" strokeWidth={2.25} />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
+                    {/* Student Identity Card */}
+                    <div className="rounded-2xl border border-rose-100/90 bg-rose-50/40 p-4 dark:border-rose-900/40 dark:bg-rose-950/20 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <PersonAvatar
+                          src={deleteTarget.foto || deleteTarget.foto_url}
+                          name={deleteTarget.nama || deleteTarget.full_name}
+                          size="sm"
+                          className="border-2 border-rose-300 shadow-sm"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                            {deleteTarget.nama || deleteTarget.full_name || '-'}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            NIS: {deleteTarget.nis || '-'} · NISN: {deleteTarget.nisn || '-'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-rose-100/80 dark:border-rose-900/30 text-xs">
+                        <div>
+                          <span className="text-slate-400 block text-[10px] font-semibold">Unit Sekolah</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{deleteTarget.unit || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px] font-semibold">Kelas</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{deleteTarget.kelas || '-'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Danger Notice Box */}
+                    <div className="rounded-2xl border border-rose-200/80 bg-rose-50/70 p-3.5 text-xs font-semibold text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 leading-relaxed flex items-start gap-2.5">
+                      <div className="flex size-5 shrink-0 items-center justify-center rounded-lg text-white bg-gradient-to-br from-rose-500 to-red-600 mt-0.5">
+                        <AlertTriangle className="size-3 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        Data siswa <strong>"{deleteTarget.nama || deleteTarget.full_name}"</strong> beserta seluruh riwayat absensi, nilai, dan relasi terkait akan dihapus secara permanen dari server.
+                      </div>
+                    </div>
+
+                    {/* Checkbox Konfirmasi */}
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none pt-1">
+                      <input
+                        type="checkbox"
+                        checked={hasConfirmedDeleteCheck}
+                        onChange={(e) => setHasConfirmedDeleteCheck(e.target.checked)}
+                        className="size-4 rounded-md border-rose-300 text-rose-600 focus:ring-rose-500 accent-rose-600"
+                      />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Saya memahami konsekuensi penghapusan permanen ini
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      disabled={isDeleting}
+                      onClick={() => setDeleteTarget(null)}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 px-4 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="flex size-4 items-center justify-center rounded-md bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                        <X className="size-3" strokeWidth={2.2} />
+                      </div>
+                      <span>Batal</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isDeleting || !hasConfirmedDeleteCheck}
+                      onClick={handleConfirmDelete}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-5 py-2.5 text-xs font-extrabold border border-rose-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-rose-500/25"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Sparkles className="size-3.5 animate-spin" />
+                          <span>Menghapus...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="size-3.5" />
+                          <span>Hapus Permanen</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
         </MasterDataPage>
       </motion.div>
+
+      {/* Toast Stack Notification Container */}
+      <ToastStack items={toasts} onDismiss={dismissToast} />
     </PageContainer>
   )
 }

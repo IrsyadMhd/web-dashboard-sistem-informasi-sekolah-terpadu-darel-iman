@@ -159,6 +159,24 @@ export const equranService = {
     return res.data
   },
 
+  /** Preview the EQuran catalogue without saving it to the school database. */
+  getRemoteDoaCatalog: async () => {
+    const res = await api.get('/doa/remote-catalog')
+    return res.data
+  },
+
+  /** Import one reviewed EQuran doa by ID. */
+  importRemoteDoa: async (id) => {
+    const res = await api.post(`/doa/import/${id}`)
+    return res.data
+  },
+
+  /** Permanently remove every local doa and dzikir record. */
+  deleteAllDoas: async () => {
+    const res = await api.delete('/doa')
+    return res.data
+  },
+
   /**
    * Create new manual Doa entry (POST /api/doa)
    */

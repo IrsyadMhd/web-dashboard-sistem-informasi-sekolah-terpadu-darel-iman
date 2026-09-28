@@ -16,7 +16,7 @@ import {
   School,
   FileBadge,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 
 import {
   AppPageHeader,
@@ -32,6 +32,7 @@ import { alumniPortalService } from '../services/alumniPortalService'
 export default function AlumniPortalPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isNotFound, setIsNotFound] = useState(false)
   const [data, setData] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -48,6 +49,7 @@ export default function AlumniPortalPage() {
   const fetchDashboard = async () => {
     setLoading(true)
     setError(null)
+    setIsNotFound(false)
     try {
       const res = await alumniPortalService.getDashboard()
       if (res && res.data) {
@@ -67,7 +69,11 @@ export default function AlumniPortalPage() {
       }
     } catch (err) {
       console.error('Failed to load Alumni dashboard:', err)
-      setError(err.response?.data?.message || 'Gagal memuat data portal Alumni.')
+      if (err.response?.status === 404) {
+        setIsNotFound(true)
+      } else {
+        setError(err.response?.data?.message || 'Gagal memuat data portal Alumni.')
+      }
     } finally {
       setLoading(false)
     }
@@ -109,6 +115,41 @@ export default function AlumniPortalPage() {
   }
 
   if (loading) return <AppSkeleton count={4} />
+
+  if (isNotFound) {
+    return (
+      <div className="space-y-6 pb-12">
+        <AppPageHeader
+          variant="brand"
+          icon={GraduationCap}
+          eyebrow="Portal Alumni & Tracer Study"
+          title="Portal Alumni"
+          description="Pusat komunikasi dan penelusuran lulusan siswa Yayasan Dar el-Iman."
+        />
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+            <GraduationCap className="h-8 w-8" />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">
+            Data Alumni Belum Terhubung
+          </h3>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+            Akun Anda belum terhubung dengan data kelulusan resmi siswa. Silakan hubungi bagian Tata Usaha sekolah untuk melakukan verifikasi dan penautan profil alumni Anda.
+          </p>
+          <div className="mt-6">
+            <button
+              onClick={fetchDashboard}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition cursor-pointer"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Periksa Ulang Status
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (error) return <AppErrorState title="Gagal Memuat Portal Alumni" message={error} onRetry={fetchDashboard} />
 
   const profile = data?.profile || {}

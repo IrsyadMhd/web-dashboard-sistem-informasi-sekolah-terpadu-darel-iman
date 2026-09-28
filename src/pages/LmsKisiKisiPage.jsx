@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, BookOpen, Target, Award, Plus, Search, Edit3, Trash2,
   Copy, CheckCircle2, XCircle, Clock, Sparkles, RefreshCw, X,
@@ -70,12 +70,74 @@ const getJenisBadgeColor = (j) => {
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300'
   }
 }
-// Distribusi default ditangani oleh backend (LmsKisiKisiService::simpan)
+function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+  const cnt = item?.ujian_count || 0
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                Hapus Kisi-kisi?
+              </h3>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus kisi-kisi <strong className="text-slate-900 dark:text-white">"{item.judul_kisi || 'ini'}"</strong>?
+          </p>
+          {cnt > 0 && (
+            <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 dark:border-rose-900/40 dark:bg-rose-950/20 mb-6">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-rose-800 dark:text-rose-300">
+                  Perhatian: Kisi-kisi ini masih dipakai di {cnt} ujian aktif. Menghapus data ini dapat berdampak pada konfigurasi ujian terkait.
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-xs font-extrabold text-white shadow-md shadow-rose-600/30 transition cursor-pointer disabled:opacity-50"
+            >
+              {isSubmitting ? 'Menghapus...' : 'Ya, Hapus'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
 
 export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNavigateToBankSoal }) {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const activeUnit = useUnitStore((s) => s.activeUnit)
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, item: null, isSubmitting: false })
 
   const handleGoToBankSoal = (item) => {
     if (item?.id) {
@@ -87,7 +149,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
       onNavigateToBankSoal(item)
       return
     }
-    navigate(`/dashboard/akademik/perencanaan?tab=bank-soal&kisi_id=${item?.id || ''}`)
+    navigate(`/dashboard/lms/bank-soal?kisi_id=${item?.id || ''}`)
   }
 
   const userUnitId = useMemo(() => {
@@ -278,12 +340,23 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     } catch (err) { showNotification(err?.response?.data?.message || 'Gagal menyimpan kisi-kisi ujian.', 'error') }
   }
 
-  const handleDelete = async (id, item) => {
-    const cnt = item?.ujian_count || 0
-    if (cnt > 0) { if (!window.confirm(`Kisi-kisi ini dipakai di ${cnt} ujian aktif. Hapus tetap akan dilanjutkan?`)) return }
-    else { if (!window.confirm('Yakin ingin menghapus kisi-kisi ujian ini?')) return }
-    try { await lmsKisiKisiService.delete(id); showNotification('Kisi-kisi Ujian berhasil dihapus.'); fetchData(pagination.currentPage); fetchStats() }
-    catch (err) { showNotification('Gagal menghapus kisi-kisi.', 'error') }
+  const handleDelete = (id, item) => {
+    setDeleteModal({ isOpen: true, id, item, isSubmitting: false })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return
+    setDeleteModal((prev) => ({ ...prev, isSubmitting: true }))
+    try {
+      await lmsKisiKisiService.delete(deleteModal.id)
+      showNotification('Kisi-kisi Ujian berhasil dihapus.')
+      fetchData(pagination.currentPage)
+      fetchStats()
+    } catch (err) {
+      showNotification('Gagal menghapus kisi-kisi.', 'error')
+    } finally {
+      setDeleteModal({ isOpen: false, id: null, item: null, isSubmitting: false })
+    }
   }
 
   const handleDuplicate = async (id) => {
@@ -720,6 +793,14 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
             onPrintClean={() => { printCleanTable({ title: 'Laporan Kisi-kisi Ujian', data: dataList, columns: [{ header: 'Judul', accessor: (r) => r.judul_kisi || '-' }, { header: 'Mapel', accessor: (r) => getSubjectLabel(r.mata_pelajaran) }, { header: 'Jenis Ujian', accessor: (r) => r.jenis_ujian || '-' }, { header: 'Target Soal', accessor: (r) => r.jumlah_soal || 0 }, { header: 'Soal Tersedia', accessor: (r) => r.bank_soal_count ?? 0 }, { header: 'Status', accessor: (r) => r.status ? 'Aktif' : 'Nonaktif' }] }); setIsPrintModalOpen(false) }}
             onDownloadPdf={() => { downloadPdfTable({ title: 'Laporan Kisi-kisi Ujian', data: dataList, columns: [{ header: 'Judul', accessor: (r) => r.judul_kisi || '-' }, { header: 'Mapel', accessor: (r) => getSubjectLabel(r.mata_pelajaran) }, { header: 'Jenis Ujian', accessor: (r) => r.jenis_ujian || '-' }, { header: 'Target Soal', accessor: (r) => r.jumlah_soal || 0 }, { header: 'Soal Tersedia', accessor: (r) => r.bank_soal_count ?? 0 }, { header: 'Status', accessor: (r) => r.status ? 'Aktif' : 'Nonaktif' }], filename: `laporan_kisi_kisi_ujian_${new Date().toISOString().slice(0, 10)}.pdf` }); setIsPrintModalOpen(false) }} />
           <CsvImportModal isOpen={importOpen} onClose={() => setImportOpen(false)} title="Import Data Kisi-kisi Ujian" onImport={(file) => showNotification(`File ${file.name} berhasil diproses.`)} templateFields={['judul_kisi', 'mata_pelajaran_id', 'jenis_ujian', 'jumlah_soal', 'alokasi_waktu_menit', 'status']} />
+
+          <HarmonizedDeleteModal
+            isOpen={deleteModal.isOpen}
+            onClose={() => setDeleteModal({ isOpen: false, id: null, item: null, isSubmitting: false })}
+            onConfirm={confirmDelete}
+            item={deleteModal.item}
+            isSubmitting={deleteModal.isSubmitting}
+          />
         </motion.div>
       </div>
     </PageContainer>

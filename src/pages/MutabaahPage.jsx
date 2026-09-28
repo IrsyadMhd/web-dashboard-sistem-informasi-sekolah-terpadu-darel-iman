@@ -4,7 +4,7 @@ import {
   Clock3, Copy, FileDown, FileSpreadsheet, History, ListChecks, Loader2,
   NotebookPen, Pencil, Plus, Printer, Save, Trash2, UserRound, X,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { useLocation, useSearchParams, Navigate } from 'react-router-dom'
 import { mutabaahService } from '../services/mutabaahService'
 import { useAuthStore } from '../stores/authStore'

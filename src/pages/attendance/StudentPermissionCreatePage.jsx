@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Ban, CheckCircle2, Clock3, FilePlus2, Loader2, Paperclip, Send, ShieldAlert } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { attendancePermissionService } from '../../services/attendance/attendancePermissionService'
 import { MasterDataPage, MasterPageHeader, MasterStatCard, MasterStatsGrid } from '../../components/master-data'
 

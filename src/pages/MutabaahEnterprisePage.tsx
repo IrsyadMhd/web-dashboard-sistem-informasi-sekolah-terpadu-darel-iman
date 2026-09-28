@@ -7,17 +7,19 @@ import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack
 import {
   ArchiveRestore, ArrowDown, ArrowUp, BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Eye,
   GripVertical, Layers, Loader2, Pencil, Plus, Printer, RotateCcw, Search, SlidersHorizontal,
-  Trash2, X, Zap,
+  Sparkles, Trash2, X, Zap,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { motion } from 'framer-motion'
 import { Download1, Upload1 } from '@tailgrids/icons'
 import { mutabaahService } from '../services/mutabaahService'
 import MutabaahSubNav from '../components/mutabaah/MutabaahSubNav'
+import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import {
-  MasterDataPage,
-  MasterStatCard,
   MasterStatsGrid,
+  MasterStatCard,
+  SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
 import { Pagination } from '@/components/tailgrids/core/pagination'
@@ -154,119 +156,157 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
   }
 
   return (
-    <MasterDataPage className="education-unit-page mutabaah-enterprise-page" hideBreadcrumb>
-      {/* 📊 KPI CARDS GRID */}
+    <PageContainer maxW="7xl" className="space-y-6 pb-12">
+      {/* 🧭 AppBreadcrumb Navigation */}
+      <AppBreadcrumb
+        className="print:hidden"
+        items={[
+          { href: '/dashboard', label: 'Dashboard' },
+          { href: '/dashboard/mutabaah', label: 'Mutaba’ah Yaumiyyah' },
+          { label: config.title },
+        ]}
+      />
+
+      {/* ── 1. MODERN VIVID EMERALD HERO HEADER CARD ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden"
+      >
+        {/* Dual Multi-Tone Ambient Glow Blobs */}
+        <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <BookOpen className="size-6 sm:size-7 text-white" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                  <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                  Konfigurasi Mutaba’ah Terpadu
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                  Resource: {resource}
+                </span>
+              </div>
+              <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                {config.title}
+              </h1>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                {config.subtitle}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+            <Button
+              type="button"
+              variant="primary"
+              appearance="fill"
+              size="sm"
+              onClick={() => setDrawer({ mode: 'create' })}
+              prefixIcon={<Plus className="h-4 w-4" />}
+              className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+            >
+              Tambah {config.title}
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── 2. KPI CARDS GRID (MASTER STATS GRID) ── */}
       <MasterStatsGrid>
-        <MasterStatCard icon={BookOpen} label={`Total ${config.title}`} value={meta.total || rows.length} description="Data tersimpan di sistem" variant="info" delay={40} />
-        <MasterStatCard icon={CheckCircle2} label="Status Aktif" value={rows.filter((r) => r.is_active || r.status === 'active').length} description="Siap digunakan" variant="success" delay={80} />
-        <MasterStatCard icon={Layers} label="Kategori Master" value={optionsQuery.data?.categories?.length || 0} description="Kategori terintegrasi" variant="info" delay={120} />
-        <MasterStatCard icon={Zap} label="Template Terintegrasi" value={optionsQuery.data?.templates?.length || 0} description="Template mutabaah aktif" variant="warning" delay={160} />
+        <MasterStatCard
+          icon={BookOpen}
+          label={`Total ${config.title}`}
+          value={meta.total || rows.length}
+          description="Data tersimpan di sistem"
+          variant="success"
+        />
+        <MasterStatCard
+          icon={CheckCircle2}
+          label="Status Aktif"
+          value={rows.filter((r) => r.is_active || r.status === 'active').length}
+          description="Siap digunakan santri"
+          variant="info"
+        />
+        <MasterStatCard
+          icon={Layers}
+          label="Kategori Master"
+          value={optionsQuery.data?.categories?.length || 0}
+          description="Kategori terintegrasi"
+          variant="indigo"
+        />
+        <MasterStatCard
+          icon={Zap}
+          label="Template Terintegrasi"
+          value={optionsQuery.data?.templates?.length || 0}
+          description="Template mutabaah aktif"
+          variant="warning"
+        />
       </MasterStatsGrid>
 
       {/* 🧭 CARD MUTABA'AH YAUMIYYAH SUB-NAV */}
       <MutabaahSubNav />
 
-      {/* 🟢 MAIN TABLE & FILTER CARD */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
+      {/* ── 3. EMERALD DATATABLE CONTAINER ── */}
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Header Baris 1: Title & Soft Pastel Squircle Action Buttons */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-teal-950/30">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               {config.title}
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {config.subtitle}
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-visible py-1">
+          <div className="flex items-center gap-2 flex-nowrap shrink-0 overflow-visible py-1">
             <input ref={importRef} hidden type="file" accept=".xlsx,.xls,.csv" onChange={(e) => importData(e.target.files?.[0])} />
 
-            {/* Button: Import Data (Upload1 - Sky Blue) */}
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                aria-label="Import Data"
-                className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-500/30 cursor-pointer shadow-2xs"
-                onClick={() => importRef.current?.click()}
-              >
-                <Upload1 className="size-5 transition-colors" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                Import Data (Excel/CSV)
-              </div>
-            </div>
+            <SquircleActionButton
+              variant="import"
+              label="Import Data (Excel/CSV)"
+              onClick={() => importRef.current?.click()}
+            />
 
-            {/* Button: Export Data (Download1 - Amber/Orange) */}
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                aria-label="Export Data"
-                className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-amber-500/30 cursor-pointer shadow-2xs"
-                onClick={() => exportData('xlsx')}
-              >
-                <Download1 className="size-5 transition-colors" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                Export Data (Excel/CSV)
-              </div>
-            </div>
+            <SquircleActionButton
+              variant="export"
+              label="Export Data (Excel/CSV)"
+              onClick={() => exportData('xlsx')}
+            />
 
-            {/* Button: Cetak Data (Printer - Indigo) */}
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                aria-label="Cetak Data"
-                className="flex size-10 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-indigo-600/30 cursor-pointer shadow-2xs"
-                onClick={() => setPrintOptionModalOpen(true)}
-              >
-                <Printer className="size-5 transition-colors" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                Cetak Data
-              </div>
-            </div>
+            <SquircleActionButton
+              variant="view"
+              icon={Printer}
+              label="Cetak Data"
+              onClick={() => setPrintOptionModalOpen(true)}
+            />
 
-            {/* Button: Tambah Data (Plus - Emerald Green) */}
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                aria-label="Tambah Data"
-                className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-emerald-600/30 cursor-pointer shadow-2xs"
-                onClick={() => setDrawer({ mode: 'create' })}
-              >
-                <Plus className="size-5 transition-colors" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                Tambah {config.title}
-              </div>
-            </div>
+            <SquircleActionButton
+              variant="primary"
+              label={`Tambah ${config.title}`}
+              onClick={() => setDrawer({ mode: 'create' })}
+            />
 
             {selected.length > 0 && (
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  aria-label={`Hapus ${selected.length} Terpilih`}
-                  className="flex size-10 items-center justify-center rounded-2xl bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-rose-600/30 cursor-pointer shadow-2xs"
-                  onClick={bulkDelete}
-                >
-                  <Trash2 className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                  Hapus {selected.length} Terpilih
-                </div>
-              </div>
+              <SquircleActionButton
+                variant="delete"
+                label={`Hapus ${selected.length} Terpilih`}
+                onClick={bulkDelete}
+              />
             )}
           </div>
         </div>
 
         {/* Filter Baris 2: Filter Toolbar */}
-        <div className="py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="px-5 py-3.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:border-emerald-800/60 dark:from-emerald-950/30 dark:via-teal-950/20">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 items-end">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Pencarian</label>
@@ -277,7 +317,7 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
                   placeholder={`Cari ${config.title.toLowerCase()}...`}
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 />
               </div>
             </div>
@@ -288,7 +328,7 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
                 <select
                   value={categoryId}
                   onChange={(e) => { setCategoryId(e.target.value); setPage(1) }}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                 >
                   <option value="">Semua Kategori</option>
                   {optionsQuery.data?.categories?.map((x: any) => (
@@ -303,7 +343,7 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
               <select
                 value={status}
                 onChange={(e) => { setStatus(e.target.value); setPage(1) }}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 <option value="">Semua Status</option>
                 <option value="active">Aktif</option>
@@ -316,7 +356,7 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
               <select
                 value={perPage}
                 onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
                 <option value={5}>5 per hal</option>
                 <option value={10}>10 per hal</option>
@@ -329,34 +369,35 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
 
             <div>
               <button
+                type="button"
                 onClick={resetFilters}
-                className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer transition-colors"
               >
-                <RotateCcw className="h-3.5 w-3.5" /> Reset
+                <RotateCcw className="h-3.5 w-3.5" /> Reset Filter
               </button>
             </div>
           </div>
         </div>
 
         {/* Tabel Data */}
-        <div className="overflow-x-auto mt-4">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 font-bold text-slate-500 uppercase tracking-wider dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
+              <tr className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-[11px] font-extrabold uppercase tracking-wider text-emerald-950 dark:border-emerald-800/80 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200">
                 {table.getHeaderGroups().map((group) => (
                   group.headers.map((header) => (
-                    <th key={header.id} className="px-3 py-3">
+                    <th key={header.id} className="px-4 py-3.5 font-extrabold">
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
                   ))
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
               {listQuery.isLoading && (
                 Array.from({ length: 7 }).map((_, index) => (
                   <tr key={index} className="animate-pulse">
-                    <td colSpan={columns.length} className="px-3 py-3">
+                    <td colSpan={columns.length} className="px-4 py-3">
                       <div className="h-4 w-full rounded bg-slate-100 dark:bg-slate-800" />
                     </td>
                   </tr>
@@ -372,9 +413,9 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
               )}
 
               {!listQuery.isLoading && !listQuery.isError && table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition ${row.original.trashed ? 'opacity-60 bg-rose-50/30' : ''}`}>
+                <tr key={row.id} className={`hover:bg-emerald-50/30 dark:hover:bg-slate-800/30 transition ${row.original.trashed ? 'opacity-60 bg-rose-50/30' : ''}`}>
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-3">
+                    <td key={cell.id} className="px-4 py-3">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -393,7 +434,7 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
         </div>
 
         {/* Pagination Bar */}
-        <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 mt-2">
+        <div className="w-full border-t border-emerald-200/80 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-slate-500 font-medium">
             Menampilkan <span className="font-bold text-slate-700 dark:text-slate-200">{rows.length > 0 ? (page - 1) * perPage + 1 : 0}</span> s.d. <span className="font-bold text-slate-700 dark:text-slate-200">{Math.min(page * perPage, meta.total || rows.length)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-200">{meta.total || rows.length}</span> data
           </div>
@@ -424,10 +465,10 @@ function EnterpriseWorkspace({ resource }: { resource: Resource }) {
         isOpen={printOptionModalOpen}
         onClose={() => setPrintOptionModalOpen(false)}
         onPrint={handlePrintClean}
-        onDownload={handleDownloadPdfTable}
+        onDownloadPdf={handleDownloadPdfTable}
         title={config.title}
       />
-    </MasterDataPage>
+    </PageContainer>
   )
 }
 
@@ -446,14 +487,20 @@ function CrudDrawer({ config, state, options, close, save, saving }: any) {
   const selectedUnit = options.units?.find((u: any) => u.id === watch('education_unit_id'))
   const boarding = /pesantren|ma.?had/i.test(selectedUnit?.name || '')
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-xs" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <motion.form initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ duration: .2 }} className="w-full max-w-lg bg-white h-full shadow-2xl overflow-y-auto flex flex-col dark:bg-[#1B2433]" onSubmit={handleSubmit(save)}>
+    <div className="fixed inset-0 z-[70] flex justify-end bg-slate-950/70 backdrop-blur-md" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+      <motion.form initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ duration: .2 }} className="w-full max-w-lg bg-white h-full shadow-2xl overflow-y-auto flex flex-col dark:bg-[#1B2433] relative" onSubmit={handleSubmit(save)}>
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
         <header className="flex items-center justify-between border-b border-slate-100 p-5 dark:border-slate-800">
-          <div>
-            <small className="text-[11px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Mutaba’ah Yaumiyyah</small>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">{state.mode === 'create' ? 'Tambah' : state.mode === 'detail' ? 'Detail' : 'Edit'} {config.title}</h2>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+              {state.mode === 'create' ? <Plus className="size-5" /> : state.mode === 'detail' ? <Eye className="size-5" /> : <Pencil className="size-5" />}
+            </div>
+            <div>
+              <small className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Mutaba’ah Yaumiyyah</small>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">{state.mode === 'create' ? 'Tambah' : state.mode === 'detail' ? 'Detail' : 'Edit'} {config.title}</h2>
+            </div>
           </div>
-          <button type="button" onClick={close} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="size-5" /></button>
+          <button type="button" onClick={close} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"><X className="size-5" /></button>
         </header>
         <main className="p-5 space-y-4 flex-1">
           {config.fields.filter((field: Field) => !field.conditional || (field.conditional === 'boarding' ? boarding : !boarding)).map((field: Field) => (
@@ -461,9 +508,9 @@ function CrudDrawer({ config, state, options, close, save, saving }: any) {
           ))}
         </main>
         <footer className="flex justify-end gap-2 border-t border-slate-100 p-4 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/40">
-          <Button appearance="outline" size="sm" type="button" onClick={close}>Tutup</Button>
+          <Button appearance="outline" size="sm" type="button" onClick={close} className="cursor-pointer">Tutup</Button>
           {state.mode !== 'detail' && (
-            <Button variant="primary" size="sm" type="submit" disabled={saving}>
+            <Button variant="primary" size="sm" type="submit" disabled={saving} className="cursor-pointer">
               {saving && <Loader2 className="size-4 animate-spin mr-1" />} Simpan
             </Button>
           )}
@@ -567,14 +614,20 @@ function TemplateItemsDrawer({ template, options, close, refresh }: any) {
   const move = async (index: number, offset: number) => { const target = index + offset; if (target < 0 || target >= items.length) return; const next = [...items]; [next[index], next[target]] = [next[target], next[index]]; setItems(next); await mutabaahService.templateReorder(template.id, next.map((item, i) => ({ id: item.id, sort_order: i + 1 }))) }
   const add = async () => { if (!agendaId) return; try { const result = await mutabaahService.templateItemCreate(template.id, { agenda_item_id: agendaId, sort_order: items.length + 1, weight: 1, is_required: true, requires_parent_signature: false, is_active: true }); setItems([...items, result.data]); setAgendaId(''); toast('success', result.message) } catch (error) { showError(error) } }
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-xs">
-      <aside className="w-full max-w-xl bg-white h-full shadow-2xl overflow-y-auto flex flex-col dark:bg-[#1B2433]">
+    <div className="fixed inset-0 z-[70] flex justify-end bg-slate-950/70 backdrop-blur-md">
+      <aside className="w-full max-w-xl bg-white h-full shadow-2xl overflow-y-auto flex flex-col dark:bg-[#1B2433] relative">
+        <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-purple-400 to-emerald-500 shrink-0" />
         <header className="flex items-center justify-between border-b border-slate-100 p-5 dark:border-slate-800">
-          <div>
-            <small className="text-[11px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Detail Template</small>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">{template.name}</h2>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/20">
+              <GripVertical className="size-5" />
+            </div>
+            <div>
+              <small className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Detail Template</small>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">{template.name}</h2>
+            </div>
           </div>
-          <button onClick={close} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="size-5" /></button>
+          <button onClick={close} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"><X className="size-5" /></button>
         </header>
         <main className="p-5 space-y-3 flex-1">
           <div className="flex gap-2 mb-4">
@@ -582,7 +635,7 @@ function TemplateItemsDrawer({ template, options, close, refresh }: any) {
               <option value="">Pilih agenda...</option>
               {options.agendas?.filter((a: any) => !items.some((i: any) => i.agenda_item_id === a.id)).map((a: any) => <option value={a.id} key={a.id}>{a.code} — {a.name}</option>)}
             </select>
-            <Button variant="primary" size="sm" onClick={add}><Plus className="size-4 mr-1" /> Tambah</Button>
+            <Button variant="primary" size="sm" onClick={add} className="cursor-pointer"><Plus className="size-4 mr-1" /> Tambah</Button>
           </div>
 
           {items.map((item: any, index: number) => (
@@ -609,7 +662,7 @@ function TemplateItemsDrawer({ template, options, close, refresh }: any) {
           {!items.length && <EmptyState onCreate={() => null} compact />}
         </main>
         <footer className="flex justify-end p-4 border-t border-slate-100 dark:border-slate-800">
-          <Button appearance="outline" size="sm" onClick={() => { refresh(); close() }}>Selesai</Button>
+          <Button appearance="outline" size="sm" onClick={() => { refresh(); close() }} className="cursor-pointer">Selesai</Button>
         </footer>
       </aside>
     </div>
@@ -641,7 +694,7 @@ function EmptyState({ onCreate, compact = false }: any) {
       <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">Belum ada data</h3>
       <p className="text-[11px] text-slate-400 mt-0.5">Data belum tersedia atau tidak cocok dengan filter aktif.</p>
       {!compact && (
-        <Button variant="primary" size="sm" className="mt-3" onClick={onCreate}>
+        <Button variant="primary" size="sm" className="mt-3 cursor-pointer" onClick={onCreate}>
           <Plus className="size-4 mr-1" /> Tambah Data
         </Button>
       )}
@@ -655,7 +708,7 @@ function ErrorState({ retry }: any) {
       <X className="size-8 mb-2 text-rose-400" />
       <h3 className="text-xs font-bold">Data gagal dimuat</h3>
       <p className="text-[11px] text-slate-400 mt-0.5">Periksa koneksi atau permission, kemudian coba kembali.</p>
-      <Button appearance="outline" size="sm" className="mt-3" onClick={retry}>Coba Lagi</Button>
+      <Button appearance="outline" size="sm" className="mt-3 cursor-pointer" onClick={retry}>Coba Lagi</Button>
     </div>
   )
 }

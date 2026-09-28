@@ -23,11 +23,11 @@ import {
   ToggleLeft,
   ToggleRight,
   UploadCloud,
-  Wrench,
   AlertTriangle,
   Trash2,
+  XCircle,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import { motion, AnimatePresence } from 'framer-motion'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { Button } from '../components/tailgrids/core/button'
 import { DEFAULT_MOBILE_API_CONFIG, mobileApiConfigService } from '../services/mobileApiConfigService'
@@ -116,6 +116,133 @@ const FEATURE_DEFINITIONS = [
   },
 ]
 
+// ── TOAST NOTIFICATION HELPER ──────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const add = (type, title, message) => {
+    const id = Date.now() + Math.random()
+    setToasts((p) => [...p, { id, type, title, message }])
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000)
+  }
+  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
+  return {
+    toasts,
+    dismiss,
+    success: (t, m) => add('success', t, m),
+    error: (t, m) => add('error', t, m),
+    warning: (t, m) => add('warning', t, m),
+    info: (t, m) => add('info', t, m),
+  }
+}
+
+// ── HARMONIZED DELETE MODAL ───────────────────────────────────────────────
+function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">Hapus {item.label}?</h3>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Asset khusus mobile akan dihapus dari server dan dikembalikan ke status fallback bawaan.
+          </p>
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 dark:border-rose-900/40 dark:bg-rose-950/20 mb-6">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-rose-800 dark:text-rose-300">
+                Tindakan ini akan langsung menghapus file dari storage backend.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-rose-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              {isSubmitting ? 'Menghapus...' : 'Ya, Hapus Asset'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── RESET CONFIRM MODAL ───────────────────────────────────────────────────
+function ResetConfirmModal({ isOpen, onClose, onConfirm }) {
+  if (!isOpen) return null
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-md shadow-amber-500/30">
+              <RotateCcw className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                Kembalikan Nilai
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">Kembalikan ke Default?</h3>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
+            Nilai formulir akan dikembalikan ke setelan awal pabrik (belum tersimpan sebelum Anda klik Publikasikan).
+          </p>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 transition-all cursor-pointer"
+            >
+              Ya, Reset Formulir
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function MobileApiConfigPage() {
   const [config, setConfig] = useState(DEFAULT_MOBILE_API_CONFIG)
   const [loading, setLoading] = useState(true)
@@ -123,13 +250,18 @@ export default function MobileApiConfigPage() {
   const [activeTab, setActiveTab] = useState('identitas') // 'identitas' | 'tampilan' | 'dashboard' | 'fitur' | 'sistem'
   const [selectedRole, setSelectedRole] = useState('super_admin')
   const [uploadingAsset, setUploadingAsset] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [resetModalOpen, setResetModalOpen] = useState(false)
+
+  const { toasts, dismiss, success: toastSuccess, error: toastError, warning: toastWarning } = useToast()
 
   useEffect(() => {
     mobileApiConfigService
       .getConfig()
       .then(setConfig)
       .catch(() =>
-        Swal.fire('Gagal Memuat', 'Konfigurasi Android belum dapat dimuat dari server.', 'error')
+        toastError('Gagal Memuat', 'Konfigurasi Android belum dapat dimuat dari server.')
       )
       .finally(() => setLoading(false))
   }, [])
@@ -141,47 +273,44 @@ export default function MobileApiConfigPage() {
     try {
       const updated = await mobileApiConfigService.uploadMedia(type, file)
       setConfig(updated)
-      Swal.fire({
-        icon: 'success',
-        title: 'Berhasil Diunggah',
-        text: `Asset ${type.replace('_', ' ')} berhasil diunggah dan tersimpan ke database.`,
-        timer: 1800,
-        showConfirmButton: false,
-      })
+      toastSuccess(
+        'Berhasil Diunggah',
+        `Asset ${type.replace('_', ' ')} berhasil diunggah dan tersimpan ke database.`
+      )
     } catch (err) {
-      Swal.fire('Gagal Mengunggah', err?.response?.data?.message || 'Unggahan asset gagal diproses.', 'error')
+      toastError(
+        'Gagal Mengunggah',
+        err?.response?.data?.message || 'Unggahan asset gagal diproses.'
+      )
     } finally {
       setUploadingAsset(null)
       e.target.value = ''
     }
   }
 
-  const handleDeleteMedia = async (type, label) => {
-    const confirm = await Swal.fire({
-      title: `Hapus ${label}?`,
-      text: 'Asset khusus mobile akan dihapus dari server dan dikembalikan ke status fallback.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#DC2626',
-      cancelButtonColor: '#64748B',
-      confirmButtonText: 'Ya, hapus asset',
-      cancelButtonText: 'Batal',
-    })
-    if (!confirm.isConfirmed) return
-    setUploadingAsset(type)
+  const handleDeleteMedia = (type, label) => {
+    setDeleteTarget({ type, label })
+  }
+
+  const handleConfirmDeleteMedia = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    setUploadingAsset(deleteTarget.type)
     try {
-      const updated = await mobileApiConfigService.deleteMedia(type)
+      const updated = await mobileApiConfigService.deleteMedia(deleteTarget.type)
       setConfig(updated)
-      Swal.fire({
-        icon: 'success',
-        title: 'Berhasil Dihapus',
-        text: `Asset ${label} telah dihapus dan status fallback dipulihkan.`,
-        timer: 1800,
-        showConfirmButton: false,
-      })
+      toastSuccess(
+        'Berhasil Dihapus',
+        `Asset ${deleteTarget.label} telah dihapus dan status fallback dipulihkan.`
+      )
+      setDeleteTarget(null)
     } catch (err) {
-      Swal.fire('Gagal Menghapus', err?.response?.data?.message || 'Gagal menghapus asset.', 'error')
+      toastError(
+        'Gagal Menghapus',
+        err?.response?.data?.message || 'Gagal menghapus asset.'
+      )
     } finally {
+      setIsDeleting(false)
       setUploadingAsset(null)
     }
   }
@@ -260,16 +389,14 @@ export default function MobileApiConfigPage() {
     try {
       const saved = await mobileApiConfigService.saveConfig(config)
       setConfig(saved)
-      await Swal.fire(
+      toastSuccess(
         'Berhasil Dipublikasikan',
-        `Konfigurasi Mobile App Android versi ${saved.version} telah disimpan secara terpusat di database.`,
-        'success'
+        `Konfigurasi Mobile App Android versi ${saved.version} telah disimpan secara terpusat di database.`
       )
     } catch (error) {
-      await Swal.fire(
+      toastError(
         'Gagal Menyimpan',
-        error?.response?.data?.message || 'Konfigurasi gagal disimpan.',
-        'error'
+        error?.response?.data?.message || 'Konfigurasi gagal disimpan.'
       )
     } finally {
       setSaving(false)
@@ -277,20 +404,13 @@ export default function MobileApiConfigPage() {
   }
 
   const resetToDefault = () => {
-    Swal.fire({
-      title: 'Kembalikan ke Default?',
-      text: 'Nilai formulir akan dikembalikan ke setelan awal pabrik (belum tersimpan sebelum Anda klik Publikasikan).',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#0E5C44',
-      cancelButtonColor: '#94A3B8',
-      confirmButtonText: 'Ya, reset formulir',
-      cancelButtonText: 'Batal',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setConfig(DEFAULT_MOBILE_API_CONFIG)
-      }
-    })
+    setResetModalOpen(true)
+  }
+
+  const handleConfirmReset = () => {
+    setConfig(DEFAULT_MOBILE_API_CONFIG)
+    setResetModalOpen(false)
+    toastSuccess('Formulir Direset', 'Nilai formulir telah dikembalikan ke setelan awal pabrik.')
   }
 
   const inputClass =
@@ -306,6 +426,35 @@ export default function MobileApiConfigPage() {
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
+      {/* ── TOAST NOTIFICATIONS ──────────────────────────────────────────── */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto flex items-start gap-3 rounded-xl p-3.5 shadow-lg border backdrop-blur-md transition-all ${
+              t.type === 'success'
+                ? 'bg-emerald-600/95 text-white border-emerald-400'
+                : t.type === 'error'
+                ? 'bg-rose-600/95 text-white border-rose-400'
+                : t.type === 'warning'
+                ? 'bg-amber-600/95 text-white border-amber-400'
+                : 'bg-sky-600/95 text-white border-sky-400'
+            }`}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold leading-tight">{t.title}</p>
+              {t.message && <p className="mt-0.5 text-xs opacity-90 leading-snug">{t.message}</p>}
+            </div>
+            <button
+              onClick={() => dismiss(t.id)}
+              className="rounded-lg p-0.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+            >
+              <XCircle className="size-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <AppBreadcrumb pageTitle="Pengaturan Mobile App Android" />
 
       {/* Main Container */}
@@ -330,7 +479,7 @@ export default function MobileApiConfigPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
             <Button onClick={save} pending={saving} disabled={loading} variant="primary">
               <Save className="h-4 w-4" /> Publikasikan Perubahan
             </Button>
@@ -1271,6 +1420,20 @@ export default function MobileApiConfigPage() {
           </Button>
         </footer>
       </section>
+
+      {/* TailGrids Harmonized Modals */}
+      <HarmonizedDeleteModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDeleteMedia}
+        item={deleteTarget}
+        isSubmitting={isDeleting}
+      />
+      <ResetConfirmModal
+        isOpen={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
+        onConfirm={handleConfirmReset}
+      />
     </div>
   )
 }

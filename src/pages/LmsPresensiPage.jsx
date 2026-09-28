@@ -25,7 +25,7 @@ import {
   CheckSquare,
   Award,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { lmsPresensiService } from '../services/lmsPresensiService'
 
 export default function LmsPresensiPage() {

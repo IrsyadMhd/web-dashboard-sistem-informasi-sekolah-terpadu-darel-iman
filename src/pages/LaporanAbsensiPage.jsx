@@ -51,6 +51,7 @@ import {
   YAxis,
 } from 'recharts'
 import { exportCsv } from '../components/reports/ReportKit'
+import { downloadFileFromApi } from '../utils/exportUtils'
 import { reportService } from '../services/reportService'
 import { educationUnitService } from '../services/educationUnitService'
 import { kelasService } from '../services/kelasService'
@@ -67,6 +68,7 @@ import {
 } from '../components/tailgrids/core/dialog'
 import { Badge } from '../components/tailgrids/core/badge'
 import { Button } from '../components/tailgrids/core/button'
+import { Pagination } from '../components/tailgrids/core/pagination'
 import { Backdrop, OverlayWrapper } from '../components/tailgrids/core/overlay'
 
 const PAGE_SIZE = 5
@@ -117,7 +119,7 @@ const exportDatatable = (rowsToExport, format = 'csv', filename = 'laporan-absen
   link.href = url
   link.download = `${filename}${ext}`
   link.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 1500)
 }
 
 const parseImportedContent = (text) => {
@@ -670,57 +672,67 @@ export default function LaporanAbsensiPage() {
     setNotice('File laporan berhasil diunduh.')
   }
 
-  const handlePrintClean = useCallback(() => {
-    if (groupByMode === 'siswa') {
-      const headers = ['No', 'Nama Siswa', 'NIS', 'Unit Pendidikan', 'Kelas & Rombel', 'Mata Pelajaran', 'Total Presensi', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
-      const printRows = groupedByStudentRows.map((g, i) => [
-        i + 1,
-        g.studentName,
-        g.nis,
-        g.unitName,
-        g.kelasName,
-        g.subjectListStr,
-        g.total,
-        g.hadir,
-        g.terlambat,
-        g.izin,
-        g.sakit,
-        g.alpa,
-        `${g.percentHadir}%`
-      ])
-      printCleanTable({
-        title: 'Rekap Absensi Pembelajaran per Siswa',
-        subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
-        headers,
-        rows: printRows,
-      })
-    } else {
-      const headers = ['No', 'Mata Pelajaran', 'Unit Pendidikan', 'Kelas & Rombel', 'Total Record', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
-      const printRows = groupedBySubjectRows.map((g, i) => [
-        i + 1,
-        g.subjectName,
-        g.unitListStr,
-        g.kelasListStr,
-        g.total,
-        g.hadir,
-        g.terlambat,
-        g.izin,
-        g.sakit,
-        g.alpa,
-        `${g.percentHadir}%`
-      ])
-      printCleanTable({
-        title: 'Rekap Absensi Pembelajaran per Mata Pelajaran',
-        subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
-        headers,
-        rows: printRows,
-      })
-    }
-  }, [groupByMode, groupedByStudentRows, groupedBySubjectRows])
+  const handlePrintClean = useCallback((chosenOrientation = 'portrait') => {
+    const activeUnitObj = unitList.find((u) => String(u.id) === String(filters.unit_id || draft.unit_id))
+    const resolvedUnitParam = activeUnitObj || filters.unit_id || draft.unit_id || null
 
-  const handleDownloadPdfTable = useCallback(() => {
     if (groupByMode === 'siswa') {
-      const headers = ['No', 'Nama Siswa', 'NIS', 'Unit Pendidikan', 'Kelas & Rombel', 'Mata Pelajaran', 'Total Presensi', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
+      const headers = ['No', 'Nama Siswa', 'NIS', 'Unit', 'Kelas & Rombel', 'Mata Pelajaran', 'Total', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alfa', '% Hadir']
+      const printRows = groupedByStudentRows.map((g, i) => [
+        i + 1,
+        g.studentName,
+        g.nis,
+        g.unitName,
+        g.kelasName,
+        g.subjectListStr,
+        g.total,
+        g.hadir,
+        g.terlambat,
+        g.izin,
+        g.sakit,
+        g.alpa,
+        `${g.percentHadir}%`
+      ])
+      printCleanTable({
+        title: 'Rekap Absensi Pembelajaran per Siswa',
+        subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
+        headers,
+        rows: printRows,
+        unit: resolvedUnitParam,
+        orientation: chosenOrientation,
+      })
+    } else {
+      const headers = ['No', 'Mata Pelajaran', 'Unit Pendidikan', 'Kelas & Rombel', 'Total Record', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
+      const printRows = groupedBySubjectRows.map((g, i) => [
+        i + 1,
+        g.subjectName,
+        g.unitListStr,
+        g.kelasListStr,
+        g.total,
+        g.hadir,
+        g.terlambat,
+        g.izin,
+        g.sakit,
+        g.alpa,
+        `${g.percentHadir}%`
+      ])
+      printCleanTable({
+        title: 'Rekap Absensi Pembelajaran per Mata Pelajaran',
+        subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
+        headers,
+        rows: printRows,
+        unit: resolvedUnitParam,
+        orientation: chosenOrientation,
+      })
+    }
+  }, [groupByMode, groupedByStudentRows, groupedBySubjectRows, unitList, filters.unit_id, draft.unit_id])
+
+  const handleDownloadPdfTable = useCallback((chosenOrientation = 'portrait') => {
+    const activeUnitObj = unitList.find((u) => String(u.id) === String(filters.unit_id || draft.unit_id))
+    const resolvedUnitParam = activeUnitObj || filters.unit_id || draft.unit_id || null
+
+    if (groupByMode === 'siswa') {
+      const headers = ['No', 'Nama Siswa', 'NIS', 'Unit', 'Kelas & Rombel', 'Mata Pelajaran', 'Total', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alfa', '% Hadir']
       const printRows = groupedByStudentRows.map((g, i) => [
         i + 1,
         g.studentName,
@@ -741,7 +753,9 @@ export default function LaporanAbsensiPage() {
         subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
         headers,
         rows: printRows,
-        filename: `Laporan_Absensi_Siswa_${new Date().toISOString().slice(0, 10)}.pdf`
+        filename: `Laporan_Absensi_Siswa_${new Date().toISOString().slice(0, 10)}.pdf`,
+        unit: resolvedUnitParam,
+        orientation: chosenOrientation,
       })
     } else {
       const headers = ['No', 'Mata Pelajaran', 'Unit Pendidikan', 'Kelas & Rombel', 'Total Record', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', '% Kehadiran']
@@ -763,10 +777,12 @@ export default function LaporanAbsensiPage() {
         subtitle: 'Pemantauan dan rekapitulasi presensi siswa per mata pelajaran',
         headers,
         rows: printRows,
-        filename: `Laporan_Absensi_Mapel_${new Date().toISOString().slice(0, 10)}.pdf`
+        filename: `Laporan_Absensi_Mapel_${new Date().toISOString().slice(0, 10)}.pdf`,
+        unit: resolvedUnitParam,
+        orientation: chosenOrientation,
       })
     }
-  }, [groupByMode, groupedByStudentRows, groupedBySubjectRows])
+  }, [groupByMode, groupedByStudentRows, groupedBySubjectRows, unitList, filters.unit_id, draft.unit_id])
 
   const printReport = () => {
     setPrintOptionModalOpen(true)
@@ -1180,9 +1196,9 @@ export default function LaporanAbsensiPage() {
 
         <div className="px-4 sm:px-6 md:px-8 py-2 overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold tracking-wider uppercase text-[11px]">
-                <th className="py-3.5 px-3 w-12 text-center">NO</th>
+            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 font-bold tracking-wider uppercase text-[11px]">
+                <th className="py-3.5 px-3 w-12 text-center bg-transparent">NO</th>
                 {groupByMode === 'siswa' ? (
                   <>
                     <th className="py-3.5 px-3">SISWA</th>
@@ -1502,31 +1518,20 @@ export default function LaporanAbsensiPage() {
           </table>
         </div>
 
-        <div className="w-full border-t border-slate-100 dark:border-slate-800 px-4 py-3.5 sm:px-6 md:px-8 flex items-center justify-between">
+        <div className="w-full border-t border-slate-100 dark:border-slate-800 px-4 py-3.5 sm:px-6 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-xs font-semibold text-slate-500">
             Menampilkan {activeGroupedRows.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, activeGroupedRows.length)} dari {activeGroupedRows.length} {groupByMode === 'siswa' ? 'siswa' : 'mata pelajaran'}
           </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              disabled={page === 1}
-              onClick={() => setPage((value) => value - 1)}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="text-xs font-bold px-2 text-slate-700 dark:text-slate-300">
-              {page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={page === totalPages}
-              onClick={() => setPage((value) => value + 1)}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          {totalPages > 1 && (
+            <div className="w-full sm:w-auto">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+                sideLayout="icon"
+              />
+            </div>
+          )}
         </div>
       </article>
 
@@ -1712,128 +1717,132 @@ export default function LaporanAbsensiPage() {
         </Dialog>
       )}
 
-      {/* Modal Detail Presensi Siswa per Mata Pelajaran */}
+      {/* Student Drill-Down Detail Modal */}
       {selectedStudentGroup && (
         <Dialog
-          isOpen={!!selectedStudentGroup}
+          isOpen={Boolean(selectedStudentGroup)}
           onOpenChange={(open) => !open && setSelectedStudentGroup(null)}
           showCloseButton={true}
-          className="w-full max-w-4xl rounded-2xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+          modalClassName="z-[70] bg-slate-950/70 backdrop-blur-md"
+          className="w-full max-w-4xl rounded-3xl p-0 overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
         >
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
-              <Avatar className="size-10 border-2 border-emerald-500 shadow-xs">
-                <AvatarImage src={selectedStudentGroup.student?.photo_url || selectedStudentGroup.student?.photo} />
-                <AvatarFallback className="bg-emerald-100 text-emerald-800 font-bold">{(selectedStudentGroup.studentName).slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div>
-                <span>Detail Presensi — {selectedStudentGroup.studentName}</span>
-                <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
-                  NIS: {selectedStudentGroup.nis} • {selectedStudentGroup.unitName} • {selectedStudentGroup.kelasName} ({selectedStudentGroup.total} Record Presensi)
-                </span>
-              </div>
-            </DialogTitle>
-          </DialogHeader>
+          <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+          <div className="p-6">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2.5">
+                <Avatar className="size-10 border-2 border-emerald-500 shadow-xs">
+                  <AvatarImage src={selectedStudentGroup.student?.photo_url || selectedStudentGroup.student?.photo} />
+                  <AvatarFallback className="bg-emerald-100 text-emerald-800 font-bold">{(selectedStudentGroup.studentName).slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <span>Detail Presensi — {selectedStudentGroup.studentName}</span>
+                  <span className="block text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                    NIS: {selectedStudentGroup.nis} • {selectedStudentGroup.unitName} • {selectedStudentGroup.kelasName} ({selectedStudentGroup.total} Record Presensi)
+                  </span>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
 
-          <DialogBody className="py-4 space-y-4 max-h-[65vh] overflow-y-auto">
-            <div className="grid grid-cols-5 gap-2 text-center text-xs">
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
-                <span className="text-[10px] font-bold text-emerald-600 uppercase block">Hadir</span>
-                <strong className="text-base font-black text-emerald-700 dark:text-emerald-300">{selectedStudentGroup.hadir}</strong>
+            <DialogBody className="py-4 space-y-4 max-h-[65vh] overflow-y-auto">
+              <div className="grid grid-cols-5 gap-2 text-center text-xs">
+                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase block">Hadir</span>
+                  <strong className="text-base font-black text-emerald-700 dark:text-emerald-300">{selectedStudentGroup.hadir}</strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200/60 dark:border-violet-800/60">
+                  <span className="text-[10px] font-bold text-violet-600 uppercase block">Terlambat</span>
+                  <strong className="text-base font-black text-violet-700 dark:text-violet-300">{selectedStudentGroup.terlambat}</strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60">
+                  <span className="text-[10px] font-bold text-sky-600 uppercase block">Izin</span>
+                  <strong className="text-base font-black text-sky-700 dark:text-sky-300">{selectedStudentGroup.izin}</strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60">
+                  <span className="text-[10px] font-bold text-amber-600 uppercase block">Sakit</span>
+                  <strong className="text-base font-black text-amber-700 dark:text-amber-300">{selectedStudentGroup.sakit}</strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
+                  <span className="text-[10px] font-bold text-rose-600 uppercase block">Alpha</span>
+                  <strong className="text-base font-black text-rose-700 dark:text-rose-300">{selectedStudentGroup.alpa}</strong>
+                </div>
               </div>
-              <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200/60 dark:border-violet-800/60">
-                <span className="text-[10px] font-bold text-violet-600 uppercase block">Terlambat</span>
-                <strong className="text-base font-black text-violet-700 dark:text-violet-300">{selectedStudentGroup.terlambat}</strong>
-              </div>
-              <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60">
-                <span className="text-[10px] font-bold text-sky-600 uppercase block">Izin</span>
-                <strong className="text-base font-black text-sky-700 dark:text-sky-300">{selectedStudentGroup.izin}</strong>
-              </div>
-              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60">
-                <span className="text-[10px] font-bold text-amber-600 uppercase block">Sakit</span>
-                <strong className="text-base font-black text-amber-700 dark:text-amber-300">{selectedStudentGroup.sakit}</strong>
-              </div>
-              <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-800/60">
-                <span className="text-[10px] font-bold text-rose-600 uppercase block">Alpha</span>
-                <strong className="text-base font-black text-rose-700 dark:text-rose-300">{selectedStudentGroup.alpa}</strong>
-              </div>
-            </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
-                    <th className="py-2.5 px-3 w-10 text-center">NO</th>
-                    <th className="py-2.5 px-3">MATA PELAJARAN</th>
-                    <th className="py-2.5 px-3">KELAS</th>
-                    <th className="py-2.5 px-3">TANGGAL</th>
-                    <th className="py-2.5 px-3 text-center">STATUS</th>
-                    <th className="py-2.5 px-3">CATATAN</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {selectedStudentGroup.subjectRows.map((sRow, idx) => {
-                    const st = normalisasiStatus(sRow.status_hadir)
-                    return (
-                      <tr key={sRow.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
-                          {sRow.jadwal_pelajaran?.subject?.name || '-'}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{getNamaKelas(sRow)}</td>
-                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{formatTanggal(sRow.tanggal)}</td>
-                        <td className="py-2.5 px-3 text-center">
-                          <Badge color={getBadgeColor(st)} size="sm">
-                            {statusLabel[st] || sRow.status_hadir || '-'}
-                          </Badge>
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{sRow.catatan || sRow.keterangan || '-'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </DialogBody>
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200 font-extrabold border-b-2 border-emerald-200/90 uppercase tracking-wider text-[10px]">
+                      <th className="py-2.5 px-3 w-10 text-center">NO</th>
+                      <th className="py-2.5 px-3">MATA PELAJARAN</th>
+                      <th className="py-2.5 px-3">KELAS</th>
+                      <th className="py-2.5 px-3">TANGGAL</th>
+                      <th className="py-2.5 px-3 text-center">STATUS</th>
+                      <th className="py-2.5 px-3">CATATAN</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                    {selectedStudentGroup.subjectRows.map((sRow, idx) => {
+                      const st = normalisasiStatus(sRow.status_hadir)
+                      return (
+                        <tr key={sRow.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                            {sRow.jadwal_pelajaran?.subject?.name || '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{getNamaKelas(sRow)}</td>
+                          <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{formatTanggal(sRow.tanggal)}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            <Badge color={getBadgeColor(st)} size="sm">
+                              {statusLabel[st] || sRow.status_hadir || '-'}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">{sRow.catatan || sRow.keterangan || '-'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </DialogBody>
 
-          <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-            <Button
-              variant="primary"
-              appearance="fill"
-              size="sm"
-              onClick={() => {
-                const headers = ['No', 'Mata Pelajaran', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
-                const printRows = selectedStudentGroup.subjectRows.map((r, i) => [
-                  i + 1,
-                  r.jadwal_pelajaran?.subject?.name || '-',
-                  getUnitName(r),
-                  getNamaKelas(r),
-                  formatTanggal(r.tanggal),
-                  statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
-                  r.catatan || r.keterangan || '-'
-                ])
-                printCleanTable({
-                  title: `Rincian Presensi Pembelajaran — ${selectedStudentGroup.studentName}`,
-                  subtitle: `NIS: ${selectedStudentGroup.nis} | Unit: ${selectedStudentGroup.unitName} | Kelas: ${selectedStudentGroup.kelasName}`,
-                  headers,
-                  rows: printRows,
-                })
-              }}
-              className="rounded-xl font-bold flex items-center gap-2"
-            >
-              <Printer className="size-4" /> Cetak Presensi Siswa Ini
-            </Button>
+            <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <Button
+                variant="primary"
+                appearance="fill"
+                size="sm"
+                onClick={() => {
+                  const headers = ['No', 'Mata Pelajaran', 'Unit', 'Kelas', 'Tanggal', 'Status', 'Catatan']
+                  const printRows = selectedStudentGroup.subjectRows.map((r, i) => [
+                    i + 1,
+                    r.jadwal_pelajaran?.subject?.name || '-',
+                    getUnitName(r),
+                    getNamaKelas(r),
+                    formatTanggal(r.tanggal),
+                    statusLabel[normalisasiStatus(r.status_hadir)] || r.status_hadir || '-',
+                    r.catatan || r.keterangan || '-'
+                  ])
+                  printCleanTable({
+                    title: `Rincian Presensi Pembelajaran — ${selectedStudentGroup.studentName}`,
+                    subtitle: `NIS: ${selectedStudentGroup.nis} | Unit: ${selectedStudentGroup.unitName} | Kelas: ${selectedStudentGroup.kelasName}`,
+                    headers,
+                    rows: printRows,
+                  })
+                }}
+                className="rounded-xl font-bold flex items-center gap-2"
+              >
+                <Printer className="size-4" /> Cetak Presensi Siswa Ini
+              </Button>
 
-            <Button
-              variant="ghost"
-              appearance="outline"
-              size="sm"
-              onClick={() => setSelectedStudentGroup(null)}
-              className="rounded-xl font-bold"
-            >
-              Tutup
-            </Button>
-          </DialogFooter>
+              <Button
+                variant="ghost"
+                appearance="outline"
+                size="sm"
+                onClick={() => setSelectedStudentGroup(null)}
+                className="rounded-xl font-bold"
+              >
+                Tutup
+              </Button>
+            </DialogFooter>
+          </div>
         </Dialog>
       )}
 
@@ -1842,23 +1851,26 @@ export default function LaporanAbsensiPage() {
         <Dialog
           isOpen={cardModal.isOpen}
           onOpenChange={(open) => !open && closeCardModal()}
-          className="w-full max-w-4xl max-h-[90vh] flex flex-col p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+          modalClassName="z-[70] bg-slate-950/70 backdrop-blur-md"
+          className="w-full max-w-4xl max-h-[90vh] flex flex-col p-0 rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
         >
-          <DialogHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-            <div>
-              <div className="flex items-center gap-3">
-                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  {cardModal.title}
-                </DialogTitle>
-                <Badge color={getBadgeColor(cardModal.statusKey)} size="md">
-                  {modalRows.length} Data
-                </Badge>
+          <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+          <div className="p-6 flex flex-col h-full overflow-hidden">
+            <DialogHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <div className="flex items-center gap-3">
+                  <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                    {cardModal.title}
+                  </DialogTitle>
+                  <Badge color={getBadgeColor(cardModal.statusKey)} size="md">
+                    {modalRows.length} Data
+                  </Badge>
+                </div>
+                <DialogDescription className="text-xs text-slate-500 mt-1">
+                  Daftar siswa dengan profil dan rincian status absensi pada unit pendidikan
+                </DialogDescription>
               </div>
-              <DialogDescription className="text-xs text-slate-500 mt-1">
-                Daftar siswa dengan profil dan rincian status absensi pada unit pendidikan
-              </DialogDescription>
-            </div>
-          </DialogHeader>
+            </DialogHeader>
 
           <DialogBody className="flex-1 overflow-y-auto py-4 space-y-4">
             {/* Modal Toolbar: Search & Export */}
@@ -2010,6 +2022,7 @@ export default function LaporanAbsensiPage() {
               </Button>
             </div>
           </DialogFooter>
+          </div>
         </Dialog>
       )}
 
@@ -2018,71 +2031,75 @@ export default function LaporanAbsensiPage() {
         <Dialog
           isOpen={isProfileModalOpen}
           onOpenChange={(open) => !open && setIsProfileModalOpen(false)}
-          className="w-full max-w-lg p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+          modalClassName="z-[70] bg-slate-950/70 backdrop-blur-md"
+          className="w-full max-w-lg p-0 rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
         >
-          <DialogHeader className="flex flex-col items-center text-center pb-4 border-b border-slate-100 dark:border-slate-800">
-            <Avatar size="xl" src={selectedStudentProfile.photo_thumb || selectedStudentProfile.photo_url || selectedStudentProfile.photo} alt={selectedStudentProfile.full_name} className="mb-3 size-20 shadow-md">
-              <AvatarFallback className="bg-emerald-600 text-white font-black text-2xl">
-                {(selectedStudentProfile.full_name || 'S')[0]}
-              </AvatarFallback>
-            </Avatar>
-            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              {selectedStudentProfile.full_name}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 flex items-center gap-2 mt-1">
-              <span>NIS: {selectedStudentProfile.nis || '-'}</span>
-              {selectedStudentProfile.nisn && <span>&bull; NISN: {selectedStudentProfile.nisn}</span>}
-            </DialogDescription>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge color="emerald" size="sm">
-                {selectedStudentProfile.educationUnit?.name || selectedStudentProfile.kelas?.unit_pendidikan?.name || 'Unit Pendidikan'}
-              </Badge>
-              <Badge color="sky" size="sm">
-                {selectedStudentProfile.kelas?.nama_kelas || selectedStudentProfile.kelas?.kode_kelas || 'Kelas'}
-              </Badge>
-            </div>
-          </DialogHeader>
+          <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+          <div className="p-6">
+            <DialogHeader className="flex flex-col items-center text-center pb-4 border-b border-slate-100 dark:border-slate-800">
+              <Avatar size="xl" src={selectedStudentProfile.photo_thumb || selectedStudentProfile.photo_url || selectedStudentProfile.photo} alt={selectedStudentProfile.full_name} className="mb-3 size-20 shadow-md">
+                <AvatarFallback className="bg-emerald-600 text-white font-black text-2xl">
+                  {(selectedStudentProfile.full_name || 'S')[0]}
+                </AvatarFallback>
+              </Avatar>
+              <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {selectedStudentProfile.full_name}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 flex items-center gap-2 mt-1">
+                <span>NIS: {selectedStudentProfile.nis || '-'}</span>
+                {selectedStudentProfile.nisn && <span>&bull; NISN: {selectedStudentProfile.nisn}</span>}
+              </DialogDescription>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge color="emerald" size="sm">
+                  {selectedStudentProfile.educationUnit?.name || selectedStudentProfile.kelas?.unit_pendidikan?.name || 'Unit Pendidikan'}
+                </Badge>
+                <Badge color="sky" size="sm">
+                  {selectedStudentProfile.kelas?.nama_kelas || selectedStudentProfile.kelas?.kode_kelas || 'Kelas'}
+                </Badge>
+              </div>
+            </DialogHeader>
 
-          <DialogBody className="py-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-              <div>
-                <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Jenis Kelamin</span>
-                <strong className="text-slate-800 dark:text-slate-200 font-semibold">
-                  {selectedStudentProfile.gender === 'L' || selectedStudentProfile.gender === 'male' ? 'Laki-laki' : 'Perempuan'}
-                </strong>
+            <DialogBody className="py-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div>
+                  <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Jenis Kelamin</span>
+                  <strong className="text-slate-800 dark:text-slate-200 font-semibold">
+                    {selectedStudentProfile.gender === 'L' || selectedStudentProfile.gender === 'male' ? 'Laki-laki' : 'Perempuan'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Status Keaktifan</span>
+                  <span className="inline-flex items-center gap-1 text-emerald-600 font-bold">
+                    <span className="size-2 rounded-full bg-emerald-500" /> Aktif
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Tempat, Tgl Lahir</span>
+                  <strong className="text-slate-800 dark:text-slate-200 font-semibold">
+                    {selectedStudentProfile.birth_place ? `${selectedStudentProfile.birth_place}, ` : ''}{selectedStudentProfile.birth_date || '-'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Agama</span>
+                  <strong className="text-slate-800 dark:text-slate-200 font-semibold">
+                    {selectedStudentProfile.religion || 'Islam'}
+                  </strong>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Alamat Tempat Tinggal</span>
+                  <strong className="text-slate-800 dark:text-slate-200 font-semibold block leading-relaxed">
+                    {selectedStudentProfile.address || 'Alamat belum diisi.'}
+                  </strong>
+                </div>
               </div>
-              <div>
-                <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Status Keaktifan</span>
-                <span className="inline-flex items-center gap-1 text-emerald-600 font-bold">
-                  <span className="size-2 rounded-full bg-emerald-500" /> Aktif
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Tempat, Tgl Lahir</span>
-                <strong className="text-slate-800 dark:text-slate-200 font-semibold">
-                  {selectedStudentProfile.birth_place ? `${selectedStudentProfile.birth_place}, ` : ''}{selectedStudentProfile.birth_date || '-'}
-                </strong>
-              </div>
-              <div>
-                <span className="text-[11px] font-medium text-slate-400 block mb-0.5">No. Telepon / HP</span>
-                <strong className="text-slate-800 dark:text-slate-200 font-semibold">
-                  {selectedStudentProfile.phone || selectedStudentProfile.mobile_phone || '-'}
-                </strong>
-              </div>
-              <div className="col-span-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                <span className="text-[11px] font-medium text-slate-400 block mb-0.5">Alamat Tempat Tinggal</span>
-                <strong className="text-slate-800 dark:text-slate-200 font-semibold block leading-relaxed">
-                  {selectedStudentProfile.address || 'Alamat belum diisi.'}
-                </strong>
-              </div>
-            </div>
-          </DialogBody>
+            </DialogBody>
 
-          <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-            <Button variant="ghost" onClick={() => setIsProfileModalOpen(false)}>
-              Tutup Profil
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <Button variant="ghost" onClick={() => setIsProfileModalOpen(false)}>
+                Tutup Profil
+              </Button>
+            </DialogFooter>
+          </div>
         </Dialog>
       )}
 
@@ -2091,68 +2108,98 @@ export default function LaporanAbsensiPage() {
         <Dialog
           isOpen={isExportModalOpen}
           onOpenChange={(open) => !open && setIsExportModalOpen(false)}
-          className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+          modalClassName="z-[70] bg-slate-950/70 backdrop-blur-md"
+          className="w-full max-w-md p-0 rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
         >
-          <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Download1 className="size-5 text-amber-500" /> Export Data Absensi Datatable
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 mt-1">
-              Ekspor <strong>{rows.length} data</strong> yang saat ini tampil di datatable sesuai filter yang aktif.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogBody className="py-4 space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                Pilih Format File Ekspor:
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'csv', label: 'CSV (.csv)', desc: 'Comma Separated' },
-                  { id: 'xlsx', label: 'Excel (.xlsx)', desc: 'Office OpenXML' },
-                  { id: 'xls', label: 'Excel 97-2003 (.xls)', desc: 'Binary Spreadsheet' },
-                ].map((fmt) => (
-                  <button
-                    key={fmt.id}
-                    type="button"
-                    onClick={() => setExportFormat(fmt.id)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
-                      exportFormat === fmt.id
-                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 ring-2 ring-amber-500/20 font-bold'
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                    }`}
-                  >
-                    <FileSpreadsheet className="size-5 text-amber-600 mb-1" />
-                    <span className="text-xs font-bold block">{fmt.label}</span>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">{fmt.desc}</span>
-                  </button>
-                ))}
+          <div className="h-1.5 bg-gradient-to-r from-amber-500 via-orange-400 to-amber-600 shrink-0" />
+          <div className="p-6">
+            <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-500/20">
+                  <Download1 className="size-5 text-white" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-black text-slate-900 dark:text-slate-100">
+                    Export Data Absensi
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                    Ekspor {rows.length} data sesuai filter aktif.
+                  </DialogDescription>
+                </div>
               </div>
-            </div>
+            </DialogHeader>
 
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-400">
-              <span className="font-semibold block mb-0.5 text-slate-800 dark:text-slate-200">Keterangan:</span>
-              File akan mengekspor {rows.length} baris data terfilter termasuk NIS, NISN, Nama Siswa, Unit, Kelas, Tanggal, Mata Pelajaran, Status Presensi, dan Catatan.
-            </div>
-          </DialogBody>
+            <DialogBody className="py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Pilih Format File Ekspor:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'csv', label: 'CSV (.csv)', desc: 'Comma Separated' },
+                    { id: 'xlsx', label: 'Excel (.xlsx)', desc: 'Office OpenXML' },
+                    { id: 'xls', label: 'Excel 97-2003 (.xls)', desc: 'Binary Spreadsheet' },
+                  ].map((fmt) => (
+                    <button
+                      key={fmt.id}
+                      type="button"
+                      onClick={() => setExportFormat(fmt.id)}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                        exportFormat === fmt.id
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 ring-2 ring-amber-500/20 font-bold'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      <FileSpreadsheet className="size-5 text-amber-600 mb-1" />
+                      <span className="text-xs font-bold block">{fmt.label}</span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">{fmt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setIsExportModalOpen(false)}>
-              Batal
-            </Button>
-            <Button
-              variant="primary"
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-              onClick={() => {
-                exportDatatable(rows, exportFormat, `laporan-absensi-${filters.unit_id ? 'unit' : 'semua'}`)
-                setIsExportModalOpen(false)
-                setNotice(`Berhasil mengekspor ${rows.length} data ke format .${exportFormat}`)
-              }}
-            >
-              <Download className="size-4 mr-1.5" /> Unduh .{exportFormat.toUpperCase()}
-            </Button>
-          </DialogFooter>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-400">
+                <span className="font-semibold block mb-0.5 text-slate-800 dark:text-slate-200">Keterangan:</span>
+                File akan mengekspor {rows.length} baris data terfilter termasuk NIS, NISN, Nama Siswa, Unit, Kelas, Tanggal, Mata Pelajaran, Status Presensi, dan Catatan.
+              </div>
+            </DialogBody>
+
+            <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setIsExportModalOpen(false)}>
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={async () => {
+                  try {
+                    setNotice('Sedang menyiapkan file unduhan...')
+                    await downloadFileFromApi(
+                      '/attendance/reports/export',
+                      exportFormat,
+                      `laporan-absensi-${filters.unit_id ? 'unit' : 'semua'}`,
+                      {
+                        unit_id: filters.unit_id || undefined,
+                        class_id: filters.class_id || undefined,
+                        month: filters.month || undefined,
+                        date_from: filters.date_from || undefined,
+                        date_to: filters.date_to || undefined,
+                        status: filters.status || undefined,
+                        subject_id: filters.subject_id || undefined,
+                      }
+                    )
+                    setIsExportModalOpen(false)
+                    setNotice(`Berhasil mengekspor data absensi ke format .${exportFormat}`)
+                  } catch (err) {
+                    console.error('Export error:', err)
+                    setNotice('Gagal mengekspor data absensi')
+                  }
+                }}
+              >
+                <Download className="size-4 mr-1.5" /> Unduh .{exportFormat.toUpperCase()}
+              </Button>
+            </DialogFooter>
+          </div>
         </Dialog>
       )}
 
@@ -2161,126 +2208,140 @@ export default function LaporanAbsensiPage() {
         <Dialog
           isOpen={isImportModalOpen}
           onOpenChange={(open) => !open && setIsImportModalOpen(false)}
-          className="w-full max-w-lg p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+          modalClassName="z-[70] bg-slate-950/70 backdrop-blur-md"
+          className="w-full max-w-lg p-0 rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
         >
-          <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Upload1 className="size-5 text-sky-500" /> Import Data Absensi Pembelajaran
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 mt-1">
-              Upload file spreadsheet (.csv, .xlsx, .xls) berisi data presensi siswa per unit & kelas.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogBody className="py-4 space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60">
-              <div>
-                <span className="text-xs font-bold text-sky-900 dark:text-sky-200 block">Template Format Import</span>
-                <span className="text-[11px] text-sky-700 dark:text-sky-400 block">Unduh contoh template dengan header NIS, Tanggal, Status, dsb.</span>
+          <div className="h-1.5 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-500 shrink-0" />
+          <div className="p-6">
+            <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/20">
+                  <Upload1 className="size-5 text-white" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-black text-slate-900 dark:text-slate-100">
+                    Import Data Absensi Pembelajaran
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                    Upload file spreadsheet (.csv, .xlsx, .xls) berisi data presensi siswa.
+                  </DialogDescription>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const templateHeaders = 'nis,nama_siswa,tanggal,status,catatan\n23001,"Ahmad Zaky",2026-08-17,hadir,"Hadir tepat waktu"\n23002,"Aisyah Humaira",2026-08-17,izin,"Izin sakit"\n'
-                  const blob = new Blob([`\uFEFF${templateHeaders}`], { type: 'text/csv;charset=utf-8' })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = 'template-import-absensi.csv'
-                  a.click()
-                  URL.revokeObjectURL(url)
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors shadow-2xs cursor-pointer"
-              >
-                <Download className="size-3.5" /> Template
-              </button>
-            </div>
+            </DialogHeader>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Pilih File (.csv, .xlsx, .xls):
-              </label>
-              <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer" onClick={() => importInputRef.current?.click()}>
-                <Upload className="size-8 text-sky-500 mb-2" />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  {importFile ? importFile.name : 'Klik untuk memilih atau drag & drop file'}
-                </span>
-                <span className="text-[11px] text-slate-400 mt-1">Format didukung: CSV (.csv), Excel (.xlsx, .xls)</span>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept=".csv, .xlsx, .xls, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setImportFile(e.target.files[0])
-                      setImportError('')
-                    }
+            <DialogBody className="py-4 space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/60">
+                <div>
+                  <span className="text-xs font-bold text-sky-900 dark:text-sky-200 block">Template Format Import</span>
+                  <span className="text-[11px] text-sky-700 dark:text-sky-400 block">Unduh contoh template dengan header NIS, Tanggal, Status, dsb.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const templateHeaders = 'nis,nama_siswa,tanggal,status,catatan\n23001,"Ahmad Zaky",2026-08-17,hadir,"Hadir tepat waktu"\n23002,"Aisyah Humaira",2026-08-17,izin,"Izin sakit"\n'
+                    const blob = new Blob([`\uFEFF${templateHeaders}`], { type: 'text/csv;charset=utf-8' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'template-import-absensi.csv'
+                    a.click()
+                    URL.revokeObjectURL(url)
                   }}
-                />
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors shadow-2xs cursor-pointer"
+                >
+                  <Download className="size-3.5" /> Template
+                </button>
               </div>
-            </div>
 
-            {importError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 font-medium">
-                {importError}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Pilih File (.csv, .xlsx, .xls):
+                </label>
+                <div
+                  className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  <Upload className="size-8 text-sky-500 mb-2" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {importFile ? importFile.name : 'Klik untuk memilih atau drag & drop file'}
+                  </span>
+                  <span className="text-[11px] text-slate-400 mt-1">Format didukung: CSV (.csv), Excel (.xlsx, .xls)</span>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".csv, .xlsx, .xls, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        setImportFile(e.target.files[0])
+                        setImportError('')
+                      }
+                    }}
+                  />
+                </div>
               </div>
-            )}
-          </DialogBody>
 
-          <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => { setIsImportModalOpen(false); setImportFile(null); setImportError('') }}>
-              Batal
-            </Button>
-            <Button
-              variant="primary"
-              className="bg-sky-600 hover:bg-sky-700 text-white"
-              disabled={!importFile || isImporting}
-              onClick={async () => {
-                if (!importFile) return
-                try {
-                  setIsImporting(true)
-                  setImportError('')
-                  const text = await importFile.text()
-                  const parsed = parseImportedContent(text)
-                  if (!parsed.length) throw new Error('File tidak memiliki data untuk diimport.')
+              {importError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 font-medium">
+                  {importError}
+                </div>
+              )}
+            </DialogBody>
 
-                  const importedRows = parsed.map((item, idx) => ({
-                    id: `imported-${Date.now()}-${idx}`,
-                    tanggal: item.tanggal || new Date().toISOString().slice(0, 10),
-                    siswa: {
-                      id: `s-imp-${idx}`,
-                      full_name: item.nama_siswa || item.nama || 'Siswa Import',
-                      nis: item.nis || `IMP-${idx + 1}`,
-                      unit_id: filters.unit_id || draft.unit_id || 'unit-imp',
-                      kelas: { nama_kelas: item.kelas || 'Rombel Import' },
-                      educationUnit: { name: getUnitName({ siswa: { unit_id: filters.unit_id } }) },
-                    },
-                    jadwal_pelajaran: {
-                      subject: { name: item.mata_pelajaran || item.mapel || 'Pembelajaran' },
-                    },
-                    status_hadir: item.status || 'hadir',
-                    catatan: item.catatan || 'Import data presensi',
-                  }))
+            <DialogFooter className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setIsImportModalOpen(false); setImportFile(null); setImportError('') }}>
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                className="bg-sky-600 hover:bg-sky-700 text-white"
+                disabled={!importFile || isImporting}
+                onClick={async () => {
+                  if (!importFile) return
+                  try {
+                    setIsImporting(true)
+                    setImportError('')
+                    const text = await importFile.text()
+                    const parsed = parseImportedContent(text)
+                    if (!parsed.length) throw new Error('File tidak memiliki data untuk diimport.')
 
-                  setReport((prev) => ({
-                    ...prev,
-                    rows: [...importedRows, ...(prev.rows || [])],
-                  }))
+                    const importedRows = parsed.map((item, idx) => ({
+                      id: `imported-${Date.now()}-${idx}`,
+                      tanggal: item.tanggal || new Date().toISOString().slice(0, 10),
+                      siswa: {
+                        id: `s-imp-${idx}`,
+                        full_name: item.nama_siswa || item.nama || 'Siswa Import',
+                        nis: item.nis || `IMP-${idx + 1}`,
+                        unit_id: filters.unit_id || 'unit-imp',
+                        kelas: { nama_kelas: item.kelas || 'Rombel Import' },
+                        educationUnit: { name: getUnitName({ siswa: { unit_id: filters.unit_id } }) },
+                      },
+                      jadwal_pelajaran: {
+                        subject: { name: item.mata_pelajaran || item.mapel || 'Pembelajaran' },
+                      },
+                      status_hadir: item.status || 'hadir',
+                      catatan: item.catatan || 'Import data presensi',
+                    }))
 
-                  setIsImportModalOpen(false)
-                  setImportFile(null)
-                  setNotice(`Berhasil mengimport ${importedRows.length} data presensi absensi.`)
-                } catch (err) {
-                  setImportError(err.message || 'Gagal memproses file import.')
-                } finally {
-                  setIsImporting(false)
-                }
-              }}
-            >
-              {isImporting ? 'Memproses...' : 'Import Data'}
-            </Button>
-          </DialogFooter>
+                    setReport((prev) => ({
+                      ...prev,
+                      rows: [...importedRows, ...(prev.rows || [])],
+                    }))
+
+                    setIsImportModalOpen(false)
+                    setImportFile(null)
+                    setNotice(`Berhasil mengimport ${importedRows.length} data presensi absensi.`)
+                  } catch (err) {
+                    setImportError(err.message || 'Gagal memproses file import.')
+                  } finally {
+                    setIsImporting(false)
+                  }
+                }}
+              >
+                {isImporting ? 'Memproses...' : 'Import Data'}
+              </Button>
+            </DialogFooter>
+          </div>
         </Dialog>
       )}
 
@@ -2291,6 +2352,8 @@ export default function LaporanAbsensiPage() {
         onPrint={handlePrintClean}
         onDownload={handleDownloadPdfTable}
         title="Rekap Absensi Pembelajaran"
+        subtitle="Pemantauan dan rekapitulasi presensi siswa per mata pelajaran"
+        activeUnit={unitList.find((u) => String(u.id) === String(filters.unit_id || draft.unit_id)) || filters.unit_id || draft.unit_id}
       />
 
       {notice && <div className="attendance-report-toast" role="status">{notice}</div>}

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -32,8 +33,10 @@ import {
   ShieldCheck,
   CreditCard,
   RefreshCw,
+  Download,
+  AlertTriangle,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { authService } from '../services/authService'
 import { api } from '../services/api'
 import { educationUnitService } from '../services/educationUnitService'
@@ -62,6 +65,8 @@ import AuthToast, { showAuthToast } from '../components/ui/AuthToast'
 import AuthPopup from '../components/ui/AuthPopup'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
 import PwaInstallBanner from '../components/app/PwaInstallBanner'
+import { useNavigationModules, resolveSidebarIcon } from '../hooks/useNavigation'
+import { prefetchRoute } from '../routes/routePrefetch'
 
 export default function DashboardLayout() {
   const location = useLocation()
@@ -72,6 +77,7 @@ export default function DashboardLayout() {
   const touchActivity = useAuthStore((state) => state.touchActivity)
   const isSessionValid = useAuthStore((state) => state.isSessionValid)
   const loginTime = useAuthStore((state) => state.loginTime)
+  const { data: navData, isLoading: isNavLoading, isError: isNavError, refetch: refetchNav } = useNavigationModules()
   const activeUnit = useUnitStore((state) => state.activeUnit)
   const setActiveUnit = useUnitStore((state) => state.setActiveUnit)
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
@@ -157,6 +163,7 @@ export default function DashboardLayout() {
     }
   }, [hasFullMenuAccess])
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false)
+  const [showPwaModal, setShowPwaModal] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme')
     if (saved === 'light') return false
@@ -188,7 +195,22 @@ export default function DashboardLayout() {
     }
   }
 
-  const [dbUnits, setDbUnits] = useState([])
+  const { data: rawUnitsData } = useQuery({
+    queryKey: ['educationUnits'],
+    queryFn: () => educationUnitService.getAll(),
+    enabled: Boolean(canViewEducationUnits),
+    staleTime: 1000 * 60 * 15,
+  })
+
+  const dbUnits = useMemo(() => {
+    if (!canViewEducationUnits) return []
+    const list = rawUnitsData?.data || rawUnitsData || []
+    if (Array.isArray(list) && list.length > 0) {
+      return list.map((u) => ({ id: u.code || u.level || u.id, name: u.name || u.nama }))
+    }
+    return []
+  }, [rawUnitsData, canViewEducationUnits])
+
   const [serverNow, setServerNow] = useState(null)
   const [isAcademicCalendarOpen, setIsAcademicCalendarOpen] = useState(false)
 
@@ -196,19 +218,7 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     muatPengaturanRef()
-    if (!canViewEducationUnits) {
-      setDbUnits([])
-      return undefined
-    }
-
-    educationUnitService.getAll().then((res) => {
-      const list = res?.data || res || []
-      if (Array.isArray(list) && list.length > 0) {
-        setDbUnits(list.map((u) => ({ id: u.code || u.level || u.id, name: u.name || u.nama })))
-      }
-    }).catch(() => { })
-    return undefined
-  }, [muatPengaturanRef, canViewEducationUnits])
+  }, [muatPengaturanRef])
 
   useEffect(() => {
     document.title = pengaturan.application_name || 'Sistem Manajemen Sekolah'
@@ -342,7 +352,7 @@ export default function DashboardLayout() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const namaTampil = user?.name || 'Ketua Yayasan'
+  const namaTampil = user?.name || 'Pengguna'
   const impersonatedSession = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem('school_erp_superadmin_session') || 'null')
@@ -454,13 +464,7 @@ export default function DashboardLayout() {
 
   const daftarUnitOptions = [
     { id: 'SEMUA', name: 'Semua Unit Pendidikan' },
-    ...(dbUnits.length > 0 ? dbUnits : [
-      { id: 'TK', name: 'TK Islam Terpadu' },
-      { id: 'SD', name: 'SD Islam Terpadu' },
-      { id: 'SMP', name: 'SMP Islam Terpadu' },
-      { id: 'SMA', name: 'SMA Islam Terpadu' },
-      { id: 'PONPES', name: 'Pondok Pesantren' },
-    ]),
+    ...dbUnits,
   ]
 
   const currentUnitObj = dbUnits.find((u) => u.id === activeUnit || u.name === activeUnit || u.code === activeUnit)
@@ -863,7 +867,13 @@ export default function DashboardLayout() {
         to === '/dashboard/berita-informasi' ||
         to.includes('/berita-informasi') ||
         to === '/dashboard/absensi-gerbang' ||
-        to.includes('/absensi-gerbang')
+        to.includes('/absensi-gerbang') ||
+        to === '/dashboard/laporan-absensi' ||
+        to.includes('/laporan-absensi') ||
+        to === '/dashboard/rekap-absensi-gerbang' ||
+        to.includes('/rekap-absensi-gerbang') ||
+        to === '/dashboard/rekap-absensi-ibadah' ||
+        to.includes('/rekap-absensi-ibadah')
       )
     ) {
       return true
@@ -922,13 +932,16 @@ const sidebarIconStyles = {
   'dashboard-yayasan-menu': 'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs',
   'master-data': 'bg-purple-100/90 text-purple-600 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/60 shadow-2xs',
   'akademik': 'bg-sky-100/90 text-sky-600 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/60 shadow-2xs',
+  'lms': 'bg-indigo-100/90 text-indigo-600 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 shadow-2xs',
   'portal-guru': 'bg-indigo-100/90 text-indigo-600 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60 shadow-2xs',
   'portal-ortu-siswa': 'bg-rose-100/90 text-rose-600 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60 shadow-2xs',
   'absensi': 'bg-teal-100/90 text-teal-600 dark:bg-teal-950/70 dark:text-teal-300 border border-teal-200/70 dark:border-teal-800/60 shadow-2xs',
+  'presensi': 'bg-teal-100/90 text-teal-600 dark:bg-teal-950/70 dark:text-teal-300 border border-teal-200/70 dark:border-teal-800/60 shadow-2xs',
   'musyrif-asrama': 'bg-violet-100/90 text-violet-600 dark:bg-violet-950/70 dark:text-violet-300 border border-violet-200/70 dark:border-violet-800/60 shadow-2xs',
   'mutabaah': 'bg-amber-100/90 text-amber-600 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/60 shadow-2xs',
   'tahfizh': 'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs',
   'rekap-data': 'bg-fuchsia-100/90 text-fuchsia-600 dark:bg-fuchsia-950/70 dark:text-fuchsia-300 border border-fuchsia-200/70 dark:border-fuchsia-800/60 shadow-2xs',
+  'laporan': 'bg-fuchsia-100/90 text-fuchsia-600 dark:bg-fuchsia-950/70 dark:text-fuchsia-300 border border-fuchsia-200/70 dark:border-fuchsia-800/60 shadow-2xs',
   'pengaturan': 'bg-slate-100/90 text-slate-600 dark:bg-slate-800/90 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700 shadow-2xs',
   'yayasan-monitoring': 'bg-sky-100/90 text-sky-600 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-200/70 dark:border-sky-800/60 shadow-2xs',
   'yayasan-laporan': 'bg-fuchsia-100/90 text-fuchsia-600 dark:bg-fuchsia-950/70 dark:text-fuchsia-300 border border-fuchsia-200/70 dark:border-fuchsia-800/60 shadow-2xs',
@@ -948,247 +961,40 @@ const getSidebarIconBadgeClass = (key, idx) => {
   return sidebarIconStyles[key] || pastelPaletteCycle[idx % pastelPaletteCycle.length]
 }
 
-  const sidebarMenu = (isFoundationUser ? [
-    {
-      key: 'dashboard-yayasan',
-      label: isKepalaSekolah ? 'Dashboard Kepala Sekolah' : 'Dashboard Yayasan',
-      icon: LayoutDashboard,
-      to: '/dashboard/yayasan',
-    },
-    {
-      key: 'yayasan-monitoring',
-      label: 'Monitoring',
-      icon: Building2,
-      submenus: isKepalaSekolah ? [
-        { to: '/dashboard/berita-informasi', label: 'Berita & Pengumuman' },
-        ...(can('teacher_monitoring.view') ? [{ to: '/dashboard/pemantauan', label: 'Monitoring Guru Mengajar' }] : []),
-        ...(hasFullMenuAccess || can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') || hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Divisi') ? [
-          { to: '/dashboard/monitoring-divisi', label: 'Monitoring Divisi' },
-        ] : []),
-      ] : [
-        { to: '/dashboard/yayasan/unit-pendidikan', label: 'Unit Pendidikan' },
-        { to: '/dashboard/yayasan/pegawai-guru', label: 'Pegawai & Guru' },
-        { to: '/dashboard/yayasan/siswa', label: 'Data Siswa' },
-        { to: '/dashboard/yayasan/informasi-sekolah', label: 'Informasi Sekolah' },
-      ],
-    },
-    {
-      key: 'yayasan-laporan',
-      label: 'Laporan',
-      icon: FileText,
-      submenus: [
-        { to: '/dashboard/yayasan/laporan/tahfizh', label: 'Laporan Tahfizh' },
-        { to: '/dashboard/yayasan/laporan/mutasi', label: 'Laporan Mutasi Siswa' },
-        { to: '/dashboard/yayasan/laporan/alumni', label: 'Laporan Alumni' },
-      ],
-    },
-    {
-      key: 'yayasan-pengaturan',
-      label: 'Pengaturan Yayasan',
-      icon: Settings,
-      submenus: [
-        { to: '/dashboard/yayasan/profil', label: 'Profil' },
-      ],
-    },
-  ] : [
-    {
-      key: 'dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-      to: '/dashboard',
-    },
-    ...(!isTeacherOnly && !isGuruUser ? [
-      {
-        key: 'dashboard-yayasan-menu',
-      label: isKepalaSekolah ? 'DASHBOARD KEPALA SEKOLAH' : isDivisiPendidikan ? 'DASHBOARD DIVISI PENDIDIKAN' : 'DASHBOARD YAYASAN',
-      icon: Building2,
-      submenus: (isKepalaSekolah || isDivisiPendidikan) ? [
-        { to: '/dashboard/yayasan', label: 'Ringkasan Utama' },
-        ...(!isDivisiPendidikan && (hasFullMenuAccess || can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') || hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Kepala Divisi')) ? [
-          { to: '/dashboard/monitoring-divisi', label: 'Monitoring Divisi' },
-        ] : []),
-        { to: '/dashboard/berita-informasi', label: 'Berita & Pengumuman' },
-      ] : [
-        { to: '/dashboard/yayasan', label: 'Ringkasan Utama' },
-        ...(hasFullMenuAccess || can('divisi.monitoring', 'dashboard.pemantauan.kelola', 'dashboard.pemantauan.lihat') || hasRole('Super Admin', 'SuperAdmin', 'Admin', 'admin', 'Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'Kepala Divisi') ? [
-          { to: '/dashboard/monitoring-divisi', label: 'Monitoring Divisi' },
-        ] : []),
-        { to: '/dashboard/yayasan/unit-pendidikan', label: 'Unit Pendidikan' },
-        { to: '/dashboard/yayasan/pegawai-guru', label: 'Pegawai & Guru' },
-        { to: '/dashboard/yayasan/siswa', label: 'Data Siswa' },
-        { to: '/dashboard/yayasan/informasi-sekolah', label: 'Informasi Sekolah' },
-        { to: '/dashboard/chat-pegawai', label: 'Chat Pengurus & Pegawai' },
-      ],
-    },
-    ] : []),
-    ...(!((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess) ? [
-      {
-        key: 'master-data',
-        label: hasFullMenuAccess || isKepalaSekolah || isDivisiPendidikan ? 'MANAJEMEN DATA' : 'MASTER DATA',
-        icon: Database,
-        submenus: [
-          { to: '/dashboard/students/unit-pendidikan', label: 'Unit Pendidikan' },
-          { to: '/dashboard/master-jenis-unit', label: 'Jenis Unit' },
-          { to: '/dashboard/master-jabatan', label: 'Jabatan' },
-          { to: '/dashboard/employees', label: 'Pegawai' },
-          { to: '/dashboard/students', label: 'Siswa' },
-          { to: '/dashboard/kelola-alumni', label: 'Pengolahan Data Alumni' },
-          { to: '/dashboard/berita-informasi', label: 'Berita & Pengumuman' },
-          { label: 'Kalender Akademik', action: 'calendar' },
-          { to: '/dashboard/master-quran-surah', label: 'Al-Qur’an' },
-          { to: '/dashboard/master-jadwal-sholat', label: 'Sholat' },
-          { to: '/dashboard/master-doa', label: 'Do’a & Dzikir' },
-          { to: '/dashboard/poin-penilaian-doa', label: 'Poin Penilaian Doa' },
-        ],
-      },
-    ] : []),
-    ...((hasFullMenuAccess || isKepalaSekolah || isDivisiPendidikan || hasRole('Super Admin', 'super_admin', 'Admin', 'admin', 'Operator', 'operator', 'Tata Usaha', 'tu', 'tata_usaha')) ? [
-      {
-        key: 'keuangan-sekolah',
-        label: 'KEUANGAN SISWA',
-        icon: CreditCard,
-        submenus: [
-          { to: '/dashboard/keuangan/tagihan-siswa', label: 'Tagihan & Pembayaran SPP' },
-        ],
-      },
-    ] : []),
-    {
-      key: 'akademik',
-      label: 'AKADEMIK & LMS',
-      icon: BookOpen,
-      submenus: [
-        { to: '/dashboard/akademik/pengaturan?tab=tahun-ajaran', label: 'Pengaturan Akademik' },
-        { label: 'Kalender Akademik', action: 'calendar' },
-        { to: '/dashboard/akademik/perencanaan?tab=cp', label: 'Perencanaan Pembelajaran' },
-        { to: '/dashboard/akademik/pembelajaran?tab=materi', label: 'Pembelajaran' },
-        { to: '/dashboard/akademik/evaluasi?tab=penugasan', label: 'Tugas & Evaluasi' },
-        { to: '/dashboard/akademik/nilai-rapor?tab=buku-nilai', label: 'Nilai & Rapor' },
-      ],
-    },
-    ...(!isPureMusyrif && (isTeacherRole(roles) || hasFullMenuAccess) ? [
-      {
-        key: 'portal-guru',
-        label: 'PORTAL GURU',
-        icon: BookOpen,
-        submenus: [
-          { to: '/portal-guru/workspace', label: 'Workspace Pembelajaran Guru' },
-          { to: '/dashboard/chat-pegawai', label: 'Chat Pegawai & Orang Tua' },
-        ],
-      },
-    ] : []),
-    {
-      key: 'portal-ortu-siswa',
-      label: hasRole('Orang Tua') ? 'PORTAL ORANG TUA' : hasRole('Siswa') ? 'PORTAL SISWA' : 'PORTAL ORANG TUA & SISWA',
-      icon: Users,
-      submenus: [
-         ...(isParentRole(roles) || (hasFullMenuAccess && !isStudentRole(roles)) ? [
-          { to: '/portal-orangtua', label: 'Portal Orang Tua' },
-        ] : []),
-         ...(isStudentRole(roles) || (hasFullMenuAccess && !isParentRole(roles)) ? [
-          { to: '/portal-siswa', label: 'Portal Siswa' },
-        ] : []),
-      ],
-    },
-    {
-      key: 'absensi',
-      label: 'ABSENSI',
-      icon: CalendarCheck,
-      submenus: attendanceSubmenus,
-    },
-    ...((isMusyrifRole(roles) || hasFullMenuAccess || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing')) ? [
-      {
-        key: 'musyrif-asrama',
-        label: 'PORTAL MUSYRIF',
-        icon: Moon,
-        submenus: [
-          { to: '/dashboard/musyrif', label: 'Workspace Musyrif Asrama' },
-          { to: '/dashboard/chat-pegawai', label: 'Chat Pegawai & Orang Tua' },
-          { to: '/dashboard/absensi-ibadah', label: 'Presensi Ibadah Santri' },
-          { to: '/dashboard/mutabaah', label: 'Mutaba’ah Harian Santri' },
-          ...(can('kesiswaan.kelas_rombel', 'academic.schedule.view', 'sistem.master_data')
-            ? [{ to: '/dashboard/tahfizh', label: setoranTahfizhMenuLabel }]
-            : []),
-        ],
-      },
-    ] : []),
-    ...(!isPureMusyrif && !isTeacherOnly && !isGuruUser ? [
-      {
-        key: 'mutabaah',
-        label: 'MUTABA’AH',
-        icon: BookHeart,
-        submenus: [
-          { to: '/dashboard/mutabaah', label: 'Mutaba’ah Yaumiyah' },
-          { to: '/dashboard/tahfizh', label: setoranTahfizhMenuLabel },
-          { to: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren', label: 'Monitor Siswa Non Ponpes' },
-        ],
-      },
-    ] : []),
-    {
-      key: 'tahfizh-main',
-      label: 'TAHFIZH AL-QUR’AN',
-      icon: BookMarked,
-      submenus: [
-        { to: '/dashboard/tahfizh/rekapan', label: 'Laporan Rekapan Tahfizh' },
-        ...(!isTeacherOnly && !isGuruUser && !hasRole('Guru', 'guru', 'Guru Mapel') ? [
-          { to: '/dashboard/laporan-tahfizh', label: 'Laporan Tahfizh' },
-        ] : []),
-        ...(hasRole('Super Admin', 'Admin', 'Guru Tahfizh', 'Kepala Sekolah', 'Divisi Pendidikan') || can('dashboard.guru-tahfizh.view')
-          ? [{ to: '/dashboard/guru-tahfizh', label: 'Dashboard Guru Tahfizh' }]
-          : []),
-      ],
-    },
-    {
-      key: 'laporan',
-      label: 'REKAP DATA',
-      icon: FileText,
-      submenus: [
-        { to: '/dashboard/laporan-siswa', label: 'Laporan Siswa' },
-        { to: '/dashboard/laporan-absensi', label: 'Laporan Absensi Pembelajaran' },
-        { to: '/dashboard/rekap-absensi-gerbang', label: 'Laporan Absensi Gerbang' },
-        { to: '/dashboard/rekap-absensi-ibadah', label: 'Laporan Absensi Ibadah' },
-        { to: '/dashboard/mutabaah/rekap', label: 'Laporan Mutaba’ah' },
-        { to: '/dashboard/tahfizh/rekapan', label: 'Laporan Rekapan Tahfizh' },
-        ...(!isTeacherOnly && !isGuruUser && !hasRole('Guru', 'guru', 'Guru Mapel') ? [
-          { to: '/dashboard/laporan-tahfizh', label: 'Laporan Tahfizh' },
-        ] : []),
-        { to: '/dashboard/laporan-akademik', label: 'Laporan Akademik & Nilai' },
-        { to: '/dashboard/laporan-pegawai', label: 'Laporan Pegawai & Guru' },
-        { to: '/dashboard/laporan-lms', label: 'Laporan LMS' },
-        ...(!isTeacherOnly && !isGuruUser && !hasRole('Guru', 'guru', 'Guru Mapel') ? [
-          { to: '/dashboard/laporan-alumni', label: 'Laporan Alumni & Prestasi' },
-          { to: '/dashboard/kelola-alumni', label: 'Pengolahan Data Alumni' },
-        ] : []),
-      ],
-    },
-    {
-      key: 'pengaturan',
-      label: 'PENGATURAN',
-      icon: Settings,
-      submenus: [
-        { to: '/dashboard/profil-akun', label: 'Profil Saya & Akun' },
-        ...(!(isParentRole(roles) || isStudentRole(roles) || isTataUsaha) || hasFullMenuAccess || hasRole('Super Admin', 'Admin', 'Kepala Sekolah') ? [
-          { to: '/dashboard/pengaturan', label: 'Profil Sekolah' },
-        ] : []),
-        ...(hasRole('Super Admin', 'Admin', 'superadmin', 'admin', 'SuperAdmin') || hasFullMenuAccess ? [
-          { to: '/dashboard/koneksi-api-mobile', label: 'Koneksi API Mobile Android' },
-        ] : []),
-        { to: '/dashboard/hak-akses', label: 'Hak Akses' },
-      ],
-    },
-  ]).map((item) => (
-    item.submenus
-      ? { ...item, submenus: item.submenus.filter((submenu) => !shouldHideFromGuru(item, submenu) && !shouldHideFromTataUsaha(item, submenu) && !shouldHideFromKepalaSekolah(item, submenu) && !shouldHideFromDivisiPendidikan(item, submenu) && !shouldHideFromMusyrif(item, submenu) && bolehBukaMenu(submenu.to)) }
-      : item
-  )).filter((item) => {
-    if (shouldHideFromGuru(item) || shouldHideFromTataUsaha(item) || shouldHideFromKepalaSekolah(item) || shouldHideFromDivisiPendidikan(item) || shouldHideFromMusyrif(item)) return false
-    if (
-      (isRestrictedFoundationOrPrincipal || ((isParentRole(roles) || isStudentRole(roles)) && !hasFullMenuAccess)) &&
-      (item.key === 'portal-guru' || item.key === 'musyrif-asrama')
-    ) {
-      return false
+  const dynamicSidebarMenu = useMemo(() => {
+    if (!navData?.modules || !Array.isArray(navData.modules) || navData.modules.length === 0) {
+      return []
     }
-    return item.submenus ? item.submenus.length > 0 : bolehBukaMenu(item.to)
-  })
+
+    return navData.modules.map((mod) => {
+      const ModIcon = resolveSidebarIcon(mod.icon) || LayoutDashboard
+      const items = mod.items || []
+
+      if (mod.id === 'dashboard' && items.length === 1) {
+        const first = items[0]
+        return {
+          key: mod.id,
+          label: first.name || mod.name,
+          icon: resolveSidebarIcon(first.icon) || ModIcon,
+          to: first.path,
+        }
+      }
+
+      return {
+        key: mod.id,
+        label: mod.name.toUpperCase(),
+        icon: ModIcon,
+        submenus: items.map((sub) => ({
+          to: sub.path,
+          label: sub.id === 'mutabaah-tahfizh' ? setoranTahfizhMenuLabel : sub.name,
+          icon: resolveSidebarIcon(sub.icon),
+          action: sub.path?.includes('/kalender') ? 'calendar' : undefined,
+        })),
+      }
+    })
+  }, [navData, setoranTahfizhMenuLabel])
+
+  const sidebarMenu = dynamicSidebarMenu
 
   const normalizePath = (to) => (to || '').split('?')[0].replace(/\/+$/, '') || '/'
 
@@ -1249,7 +1055,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, isFoundationUser])
+  }, [location.pathname, sidebarMenu])
 
   return (
     <div
@@ -1272,53 +1078,58 @@ const getSidebarIconBadgeClass = (key, idx) => {
 
       <div className={`flex flex-1 min-h-screen ${pengaturan.sidebar_position === 'right' ? 'md:flex-row-reverse' : ''}`}>
         {/* Left Sidebar (Sticky & Collapsible - Clean White Theme) */}
-        <aside
-          className={`site-sidebar relative overflow-visible fixed inset-y-0 z-50 flex flex-col justify-between border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#1B2433] transition-all duration-300 ease-in-out md:sticky md:top-0 md:h-screen ${pengaturan.sidebar_position === 'right' ? 'right-0 border-l' : 'left-0 border-r'} ${collapsed ? 'w-20' : 'w-64'
-            } ${mobileMenuOpen ? 'translate-x-0 w-64' : pengaturan.sidebar_position === 'right' ? 'translate-x-full md:translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-          style={{
-            background: isDarkMode
-              ? (pengaturan.sidebar_style === 'gradient'
-                ? 'linear-gradient(180deg, #1B2433 0%, #131B29 50%, #0F172A 100%)'
-                : undefined)
-              : (pengaturan.sidebar_style === 'light'
-                ? '#FFFFFF'
-                : (pengaturan.sidebar_style === 'solid'
-                  ? (pengaturan.sidebar_color || '#FFFFFF')
-                  : `linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%)`)),
-          }}
-        >
-          {/* Desktop Floating Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            className="hidden md:flex absolute -right-3 top-4 z-30 h-6.5 w-6.5 items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 shadow-md border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 hover:text-emerald-700 transition-all active:scale-95 cursor-pointer"
-            title={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
-          >
-            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
-          </button>
+        {(() => {
+          const isEffectiveCollapsed = collapsed && !mobileMenuOpen
+          return (
+            <aside
+              className={`site-sidebar fixed inset-y-0 z-50 flex flex-col justify-between border-slate-200/90 dark:border-slate-800 bg-white dark:bg-[#1B2433] transition-all duration-300 ease-in-out md:sticky md:top-0 md:h-screen ${pengaturan.sidebar_position === 'right' ? 'right-0 border-l' : 'left-0 border-r'} ${isEffectiveCollapsed ? 'md:w-20' : 'md:w-64'
+                } ${mobileMenuOpen ? 'translate-x-0 w-72 shadow-2xl' : pengaturan.sidebar_position === 'right' ? 'translate-x-full md:translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+              style={{
+                background: isDarkMode
+                  ? (pengaturan.sidebar_style === 'gradient'
+                    ? 'linear-gradient(180deg, #1B2433 0%, #131B29 50%, #0F172A 100%)'
+                    : undefined)
+                  : (pengaturan.sidebar_style === 'light'
+                    ? '#FFFFFF'
+                    : (pengaturan.sidebar_style === 'solid'
+                      ? (pengaturan.sidebar_color || '#FFFFFF')
+                      : `linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%)`)),
+              }}
+            >
+              {/* Desktop Floating Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setCollapsed(!collapsed)}
+                className="hidden md:flex absolute -right-3 top-4 z-30 h-6.5 w-6.5 items-center justify-center rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 shadow-md border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 hover:text-emerald-700 transition-all active:scale-95 cursor-pointer"
+                title={collapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
+              >
+                {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+              </button>
 
-          {/* Header Sidebar: Logo & Title */}
-          <div className={`relative z-10 ${collapsed ? 'p-3' : 'p-4'} border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-[#1B2433]/90 backdrop-blur-xs`}>
-            <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
-              <div className={`flex items-center gap-3 overflow-hidden ${collapsed ? 'justify-center w-full' : ''}`}>
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white shadow-md shadow-emerald-600/20 bg-gradient-to-br from-emerald-600 to-teal-700 border border-emerald-500/30" style={{ backgroundColor: pengaturan.sidebar_accent_color || '#064E3B' }}>
-                  <img src={pengaturan.logo_url || '/logo.png'} alt="Logo Yayasan Darel Iman" className="h-full w-full bg-white object-contain p-0.5" />
-                </div>
-                {!collapsed && (
-                  <div className="min-w-0">
-                    <h1 className="text-xs font-black tracking-wider text-slate-900 dark:text-white uppercase truncate font-sans">
-                      {namaSekolah}
-                    </h1>
-                    <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{pengaturan.application_name || 'Sistem Manajemen Sekolah'}</p>
+              {/* Header Sidebar: Logo & Title */}
+              <div className={`relative z-10 ${isEffectiveCollapsed ? 'p-3' : 'p-4'} border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-[#1B2433]/90 backdrop-blur-xs`}>
+                <div className={`flex items-center ${isEffectiveCollapsed ? 'justify-center' : 'justify-between'}`}>
+                  <div className={`flex items-center gap-3 overflow-hidden ${isEffectiveCollapsed ? 'justify-center w-full' : ''}`}>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white shadow-md shadow-emerald-600/20 bg-gradient-to-br from-emerald-600 to-teal-700 border border-emerald-500/30" style={{ backgroundColor: pengaturan.sidebar_accent_color || '#064E3B' }}>
+                      <img src={pengaturan.logo_url || '/logo.png'} alt={namaSekolah ? `Logo ${namaSekolah}` : 'Logo Sekolah'} className="h-full w-full bg-white object-contain p-0.5" />
+                    </div>
+                    {!isEffectiveCollapsed && (
+                      <div className="min-w-0">
+                        <h1 className="text-xs font-black tracking-wider text-slate-900 dark:text-white uppercase truncate font-sans">
+                          {namaSekolah}
+                        </h1>
+                        <p className="text-[10px] font-bold tracking-widest text-emerald-600 dark:text-emerald-400">{pengaturan.application_name || 'Sistem Manajemen Sekolah'}</p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
               {/* Mobile Close Button */}
               <button
                 type="button"
+                aria-label="Tutup Menu Navigasi"
+                title="Tutup Menu Navigasi"
                 onClick={() => setMobileMenuOpen(false)}
-                className="md:hidden text-slate-600 hover:text-slate-900 dark:text-slate-400 p-1"
+                className="md:hidden text-slate-600 hover:text-slate-900 dark:text-slate-400 p-1 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1326,7 +1137,50 @@ const getSidebarIconBadgeClass = (key, idx) => {
           </div>
 
           {/* Navigation Items */}
-          <nav className={`relative z-10 flex-1 space-y-1.5 ${collapsed ? 'overflow-visible' : 'overflow-y-auto custom-scrollbar'} p-3 text-xs`}>
+          <nav className={`relative z-10 flex-1 space-y-1.5 ${isEffectiveCollapsed ? 'overflow-visible' : 'overflow-y-auto custom-scrollbar'} p-3 text-xs`}>
+            {/* Loading Skeleton */}
+            {isNavLoading && sidebarMenu.length === 0 && (
+              <div className="space-y-3 p-1">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className={`flex items-center ${isEffectiveCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-xl animate-pulse`}>
+                    <div className="h-7.5 w-7.5 rounded-xl bg-slate-200 dark:bg-slate-700/60 shrink-0" />
+                    {!isEffectiveCollapsed && (
+                      <div className="h-3.5 bg-slate-200 dark:bg-slate-700/60 rounded-md w-3/4" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error State with Retry */}
+            {isNavError && sidebarMenu.length === 0 && (
+              <div className="p-3 text-center space-y-2">
+                <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-500 dark:bg-rose-950/50 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                  <AlertTriangle className="h-4.5 w-4.5" />
+                </div>
+                {!isEffectiveCollapsed && (
+                  <>
+                    <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400">Gagal memuat navigasi</p>
+                    <button
+                      type="button"
+                      onClick={() => refetchNav()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      <span>Coba Lagi</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isNavLoading && !isNavError && sidebarMenu.length === 0 && (
+              <div className="p-4 text-center text-slate-400 text-xs">
+                {!isEffectiveCollapsed && 'Tidak ada menu navigasi yang tersedia.'}
+              </div>
+            )}
+
             {sidebarMenu.map((item, idx) => {
               const Icon = item.icon
               if (!item.submenus) {
@@ -1335,8 +1189,10 @@ const getSidebarIconBadgeClass = (key, idx) => {
                   <div key={item.key} className="relative group">
                     <NavLink
                       to={item.to}
+                      onMouseEnter={() => prefetchRoute(item.to)}
+                      onFocus={() => prefetchRoute(item.to)}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`group/link relative flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-xl font-bold transition-all duration-200 ${isActive
+                      className={`group/link relative flex items-center ${isEffectiveCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-xl font-bold transition-all duration-200 ${isActive
                         ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-500/40'
                         : 'text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-400 border border-transparent hover:border-emerald-200/60 dark:hover:border-slate-700'
                         }`}
@@ -1344,11 +1200,11 @@ const getSidebarIconBadgeClass = (key, idx) => {
                       <div className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${isActive ? 'bg-white/20 text-white border border-white/30' : getSidebarIconBadgeClass(item.key, idx)}`}>
                         <Icon className="h-4 w-4 stroke-[2]" />
                       </div>
-                      {!collapsed && <span>{item.label}</span>}
+                      {!isEffectiveCollapsed && <span>{item.label}</span>}
                     </NavLink>
 
                     {/* Hover Tooltip when Collapsed */}
-                    {collapsed && (
+                    {isEffectiveCollapsed && (
                       <div className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-150 z-50">
                         <div className="relative rounded-xl bg-slate-900 dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-white shadow-xl shadow-slate-950/25 border border-slate-700/80 whitespace-nowrap">
                           {item.label}
@@ -1368,21 +1224,21 @@ const getSidebarIconBadgeClass = (key, idx) => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (collapsed) setCollapsed(false)
+                      if (isEffectiveCollapsed) setCollapsed(false)
                       toggleSection(item.key)
                     }}
-                    className={`flex w-full items-center ${collapsed ? 'justify-center px-0' : 'justify-between px-3'} py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${isOpen || hasActiveChild
+                    className={`flex w-full items-center ${isEffectiveCollapsed ? 'justify-center px-0' : 'justify-between px-3'} py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${isOpen || hasActiveChild
                       ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-500/40'
                       : 'text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800/80 hover:text-emerald-700 dark:hover:text-emerald-400 border border-transparent hover:border-emerald-200/60 dark:hover:border-slate-700'
                       }`}
                   >
-                    <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
+                    <div className={`flex items-center ${isEffectiveCollapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
                       <div className={`flex h-7.5 w-7.5 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${isOpen || hasActiveChild ? 'bg-white/20 text-white border border-white/30' : getSidebarIconBadgeClass(item.key, idx)}`}>
                         <Icon className={`h-4 w-4 shrink-0 stroke-[2] ${isOpen || hasActiveChild ? 'text-white' : ''}`} />
                       </div>
-                      {!collapsed && <span className="truncate">{item.label}</span>}
+                      {!isEffectiveCollapsed && <span className="truncate">{item.label}</span>}
                     </div>
-                    {!collapsed && (
+                    {!isEffectiveCollapsed && (
                       <span className="text-[10px]">
                         {isOpen ? <ChevronDown className={`h-3.5 w-3.5 ${isOpen || hasActiveChild ? 'text-white' : 'text-slate-500'}`} /> : <ChevronRight className={`h-3.5 w-3.5 ${isOpen || hasActiveChild ? 'text-white' : 'text-slate-500'}`} />}
                       </span>
@@ -1390,7 +1246,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
                   </button>
 
                   {/* Hover Flyout Menu when Collapsed */}
-                  {collapsed && (
+                  {isEffectiveCollapsed && (
                     <div className="absolute left-full -top-1 pl-3 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 -translate-x-2 transition-all duration-150 z-50 min-w-[13.5rem]">
                       <div className="relative rounded-2xl bg-white dark:bg-slate-900 p-2.5 shadow-xl shadow-slate-900/15 border border-slate-200/90 dark:border-slate-800 space-y-1">
                         <div className="px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-slate-100 dark:border-slate-800 mb-1.5 flex items-center justify-between">
@@ -1418,9 +1274,11 @@ const getSidebarIconBadgeClass = (key, idx) => {
                             <NavLink
                               key={`flyout-${item.key}-${sub.to || sub.label}-${sIdx}`}
                               to={sub.to}
+                              onMouseEnter={() => prefetchRoute(sub.to)}
+                              onFocus={() => prefetchRoute(sub.to)}
                               onClick={() => setMobileMenuOpen(false)}
                               className={`block rounded-lg px-2.5 py-1.5 text-xs transition-colors ${active
-                                ? 'bg-emerald-50 text-emerald-800 font-bold dark:bg-emerald-950/80 dark:text-emerald-300'
+                                ? 'bg-emerald-50 text-emerald-700 font-bold dark:bg-emerald-950/60 dark:text-emerald-300'
                                 : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
                                 }`}
                             >
@@ -1434,7 +1292,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
                   )}
 
                   {/* Submenu Accordion when Expanded */}
-                  {!collapsed && isOpen && (
+                  {!isEffectiveCollapsed && isOpen && (
                     <div className="ml-5 space-y-1 border-l-2 border-emerald-500/50 dark:border-emerald-600/50 pl-3 pt-1 animate-[masterDropdownSlide_0.2s_ease-out]">
                       {item.submenus.map((sub, sIdx) => {
                         if (sub.action === 'calendar') {
@@ -1457,6 +1315,8 @@ const getSidebarIconBadgeClass = (key, idx) => {
                           <NavLink
                             key={`${item.key}-${sub.to || sub.label}-${sIdx}`}
                             to={sub.to}
+                            onMouseEnter={() => prefetchRoute(sub.to)}
+                            onFocus={() => prefetchRoute(sub.to)}
                             onClick={() => setMobileMenuOpen(false)}
                             className={`block rounded-lg px-2.5 py-1.5 text-xs transition-all duration-150 ${active
                               ? 'bg-emerald-50/90 text-emerald-800 font-bold shadow-2xs border border-emerald-200/80 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/50'
@@ -1486,7 +1346,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
                 />
                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
               </div>
-              {!collapsed && (
+              {!isEffectiveCollapsed && (
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-bold text-slate-900 dark:text-white leading-tight">{namaTampil}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -1496,10 +1356,10 @@ const getSidebarIconBadgeClass = (key, idx) => {
               )}
             </div>
 
-            {!collapsed && (
-              <p className="truncate px-2 text-[9px] text-slate-400 dark:text-slate-500">{pengaturan.footer_text || 'Yayasan Darel Iman © 2026'}</p>
+            {!isEffectiveCollapsed && (
+              <p className="truncate px-2 text-[9px] text-slate-400 dark:text-slate-500">{pengaturan.footer_text || `${namaSekolah} © ${new Date().getFullYear()}`}</p>
             )}
-            {!collapsed && (
+            {!isEffectiveCollapsed && (
               <button
                 type="button"
                 onClick={() => navigate('/dashboard/bantuan')}
@@ -1511,6 +1371,8 @@ const getSidebarIconBadgeClass = (key, idx) => {
             )}
           </div>
         </aside>
+      )
+    })()}
 
         {/* Main Workspace Area (Light Gray Background bg-slate-50) */}
         <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#0F172A]">
@@ -1544,54 +1406,64 @@ const getSidebarIconBadgeClass = (key, idx) => {
                 </div>
               </div>
 
-              {/* 1. Active Unit Dropdown Switcher (Soft Pastel Sky Blue) */}
-              <div className="relative shrink-0 group" ref={unitDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setUnitDropdownOpen(!unitDropdownOpen)}
-                  className="flex items-center gap-2 rounded-2xl border border-sky-200/90 bg-sky-50/80 px-3.5 py-2 text-xs font-bold text-sky-900 hover:bg-sky-100/80 transition-all dark:border-sky-800/80 dark:bg-sky-950/60 dark:text-sky-300 shadow-xs cursor-pointer"
-                >
-                  <Layers className="h-4 w-4 text-sky-600 dark:text-sky-400 stroke-[2.2]" />
-                  <span className="hidden sm:inline text-sky-600/80 dark:text-sky-400/80 font-medium">Unit:</span>
-                  <span className="font-extrabold text-sky-900 dark:text-sky-200 max-w-[100px] xs:max-w-[140px] sm:max-w-none truncate inline-block">{activeUnit || 'Semua Unit'}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-sky-500" />
-                </button>
+              {/* 1. Active Unit Indicator (Static Badge for Teacher / Dropdown Switcher for Admin) */}
+              {isGuruUser || isTeacherOnly || !canViewEducationUnits ? (
+                <div className="flex items-center gap-2 rounded-2xl border border-emerald-200/90 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-xs shrink-0 select-none">
+                  <Layers className="h-4 w-4 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />
+                  <span className="hidden sm:inline text-emerald-700/80 dark:text-emerald-400/80 font-medium">Unit:</span>
+                  <span className="font-extrabold text-emerald-900 dark:text-emerald-200 max-w-[120px] xs:max-w-[160px] sm:max-w-none truncate inline-block">
+                    {user?.education_unit_name || user?.unit_name || user?.unit || currentUnitObj?.name || (activeUnit && activeUnit !== 'SEMUA' ? activeUnit : 'Unit Pengajaran')}
+                  </span>
+                </div>
+              ) : (
+                <div className="relative shrink-0 group" ref={unitDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setUnitDropdownOpen(!unitDropdownOpen)}
+                    className="flex items-center gap-2 rounded-2xl border border-sky-200/90 bg-sky-50/80 px-3.5 py-2 text-xs font-bold text-sky-900 hover:bg-sky-100/80 transition-all dark:border-sky-800/80 dark:bg-sky-950/60 dark:text-sky-300 shadow-xs cursor-pointer"
+                  >
+                    <Layers className="h-4 w-4 text-sky-600 dark:text-sky-400 stroke-[2.2]" />
+                    <span className="hidden sm:inline text-sky-600/80 dark:text-sky-400/80 font-medium">Unit:</span>
+                    <span className="font-extrabold text-sky-900 dark:text-sky-200 max-w-[100px] xs:max-w-[140px] sm:max-w-none truncate inline-block">{activeUnit || 'Semua Unit'}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-sky-500" />
+                  </button>
 
-                {/* Instant Floating Tooltip */}
-                {!unitDropdownOpen && (
-                  <div className="pointer-events-none absolute left-0 top-full mt-2.5 hidden group-hover:flex flex-col items-start z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
-                    <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
-                      Pilih unit pendidikan aktif untuk memfilter data
+                  {/* Instant Floating Tooltip */}
+                  {!unitDropdownOpen && (
+                    <div className="pointer-events-none absolute left-0 top-full mt-2.5 hidden group-hover:flex flex-col items-start z-50 animate-[masterDropdownSlide_0.15s_ease-out]">
+                      <div className="rounded-xl border border-slate-200 bg-slate-900/95 text-white px-3 py-1.5 text-xs font-extrabold shadow-xl whitespace-nowrap dark:border-slate-700 dark:bg-slate-800">
+                        Pilih unit pendidikan aktif untuk memfilter data
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {unitDropdownOpen && (
-                  <div className="absolute left-0 top-full mt-2 w-56 rounded-[18px] bg-white p-1.5 shadow-2xl border border-slate-200/80 z-50 animate-[masterDropdownSlide_0.2s_ease-out] dark:bg-[#1B2433] dark:border-slate-800">
-                    <p className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Pilih Unit Pendidikan
-                    </p>
-                    {daftarUnitOptions.map((unit) => (
-                      <button
-                        key={unit.id}
-                        type="button"
-                        onClick={() => {
-                          setActiveUnit(unit.id)
-                          setUnitDropdownOpen(false)
-                        }}
-                        className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                          activeUnit === unit.id
-                            ? 'bg-sky-100 text-sky-900 font-bold dark:bg-sky-950/80 dark:text-sky-300'
-                            : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60'
-                        }`}
-                      >
-                        <span>{unit.name}</span>
-                        {activeUnit === unit.id && <span className="h-2 w-2 rounded-full bg-sky-600 dark:bg-sky-400" />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  {unitDropdownOpen && (
+                    <div className="absolute left-0 top-full mt-2 w-56 rounded-[18px] bg-white p-1.5 shadow-2xl border border-slate-200/80 z-50 animate-[masterDropdownSlide_0.2s_ease-out] dark:bg-[#1B2433] dark:border-slate-800">
+                      <p className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                        Pilih Unit Pendidikan
+                      </p>
+                      {daftarUnitOptions.map((unit) => (
+                        <button
+                          key={unit.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveUnit(unit.id)
+                            setUnitDropdownOpen(false)
+                          }}
+                          className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                            activeUnit === unit.id
+                              ? 'bg-sky-100 text-sky-900 font-bold dark:bg-sky-950/80 dark:text-sky-300'
+                              : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800/60'
+                          }`}
+                        >
+                          <span>{unit.name}</span>
+                          {activeUnit === unit.id && <span className="h-2 w-2 rounded-full bg-sky-600 dark:bg-sky-400" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* 2. Field Pencarian (Search Bar - Soft Pastel Emerald Green, Geser ke kiri mendekati unit) */}
               <div className="hidden sm:flex flex-1 min-w-0 max-w-xs items-center group relative">
@@ -1787,7 +1659,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
                         />
                         <div className="min-w-0">
                           <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate tracking-tight">{namaTampil}</h4>
-                          <p className="text-xs font-medium text-slate-400 dark:text-slate-400 truncate mt-0.5">{user?.email || 'murphy.mitc@example.com'}</p>
+                          <p className="text-xs font-medium text-slate-400 dark:text-slate-400 truncate mt-0.5">{user?.email || ''}</p>
                         </div>
                       </div>
 
@@ -1846,6 +1718,18 @@ const getSidebarIconBadgeClass = (key, idx) => {
                             <span>Unit Pendidikan</span>
                           </button>
                         )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileDropdownOpen(false)
+                            setShowPwaModal(true)
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                        >
+                          <Download className="h-5 w-5 text-emerald-600 dark:text-emerald-400 stroke-[1.8]" />
+                          <span>Pasang Aplikasi (PWA)</span>
+                        </button>
 
                         <button
                           type="button"
@@ -1953,7 +1837,10 @@ const getSidebarIconBadgeClass = (key, idx) => {
         isOpen={isAcademicCalendarOpen}
         onClose={() => setIsAcademicCalendarOpen(false)}
       />
-      <PwaInstallBanner />
+      <PwaInstallBanner
+        forceShow={showPwaModal}
+        onClose={() => setShowPwaModal(false)}
+      />
       <AuthPopup />
       <AuthToast />
     </div>

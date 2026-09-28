@@ -1189,7 +1189,7 @@ export default function AttendanceReportPage() {
                 </AppBadge>
               </div>
               <DialogDescription className="text-xs text-slate-500 mt-1">
-                Daftar rincian log presensi siswa dengan status {cardModal.title}
+                Daftar rincian presensi siswa dengan status {cardModal.title}
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -1353,13 +1353,12 @@ export default function AttendanceReportPage() {
                     </div>
                     <div className="h-3.5 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                       <div
-                        className={`h-full transition-all duration-500 rounded-full ${
-                          selectedDetailRombel.attendance_rate >= 90
+                        className={`h-full transition-all duration-500 rounded-full ${selectedDetailRombel.attendance_rate >= 90
                             ? 'bg-emerald-500'
                             : selectedDetailRombel.attendance_rate >= 75
-                            ? 'bg-amber-500'
-                            : 'bg-rose-500'
-                        }`}
+                              ? 'bg-amber-500'
+                              : 'bg-rose-500'
+                          }`}
                         style={{ width: `${selectedDetailRombel.attendance_rate}%` }}
                       />
                     </div>
@@ -1413,8 +1412,8 @@ export default function AttendanceReportPage() {
                       {selectedDetailRombel.attendance_rate >= 90
                         ? 'Tingkat kehadiran rombel ini sangat baik dan optimal. Pertahankan konsistensi presensi kelas.'
                         : selectedDetailRombel.attendance_rate >= 75
-                        ? 'Tingkat kehadiran rombel cukup memadai, tetapi disarankan wali kelas memantau siswa yang berulang kali izin/sakit.'
-                        : 'Tingkat kehadiran rombel rendah (perlu perhatian khusus). Diperlukan koordinasi wali kelas dan bimbingan konseling untuk penanganan presensi.'}
+                          ? 'Tingkat kehadiran rombel cukup memadai, tetapi disarankan wali kelas memantau siswa yang berulang kali izin/sakit.'
+                          : 'Tingkat kehadiran rombel rendah (perlu perhatian khusus). Diperlukan koordinasi wali kelas dan bimbingan konseling untuk penanganan presensi.'}
                     </p>
                   </div>
                 </DialogBody>

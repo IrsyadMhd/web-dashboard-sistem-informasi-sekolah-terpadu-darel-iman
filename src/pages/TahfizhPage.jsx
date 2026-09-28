@@ -14,6 +14,7 @@ import {
   Save,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sparkles,
   Award,
   FileText,
@@ -34,27 +35,30 @@ import {
   Crown,
   TrendingUp,
   Printer,
-} from 'lucide-react'
-import {
-  Upload1,
-  Download1,
+  Upload,
+  Download,
+  ArrowUpDown,
   Plus,
-  ArrowBothDirectionHorizontal2,
-  ChevronDown,
-} from '@tailgrids/icons'
+} from 'lucide-react'
 import { Pagination } from '../components/tailgrids/core/pagination'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import PrintOptionModal from '../components/master-data/PrintOptionModal'
+import { SquircleActionButton, MasterActionButton, MasterActionIconButton } from '../components/master-data'
 import { tahfizhService } from '../services/tahfizhService'
 import { equranService } from '../services/equranService'
 import { kelasService } from '../services/kelasService'
 import { useUnitStore } from '../stores/unitStore'
 import { useAuthStore } from '../stores/authStore'
+import { cn } from '../lib/utils'
 import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import AppBadge from '../components/app/AppBadge'
+import AppSkeleton from '../components/app/AppSkeleton'
+import AppEmptyState from '../components/app/AppEmptyState'
+import AppErrorState from '../components/app/AppErrorState'
 import TahfizhSubNav from '../components/tahfizh/TahfizhSubNav'
 
 // TailGrids Core Components
-import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
 import { Button } from '@/components/tailgrids/core/button'
 import { Badge } from '@/components/tailgrids/core/badge'
 import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
@@ -85,6 +89,182 @@ import {
   DialogTitle,
 } from '@/components/tailgrids/core/dialog'
 import { Backdrop } from '@/components/tailgrids/core/overlay'
+
+// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-sm shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+  },
+  purple: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-sm shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+    cta: 'text-purple-600/60 dark:text-purple-500/60',
+  },
+}
+
+function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', tag = 'METRIK', onClick, children }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
+  return (
+    <motion.div
+      whileHover={isClickable ? { scale: 1.02, y: -2 } : undefined}
+      whileTap={isClickable ? { scale: 0.98 } : undefined}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card}`}
+    >
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+            {Icon && <Icon className="h-4.5 w-4.5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={`text-[11px] font-bold uppercase tracking-wider truncate ${t.title}`} title={title}>{title}</p>
+          </div>
+        </div>
+        {tag && (
+          <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
+            {tag}
+          </span>
+        )}
+      </div>
+      <div className="mt-0.5">
+        {children || (
+          <>
+            <p className={`text-4xl font-black tabular-nums truncate ${t.val}`} title={String(value ?? '')}>
+              {value}
+            </p>
+            {subtext && (
+              <p className={`mt-0.5 text-[11px] font-semibold truncate ${t.sub}`} title={subtext}>{subtext}</p>
+            )}
+          </>
+        )}
+      </div>
+      {isClickable && (
+        <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+          <Eye className="h-3 w-3" /> Klik untuk detail lengkap
+        </p>
+      )}
+    </motion.div>
+  )
+}
+
+// ── SEMANTIC TOAST STACK (§L Tailgrids_Pengaturan_Halaman) ───────────────────
+const TOAST_TONE_LABEL = { success: 'Berhasil', warning: 'Perhatian', error: 'Gagal' }
+
+function ToastStack({ items, onDismiss }) {
+  if (!items?.length) return null
+  return (
+    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none print:hidden" aria-live="polite" aria-atomic="true">
+      {items.map((n) => {
+        const isDanger = n.type === 'error'
+        const isWarning = n.type === 'warning'
+        const isSuccess = !isDanger && !isWarning
+        return (
+          <div
+            key={n.id}
+            className={cn(
+              'relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]',
+              isSuccess && 'border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50',
+              isDanger && 'border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50',
+              isWarning && 'border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50'
+            )}
+          >
+            <div className={cn(
+              'absolute top-0 left-0 right-0 h-1',
+              isSuccess && 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
+              isDanger && 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-700',
+              isWarning && 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600'
+            )} />
+            <div className="flex items-start gap-3 mt-0.5">
+              <div className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
+                isSuccess && 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30',
+                isDanger && 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30',
+                isWarning && 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30'
+              )}>
+                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
+                {isDanger && <X className="size-5" strokeWidth={2.3} />}
+                {isWarning && <Clock className="size-5" strokeWidth={2.3} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">{TOAST_TONE_LABEL[n.type] || 'Info'}</h4>
+                  <span className={cn(
+                    'inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border',
+                    isSuccess && 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80',
+                    isDanger && 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
+                    isWarning && 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80'
+                  )}>
+                    {TOAST_TONE_LABEL[n.type] || 'Info'}
+                  </span>
+                </div>
+                {n.message && (
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{n.message}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onDismiss(n.id)}
+                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                aria-label="Tutup notifikasi"
+              >
+                <X className="size-4" strokeWidth={2.2} />
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function TahfizhPage() {
   const breadcrumbItems = [
@@ -850,7 +1030,11 @@ export default function TahfizhPage() {
       audioRef.current.pause()
     }
 
-    const fullUrl = typeof url === 'string' && url.startsWith('http') ? url : `http://localhost:8000${url}`
+    const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+    const backendOrigin = apiBase ? apiBase.replace(/\/api\/?$/, '') : ''
+    const fullUrl = typeof url === 'string' && url.startsWith('http')
+      ? url
+      : `${backendOrigin}${url && !url.startsWith('/') ? '/' : ''}${url || ''}`
     const newAudio = new Audio(fullUrl)
     newAudio.play()
     audioRef.current = newAudio
@@ -1232,53 +1416,50 @@ export default function TahfizhPage() {
   return (
     <PageContainer maxW="7xl" className="space-y-6 pb-12">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-        {/* 🧭 TAILGRIDS BREADCRUMBS COMPONENT */}
+        {/* 🧭 APP BREADCRUMB (§W) */}
         <motion.div variants={itemVariants} className="print:hidden">
-          <Breadcrumbs items={breadcrumbItems} dividerType="chevron" />
+          <AppBreadcrumb items={breadcrumbItems} />
         </motion.div>
 
-        {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
-            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+        {/* MODERN HERO CARD HEADER (§B / §7.7) */}
+        <motion.div variants={itemVariants} className="print:hidden">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
             <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
-                  <BookOpen className="size-6 sm:size-7 text-white" />
+              <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+                <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <BookOpen className="size-5 sm:size-7 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
-                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40">
+                      <Sparkles className="size-3 sm:size-3.5 text-amber-300 animate-pulse" />
                       Manajemen Tahfizh & Murajaah
                     </span>
                     <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
                       30 Juz Al-Qur'an
                     </span>
                   </div>
-                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Setoran Tahfizh & Murajaah Santri
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
                     Pencatatan ziyadah hafalan baru, murajaah pekanan, target 30 juz Al-Qur'an, dan rekapitulasi nilai santri per rombel.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 shrink-0 z-10">
-                <Button
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                <button
                   type="button"
-                  variant="primary"
-                  appearance="fill"
-                  size="sm"
                   onClick={() => window.location.reload()}
-                  prefixIcon={<RefreshCcw className="h-4 w-4" />}
-                  className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white/80 dark:bg-emerald-950/60 hover:bg-emerald-50 dark:hover:bg-emerald-900/60 px-3.5 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-xs transition-colors cursor-pointer"
                 >
-                  Segarkan
-                </Button>
+                  <RefreshCcw className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Segarkan</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1290,125 +1471,83 @@ export default function TahfizhPage() {
         </motion.div>
 
         {/* Progress KPI Cards Siswa / Rombel (Di bawah Breadcrumbs) */}
-        <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card className="rounded-[18px] border border-emerald-100 bg-white p-4.5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-500 font-semibold">Total Dihafal</div>
-              <div className="text-xl font-extrabold text-emerald-900 dark:text-emerald-400">
-                {(studentProgress?.total_ayats_memorized || 0).toLocaleString('id-ID')}{' '}
-                <span className="text-xs font-bold text-emerald-600">Ayat</span>
-              </div>
-              <div className="text-[11px] text-slate-400 font-medium">
-                {studentProgress?.total_surahs_memorized || 0} Surah Dihafal
-              </div>
-            </div>
-          </div>
-        </Card>
+        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ModernKpiCard
+            title="Total Dihafal"
+            tag="HAFALAN TERCAPAI"
+            tone="emerald"
+            icon={BookOpen}
+            value={`${(studentProgress?.total_ayats_memorized || 0).toLocaleString('id-ID')} Ayat`}
+            subtext={`${studentProgress?.total_surahs_memorized || 0} Surah Dihafal`}
+          />
 
-        <Card className="rounded-[18px] border border-amber-100 bg-white p-4.5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-500 font-semibold">Sisa Belum Dihafal</div>
-              <div className="text-xl font-extrabold text-amber-900 dark:text-amber-400">
-                {(studentProgress?.remaining_ayats || 6236).toLocaleString('id-ID')}{' '}
-                <span className="text-xs font-bold text-amber-600">Ayat</span>
-              </div>
-              <div className="text-[11px] text-amber-600 font-medium">
-                Sisa {studentProgress?.remaining_surahs || 114} Surah Lagi
-              </div>
-            </div>
-          </div>
-        </Card>
+          <ModernKpiCard
+            title="Sisa Belum Dihafal"
+            tag="TARGET SISA"
+            tone="amber"
+            icon={Clock}
+            value={`${(studentProgress?.remaining_ayats || 6236).toLocaleString('id-ID')} Ayat`}
+            subtext={`Sisa ${studentProgress?.remaining_surahs || 114} Surah Lagi`}
+          />
 
-        <Card className="rounded-[18px] border border-cyan-100 bg-white p-4.5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-cyan-50 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300">
-              <Award className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-500 font-semibold">Prosentase Target</div>
-              <div className="text-xl font-extrabold text-cyan-900 dark:text-cyan-400">
-                {studentProgress?.progress_percentage || 0}%
-              </div>
-              <div className="text-[11px] text-slate-400 font-medium">Dari Target 30 Juz (6.236 Ayat)</div>
-            </div>
-          </div>
-        </Card>
+          <ModernKpiCard
+            title="Persentase Target"
+            tag="TARGET 30 JUZ"
+            tone="blue"
+            icon={Award}
+            value={`${studentProgress?.progress_percentage || 0}%`}
+            subtext="Dari Total 6.236 Ayat Al-Qur'an"
+          />
 
-        <Card className="rounded-[18px] border border-indigo-100 bg-white p-4.5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex flex-col justify-center gap-1.5">
-            <div className="flex justify-between items-center text-xs font-bold text-slate-700 dark:text-slate-200">
-              <span>Progres 30 Juz</span>
-              <span className="text-indigo-600 dark:text-indigo-400">{studentProgress?.progress_percentage || 0}%</span>
-            </div>
-            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
-              <div
-                className="bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 h-full rounded-full transition-all duration-500"
-                style={{ width: `${studentProgress?.progress_percentage || 0}%` }}
-              />
-            </div>
-            <div className="text-[11px] text-slate-400 text-right">Target Lengkap 114 Surah</div>
-          </div>
-        </Card>
-      </motion.div>
-
-      {/* Toast Notification Alert */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -15, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 450, damping: 25 }}
-            className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-2xl shadow-xl border text-sm font-bold flex items-center gap-3 ${
-              notification.type === 'success'
-                ? 'bg-emerald-900 text-emerald-100 border-emerald-700'
-                : notification.type === 'warning'
-                ? 'bg-amber-900 text-amber-100 border-amber-700'
-                : 'bg-rose-900 text-rose-100 border-rose-700'
-            }`}
+          <ModernKpiCard
+            title="Progres 30 Juz"
+            tag="STATUS TARGET"
+            tone="purple"
+            icon={Sparkles}
           >
-            {notification.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-            {notification.type === 'warning' && <Clock className="w-5 h-5 text-amber-400" />}
-            {notification.type === 'error' && <X className="w-5 h-5 text-rose-400" />}
-            <span>{notification.message}</span>
-            <button onClick={() => setNotification(null)} className="ml-2 text-white/70 hover:text-white">
-              <X className="w-4 h-4" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="space-y-2 mt-0.5">
+              <div className="flex justify-between items-center text-xs font-bold text-slate-700 dark:text-slate-200">
+                <span>Progres Keseluruhan</span>
+                <span className="text-purple-600 dark:text-purple-400 font-extrabold">{studentProgress?.progress_percentage || 0}%</span>
+              </div>
+              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                <div
+                  className="bg-gradient-to-r from-emerald-500 via-teal-500 to-purple-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${studentProgress?.progress_percentage || 0}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">Target Lengkap 114 Surah</p>
+            </div>
+          </ModernKpiCard>
+        </motion.div>
+
+      {/* Toast Notification Stack (§L) */}
+      {notification && (
+        <ToastStack
+          items={[{ id: 'tahfizh-toast', type: notification.type, message: notification.message }]}
+          onDismiss={() => setNotification(null)}
+        />
+      )}
 
       {/* 🏆 CARD KELOMPOK: PERINGKAT HAFALAN TERBANYAK & SISWA TERBAIK PEKAN INI */}
       {(isGuru || isMusyrif || isSuperAdminOrAdmin) && students.length > 0 && (
         <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Card 1: ⭐ Siswa Terbaik / Hafiz Teladan Pekan Ini */}
-          <Card className="rounded-[22px] border border-amber-200/80 bg-gradient-to-br from-amber-500/10 via-emerald-500/5 to-teal-500/10 p-5 shadow-sm dark:border-amber-800/60 dark:from-amber-950/40 dark:to-emerald-950/30 flex flex-col justify-between gap-4">
-            <div className="flex items-center justify-between gap-3 border-b border-amber-200/60 pb-3.5 dark:border-amber-900/40">
-              <div className="flex items-center gap-2">
-                <div className="p-2.5 rounded-xl bg-amber-500 text-white shadow-md">
-                  <Crown className="w-5 h-5" />
+          <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] flex flex-col justify-between gap-4">
+            <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl dark:bg-amber-400/15" />
+            <div className="flex items-center justify-between gap-3 border-b border-emerald-200/90 pb-3.5 dark:border-emerald-800/60">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white shadow-sm border border-amber-300/40">
+                  <Crown className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>Siswa Terbaik / Hafiz Teladan Pekan Ini</span>
-                  </h3>
-                  <p className="text-[11px] text-amber-700 font-semibold dark:text-amber-400">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Siswa Terbaik / Hafiz Teladan Pekan Ini</h3>
+                  <p className="text-[11px] text-slate-500 font-medium dark:text-slate-400">
                     Siswa dengan capaian hafalan Al-Qur'an tertinggi di rombel ini.
                   </p>
                 </div>
               </div>
-
-              <Badge color="warning" size="sm" prefixIcon={Sparkles} className="font-extrabold">
-                Top #1 Rombel
-              </Badge>
+              <AppBadge variant="warning" size="sm">Top #1 Rombel</AppBadge>
             </div>
 
             {bestStudent ? (
@@ -1449,21 +1588,11 @@ export default function TahfizhPage() {
                     {Number(bestStudent.total_ayats_memorized || bestStudent.total_ayat || 0).toLocaleString('id-ID')}{' '}
                     <span className="text-xs font-bold text-emerald-600">Ayat</span>
                   </div>
-                  <div className="group relative inline-flex">
-                    <button
-                      type="button"
-                      title="Lihat Detail Pencapaian & Progres Hafalan Siswa"
-                      onClick={() => handleOpenDetailProgressModal(bestStudent)}
-                      className="flex h-9 px-4 items-center justify-center gap-2 rounded-2xl bg-sky-100/90 text-sky-900 font-black text-xs hover:bg-sky-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-sky-950/80 dark:text-sky-200"
-                    >
-                      <Eye className="size-4" />
+                  <div className="flex items-center gap-2">
+                    <MasterActionButton variant="view" icon={Eye} onClick={() => handleOpenDetailProgressModal(bestStudent)}>
                       <span>Pencapaian & Progres</span>
                       <ArrowRight className="size-3.5" />
-                    </button>
-                    <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                      <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                      Lihat Detail Pencapaian & Progres Hafalan
-                    </div>
+                    </MasterActionButton>
                   </div>
                 </div>
               </div>
@@ -1473,25 +1602,24 @@ export default function TahfizhPage() {
           </Card>
 
           {/* Card 2: 🏆 Urutan Siswa Hafalan Terbanyak (Top Leaderboard) */}
-          <Card className="rounded-[22px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] flex flex-col justify-between gap-4">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3.5 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-md">
-                  <TrendingUp className="w-5 h-5" />
+          <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] flex flex-col justify-between gap-4">
+            <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+            <div className="flex items-center justify-between gap-3 border-b border-emerald-200/90 pb-3.5 dark:border-emerald-800/60">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
+                  <TrendingUp className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>Urutan Siswa Hafalan Terbanyak</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-500 font-medium">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Urutan Siswa Hafalan Terbanyak</h3>
+                  <p className="text-[11px] text-slate-500 font-medium dark:text-slate-400">
                     Peringkat 5 siswa dengan hafalan terbanyak di {currentClassObj?.nama_kelas || 'Rombel'}.
                   </p>
                 </div>
               </div>
 
-              <Badge color="emerald" size="md">
+              <AppBadge variant="success" size="sm">
                 Leaderboard Rombel
-              </Badge>
+              </AppBadge>
             </div>
 
             <div className="space-y-2.5">
@@ -1549,23 +1677,14 @@ export default function TahfizhPage() {
                         </div>
                       </div>
 
-                      <div className="group relative inline-flex">
-                        <button
-                          type="button"
-                          title="Lihat Detail Pencapaian & Progres"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleOpenDetailProgressModal(st)
-                          }}
-                          className="flex size-9 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-900 hover:bg-sky-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-sky-950/80 dark:text-sky-200"
-                        >
-                          <Eye className="size-4" />
-                        </button>
-                        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                          Lihat Detail Pencapaian & Progres
-                        </div>
-                      </div>
+                      <MasterActionIconButton
+                        variant="view"
+                        label="Lihat Detail Pencapaian & Progres"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenDetailProgressModal(st)
+                        }}
+                      />
                     </div>
                   </div>
                 )
@@ -1578,32 +1697,40 @@ export default function TahfizhPage() {
       {/* 📊 MASTER DATA TABLE: PENCAAPAIAN & REKAP SISWA ROMBEL GURU / MUSYRIF / KEPSEK */}
       {(isGuru || isMusyrif || isSuperAdminOrAdmin) && (
         <motion.div variants={itemVariants}>
-          <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+          <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
           {/* Header Baris 1: Title & Mode Switcher */}
-          <CardHeader className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-emerald-600" />
-                <span>Pencapaian & Rekap Siswa Rombel ({currentClassObj?.nama_kelas || 'Rombel Saya'})</span>
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500 mt-1">
-                Daftar rincian hafalan, jumlah ayat, surah terakhir, progres 30 juz, dan predikat nilai seluruh siswa di rombel ini.
-              </CardDescription>
+          <CardHeader className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 px-4 py-3.5 sm:px-6 md:px-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shrink-0 shadow-sm border border-emerald-300/40">
+                <GraduationCap className="size-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CardTitle className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    <span>Pencapaian & Rekap Siswa Rombel ({currentClassObj?.nama_kelas || 'Rombel Saya'})</span>
+                  </CardTitle>
+                  <AppBadge variant="success" size="sm">
+                    Total {students.length} Siswa
+                  </AppBadge>
+                </div>
+                <CardDescription className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-0.5">
+                  Daftar rincian hafalan, jumlah ayat, surah terakhir, progres 30 juz, dan predikat nilai seluruh siswa di rombel ini.
+                </CardDescription>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
-              <Badge color="emerald" size="md">
-                Total {students.length} Siswa Terdaftar
-              </Badge>
-
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 shrink-0 self-start lg:self-auto">
               {/* Mode Switcher */}
-              <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/90 flex items-center gap-1.5 dark:bg-slate-900 dark:border-slate-800 shadow-inner">
+              <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/90 flex items-center gap-1.5 dark:bg-slate-900 dark:border-slate-800 shadow-inner" role="tablist" aria-label="Mode tampilan">
                 {(isGuru || isSuperAdminOrAdmin) && (
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={viewMode === 'guru'}
                     onClick={() => setViewMode('guru')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 cursor-pointer ${
-                      viewMode === 'guru' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30' : 'text-slate-700 hover:bg-slate-200 dark:text-slate-300'
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+                      viewMode === 'guru' ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25' : 'text-slate-700 hover:bg-slate-200 dark:text-slate-300'
                     }`}
                   >
                     <UserCheck className="w-3.5 h-3.5" />
@@ -1613,9 +1740,11 @@ export default function TahfizhPage() {
                 {(isMusyrif || isSuperAdminOrAdmin) && (
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={viewMode === 'musyrif'}
                     onClick={() => setViewMode('musyrif')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 cursor-pointer ${
-                      viewMode === 'musyrif' ? 'bg-teal-600 text-white shadow-md shadow-teal-900/30' : 'text-slate-700 hover:bg-slate-200 dark:text-slate-300'
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40 ${
+                      viewMode === 'musyrif' ? 'bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 text-white border border-teal-300/40 shadow-md shadow-teal-600/25' : 'text-slate-700 hover:bg-slate-200 dark:text-slate-300'
                     }`}
                   >
                     <UserCheck className="w-3.5 h-3.5" />
@@ -1625,9 +1754,11 @@ export default function TahfizhPage() {
                 {(isParent || isSuperAdminOrAdmin) && (
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={viewMode === 'ortu'}
                     onClick={() => setViewMode('ortu')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 cursor-pointer ${
-                      viewMode === 'ortu' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/30' : 'text-slate-700 hover:bg-slate-200 dark:text-slate-300'
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all duration-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+                      viewMode === 'ortu' ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25' : 'text-slate-700 hover:bg-slate-200 dark:text-slate-300'
                     }`}
                   >
                     <Heart className="w-3.5 h-3.5" />
@@ -1639,7 +1770,7 @@ export default function TahfizhPage() {
           </CardHeader>
 
           {/* Header Baris 2: Integrated Context Controls (1. Pilih Rombel, 2. Pilih Siswa, 3. Periode Pekan) */}
-          <div className="p-4 bg-emerald-50/60 border-b border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40">
+          <div className="px-4 py-3 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20 dark:border-emerald-800/60">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
               {/* 1. Pilih Kelas / Rombel */}
               <div className="space-y-1.5">
@@ -1681,21 +1812,9 @@ export default function TahfizhPage() {
                     </span>
                   </div>
 
-                  <div className="group relative inline-flex shrink-0">
-                    <button
-                      type="button"
-                      title="Pilih Siswa / Santri Rombel"
-                      onClick={() => setShowStudentModal(true)}
-                      className="flex h-10 px-3.5 items-center justify-center gap-2 rounded-2xl bg-emerald-100/90 text-emerald-900 font-extrabold text-xs hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-emerald-950/80 dark:text-emerald-200"
-                    >
-                      <Users className="size-4" />
-                      <span>Pilih Siswa</span>
-                    </button>
-                    <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                      <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                      Pilih Siswa / Santri Rombel
-                    </div>
-                  </div>
+                  <MasterActionButton variant="primary" icon={Users} onClick={() => setShowStudentModal(true)}>
+                    <span>Pilih Siswa</span>
+                  </MasterActionButton>
                 </div>
               </div>
 
@@ -1705,157 +1824,65 @@ export default function TahfizhPage() {
                   3. Periode Pekan (Senin - Ahad):
                 </label>
                 <div className="flex items-center gap-1.5">
-                  <Button
+                  <button
+                    type="button"
                     onClick={handlePrevWeek}
-                    variant="ghost"
-                    appearance="outline"
-                    size="xs"
-                    iconOnly
-                    title="Pekan Sebelumnya"
-                    className="h-10 border-emerald-200 bg-white"
+                    aria-label="Pekan sebelumnya"
+                    className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 cursor-pointer"
                   >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
+                    <ChevronLeft className="size-5 shrink-0" />
+                  </button>
                   <div className="flex-1 h-10 text-center bg-white border border-emerald-200 px-3 rounded-xl text-xs font-extrabold text-emerald-900 flex items-center justify-center gap-2 dark:bg-slate-900 dark:text-emerald-300 dark:border-slate-700">
                     <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>Senin, {currentMonday}</span>
                   </div>
-                  <Button
+                  <button
+                    type="button"
                     onClick={handleNextWeek}
-                    variant="ghost"
-                    appearance="outline"
-                    size="xs"
-                    iconOnly
-                    title="Pekan Selanjutnya"
-                    className="h-10 border-emerald-200 bg-white"
+                    aria-label="Pekan selanjutnya"
+                    className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 cursor-pointer"
                   >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+                    <ChevronRight className="size-5 shrink-0" />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Header Baris 3: Soft Pastel Squircle Action Buttons (LANGSUNG DI ATAS FILTER DATATABEL) */}
-          <div className="px-5 py-3.5 bg-slate-100/60 border-b border-slate-200/80 dark:bg-slate-900/60 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap">
+          {/* Header Baris 3: Vivid Gradient Squircle Action Buttons (§H.5) */}
+          <div className="px-4 py-3 sm:px-6 md:px-8 bg-white border-b border-emerald-200/80 dark:bg-[#1B2433] dark:border-emerald-800/60 flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-emerald-600" />
               <span>Aksi Datatable & Setoran Pekanan:</span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Soft Pastel Squircle 1: Import Data (Upload1 - Sky Blue) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Import Data Tahfizh"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-sky-950/60 dark:text-sky-300"
-                  onClick={() => setNotification({ type: 'warning', message: 'Fitur Import Log Tahfizh dapat diakses via menu Import Master Data.' })}
-                >
-                  <Upload1 className="size-5" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                  Import Data Tahfizh
-                </div>
-              </div>
-
-              {/* Soft Pastel Squircle 2: Export Data (Download1 - Amber/Orange) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Export Data Rekap (CSV)"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-700 hover:bg-amber-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-amber-950/60 dark:text-amber-300"
-                  onClick={handleExportCsv}
-                >
-                  <Download1 className="size-5" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                  Export Data (CSV)
-                </div>
-              </div>
-
-              {/* Soft Pastel Squircle 3: Cetak Data (Printer - Indigo) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Cetak Data / Unduh PDF"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-indigo-950/60 dark:text-indigo-300"
-                  onClick={() => setShowPrintModal(true)}
-                >
-                  <Printer className="size-5" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                  Cetak Data / PDF
-                </div>
-              </div>
-
-              {/* Soft Pastel Squircle 4: Tambah Setoran Tahfizh (Plus - Emerald/Green) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Tambah Setoran Tahfizh Baru (Aktifkan Juz, Surah & Ayat)"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-emerald-950/60 dark:text-emerald-300"
-                  onClick={handleOpenAddSetoranModal}
-                >
-                  <Plus className="size-5" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                  Tambah Setoran Tahfizh
-                </div>
-              </div>
-
-              {/* Soft Pastel Squircle 5: Lanjutkan Hafalan Otomatis (Violet) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Lanjutkan Hafalan Otomatis (Melanjutkan Ziyadah Terakhir)"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-violet-950/60 dark:text-violet-300"
-                  onClick={handleContinueHafalan}
-                >
-                  <Sparkles className="size-5" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                  Lanjutkan Hafalan Otomatis
-                </div>
-              </div>
-
-              {/* Soft Pastel Squircle 6: Mengulangi Tahfizh / Murajaah (Amber Repeat) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Mengulangi Tahfizh (Murajaah / Repeat Ziyadah Terakhir)"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-orange-100/90 text-orange-700 hover:bg-orange-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-orange-950/60 dark:text-orange-300"
-                  onClick={handleRepeatHafalan}
-                >
-                  <RefreshCcw className="size-5" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900" />
-                  Mengulangi Tahfizh (Murajaah)
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 shrink-0">
+              <SquircleActionButton variant="import" icon={Upload} label="Import Data Tahfizh" onClick={() => setNotification({ type: 'warning', message: 'Fitur Import Log Tahfizh dapat diakses via menu Import Master Data.' })} />
+              <SquircleActionButton variant="export" icon={Download} label="Export Data (CSV)" onClick={handleExportCsv} />
+              <SquircleActionButton variant="view" icon={Printer} label="Cetak Data / PDF" onClick={() => setShowPrintModal(true)} />
+              <SquircleActionButton variant="primary" label="Tambah Setoran Tahfizh" onClick={handleOpenAddSetoranModal} />
+              <SquircleActionButton variant="violet" icon={Sparkles} label="Lanjutkan Hafalan Otomatis" onClick={handleContinueHafalan} />
+              <SquircleActionButton variant="edit" icon={RefreshCcw} label="Mengulangi Tahfizh (Murajaah)" onClick={handleRepeatHafalan} />
             </div>
           </div>
 
           {/* Header Baris 4: Search Bar, Sort Order & Limit Dropdown Filters */}
-          <div className="p-4 bg-slate-50/50 border-b border-slate-200/60 dark:bg-slate-900/40 dark:border-slate-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <div className="px-4 py-3 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20 dark:border-emerald-800/60 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             {/* Input Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <div className="relative flex-1 max-w-md flex items-center">
+              <div className="pointer-events-none absolute left-3.5 sm:left-4 flex items-center text-emerald-600/70 dark:text-emerald-400">
+                <Search className="size-4" />
+              </div>
               <input
                 type="text"
                 value={studentTableSearch}
+                aria-label="Cari siswa berdasarkan nama atau NIS"
                 onChange={(e) => {
                   setStudentTableSearch(e.target.value)
                   setStudentCurrentPage(1)
                 }}
                 placeholder="Cari siswa berdasarkan nama atau NIS..."
-                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                className="h-10 sm:h-11 w-full rounded-2xl border border-emerald-200/90 bg-white pl-10 sm:pl-11 pr-4 text-xs font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
 
@@ -1871,7 +1898,7 @@ export default function TahfizhPage() {
                       setStudentSortOrder(e.target.value)
                       setStudentCurrentPage(1)
                     }}
-                    className="h-9 px-3 pr-8 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 cursor-pointer dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700"
+                    className="h-9 px-3 pr-8 appearance-none bg-white border border-emerald-200/80 rounded-xl text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 cursor-pointer dark:bg-slate-900 dark:text-slate-200 dark:border-emerald-800/70"
                   >
                     <option value="hafalan_desc">🏆 Hafalan Terbanyak → Terendah</option>
                     <option value="hafalan_asc">📉 Hafalan Terendah → Terbanyak</option>
@@ -1893,7 +1920,7 @@ export default function TahfizhPage() {
                       setStudentPerPage(val)
                       setStudentCurrentPage(1)
                     }}
-                    className="h-9 px-3 pr-8 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 cursor-pointer dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700"
+                    className="h-9 px-3 pr-8 appearance-none bg-white border border-emerald-200/80 rounded-xl text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 cursor-pointer dark:bg-slate-900 dark:text-slate-200 dark:border-emerald-800/70"
                   >
                     <option value={5}>5 Data</option>
                     <option value={10}>10 Data</option>
@@ -1911,40 +1938,44 @@ export default function TahfizhPage() {
 
           <CardContent className="p-0">
             {loadingStudents ? (
-              <div className="p-12 text-center text-slate-400 text-xs font-semibold flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-                <span>Memuat data siswa rombel...</span>
+              <div className="p-6">
+                <AppSkeleton variant="table" rows={5} cols={4} />
               </div>
             ) : filteredStudents.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-xs font-semibold">
-                {studentTableSearch ? 'Tidak ada siswa yang sesuai dengan kata kunci pencarian.' : 'Belum ada siswa terdaftar di rombel ini.'}
+              <div className="p-6">
+                <AppEmptyState
+                  title="Belum ada siswa terdaftar"
+                  description={studentTableSearch ? 'Tidak ada siswa yang sesuai dengan kata kunci pencarian.' : 'Belum ada siswa terdaftar di rombel ini.'}
+                  actionLabel={studentTableSearch ? 'Reset Pencarian' : undefined}
+                  onAction={studentTableSearch ? () => { setStudentTableSearch(''); setStudentCurrentPage(1) } : undefined}
+                />
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <TableRoot fullBleed={false}>
-                  <TableHeader className="bg-slate-100/80 border-b border-slate-200 text-slate-800 font-extrabold uppercase text-[11px] tracking-wider dark:bg-slate-900 dark:text-slate-200 dark:border-slate-800">
+                  <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50">
                     <TableRow>
-                      <TableHead className="px-4 py-3.5 text-center border-r border-slate-200/60 w-12 dark:border-slate-800">No</TableHead>
-                      <TableHead className="px-4 py-3.5 border-r border-slate-200/60 dark:border-slate-800">
-                        <div className="flex items-center gap-1">
+                      <TableHead className="px-4 py-2.5 text-center font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 w-12">No</TableHead>
+                      <TableHead className="px-4 py-2.5 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                        <div className="flex items-center gap-1.5">
                           <span>Siswa / Santri</span>
-                          <ArrowBothDirectionHorizontal2 className="h-3 w-3 shrink-0" />
+                          <ArrowUpDown className="h-3 w-3 shrink-0" />
                         </div>
                       </TableHead>
-                      <TableHead className="px-4 py-3.5 border-r border-slate-200/60 dark:border-slate-800">
-                        <div className="flex items-center gap-1">
+                      <TableHead className="hidden lg:table-cell px-4 py-2.5 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                        <div className="flex items-center gap-1.5">
                           <span>Jumlah Hafalan</span>
-                          <ArrowBothDirectionHorizontal2 className="h-3 w-3 shrink-0" />
+                          <ArrowUpDown className="h-3 w-3 shrink-0" />
                         </div>
                       </TableHead>
-                      <TableHead className="px-4 py-3.5 border-r border-slate-200/60 dark:border-slate-800">Hafalan Terakhir (Ziyadah)</TableHead>
-                      <TableHead className="px-4 py-3.5 border-r border-slate-200/60 text-center w-36 dark:border-slate-800">Progres 30 Juz</TableHead>
-                      <TableHead className="px-4 py-3.5 border-r border-slate-200/60 text-center w-28 dark:border-slate-800">Predikat / Nilai</TableHead>
-                      <TableHead className="px-4 py-3.5 border-r border-slate-200/60 text-center w-28 dark:border-slate-800">Status</TableHead>
+                      <TableHead className="hidden md:table-cell px-4 py-2.5 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">Hafalan Terakhir (Ziyadah)</TableHead>
+                      <TableHead className="px-4 py-2.5 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 text-center">Progres 30 Juz</TableHead>
+                      <TableHead className="hidden lg:table-cell px-4 py-2.5 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 text-center">Predikat / Nilai</TableHead>
+                      <TableHead className="px-4 py-2.5 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 text-center">Status</TableHead>
                     </TableRow>
                   </TableHeader>
 
-                  <TableBody className="divide-y divide-slate-200 font-medium dark:divide-slate-800">
+                  <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {paginatedStudents.map((st, sIdx) => {
                       const sId = st.id || st.student_id
                       const isSelected = sId === selectedStudentId
@@ -1964,32 +1995,41 @@ export default function TahfizhPage() {
                         <TableRow
                           key={sId}
                           onClick={() => handleSelectStudentAndScroll(sId)}
-                          className={`transition-all duration-200 hover:bg-emerald-50/50 cursor-pointer dark:hover:bg-slate-800/60 ${
+                          className={`transition-colors hover:bg-emerald-50/40 cursor-pointer dark:hover:bg-emerald-950/20 ${
                             isSelected ? 'bg-emerald-50/80 dark:bg-emerald-950/40 font-semibold' : ''
                           }`}
                         >
                           {/* No */}
-                          <TableCell className="px-4 py-3.5 text-center font-extrabold text-slate-700 border-r border-slate-200/80 bg-slate-50/30 dark:bg-slate-900/30 dark:border-slate-800 dark:text-slate-300">
+                          <TableCell className="px-4 py-3.5 text-center font-extrabold text-slate-700 tabular-nums dark:text-slate-300">
                             {realIndex}
                           </TableCell>
 
                           {/* Siswa / Santri dengan Floating Hover Card */}
-                          <TableCell className="px-4 py-3.5 border-r border-slate-200/80 dark:border-slate-800 relative group/student">
+                          <TableCell className="px-4 py-3.5 align-top sm:align-middle">
                             <div className="flex items-center gap-3">
                               <Avatar size="sm" status={isSelected ? 'online' : 'offline'}>
                                 <AvatarFallback className="bg-emerald-100 text-emerald-900 font-extrabold text-xs dark:bg-emerald-950 dark:text-emerald-200">
                                   {(st.nama_lengkap || st.nama || st.full_name || st.name || 'S').charAt(0).toUpperCase()}
                                 </AvatarFallback>
                               </Avatar>
-                              <div>
-                                <div className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                                  <span className="hover:text-emerald-600 hover:underline transition-colors">{st.nama_lengkap || st.nama || st.full_name || st.name || 'Siswa'}</span>
+                              <div className="min-w-0">
+                                <div className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 line-clamp-2">
+                                  <span className="hover:text-emerald-600 hover:underline transition-colors truncate">{st.nama_lengkap || st.nama || st.full_name || st.name || 'Siswa'}</span>
                                   {isSelected && <Badge color="success" size="sm">Aktif</Badge>}
                                 </div>
-                                <div className="text-[11px] text-slate-500">
+                                <div className="text-[11px] text-slate-500 font-mono line-clamp-1 mt-0.5">
                                   NIS: {st.nis || st.nisn || '-'}
                                 </div>
                               </div>
+                            </div>
+                            {/* Mobile Compact Metadata Row (§7.5) */}
+                            <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 tabular-nums">
+                                {totalAyat.toLocaleString('id-ID')} Ayat
+                              </span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
+                                {progressPct}%
+                              </span>
                             </div>
 
                             {/* 🌟 FLOATING HOVER CARD PREVIEW DATA SISWA & AVATAR */}
@@ -2048,8 +2088,8 @@ export default function TahfizhPage() {
                           </TableCell>
 
                           {/* Jumlah Hafalan */}
-                          <TableCell className="px-4 py-3.5 border-r border-slate-200/80 dark:border-slate-800">
-                            <div className="text-xs font-extrabold text-emerald-900 dark:text-emerald-400">
+                          <TableCell className="hidden lg:table-cell px-4 py-3.5 align-middle">
+                            <div className="text-xs font-extrabold text-emerald-900 dark:text-emerald-400 tabular-nums">
                               {totalAyat.toLocaleString('id-ID')} <span className="text-[11px] font-bold text-emerald-700">Ayat</span>
                             </div>
                             <div className="text-[11px] text-slate-500 font-medium">
@@ -2058,10 +2098,10 @@ export default function TahfizhPage() {
                           </TableCell>
 
                           {/* Hafalan Terakhir */}
-                          <TableCell className="px-4 py-3.5 border-r border-slate-200/80 dark:border-slate-800">
+                          <TableCell className="hidden md:table-cell px-4 py-3.5 align-middle">
                             <div className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
                               <BookOpen className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>{lastSurah}</span>
+                              <span className="truncate">{lastSurah}</span>
                             </div>
                             <div className="text-[11px] text-slate-500 font-medium">
                               Ayat {lastAyah}
@@ -2069,9 +2109,9 @@ export default function TahfizhPage() {
                           </TableCell>
 
                           {/* Progres 30 Juz */}
-                          <TableCell className="px-4 py-3.5 border-r border-slate-200/80 text-center dark:border-slate-800">
+                          <TableCell className="px-4 py-3.5 text-center align-middle">
                             <div className="flex flex-col gap-1 items-center">
-                              <span className="text-xs font-black text-indigo-700 dark:text-indigo-400">{progressPct}%</span>
+                              <span className="text-xs font-black text-indigo-700 dark:text-indigo-400 tabular-nums">{progressPct}%</span>
                               <div className="w-24 bg-slate-100 h-2 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                                 <div
                                   className="bg-gradient-to-r from-emerald-500 to-indigo-600 h-full rounded-full transition-all duration-500"
@@ -2082,14 +2122,14 @@ export default function TahfizhPage() {
                           </TableCell>
 
                           {/* Predikat / Nilai */}
-                          <TableCell className="px-4 py-3.5 border-r border-slate-200/80 text-center dark:border-slate-800">
+                          <TableCell className="hidden lg:table-cell px-4 py-3.5 text-center align-middle">
                             <Badge color={predikatColor} size="sm" className="font-extrabold">
                               {predikatLabel}
                             </Badge>
                           </TableCell>
 
                           {/* Status */}
-                          <TableCell className="px-4 py-3.5 text-center dark:border-slate-800">
+                          <TableCell className="px-4 py-3.5 text-center align-middle">
                             {isSelected ? (
                               <Badge color="success" size="sm">Sedang Input</Badge>
                             ) : (
@@ -2105,16 +2145,21 @@ export default function TahfizhPage() {
             )}
           </CardContent>
 
-          {/* Footer TailGrids Pagination Component */}
+          {/* Footer Pagination (§7.6) */}
           {filteredStudents.length > 0 && studentPerPage !== 'all' && (
-            <div className="w-full border-t border-slate-200/80 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/20">
-              <Pagination
-                currentPage={studentCurrentPage}
-                totalPages={totalStudentPages}
-                onPageChange={setStudentCurrentPage}
-                sideLayout="full"
-                variant="default"
-              />
+            <div className="border-t border-emerald-200/80 bg-gradient-to-r from-emerald-50/40 via-white to-emerald-50/40 p-3.5 sm:px-6 md:px-8 py-3 sm:py-3.5 dark:border-emerald-800/60 dark:from-emerald-950/20 dark:via-transparent dark:to-emerald-950/20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center sm:text-left">
+                Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{filteredStudents.length}</span> dari <span className="font-semibold text-slate-700 dark:text-slate-200">{students.length}</span> santri
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Pagination
+                  currentPage={studentCurrentPage}
+                  totalPages={totalStudentPages}
+                  onPageChange={setStudentCurrentPage}
+                  sideLayout="icon"
+                  variant="default"
+                />
+              </div>
             </div>
           )}
         </Card>
@@ -2128,41 +2173,60 @@ export default function TahfizhPage() {
 
       {/* MODAL POPUP SELECTION SISWA */}
       {showStudentModal && (
-        <Backdrop isOpen={showStudentModal} onOpenChange={setShowStudentModal} className="z-50 flex items-center justify-center p-3 sm:p-5">
-          <Dialog showCloseButton={false} className="max-w-2xl w-full h-[80vh] max-h-[80vh] flex flex-col rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
-            <DialogHeader className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-t-3xl p-5 shrink-0 border-b border-emerald-800/80">
-              <DialogTitle className="text-white font-extrabold text-lg flex items-center gap-2">
-                <Users className="w-5 h-5 text-emerald-300" />
-                <span>Pilih Siswa / Santri - {currentClassObj?.nama_kelas || 'Kelas Rombel'}</span>
-              </DialogTitle>
-              <DialogDescription className="text-emerald-100/90 text-xs mt-1">
-                Pilih siswa untuk mengelola log setoran hafalan & murajaah harian atau lihat kelanjutan tahfizh.
-              </DialogDescription>
-              <DialogClose onClick={() => setShowStudentModal(false)} />
+        <Backdrop isOpen={showStudentModal} onOpenChange={setShowStudentModal} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <Dialog showCloseButton={false} className="max-w-2xl w-full h-[80vh] max-h-[80vh] flex flex-col rounded-3xl border border-slate-200/80 bg-white p-0 shadow-2xl shadow-emerald-950/20 overflow-hidden dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+            <DialogHeader className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+                  <Users className="h-5 w-5 text-white" strokeWidth={2.25} />
+                </div>
+                <div>
+                  <DialogTitle className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Pilih Siswa / Santri - {currentClassObj?.nama_kelas || 'Kelas Rombel'}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                      <Sparkles className="size-3" />
+                      {filteredStudentsInModal.length} Siswa
+                    </span>
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Pilih siswa untuk mengelola log setoran hafalan & murajaah harian atau lihat kelanjutan tahfizh.
+                  </DialogDescription>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStudentModal(false)}
+                aria-label="Tutup modal"
+                className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+              >
+                <X className="size-4 text-white" strokeWidth={2.25} />
+              </button>
             </DialogHeader>
 
-            <DialogBody className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <DialogBody className="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
+              <div className="relative flex items-center">
+                <div className="pointer-events-none absolute left-3.5 flex items-center text-emerald-600/70 dark:text-emerald-400">
+                  <Search className="size-4" />
+                </div>
                 <input
                   type="text"
                   value={studentModalSearch}
                   onChange={(e) => setStudentModalSearch(e.target.value)}
                   placeholder="Cari nama siswa atau NIS..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700"
+                  aria-label="Cari siswa dalam modal"
+                  className="w-full rounded-2xl border border-emerald-200/90 bg-white pl-10 pr-4 py-2 text-xs font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-100"
                 />
               </div>
 
               <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1">
                 {loadingStudents ? (
-                  <div className="p-8 text-center text-slate-400 text-xs font-semibold flex flex-col items-center justify-center gap-2.5">
-                    <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-                    <span>Memuat daftar siswa rombel...</span>
-                  </div>
+                  <AppSkeleton variant="list" rows={4} />
                 ) : filteredStudentsInModal.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 text-xs font-semibold">
-                    Tidak ada siswa ditemukan pada rombel ini.
-                  </div>
+                  <AppEmptyState
+                    title="Tidak ada siswa ditemukan"
+                    description="Tidak ada siswa ditemukan pada rombel ini."
+                  />
                 ) : (
                   filteredStudentsInModal.map((s) => {
                     const sId = s.id || s.student_id
@@ -2233,24 +2297,20 @@ export default function TahfizhPage() {
               </div>
             </DialogBody>
 
-            <DialogFooter className="bg-slate-50 border-t p-4 flex items-center justify-between dark:bg-slate-900 dark:border-slate-800">
-              <div className="text-xs text-slate-500 font-semibold">
+            <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/40">
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
                 Total {filteredStudentsInModal.length} Siswa Terdaftar
-              </div>
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  onClick={() => setShowStudentModal(false)}
-                  className="flex h-10 px-4 items-center justify-center gap-1.5 rounded-2xl bg-slate-100 text-slate-700 font-extrabold text-xs hover:bg-slate-700 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-xs dark:bg-slate-800 dark:text-slate-300"
-                >
-                  <X className="size-4" />
-                  <span>Tutup Modal</span>
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Tutup Modal Pemilihan Siswa
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowStudentModal(false)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <X className="size-3.5 text-white" strokeWidth={2.2} />
                 </div>
-              </div>
+                <span>Tutup Modal</span>
+              </button>
             </DialogFooter>
           </Dialog>
         </Backdrop>
@@ -2258,17 +2318,35 @@ export default function TahfizhPage() {
 
       {/* MODAL POPUP DETAIL KELANJUTAN TAHFIZH SISWA */}
       {showStudentDetailModal && detailStudentObj && (
-        <Backdrop isOpen={showStudentDetailModal} onOpenChange={setShowStudentDetailModal}>
-          <Dialog className="max-w-xl w-full">
-            <DialogHeader className="bg-gradient-to-r from-emerald-800 via-teal-800 to-cyan-900 text-white rounded-t-2xl p-5">
-              <DialogTitle className="text-white font-extrabold text-lg flex items-center gap-2">
-                <BookOpenCheck className="w-5 h-5 text-emerald-300" />
-                <span>Detail Pencapaian & Progres: {getStudentName(detailStudentObj)}</span>
-              </DialogTitle>
-              <DialogDescription className="text-emerald-100/90 text-xs mt-1">
-                Siswa: <strong className="text-white font-bold">{getStudentName(detailStudentObj)}</strong> · NIS: {getStudentNis(detailStudentObj)} · Rombel: {currentClassObj?.nama_kelas || 'Kelas'}
-              </DialogDescription>
-              <DialogClose onClick={() => setShowStudentDetailModal(false)} />
+        <Backdrop isOpen={showStudentDetailModal} onOpenChange={setShowStudentDetailModal} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <Dialog className="max-w-xl w-full rounded-3xl overflow-hidden shadow-2xl shadow-emerald-950/20 dark:shadow-black/60 border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-[#182232]">
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+            <DialogHeader className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+                  <BookOpenCheck className="h-5 w-5 text-white" strokeWidth={2.25} />
+                </div>
+                <div>
+                  <DialogTitle className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span className="truncate">Detail Pencapaian: {getStudentName(detailStudentObj)}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60 shrink-0">
+                      <Sparkles className="size-3" />
+                      Progres
+                    </span>
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Siswa: <strong className="font-bold">{getStudentName(detailStudentObj)}</strong> · NIS: {getStudentNis(detailStudentObj)} · Rombel: {currentClassObj?.nama_kelas || 'Kelas'}
+                  </DialogDescription>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStudentDetailModal(false)}
+                aria-label="Tutup modal"
+                className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+              >
+                <X className="size-4 text-white" strokeWidth={2.25} />
+              </button>
             </DialogHeader>
 
             <DialogBody className="p-6 space-y-4">
@@ -2289,10 +2367,7 @@ export default function TahfizhPage() {
               </div>
 
               {loadingDetailProgress ? (
-                <div className="p-8 text-center text-slate-400 flex flex-col items-center gap-2">
-                  <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
-                  <span className="text-xs font-semibold">Memuat rincian kelanjutan tahfizh...</span>
-                </div>
+                <AppSkeleton variant="card" className="h-32" />
               ) : detailStudentProgress ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-3">
@@ -2341,43 +2416,32 @@ export default function TahfizhPage() {
               )}
             </DialogBody>
 
-            <DialogFooter className="bg-slate-50 border-t p-4 flex items-center justify-between dark:bg-slate-900 dark:border-slate-800">
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const sId = detailStudentObj.id || detailStudentObj.student_id
-                    setSelectedStudentId(sId)
-                    setShowStudentDetailModal(false)
-                    setShowStudentModal(false)
-                    setShowSheetModal(true)
-                  }}
-                  className="flex h-10 px-4 items-center justify-center gap-2 rounded-2xl bg-emerald-100/90 text-emerald-900 font-black text-xs hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-emerald-950/80 dark:text-emerald-200"
-                >
-                  <BookOpen className="size-4" />
-                  <span>Kelola Setoran Siswa Ini</span>
-                  <ArrowRight className="size-3.5" />
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Buka Formulir Setoran Pekanan Siswa Ini
-                </div>
-              </div>
+            <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/40">
+              <MasterActionButton
+                variant="primary"
+                icon={BookOpen}
+                onClick={() => {
+                  const sId = detailStudentObj.id || detailStudentObj.student_id
+                  setSelectedStudentId(sId)
+                  setShowStudentDetailModal(false)
+                  setShowStudentModal(false)
+                  setShowSheetModal(true)
+                }}
+              >
+                <span>Kelola Setoran Siswa Ini</span>
+                <ArrowRight className="size-3.5" />
+              </MasterActionButton>
 
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  onClick={() => setShowStudentDetailModal(false)}
-                  className="flex h-10 px-4 items-center justify-center gap-1.5 rounded-2xl bg-slate-100 text-slate-700 font-extrabold text-xs hover:bg-slate-700 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-xs dark:bg-slate-800 dark:text-slate-300"
-                >
-                  <X className="size-4" />
-                  <span>Tutup</span>
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Tutup Modal Detail Progress
+              <button
+                type="button"
+                onClick={() => setShowStudentDetailModal(false)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <X className="size-3.5 text-white" strokeWidth={2.2} />
                 </div>
-              </div>
+                <span>Tutup</span>
+              </button>
             </DialogFooter>
           </Dialog>
         </Backdrop>
@@ -2385,17 +2449,29 @@ export default function TahfizhPage() {
 
       {/* DIALOG KONFIRMASI SIMPAN DATA */}
       {showSaveConfirm && (
-        <Backdrop isOpen={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
-          <Dialog showCloseButton={false} className="max-w-md w-full rounded-3xl overflow-hidden">
-            <DialogHeader className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between dark:bg-slate-900 dark:border-slate-800">
-              <DialogTitle className="font-extrabold text-base text-slate-900 dark:text-white">
-                Konfirmasi Penyimpanan Log Tahfizh
-              </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500 mt-1">
-                {singleSaveIndex !== null
-                  ? `Apakah Anda yakin ingin menyimpan log Tahfizh hari ${weeklySheet[singleSaveIndex]?.day_name} (${weeklySheet[singleSaveIndex]?.record_date})?`
-                  : 'Apakah Anda yakin ingin menyimpan seluruh log Tahfizh pekan ini ke server?'}
-              </DialogDescription>
+        <Backdrop isOpen={showSaveConfirm} onOpenChange={setShowSaveConfirm} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <Dialog showCloseButton={false} className="max-w-md w-full rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1B2433]">
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+            <DialogHeader className="px-6 py-4.5 border-b border-slate-100 bg-white flex items-center justify-between dark:bg-slate-950 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+                  <Sparkles className="size-5 text-white" strokeWidth={2.25} />
+                </div>
+                <div>
+                  <DialogTitle className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Konfirmasi Penyimpanan Log Tahfizh</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                      <Sparkles className="size-3" />
+                      Simpan Data
+                    </span>
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {singleSaveIndex !== null
+                      ? `Simpan log Tahfizh hari ${weeklySheet[singleSaveIndex]?.day_name} (${weeklySheet[singleSaveIndex]?.record_date})`
+                      : 'Simpan seluruh log Tahfizh pekan ini ke server'}
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
             <DialogBody className="p-5">
@@ -2404,35 +2480,21 @@ export default function TahfizhPage() {
               </div>
             </DialogBody>
 
-            <DialogFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5 dark:bg-slate-900 dark:border-slate-800">
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  onClick={() => setShowSaveConfirm(false)}
-                  className="flex h-10 px-4 items-center justify-center gap-1.5 rounded-2xl bg-slate-100 text-slate-700 font-extrabold text-xs hover:bg-slate-700 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-xs dark:bg-slate-800 dark:text-slate-300"
-                >
-                  <span>Batal</span>
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Batal Menyimpan Log
+            <DialogFooter className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-2.5 dark:bg-slate-900/40 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowSaveConfirm(false)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <X className="size-3.5 text-white" strokeWidth={2.2} />
                 </div>
-              </div>
+                <span>Batal</span>
+              </button>
 
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  onClick={handleConfirmSave}
-                  className="flex h-10 px-5 items-center justify-center gap-2 rounded-2xl bg-emerald-100/90 text-emerald-900 font-black text-xs hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm dark:bg-emerald-950/80 dark:text-emerald-200"
-                >
-                  <Save className="size-4" />
-                  <span>Ya, Simpan Log</span>
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Konfirmasi Simpan Log Tahfizh
-                </div>
-              </div>
+              <MasterActionButton variant="primary" icon={Save} onClick={handleConfirmSave}>
+                <span>Ya, Simpan Log</span>
+              </MasterActionButton>
             </DialogFooter>
           </Dialog>
         </Backdrop>
@@ -2440,58 +2502,67 @@ export default function TahfizhPage() {
 
       {/* MODAL TARIK MASTER AL-QUR'AN & SELEKSI JUZ / SURAH / AYAT (STATIC 2-COLUMN LAYOUT WITH SCROLLING BODIES) */}
       {showQuranModal && (
-        <Backdrop isOpen={showQuranModal} onOpenChange={setShowQuranModal} className="z-50 flex items-center justify-center p-3 sm:p-5">
+        <Backdrop isOpen={showQuranModal} onOpenChange={setShowQuranModal} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
           <Dialog showCloseButton={false} className="max-w-5xl w-full h-[88vh] max-h-[88vh] flex flex-col rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
-            <DialogHeader className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-t-3xl p-5 shrink-0 border-b border-emerald-800/80">
-              <div className="flex items-center justify-between gap-4">
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+            <DialogHeader className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+                  <BookOpen className="h-5 w-5 text-white" strokeWidth={2.25} />
+                </div>
                 <div>
-                  <DialogTitle className="text-white font-extrabold text-lg flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-emerald-300" />
+                  <DialogTitle className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <span>Pilih Hafalan Al-Qur'an (Juz, Surah, Ayat, Baris)</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                      <BookOpen className="size-3" />
+                      Mushaf
+                    </span>
                   </DialogTitle>
-                  {currentStudentObj ? (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-emerald-100 font-semibold bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-700/80 w-fit shadow-inner">
-                      <Avatar size="xs" status="online">
-                        <AvatarFallback className="bg-emerald-300 text-emerald-950 font-black text-[10px]">
-                          {getStudentName(currentStudentObj).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span>Siswa Terpilih: <strong className="text-white font-black">{getStudentName(currentStudentObj)}</strong> (NIS: {getStudentNis(currentStudentObj)})</span>
-                      <span className="text-emerald-400">•</span>
-                      <span className="text-emerald-200">{currentClassObj?.nama_kelas || 'Rombel'}</span>
-                    </div>
-                  ) : (
-                    <DialogDescription className="text-emerald-100/90 text-xs mt-1">
-                      Pilih Juz, Surah, rentang Ayat, dan jumlah baris halaman Al-Qur'an secara interaktif atau manual.
-                    </DialogDescription>
-                  )}
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {currentStudentObj ? (
+                      <span>Siswa Terpilih: <strong>{getStudentName(currentStudentObj)}</strong> (NIS: {getStudentNis(currentStudentObj)}) · {currentClassObj?.nama_kelas || 'Rombel'}</span>
+                    ) : (
+                      'Pilih Juz, Surah, rentang Ayat, dan jumlah baris halaman Al-Qur\'an secara interaktif atau manual.'
+                    )}
+                  </DialogDescription>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0">
+                {/* Switcher Mode Interactive vs Manual */}
+                <div className="bg-slate-100 p-1 rounded-2xl border border-slate-200/80 flex items-center gap-1 dark:bg-slate-900 dark:border-slate-800" role="tablist" aria-label="Mode input mushaf">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={quranInputMode === 'interactive'}
+                    onClick={() => setQuranInputMode('interactive')}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+                      quranInputMode === 'interactive' ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
+                    }`}
+                  >
+                    Interaktif
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={quranInputMode === 'manual'}
+                    onClick={() => setQuranInputMode('manual')}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+                      quranInputMode === 'manual' ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
+                    }`}
+                  >
+                    Manual
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {/* Switcher Mode Interactive vs Manual */}
-                  <div className="bg-emerald-950/60 p-1 rounded-xl border border-emerald-700/60 flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setQuranInputMode('interactive')}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all ${
-                        quranInputMode === 'interactive' ? 'bg-emerald-500 text-white shadow-sm' : 'text-emerald-200 hover:text-white'
-                      }`}
-                    >
-                      Interaktif
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuranInputMode('manual')}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-extrabold transition-all ${
-                        quranInputMode === 'manual' ? 'bg-emerald-500 text-white shadow-sm' : 'text-emerald-200 hover:text-white'
-                      }`}
-                    >
-                      Manual
-                    </button>
-                  </div>
-
-                  <DialogClose onClick={() => setShowQuranModal(false)} />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQuranModal(false)}
+                  aria-label="Tutup modal"
+                  className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                >
+                  <X className="size-4 text-white" strokeWidth={2.25} />
+                </button>
               </div>
             </DialogHeader>
 
@@ -2971,35 +3042,28 @@ export default function TahfizhPage() {
               </div>
             </DialogBody>
 
-            <DialogFooter className="bg-slate-50 border-t p-4 flex items-center justify-end gap-2.5 shrink-0 dark:bg-slate-900 dark:border-slate-800">
-              <div className="group relative inline-flex">
+            <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/40 shrink-0">
+              <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Pratinjau mushaf & pilihan surah</span>
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowQuranModal(false)}
-                  className="flex h-10 px-4 items-center justify-center gap-1.5 rounded-2xl bg-slate-100 text-slate-700 font-extrabold text-xs hover:bg-slate-700 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-xs dark:bg-slate-800 dark:text-slate-300"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                 >
+                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <X className="size-3.5 text-white" strokeWidth={2.2} />
+                  </div>
                   <span>Batal</span>
                 </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Batal Pemilihan Al-Qur'an
-                </div>
-              </div>
 
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
+                <MasterActionButton
+                  variant="primary"
+                  icon={BookOpen}
                   onClick={handleApplyQuranSelection}
                   disabled={!modalSurah}
-                  className="flex h-10 px-5 items-center justify-center gap-2 rounded-2xl bg-emerald-100/90 text-emerald-900 font-black text-xs hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 dark:bg-emerald-950/80 dark:text-emerald-200"
                 >
-                  <BookOpen className="size-4" />
                   <span>Terapkan ke Form Tahfizh</span>
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Terapkan Surah & Ayat ke Form Tahfizh
-                </div>
+                </MasterActionButton>
               </div>
             </DialogFooter>
           </Dialog>
@@ -3012,25 +3076,37 @@ export default function TahfizhPage() {
         const studentNis = currentStudentObj.nis || currentStudentObj.nisn || '-'
 
         return (
-          <Backdrop isOpen={showSheetModal} onOpenChange={setShowSheetModal} className="z-50 flex items-center justify-center p-3 sm:p-5">
+          <Backdrop isOpen={showSheetModal} onOpenChange={setShowSheetModal} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
             <Dialog showCloseButton={false} className="w-full max-w-5xl h-[90vh] max-h-[90vh] flex flex-col rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
-              {/* HEADER MODAL ALIGNED TO LEFT */}
-              <DialogHeader className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white px-6 py-4 flex items-center justify-between shrink-0 rounded-t-3xl border-b border-emerald-800/80">
+              <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+              {/* HEADER MODAL */}
+              <DialogHeader className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-700/80 text-emerald-200 flex items-center justify-center border border-emerald-600/60 shadow-inner shrink-0">
-                    <BookOpen className="w-5 h-5" />
+                  <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+                    <BookOpen className="h-5 w-5 text-white" strokeWidth={2.25} />
                   </div>
                   <div>
-                    <DialogTitle className="text-base font-extrabold text-white text-left">
-                      Formulir Tahfizh & Murajaah Harian ({getStudentName(currentStudentObj)})
+                    <DialogTitle className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <span className="truncate">Formulir Tahfizh & Murajaah Harian ({getStudentName(currentStudentObj)})</span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60 shrink-0">
+                        <Sparkles className="size-3" />
+                        Setoran
+                      </span>
                     </DialogTitle>
-                    <DialogDescription className="text-xs text-emerald-200/90 mt-0.5 font-medium text-left">
+                    <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Siswa: {getStudentName(currentStudentObj)} · NIS: {getStudentNis(currentStudentObj)} · Periode Pekan: Senin, {currentMonday} · Rombel: {currentClassObj?.nama_kelas || 'Kelas Aktif'}
                     </DialogDescription>
                   </div>
                 </div>
 
-                <DialogClose onClick={() => setShowSheetModal(false)} />
+                <button
+                  type="button"
+                  onClick={() => setShowSheetModal(false)}
+                  aria-label="Tutup modal"
+                  className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                >
+                  <X className="size-4 text-white" strokeWidth={2.25} />
+                </button>
               </DialogHeader>
 
             <DialogBody className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0 space-y-4">
@@ -3386,7 +3462,7 @@ export default function TahfizhPage() {
               {/* Catatan Evaluasi Guru & Ortu */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider dark:text-slate-300">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                     Catatan Evaluasi Guru / Musyrif:
                   </label>
                   <textarea
@@ -3395,11 +3471,11 @@ export default function TahfizhPage() {
                     onChange={(e) => setSummaryTeacherNotes(e.target.value)}
                     placeholder="Tuliskan catatan tajwid/kelancaran siswa pekan ini..."
                     readOnly={viewMode === 'ortu'}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider dark:text-slate-300">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                     Catatan Evaluasi Orang Tua:
                   </label>
                   <textarea
@@ -3408,43 +3484,33 @@ export default function TahfizhPage() {
                     onChange={(e) => setSummaryParentNotes(e.target.value)}
                     placeholder="Tuliskan catatan pendampingan dari rumah..."
                     readOnly={viewMode === 'guru' || viewMode === 'musyrif'}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:border-[#0E5C44] focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                   />
                 </div>
               </div>
             </DialogBody>
 
-            <DialogFooter className="bg-slate-50 border-t border-slate-200/80 p-4 flex items-center justify-between shrink-0 dark:bg-slate-900 dark:border-slate-800">
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  onClick={() => setShowSheetModal(false)}
-                  className="flex h-10 px-4 items-center justify-center gap-1.5 rounded-2xl bg-slate-100 text-slate-700 font-extrabold text-xs hover:bg-slate-700 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-xs dark:bg-slate-800 dark:text-slate-300"
-                >
-                  <X className="size-4" />
-                  <span>Tutup Modal</span>
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Tutup Formulir Setoran Pekanan
+            <DialogFooter className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 bg-slate-50/50 px-6 py-4 shrink-0 dark:bg-slate-900/40 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowSheetModal(false)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <X className="size-3.5 text-white" strokeWidth={2.2} />
                 </div>
-              </div>
+                <span>Tutup Modal</span>
+              </button>
 
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  disabled={savingAll || !selectedStudentId}
-                  onClick={() => promptSaveConfirmation(null)}
-                  className="flex h-10 px-5 items-center justify-center gap-2 rounded-2xl bg-emerald-100/90 text-emerald-900 font-black text-xs hover:bg-emerald-600 hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm disabled:opacity-50 dark:bg-emerald-950/80 dark:text-emerald-200"
-                >
-                  {savingAll ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                  <span>Simpan Seluruh Pekan Ini</span>
-                </button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-                  Simpan Seluruh Data Pekan Ini Ke Database
-                </div>
-              </div>
+              <MasterActionButton
+                variant="primary"
+                icon={Save}
+                onClick={() => promptSaveConfirmation(null)}
+                disabled={savingAll || !selectedStudentId}
+                loading={savingAll}
+              >
+                <span>Simpan Seluruh Pekan Ini</span>
+              </MasterActionButton>
             </DialogFooter>
           </Dialog>
         </Backdrop>

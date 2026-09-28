@@ -1,18 +1,24 @@
 import { create } from 'zustand'
 
-const unitOptions = ['TK', 'SD', 'SMP', 'SMA']
-
 function bacaUnitTersimpan() {
   const unit = localStorage.getItem('school_erp_unit')
-  return unitOptions.includes(unit) ? unit : 'SD'
+  return unit && typeof unit === 'string' ? unit : 'semua'
 }
 
 export const useUnitStore = create((set) => ({
   activeUnit: bacaUnitTersimpan(),
   setActiveUnit: (activeUnit) => {
-    localStorage.setItem('school_erp_unit', activeUnit)
+    if (activeUnit) {
+      localStorage.setItem('school_erp_unit', activeUnit)
+    } else {
+      localStorage.removeItem('school_erp_unit')
+    }
     set({ activeUnit })
+  },
+  resetUnit: () => {
+    localStorage.removeItem('school_erp_unit')
+    set({ activeUnit: 'semua' })
   },
 }))
 
-export const dashboardUnits = unitOptions
+export const dashboardUnits = []

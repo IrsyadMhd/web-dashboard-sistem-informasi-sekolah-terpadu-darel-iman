@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   BookOpenCheck, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCopy,
-  Download, Loader2, RotateCcw, Save, Search, Send, Users, X, XCircle,
+  Download, Loader2, Printer, RotateCcw, Save, Search, Send, Users, X, XCircle,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { mutabaahService } from '../services/mutabaahService'
+import { printCleanTable } from '../utils/printHelper'
 import './MutabaahDailySpreadsheet.css'
 
 const today = () => new Date().toLocaleDateString('en-CA')
@@ -22,6 +23,8 @@ export default function MutabaahDailySpreadsheet() {
   const [students, setStudents] = useState([])
   const [template, setTemplate] = useState(null)
   const [values, setValues] = useState({})
+  const [cellMeta, setCellMeta] = useState({})
+  const [scopeFilter, setScopeFilter] = useState('all')
   const [selected, setSelected] = useState(new Set())
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -50,11 +53,19 @@ export default function MutabaahDailySpreadsheet() {
       setTemplate(result.template)
       const details = await Promise.all((result.students || []).map((student) =>
         student.header_id ? mutabaahService.dailyStudent(student.id, { date, supervisor_assignment_id: assignmentId }) : Promise.resolve(null)))
-      const next = {}
-      details.forEach((detail, index) => detail?.values && Object.entries(detail.values).forEach(([itemId, value]) => {
-        next[`${result.students[index].id}:${itemId}`] = value.status_value
+      const nextValues = {}
+      const nextMeta = {}
+      details.forEach((detail, index) => detail?.values && Object.entries(detail.values).forEach(([itemId, val]) => {
+        const key = `${result.students[index].id}:${itemId}`
+        nextValues[key] = val.status_value
+        nextMeta[key] = {
+          input_source: val.input_source,
+          verification_status: val.verification_status,
+          input_at: val.input_at,
+        }
       }))
-      setValues(next)
+      setValues(nextValues)
+      setCellMeta(nextMeta)
     } catch (error) { showError(error) } finally { setLoading(false) }
   }, [assignmentId, date, search])
 
@@ -116,6 +127,28 @@ export default function MutabaahDailySpreadsheet() {
     } catch (error) { showError(error) }
   }
 
+  const handleVerifyHome = async () => {
+    if (!assignmentId) return
+    try {
+      const targetIds = selected.size ? [...selected] : students.map((s) => s.id)
+      const res = await mutabaahService.verifyHome({
+        activity_date: date,
+        supervisor_assignment_id: assignmentId,
+        student_ids: targetIds,
+      })
+      Swal.fire({
+        icon: 'success',
+        title: 'Verifikasi Berhasil',
+        text: `${res.data?.verified_count ?? 0} catatan ibadah rumah berhasil diverifikasi.`,
+        timer: 1600,
+        showConfirmButton: false,
+      })
+      await loadStudents()
+    } catch (err) {
+      showError(err)
+    }
+  }
+
   const progress = (student) => {
     const total = template?.items?.length || 0
     const filled = template?.items?.filter((item) => values[`${student.id}:${item.id}`])?.length || 0
@@ -125,7 +158,42 @@ export default function MutabaahDailySpreadsheet() {
   const rowHeight = 61
   const startRow = Math.max(0, Math.floor(scrollTop / rowHeight) - 5)
   const visibleStudents = students.slice(startRow, startRow + 35)
-  const virtualColspan = (template?.items?.length || 0) + 7
+  const displayedItems = (template?.items || []).filter((item) => {
+    if (scopeFilter === 'all') return true
+    return item.scope === scopeFilter
+  })
+  const virtualColspan = (displayedItems.length || 0) + 7
+
+  const handlePrintSheet = () => {
+    const itemHeaders = displayedItems.map((it) => it.name)
+    const headers = ['No', 'NIS', 'Nama Siswa', 'Kelas', ...itemHeaders, 'Progress', 'Status']
+    const rows = students.map((std, idx) => {
+      const itemValues = displayedItems.map((it) => {
+        const val = values[`${std.id}:${it.id}`]
+        const stateObj = states.find((s) => s.value === val)
+        return stateObj ? stateObj.label : '-'
+      })
+      return [
+        idx + 1,
+        std.nis || '-',
+        std.name || '-',
+        std.class_name || '-',
+        ...itemValues,
+        `${progress(std)}%`,
+        std.status === 'draft' ? 'Draft' : 'Final',
+      ]
+    })
+
+    printCleanTable({
+      title: 'LEMBAR MUTABA’AH HARIAN SISWA',
+      subtitle: `${assignment?.unit_name || 'Sekolah Islam Terpadu'} · ${assignment?.kelas_name || assignment?.rombel_name || 'Seluruh Siswa'}`,
+      period: `Tanggal: ${new Date(date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`,
+      unit: assignment?.unit_name || null,
+      headers,
+      rows,
+      orientation: 'landscape',
+    })
+  }
 
   return <div className="daily-sheet-page">
     <section className="daily-hero">
@@ -139,7 +207,7 @@ export default function MutabaahDailySpreadsheet() {
       <label className="search-student"><span>Cari siswa</span><div><Search size={17} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nama atau NIS..." /></div></label>
       <button className="outline" onClick={copyPrevious} disabled={!students.length}><ClipboardCopy size={17} /> Salin Kemarin</button>
       <button className="outline" onClick={() => Swal.fire({ icon: 'success', title: 'Draft tersimpan', text: 'Seluruh perubahan sel telah disimpan otomatis.', timer: 1200, showConfirmButton: false })} disabled={!students.length}><Save size={17} /> Simpan</button>
-      <button className="outline" onClick={() => window.print()}><Download size={17} /> Export</button>
+      <button className="outline" onClick={handlePrintSheet} disabled={!students.length}><Printer size={17} /> Cetak Lembar</button>
       <button className="primary" onClick={() => finalize([...selected])} disabled={!selected.size}><Send size={17} /> Finalisasi Massal</button>
     </section>
 
@@ -147,26 +215,63 @@ export default function MutabaahDailySpreadsheet() {
 
     <section className="sheet-card">
       <div className="sheet-actions">
+        {template?.program_type === 'fullday' && (
+          <div className="item-scope-tabs">
+            <button
+              type="button"
+              className={`item-scope-tab ${scopeFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setScopeFilter('all')}
+            >
+              Semua ({template?.items?.length || 0})
+            </button>
+            <button
+              type="button"
+              className={`item-scope-tab ${scopeFilter === 'home' ? 'active' : ''}`}
+              onClick={() => setScopeFilter('home')}
+            >
+              🏠 Rumah ({template?.items?.filter((it) => it.scope === 'home').length || 0})
+            </button>
+            <button
+              type="button"
+              className={`item-scope-tab ${scopeFilter === 'school' ? 'active' : ''}`}
+              onClick={() => setScopeFilter('school')}
+            >
+              🏫 Sekolah ({template?.items?.filter((it) => it.scope === 'school').length || 0})
+            </button>
+          </div>
+        )}
         <span>{selected.size} siswa dipilih</span>
-        {template?.items?.[0] && <button onClick={() => bulkStatus(template.items[0], 'good')}>Tandai Baik pada kolom pertama</button>}
+        {template?.items?.some((it) => it.scope === 'home') && (
+          <button type="button" className="verify-home-btn" onClick={handleVerifyHome} title="Verifikasi amalan rumah yang diisi orang tua">
+            <CheckCircle2 size={15} /> Verifikasi Catatan Ortu
+          </button>
+        )}
+        {displayedItems[0] && <button onClick={() => bulkStatus(displayedItems[0], 'good')}>Tandai Baik pada kolom pertama</button>}
         <button disabled={!undo} onClick={() => undo && updateCell(undo.student, undo.item, undo.previous)}><RotateCcw size={15} /> Undo</button>
       </div>
       <div className="sheet-scroll" role="region" aria-label="Spreadsheet input mutabaah" onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
         <table>
-          <thead><tr><th className="select-col"><input type="checkbox" aria-label="Pilih semua siswa" checked={students.length > 0 && selected.size === students.length} onChange={(e) => setSelected(e.target.checked ? new Set(students.map((s) => s.id)) : new Set())} /></th><th>No</th><th className="student-col">Nama Siswa</th>{template?.items?.map((item) => <th key={item.id} title={item.name}><span>{item.name}</span><button onClick={() => bulkStatus(item, 'good')}>Semua Baik</button></th>)}<th>Progress</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead><tr><th className="select-col"><input type="checkbox" aria-label="Pilih semua siswa" checked={students.length > 0 && selected.size === students.length} onChange={(e) => setSelected(e.target.checked ? new Set(students.map((s) => s.id)) : new Set())} /></th><th>No</th><th className="student-col">Nama Siswa</th>{displayedItems.map((item) => <th key={item.id} title={item.name}><span className={`scope-badge scope-${item.scope || 'school'}`}>{item.scope === 'home' ? '🏠 Rumah' : item.scope === 'boarding' ? '🕌 Asrama' : '🏫 Sekolah'}</span><span>{item.name}</span><button onClick={() => bulkStatus(item, 'good')}>Semua Baik</button></th>)}<th>Progress</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody>
-            {loading && Array.from({ length: 7 }).map((_, i) => <tr className="skeleton-row" key={i}><td colSpan={(template?.items?.length || 0) + 7}><i /></td></tr>)}
+            {loading && Array.from({ length: 7 }).map((_, i) => <tr className="skeleton-row" key={i}><td colSpan={virtualColspan}><i /></td></tr>)}
             {!loading && startRow > 0 && <tr className="virtual-spacer"><td colSpan={virtualColspan} style={{ height: startRow * rowHeight }} /></tr>}
             {!loading && visibleStudents.map((student, visibleIndex) => { const index = startRow + visibleIndex; return <tr key={student.id}>
               <td><input type="checkbox" checked={selected.has(student.id)} onChange={(e) => setSelected((old) => { const next = new Set(old); if (e.target.checked) next.add(student.id); else next.delete(student.id); return next })} /></td>
               <td>{index + 1}</td><td className="student-col"><button onClick={() => openDrawer(student)}><b>{student.name}</b><small>{student.nis} · {student.class_name || '-'}</small></button></td>
-              {template?.items?.map((item) => { const key = `${student.id}:${item.id}`; const current = values[key]; return <td key={item.id}><div className={`cell-editor ${!editable(student) ? 'locked' : ''}`}>{states.map((state) => <button title={state.label} aria-label={`${student.name} ${item.name}: ${state.label}`} className={current === state.value ? state.className : ''} key={state.value} onClick={() => updateCell(student, item, state.value)}>{state.short}</button>)}<SaveMark state={saveState[key]} /></div></td> })}
+              {displayedItems.map((item) => {
+                const key = `${student.id}:${item.id}`;
+                const current = values[key];
+                const meta = cellMeta[key];
+                const isParent = meta?.input_source === 'parent';
+                const isVerified = meta?.verification_status === 'verified';
+                return <td key={item.id}><div className={`cell-editor ${!editable(student) ? 'locked' : ''}`}>{isParent && <span className={`parent-source-dot ${isVerified ? 'verified' : 'pending'}`} title={isVerified ? 'Diisi oleh Orang Tua (Terverifikasi)' : 'Diisi oleh Orang Tua (Menunggu Verifikasi)'} />}{states.map((state) => <button title={state.label} aria-label={`${student.name} ${item.name}: ${state.label}`} className={current === state.value ? state.className : ''} key={state.value} onClick={() => updateCell(student, item, state.value)}>{state.short}</button>)}<SaveMark state={saveState[key]} /></div></td>
+              })}
               <td><div className="progress"><i style={{ width: `${progress(student)}%` }} /><span>{progress(student)}%</span></div></td>
               <td><span className={`status-badge ${student.status}`}>{student.status === 'draft' ? 'Draft' : 'Final'}</span></td>
               <td><button className="detail-action" onClick={() => openDrawer(student)}>Detail <ChevronRight size={15} /></button></td>
             </tr>})}
             {!loading && startRow + visibleStudents.length < students.length && <tr className="virtual-spacer"><td colSpan={virtualColspan} style={{ height: (students.length - startRow - visibleStudents.length) * rowHeight }} /></tr>}
-            {!loading && !students.length && <tr><td colSpan={(template?.items?.length || 0) + 7}><div className="sheet-empty"><BookOpenCheck /><h3>Belum ada siswa</h3><p>Pilih assignment aktif atau periksa scope pembimbing pada tanggal ini.</p></div></td></tr>}
+            {!loading && !students.length && <tr><td colSpan={virtualColspan}><div className="sheet-empty"><BookOpenCheck /><h3>Belum ada siswa</h3><p>Pilih assignment aktif atau periksa scope pembimbing pada tanggal ini.</p></div></td></tr>}
           </tbody>
         </table>
       </div>

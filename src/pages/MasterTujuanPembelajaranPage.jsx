@@ -16,6 +16,7 @@ import {
   Clock,
   Upload,
   Plus,
+  Trash2,
 } from 'lucide-react'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import ActionDropdown from '../components/app/ActionDropdown'
@@ -118,6 +119,71 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald' }) 
   )
 }
 
+function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                Hapus Tujuan Pembelajaran?
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus Tujuan Pembelajaran ini? Tindakan ini tidak dapat dibatalkan.
+          </p>
+
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3.5 dark:border-rose-800/60 dark:bg-rose-950/20 mb-5">
+            <p className="text-xs font-black text-rose-950 dark:text-rose-100">
+              [{item?.kode_tp}] {item?.deskripsi_tp}
+            </p>
+            <p className="text-[11px] text-rose-800/80 dark:text-rose-300/80 mt-0.5">
+              CP Induk: {item?.capaian_pembelajaran?.nama_cp || item?.cp?.nama_cp || '-'} • Alokasi: {item?.alokasi_waktu_jp || 0} JP
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+              Hapus TP
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function MasterTujuanPembelajaranPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const [dataTp, setDataTp] = useState([])
   const [stats, setStats] = useState({
@@ -128,6 +194,9 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
   })
 
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [deleteItem, setDeleteItem] = useState(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleExportCSV = () => {
     if (!dataTp || dataTp.length === 0) {
@@ -157,7 +226,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
   }
 
   const pageActions = (
-    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+    <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
       <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
       <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
       <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
@@ -538,19 +607,22 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
     }
   }
 
-  const handleHapus = async (id, kode) => {
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus Tujuan Pembelajaran [${kode}]?`)) {
-      return
-    }
+  const handleConfirmHapus = async () => {
+    if (!deleteItem) return
+    setIsDeleting(true)
     try {
-      await tujuanPembelajaranService.hapus(id)
-      setSuccessMsg(`Tujuan Pembelajaran [${kode}] berhasil dihapus.`)
+      await tujuanPembelajaranService.hapus(deleteItem.id)
+      setSuccessMsg(`Tujuan Pembelajaran [${deleteItem.kode_tp}] berhasil dihapus.`)
+      setIsDeleteModalOpen(false)
+      setDeleteItem(null)
       fetchDaftarTp()
       loadInitialMasters()
       setTimeout(() => setSuccessMsg(''), 4000)
     } catch (err) {
       console.error('Error deleting TP:', err)
       setErrorMsg('Gagal menghapus data.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -702,9 +774,9 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
         </div>
 
         {/* Baris 2: Dropdown Filter & Sortir */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
-            Filter & Sortir:
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-2.5 w-full">
+          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0 hidden sm:inline-block">
+            Filter:
           </span>
 
           <select
@@ -713,7 +785,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
               setSelectedStatusFilter(e.target.value)
               setPage(1)
             }}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
+            className="h-12 w-full sm:w-auto min-w-[140px] rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
           >
             <option value="">-- Semua Status --</option>
             <option value="true">Aktif</option>
@@ -728,7 +800,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
               setSelectedStatusFilter('')
               setPage(1)
             }}
-            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="inline-flex items-center justify-center gap-1.5 px-4 h-12 w-full sm:w-auto sm:ml-auto rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Reset</span>
@@ -748,15 +820,15 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
         </div>
         <div className="overflow-x-auto">
           <table className="w-full table-fixed text-left text-sm border-collapse">
-            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-              <tr>
-                <th className="w-[8%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
-                <th className="w-[15%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Kode TP</th>
-                <th className="hidden w-[23%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Capaian Pembelajaran</th>
-                <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Deskripsi TP</th>
-                <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Alokasi</th>
-                <th className="hidden w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
-                <th className="w-[16%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
+            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                <th className="w-[8%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
+                <th className="w-[15%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Kode TP</th>
+                <th className="hidden w-[23%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Capaian Pembelajaran</th>
+                <th className="w-[34%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Deskripsi TP</th>
+                <th className="hidden w-[10%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Alokasi</th>
+                <th className="hidden w-[10%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
+                <th className="w-[16%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
@@ -800,6 +872,23 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
                       <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
                         {item.deskripsi_tp}
                       </p>
+                      {/* Compact Mobile Metadata Row */}
+                      <div className="md:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          CP: {item.capaian_pembelajaran?.kode_cp || '-'}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                          <Clock className="w-3 h-3" />
+                          {item.alokasi_waktu_jp ?? 2} JP
+                        </span>
+                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                          item.status !== false
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                        }`}>
+                          {item.status !== false ? 'Aktif' : 'Nonaktif'}
+                        </span>
+                      </div>
                     </td>
 
                     <td className="hidden px-3 py-4 text-center font-semibold lg:table-cell">
@@ -816,7 +905,10 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
                     <td className="py-4 px-5 sm:px-6 md:px-8 text-center">
                       <ActionDropdown
                         onEdit={() => handleOpenModal(item)}
-                        onDelete={() => handleHapus(item.id, item.kode_tp)}
+                        onDelete={() => {
+                          setDeleteItem(item)
+                          setIsDeleteModalOpen(true)
+                        }}
                       />
                     </td>
                   </tr>
@@ -1080,6 +1172,17 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
           </div>
         </div>
       )}
+
+      <HarmonizedDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false)
+          setDeleteItem(null)
+        }}
+        onConfirm={handleConfirmHapus}
+        item={deleteItem}
+        isSubmitting={isDeleting}
+      />
     </motion.div>
     </MasterDataPage>
     </PageContainer>

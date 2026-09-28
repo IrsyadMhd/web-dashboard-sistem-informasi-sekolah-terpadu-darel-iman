@@ -35,6 +35,7 @@ import {
   SectionHeader,
   PageContainer,
 } from '../components/app'
+import { SquircleActionButton } from '../components/master-data'
 
 import ChartCard from '../components/dashboard/ChartCard'
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
@@ -238,125 +239,27 @@ export default function DivisiPendidikanDashboardPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0 py-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 shrink-0 py-1">
               {/* Monitoring Kehadiran Siswa */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Monitoring Kehadiran Siswa"
-                  aria-label="Monitoring Kehadiran Siswa"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-cyan-100/90 text-cyan-600 hover:bg-cyan-600 hover:text-white dark:bg-cyan-950/60 dark:text-cyan-300 dark:hover:bg-cyan-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-cyan-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => navigate('/dashboard/absensi-pembelajaran')}
-                >
-                  <CalendarCheck className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Monitoring Kehadiran Siswa
-                </div>
-              </div>
+              <SquircleActionButton variant="cyan" label="Monitoring Kehadiran Siswa" onClick={() => navigate('/dashboard/absensi-pembelajaran')} />
 
               {/* Monitoring Non-Pesantren */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Monitoring Non-Pesantren"
-                  aria-label="Monitoring Non-Pesantren"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-600 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-500/30 cursor-pointer shadow-2xs"
-                  onClick={() => handleKpiCardClick('monitoring_non_pesantren')}
-                >
-                  <BookOpen className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Monitoring Non-Pesantren
-                </div>
-              </div>
+              <SquircleActionButton variant="import" icon={BookOpen} label="Monitoring Non-Pesantren" onClick={() => handleKpiCardClick('monitoring_non_pesantren')} />
 
               {/* Input Monitoring Divisi */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Input Monitoring Divisi"
-                  aria-label="Input Monitoring Divisi"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-emerald-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => handleKpiCardClick('monitoring_divisi')}
-                >
-                  <Zap className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Input Monitoring Divisi
-                </div>
-              </div>
+              <SquircleActionButton variant="primary" icon={Zap} label="Input Monitoring Divisi" onClick={() => handleKpiCardClick('monitoring_divisi')} />
 
               {/* Master Kurikulum */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Master Kurikulum"
-                  aria-label="Master Kurikulum"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-violet-100/90 text-violet-600 hover:bg-violet-600 hover:text-white dark:bg-violet-950/60 dark:text-violet-300 dark:hover:bg-violet-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-violet-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => handleKpiCardClick('master_kurikulum')}
-                >
-                  <LayoutGrid className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Master Kurikulum
-                </div>
-              </div>
+              <SquircleActionButton variant="violet" label="Master Kurikulum" onClick={() => handleKpiCardClick('master_kurikulum')} />
 
               {/* Verifikasi Prestasi */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Verifikasi Prestasi"
-                  aria-label="Verifikasi Prestasi"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-600 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-amber-500/30 cursor-pointer shadow-2xs"
-                  onClick={() => handleKpiCardClick('verifikasi_prestasi')}
-                >
-                  <Award className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Verifikasi Prestasi
-                </div>
-              </div>
+              <SquircleActionButton variant="edit" icon={Award} label="Verifikasi Prestasi" onClick={() => handleKpiCardClick('verifikasi_prestasi')} />
 
               {/* Laporan Lintas Unit */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Laporan Lintas Unit"
-                  aria-label="Laporan Lintas Unit"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-pink-100/90 text-pink-600 hover:bg-pink-600 hover:text-white dark:bg-pink-950/60 dark:text-pink-300 dark:hover:bg-pink-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-pink-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => handleKpiCardClick('laporan_lintas_unit')}
-                >
-                  <FileSpreadsheet className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Laporan Lintas Unit
-                </div>
-              </div>
+              <SquircleActionButton variant="pink" label="Laporan Lintas Unit" onClick={() => handleKpiCardClick('laporan_lintas_unit')} />
 
               {/* Laporan Akademik */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Laporan Akademik"
-                  aria-label="Laporan Akademik"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-rose-100/90 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-rose-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => handleKpiCardClick('laporan_akademik')}
-                >
-                  <GraduationCap className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Laporan Akademik
-                </div>
-              </div>
+              <SquircleActionButton variant="delete" icon={GraduationCap} label="Laporan Akademik" onClick={() => handleKpiCardClick('laporan_akademik')} />
             </div>
           </div>
         </motion.section>

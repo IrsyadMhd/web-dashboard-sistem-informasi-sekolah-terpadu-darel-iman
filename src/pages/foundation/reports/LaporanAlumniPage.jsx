@@ -91,10 +91,9 @@ export function LaporanAlumniPage() {
     setIsExportOpen(true)
   }
 
-  const handleConfirmExport = ({ format, orientation }) => {
+  const handleConfirmExport = async ({ format, orientation }) => {
     setIsExportOpen(false)
-    const url = reportService.exportFoundationReport('alumni', { ...filters, format, orientation })
-    window.open(url, '_blank')
+    await reportService.exportFoundationReport('alumni', { ...filters, format, orientation })
   }
 
   if (loading && !reportData) return <ReportSkeleton />

@@ -126,6 +126,7 @@ import {
   ActionDropdown,
   SectionHeader,
 } from '../../components/app'
+import { QuickAccessCard } from '../../components/master-data'
 
 import ChartCard from '../../components/dashboard/ChartCard'
 import SkeletonDashboard from '../../components/dashboard/SkeletonDashboard'
@@ -548,79 +549,49 @@ export function FoundationDashboardPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {/* 1. Pegawai & Guru Seluruh Unit */}
-              <button
-                type="button"
+              <QuickAccessCard
+                tone="emerald"
+                icon={UserCheck}
+                title="Pegawai & Guru"
+                subtitle="SDM Seluruh Unit"
                 onClick={() => navigate('/dashboard/yayasan/pegawai-guru')}
-                className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-emerald-50 text-emerald-600 border-emerald-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
-                  <UserCheck className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 pr-1">
-                  <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Pegawai & Guru</p>
-                  <p className="text-[10px] text-slate-400 font-medium truncate">SDM Seluruh Unit</p>
-                </div>
-              </button>
+              />
 
               {/* 2. Struktur Organisasi */}
-              <button
-                type="button"
+              <QuickAccessCard
+                tone="sky"
+                icon={Network}
+                title="Struktur Organisasi"
+                subtitle="Hirarki Per Unit"
                 onClick={() => navigate('/dashboard/yayasan/struktur-organisasi')}
-                className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-sky-50 text-sky-600 border-sky-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-sky-950/60 dark:text-sky-400 dark:border-sky-800/60">
-                  <Network className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 pr-1">
-                  <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-sky-700 dark:group-hover:text-sky-300">Struktur Organisasi</p>
-                  <p className="text-[10px] text-slate-400 font-medium truncate">Hirarki Per Unit</p>
-                </div>
-              </button>
+              />
 
               {/* 3. Data Siswa */}
-              <button
-                type="button"
+              <QuickAccessCard
+                tone="purple"
+                icon={Users}
+                title="Data Siswa"
+                subtitle="Tahun Ajaran"
                 onClick={() => navigate('/dashboard/yayasan/siswa')}
-                className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-purple-50 text-purple-600 border-purple-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-purple-950/60 dark:text-purple-400 dark:border-purple-800/60">
-                  <Users className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 pr-1">
-                  <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-purple-700 dark:group-hover:text-purple-300">Data Siswa</p>
-                  <p className="text-[10px] text-slate-400 font-medium truncate">Tahun Ajaran</p>
-                </div>
-              </button>
+              />
 
               {/* 4. Siswa Masuk & Keluar */}
-              <button
-                type="button"
+              <QuickAccessCard
+                tone="amber"
+                icon={GraduationCap}
+                title="Siswa Masuk/Keluar"
+                subtitle="Mobilisasi Siswa"
                 onClick={() => navigate('/dashboard/yayasan/siswa-baru')}
-                className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-amber-50 text-amber-600 border-amber-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60">
-                  <GraduationCap className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 pr-1">
-                  <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-amber-700 dark:group-hover:text-amber-300">Siswa Masuk/Keluar</p>
-                  <p className="text-[10px] text-slate-400 font-medium truncate">Mobilisasi Siswa</p>
-                </div>
-              </button>
+              />
 
               {/* 5. Unit Pendidikan */}
-              <button
-                type="button"
+              <QuickAccessCard
+                tone="rose"
+                icon={Building2}
+                title="Unit Pendidikan"
+                subtitle="Seluruh Unit"
                 onClick={() => navigate('/dashboard/yayasan/unit-pendidikan')}
-                className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs transition-all duration-200 hover:scale-105 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] text-left"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border bg-pink-50 text-pink-600 border-pink-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-pink-950/60 dark:text-pink-400 dark:border-pink-800/60">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 pr-1">
-                  <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate group-hover:text-pink-700 dark:group-hover:text-pink-300">Unit Pendidikan</p>
-                  <p className="text-[10px] text-slate-400 font-medium truncate">Seluruh Unit</p>
-                </div>
-              </button>
+              />
             </div>
           </div>
         </div>

@@ -19,6 +19,8 @@ import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
 import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
+import { printCleanTable } from '../../../utils/printHelper'
+import { usePengaturanStore } from '../../../stores/pengaturanStore'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -42,7 +44,8 @@ const itemVariants = {
   },
 }
 
-export function LaporanSdmPage() {
+export const LaporanSdmPage = () => {
+  const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
   const [filters, setFilters] = useState({ period: 'year', page: 1, per_page: 15, search: '' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -111,6 +114,60 @@ export function LaporanSdmPage() {
 
   const handleConfirmExport = async ({ format, orientation, options }) => {
     await reportService.exportFoundationReport('sdm', { ...filters, format, orientation, ...options })
+  }
+
+  const handlePrintReport = () => {
+    if (!reportData) return
+    const headers = [
+      'No',
+      'Unit Pendidikan',
+      'Guru',
+      'Non-Guru',
+      'Total SDM',
+      'Aktif',
+      'Nonaktif',
+      'Laki-Laki',
+      'Perempuan',
+    ]
+
+    const rows = (reportData.unit_recaps || []).map((r, idx) => [
+      idx + 1,
+      r.unit_name || '-',
+      (r.guru ?? 0).toLocaleString('id-ID'),
+      (r.non_guru ?? 0).toLocaleString('id-ID'),
+      (r.total_sdm ?? 0).toLocaleString('id-ID'),
+      (r.aktif ?? 0).toLocaleString('id-ID'),
+      (r.nonaktif ?? 0).toLocaleString('id-ID'),
+      (r.laki_laki ?? 0).toLocaleString('id-ID'),
+      (r.perempuan ?? 0).toLocaleString('id-ID'),
+    ])
+
+    if (reportData.unit_recaps_total) {
+      const tot = reportData.unit_recaps_total
+      rows.push([
+        '—',
+        'TOTAL KESELURUHAN',
+        (tot.guru ?? 0).toLocaleString('id-ID'),
+        (tot.non_guru ?? 0).toLocaleString('id-ID'),
+        (tot.total_sdm ?? 0).toLocaleString('id-ID'),
+        (tot.aktif ?? 0).toLocaleString('id-ID'),
+        (tot.nonaktif ?? 0).toLocaleString('id-ID'),
+        (tot.laki_laki ?? 0).toLocaleString('id-ID'),
+        (tot.perempuan ?? 0).toLocaleString('id-ID'),
+      ])
+    }
+
+    const orgName = (sitePengaturan?.school_name || sitePengaturan?.application_name || '').trim()
+    printCleanTable({
+      title: 'LAPORAN REKAPITULASI SDM & PEGAWAI',
+      subtitle: reportData.report?.title || orgName || 'Laporan Rekapitulasi SDM & Pegawai',
+      period: reportData.report?.period?.label || filters.period || 'Tahun Ajaran Aktif',
+      headers,
+      rows,
+      orientation: 'landscape',
+      foundationName: orgName,
+      systemLogo: sitePengaturan?.logo_url,
+    })
   }
 
   if (loading && !reportData) return <ReportSkeleton />
@@ -202,7 +259,7 @@ export function LaporanSdmPage() {
           onReset={handleResetFilter}
           onRefresh={fetchReport}
           onOpenPreview={() => setIsPreviewOpen(true)}
-          onPrint={() => window.print()}
+          onPrint={handlePrintReport}
           onExportPdf={handleExportPdf}
           onExportExcel={handleExportExcel}
           loading={loading}
@@ -292,7 +349,7 @@ export function LaporanSdmPage() {
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         reportData={reportData}
-        onPrint={() => window.print()}
+        onPrint={handlePrintReport}
         onExportPdf={() => setIsExportOpen(true)}
       />
 

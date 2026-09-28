@@ -1,31 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  AlertTriangle,
   ArrowUpDown,
-  Award,
-  BookOpen,
   Calendar,
+  CalendarDays,
+  ChartPie as ChartPieIcon,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
   Clock,
-  Download,
   Eye,
-  FileSpreadsheet,
   Filter,
-  MoreVertical,
   Printer,
   RefreshCcw,
   Search,
-  Stethoscope,
   TrendingUp,
   User,
   UserCheck,
   Users,
   UserX,
-  CheckCircle2,
   Sparkles,
+  X,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
@@ -46,21 +41,17 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
 import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
+import AppErrorState from '../components/app/AppErrorState'
 import {
-  MasterStatsGrid,
-  MasterStatCard,
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
-import { Input } from '@/components/tailgrids/core/input'
-import { Button } from '@/components/tailgrids/core/button'
 import { Pagination } from '@/components/tailgrids/core/pagination'
 import { TableBody, TableCell, TableHead, TableHeader, TableRoot, TableRow } from '@/components/tailgrids/core/table'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/tailgrids/core/hover-card'
 import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/tailgrids/core/dialog'
 import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
-import { cn } from '../lib/utils'
 
 const MODAL_PAGE_SIZE = 6
 const today = () => new Date().toISOString().slice(0, 10)
@@ -75,36 +66,57 @@ const warnaStatus = {
   pulang: '#0284c7',
 }
 
+// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman — baku global) ──
 const toneStyles = {
   emerald: {
-    cardBg: 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/80 dark:border-emerald-900/50',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-900/80',
-    iconColor: 'text-emerald-700 dark:text-emerald-300',
-    badge: 'bg-emerald-200/80 text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200',
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30',
+    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
   },
   violet: {
-    cardBg: 'bg-violet-50/70 dark:bg-violet-950/40 border-violet-200/80 dark:border-violet-900/50',
-    iconBg: 'bg-violet-100 dark:bg-violet-900/80',
-    iconColor: 'text-violet-700 dark:text-violet-300',
-    badge: 'bg-violet-200/80 text-violet-800 dark:bg-violet-900/90 dark:text-violet-200',
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+    iconBg: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-sm shadow-purple-500/30',
+    badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+    cta: 'text-purple-600/60 dark:text-purple-500/60',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
   },
   sky: {
-    cardBg: 'bg-sky-50/70 dark:bg-sky-950/40 border-sky-200/80 dark:border-sky-900/50',
-    iconBg: 'bg-sky-100 dark:bg-sky-900/80',
-    iconColor: 'text-sky-700 dark:text-sky-300',
-    badge: 'bg-sky-200/80 text-sky-800 dark:bg-sky-900/90 dark:text-sky-200',
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    iconBg: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-sm shadow-blue-500/30',
+    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
   },
   amber: {
-    cardBg: 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-900/50',
-    iconBg: 'bg-amber-100 dark:bg-amber-900/80',
-    iconColor: 'text-amber-700 dark:text-amber-300',
-    badge: 'bg-amber-200/80 text-amber-800 dark:bg-amber-900/90 dark:text-amber-200',
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    iconBg: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/30',
+    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
   },
   rose: {
-    cardBg: 'bg-rose-50/70 dark:bg-rose-950/40 border-rose-200/80 dark:border-rose-900/50',
-    iconBg: 'bg-rose-100 dark:bg-rose-900/80',
-    iconColor: 'text-rose-700 dark:text-rose-300',
-    badge: 'bg-rose-200/80 text-rose-800 dark:bg-rose-900/90 dark:text-rose-200',
+    card: 'border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white hover:border-rose-400 dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900',
+    iconBg: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-sm shadow-rose-500/30',
+    badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300',
+    title: 'text-rose-700 dark:text-rose-400',
+    val: 'text-rose-700 dark:text-rose-300',
+    sub: 'text-rose-600/80 dark:text-rose-400/80',
+    cta: 'text-rose-600/60 dark:text-rose-500/60',
+    glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
   },
 }
 
@@ -466,251 +478,335 @@ export default function RekapAbsensiGerbangPage() {
     })
   }
 
+  // Stagger Animasi Halaman (§R)
+  const itemVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  }
+
   return (
     <PageContainer className="space-y-6 pb-12">
       {/* Navigation Breadcrumb */}
-      <div className="mb-2">
-        <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi' }, { label: 'Rekap Absensi Gerbang' }]} />
-      </div>
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="mb-2 print:hidden">
+        <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Rekap Absensi Gerbang' }]} />
+      </motion.div>
 
-      {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
-          <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+      {/* MODERN HERO CARD HEADER (§B / §7.7 Vivid Emerald Responsive Hero) */}
+      <motion.div variants={itemVariants} initial="hidden" animate="visible">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 print:hidden">
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
           <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
-                <Clock className="size-6 sm:size-7 text-white" />
+            <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+              <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <Clock className="size-5 sm:size-7 text-white" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
-                    <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40">
+                    <Sparkles className="size-3 sm:size-3.5 text-amber-300 animate-pulse" />
                     Rekap Presensi Gerbang
                   </span>
                   <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
                     RFID & Barcode Scan
                   </span>
                 </div>
-                <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Rekapitulasi Absensi Gerbang Sekolah
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
                   Pemantauan hasil scan kartu RFID, QR-code, dan barcode saat siswa masuk dan keluar melalui gerbang sekolah.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 shrink-0 z-10">
-              <Button
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+              <button
                 type="button"
-                variant="primary"
-                appearance="fill"
-                size="sm"
                 onClick={load}
                 disabled={loading}
-                prefixIcon={<RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />}
-                className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white/80 dark:bg-emerald-950/60 hover:bg-emerald-50 dark:hover:bg-emerald-900/60 px-3.5 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
               >
-                Segarkan Data
-              </Button>
+                <RefreshCcw className={`h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
+                <span>{loading ? 'Memuat...' : 'Segarkan Data'}</span>
+              </button>
             </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Summary Cards Grid (5 Equal & Colored Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
+      {/* Summary Cards Grid (§C ModernKpiCard + §7.3 grid adaptif) */}
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         {cards.map(({ label, statusKey, value, icon: Icon, tone, percent }) => {
           const style = toneStyles[tone] || toneStyles.emerald
           return (
-            <article
+            <motion.article
               key={label}
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               onClick={() => openCardModal(statusKey, label, tone)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && openCardModal(statusKey, label, tone)}
-              className={`group flex flex-col justify-between h-full p-4 rounded-[18px] border shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${style.cardBg}`}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), openCardModal(statusKey, label, tone))}
+              className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left cursor-pointer hover:shadow-md ${style.card}`}
               title={`Klik untuk melihat detail data ${label}`}
             >
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div className={`size-10 sm:size-11 rounded-xl flex items-center justify-center shrink-0 ${style.iconBg} ${style.iconColor}`}>
-                  <Icon className="size-5 sm:size-6" />
+              {/* Ambient Glow */}
+              <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${style.glow}`} />
+
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${style.iconBg}`}>
+                    <Icon className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <p className={`text-[11px] font-bold uppercase tracking-wider ${style.title}`}>{label}</p>
+                  </div>
                 </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${style.badge}`}>
+                <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${style.badge}`}>
                   {percent.toFixed(1)}%
                 </span>
               </div>
-              <div>
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-0.5">{label}</span>
-                <strong className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white block">
-                  {formatAngka(value)}
-                </strong>
-              </div>
-              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
-                <span>dari total data</span>
-                <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
-                  Detail &rarr;
-                </span>
-              </div>
-            </article>
+              <p className={`text-4xl font-black tabular-nums ${style.val}`}>
+                {formatAngka(value)}
+              </p>
+              <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${style.cta}`}>
+                <Eye className="h-3 w-3" /> Klik untuk detail lengkap
+              </p>
+            </motion.article>
           )
         })}
-      </div>
+      </motion.div>
 
       {/* 3-Column Equal Grid: Filter Laporan, Grafik Kehadiran, & Distribusi */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
         {/* Col 1: Filter Laporan */}
-        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+        <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] space-y-4 flex flex-col justify-between h-full">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Filter Laporan Gerbang</h2>
+            <div className="flex items-center justify-between gap-2 mb-4 pb-3.5 border-b border-emerald-200/90 dark:border-emerald-800/60">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
+                  <Filter className="size-5" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Filter Laporan Gerbang</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Periode, status & pencarian siswa</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={resetFilters}
-                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                className="inline-flex items-center gap-1.5 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shrink-0 cursor-pointer"
               >
-                Reset Filter
+                <RefreshCcw className="h-3.5 w-3.5" />
+                <span>Reset</span>
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {/* Fitur Filter Periode Waktu (Hari, Minggu, Bulan, Semester, Tahun) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label htmlFor="gerbang-period" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                   Periode Waktu
                 </label>
-                <select
-                  value={period}
-                  onChange={(e) => {
-                    const nextPeriod = e.target.value
-                    setPeriod(nextPeriod)
-                    if (nextPeriod !== 'custom' && nextPeriod !== 'semua') {
-                      const { from, to } = getPeriodDateRange(nextPeriod)
-                      setDateFrom(from)
-                      setDateTo(to)
-                    } else if (nextPeriod === 'semua') {
-                      setDateFrom('')
-                      setDateTo('')
-                    }
-                    setCurrentPage(1)
-                  }}
-                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="semua">Semua Periode Data</option>
-                  <option value="hari">Hari Ini (Per Hari)</option>
-                  <option value="minggu">7 Hari Terakhir (Per Minggu)</option>
-                  <option value="bulan">Bulan Ini (Per Bulan)</option>
-                  <option value="semester">6 Bulan Terakhir (Per Semester)</option>
-                  <option value="tahun">Tahun Ini (Per Tahun)</option>
-                  <option value="custom">Rentang Tanggal Kustom</option>
-                </select>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <Calendar className="size-4" />
+                  </div>
+                  <select
+                    id="gerbang-period"
+                    value={period}
+                    onChange={(e) => {
+                      const nextPeriod = e.target.value
+                      setPeriod(nextPeriod)
+                      if (nextPeriod !== 'custom' && nextPeriod !== 'semua') {
+                        const { from, to } = getPeriodDateRange(nextPeriod)
+                        setDateFrom(from)
+                        setDateTo(to)
+                      } else if (nextPeriod === 'semua') {
+                        setDateFrom('')
+                        setDateTo('')
+                      }
+                      setCurrentPage(1)
+                    }}
+                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                  >
+                    <option value="semua">Semua Periode Data</option>
+                    <option value="hari">Hari Ini (Per Hari)</option>
+                    <option value="minggu">7 Hari Terakhir (Per Minggu)</option>
+                    <option value="bulan">Bulan Ini (Per Bulan)</option>
+                    <option value="semester">6 Bulan Terakhir (Per Semester)</option>
+                    <option value="tahun">Tahun Ini (Per Tahun)</option>
+                    <option value="custom">Rentang Tanggal Kustom</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Mulai</label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => {
-                      setDateFrom(e.target.value)
-                      setPeriod('custom')
-                      setCurrentPage(1)
-                    }}
-                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                  />
+                  <label htmlFor="gerbang-from" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Mulai</label>
+                  <div className="relative flex items-center">
+                    <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                      <CalendarDays className="size-4" />
+                    </div>
+                    <input
+                      id="gerbang-from"
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => {
+                        setDateFrom(e.target.value)
+                        setPeriod('custom')
+                        setCurrentPage(1)
+                      }}
+                      className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-3 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Tanggal Selesai</label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => {
-                      setDateTo(e.target.value)
-                      setPeriod('custom')
-                      setCurrentPage(1)
-                    }}
-                    className="w-full h-8 px-2 text-[11px] rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                  />
+                  <label htmlFor="gerbang-to" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Selesai</label>
+                  <div className="relative flex items-center">
+                    <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                      <CalendarDays className="size-4" />
+                    </div>
+                    <input
+                      id="gerbang-to"
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => {
+                        setDateTo(e.target.value)
+                        setPeriod('custom')
+                        setCurrentPage(1)
+                      }}
+                      className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-3 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label htmlFor="gerbang-status" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                   Status Presensi Gerbang
                 </label>
-                <select
-                  value={status}
-                  onChange={(e) => {
-                    setStatus(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">Semua Status</option>
-                  <option value="HADIR">Hadir / Tepat Waktu</option>
-                  <option value="TERLAMBAT">Terlambat</option>
-                  <option value="IZIN">Izin</option>
-                  <option value="SAKIT">Sakit</option>
-                  <option value="ALPHA">Alpha / Belum Scan</option>
-                </select>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <ClipboardCheck className="size-4" />
+                  </div>
+                  <select
+                    id="gerbang-status"
+                    value={status}
+                    onChange={(e) => {
+                      setStatus(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                  >
+                    <option value="">Semua Status</option>
+                    <option value="HADIR">Hadir / Tepat Waktu</option>
+                    <option value="TERLAMBAT">Terlambat</option>
+                    <option value="IZIN">Izin</option>
+                    <option value="SAKIT">Sakit</option>
+                    <option value="ALPHA">Alpha / Belum Scan</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                <label htmlFor="gerbang-search" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                   Pencarian Siswa
                 </label>
-                <input
-                  type="text"
-                  placeholder="Nama, NIS, atau NISN..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <Search className="size-4" />
+                  </div>
+                  <input
+                    id="gerbang-search"
+                    type="text"
+                    placeholder="Nama, NIS, atau NISN..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </article>
 
         {/* Col 2: Grafik Trend Masuk Gerbang */}
-        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Waktu Masuk Gerbang</h2>
-            <span className="text-xs font-semibold text-slate-400">Jam Masuk</span>
+        <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] flex flex-col justify-between h-full">
+          <div>
+            <div className="flex items-center justify-between mb-4 pb-3.5 border-b border-emerald-200/90 dark:border-emerald-800/60">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
+                  <TrendingUp className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Waktu Masuk Gerbang</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Tren ketepatan per jam</p>
+                </div>
+              </div>
+              <AppBadge variant="success" size="sm">Jam Masuk</AppBadge>
+            </div>
+            <div className="h-64 w-full pt-2 text-slate-200 dark:text-slate-800">
+              {loading ? (
+                <AppSkeleton variant="card" className="h-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="hadirGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#12a968" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#12a968" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="currentColor" strokeDasharray="3 3" vertical={false} opacity={0.6} />
+                    <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: 'currentColor', fontSize: 10 }} className="text-slate-400 dark:text-slate-500" />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: 'currentColor', fontSize: 10 }} className="text-slate-400 dark:text-slate-500" />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null
+                        return (
+                          <div className="rounded-xl border border-slate-800 bg-slate-900/95 p-3 text-white shadow-xl backdrop-blur-sm">
+                            <p className="text-xs font-bold text-emerald-400 mb-1">Jam {label}</p>
+                            {payload.map((p) => (
+                              <p key={p.dataKey} className="text-xs font-extrabold">{p.name}: {p.value} siswa</p>
+                            ))}
+                          </div>
+                        )
+                      }}
+                    />
+                    <Area type="monotone" dataKey="tepat" name="Tepat Waktu" stroke={warnaStatus.hadir} fill="url(#hadirGradient)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke={warnaStatus.terlambat} fill="transparent" strokeWidth={1.5} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
-          <div className="h-64 w-full">
-            {loading ? (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">Memuat grafik...</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="hadirGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#12a968" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#12a968" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="#edf1f5" vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#718096', fontSize: 10 }} />
-                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: '#718096', fontSize: 10 }} />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="tepat" name="Tepat Waktu" stroke={warnaStatus.hadir} fill="url(#hadirGradient)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="terlambat" name="Terlambat" stroke={warnaStatus.terlambat} fill="transparent" strokeWidth={1.5} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
+          <div className="pt-3 border-t border-emerald-200/80 dark:border-emerald-800/60 flex items-center justify-between text-[11px] font-semibold text-slate-500">
+            <span>Distribusi ketepatan per jam masuk</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">Terupdate Otomatis</span>
           </div>
         </article>
 
         {/* Col 3: Distribusi Status Gerbang */}
-        <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Distribusi Absensi Gerbang</h2>
-            <span className="text-xs font-bold text-slate-500">{formatAngka(metrics.baseTotal)} Total</span>
-          </div>
+        <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] flex flex-col justify-between h-full">
+          <div>
+            <div className="flex items-center justify-between mb-4 pb-3.5 border-b border-emerald-200/90 dark:border-emerald-800/60">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white shadow-sm border border-sky-300/40">
+                  <ChartPieIcon className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Distribusi Absensi Gerbang</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Proporsi status scan siswa</p>
+                </div>
+              </div>
+              <AppBadge variant="success" size="sm">{formatAngka(metrics.baseTotal)} Total</AppBadge>
+            </div>
           <div className="flex flex-col items-center justify-center flex-1">
             <div className="relative w-40 h-40 mb-3">
               <ResponsiveContainer width="100%" height="100%">
@@ -728,31 +824,46 @@ export default function RekapAbsensiGerbangPage() {
 
             <div className="w-full grid grid-cols-2 gap-2 text-xs">
               {distribution.map((item) => (
-                <div key={item.name} className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900/60">
+                <div key={item.name} className="flex items-center gap-1.5 p-1.5 rounded-lg border border-emerald-100 bg-slate-50/70 dark:border-emerald-900/40 dark:bg-slate-900/40">
                   <span className="size-2.5 rounded-full shrink-0" style={{ background: item.color }} />
                   <div className="flex items-center justify-between w-full min-w-0">
                     <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">{item.name}</span>
-                    <span className="text-[11px] font-bold text-slate-900 dark:text-white ml-1">{formatAngka(item.value)}</span>
+                    <span className="text-[11px] font-bold text-slate-900 dark:text-white ml-1 tabular-nums">{formatAngka(item.value)}</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+          </div>
+          <div className="pt-3 border-t border-emerald-200/80 dark:border-emerald-800/60 flex items-center justify-between text-[11px] font-semibold text-slate-500">
+            <span>Proporsi status scan gerbang</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatAngka(metrics.totalScanned)} Sudah Scan</span>
+          </div>
         </article>
-      </div>
+      </motion.div>
 
       {/* Main Datatable Outer Container */}
-      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
         {/* Header Baris 1: Title & Action Buttons */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Hasil Scan & Rekap Absensi Gerbang</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Rekapan baca-saja dari seluruh hasil scan masuk dan pulang siswa berbasis RFID / QR / Barcode.
-            </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3.5 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shrink-0 shadow-sm border border-emerald-300/40">
+              <Users className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Hasil Scan & Rekap Absensi Gerbang</h2>
+                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                  {formatAngka(sortedRows.length)} Data
+                </span>
+              </div>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-0.5">
+                Rekapan baca-saja dari seluruh hasil scan masuk dan pulang siswa berbasis RFID / QR / Barcode.
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-nowrap shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
             <SquircleActionButton
               variant="export"
               label="Export CSV"
@@ -768,10 +879,10 @@ export default function RekapAbsensiGerbangPage() {
         </div>
 
         {/* Toolbar Baris 2: Search Input & Per-Page Controls */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 bg-slate-50/60 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <Input
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 sm:px-6 md:px-8 border-b border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="pointer-events-none absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 size-4 text-emerald-600/70 dark:text-emerald-400" />
+            <input
               type="text"
               placeholder="Cari nama siswa, NIS, NISN, atau kelas..."
               value={search}
@@ -779,11 +890,24 @@ export default function RekapAbsensiGerbangPage() {
                 setSearch(e.target.value)
                 setCurrentPage(1)
               }}
-              className="pl-9 text-xs font-medium"
+              className="h-10 sm:h-11 w-full rounded-2xl border border-emerald-200/90 bg-white pl-10 sm:pl-11 pr-10 text-xs font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-100"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('')
+                  setCurrentPage(1)
+                }}
+                aria-label="Bersihkan pencarian"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+          <div className="flex items-center gap-2 self-end sm:self-auto">
             <span className="text-xs font-medium text-slate-500">Per Halaman:</span>
             <div className="relative">
               <select
@@ -792,7 +916,8 @@ export default function RekapAbsensiGerbangPage() {
                   setPerPage(Number(e.target.value))
                   setCurrentPage(1)
                 }}
-                className="h-9 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs font-semibold text-slate-800 shadow-2xs focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                aria-label="Baris per halaman"
+                className="h-9 cursor-pointer appearance-none rounded-xl border border-emerald-200/80 bg-white pl-2.5 pr-8 text-xs font-bold text-slate-700 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
               >
                 <option value={5}>5</option>
                 <option value={10}>10</option>
@@ -808,6 +933,11 @@ export default function RekapAbsensiGerbangPage() {
 
         {/* Viewport Tabel dengan Horizontal Padding */}
         <div className="px-4 sm:px-6 md:px-8 overflow-x-auto">
+          {error && !loading && (
+            <div className="py-4">
+              <AppErrorState title="Rekap absensi gerbang gagal dimuat" description={error} onRetry={load} compact />
+            </div>
+          )}
           {loading ? (
             <div className="py-6">
               <AppSkeleton rows={6} />
@@ -821,31 +951,31 @@ export default function RekapAbsensiGerbangPage() {
             </div>
           ) : (
             <TableRoot fullBleed={false}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-center">#</TableHead>
+              <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <TableRow className="border-none">
+                  <TableHead className="w-12 text-center font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">#</TableHead>
 
                   <TableHead
-                    className="cursor-pointer select-none hover:text-emerald-600 transition-colors"
+                    className="cursor-pointer select-none hover:text-emerald-800 dark:hover:text-emerald-300 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 transition-colors"
                     onClick={() => handleSort('student')}
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Siswa</span>
-                      <ArrowUpDown className="size-3.5 text-slate-400" />
+                      <ArrowUpDown className="size-3.5 text-emerald-700 dark:text-emerald-400" />
                     </div>
                   </TableHead>
 
-                  <TableHead className="text-center">NIS / NISN</TableHead>
-                  <TableHead className="text-center">Unit Pendidikan</TableHead>
-                  <TableHead className="text-center">Kelas</TableHead>
-                  <TableHead className="text-center">Jam Masuk</TableHead>
-                  <TableHead className="text-center">Jam Pulang</TableHead>
-                  <TableHead className="text-center">Metode</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
+                  <TableHead className="hidden lg:table-cell text-center font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">NIS / NISN</TableHead>
+                  <TableHead className="hidden lg:table-cell text-center font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">Unit Pendidikan</TableHead>
+                  <TableHead className="hidden sm:table-cell text-center font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">Kelas</TableHead>
+                  <TableHead className="text-center font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">Jam Masuk</TableHead>
+                  <TableHead className="hidden md:table-cell text-center font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">Jam Pulang</TableHead>
+                  <TableHead className="hidden lg:table-cell text-center font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">Metode</TableHead>
+                  <TableHead className="text-right font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">Status</TableHead>
                 </TableRow>
               </TableHeader>
 
-              <TableBody>
+              <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                 {paginatedRows.map((row, index) => {
                   const studentName = row.student?.nama_lengkap || row.student?.full_name || 'Siswa'
                   const studentNis = row.student?.nis || row.student?.nisn || '-'
@@ -855,20 +985,21 @@ export default function RekapAbsensiGerbangPage() {
                   const statusVariant = st === 'HADIR' || st === 'TEPAT_WAKTU' ? 'success' : st === 'TERLAMBAT' ? 'warning' : st === 'PULANG' ? 'info' : 'danger'
 
                   return (
-                    <TableRow key={row.id || index} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors">
-                      <TableCell className="text-center font-bold text-slate-400 text-xs">
+                    <TableRow key={row.id || index} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                      <TableCell className="text-center font-bold text-slate-400 text-xs tabular-nums">
                         {(currentPage - 1) * perPage + index + 1}
                       </TableCell>
 
                       {/* Cell Identitas Siswa dengan HoverCard */}
-                      <TableCell>
+                      <TableCell className="align-top sm:align-middle">
                         <HoverCard>
                           <HoverCardTrigger
                             onClick={(e) => {
                               e.preventDefault()
                               setSelectedDetailStudent(row)
                             }}
-                            className="font-extrabold text-slate-900 dark:text-white text-sm border-b border-dashed border-slate-400/60 hover:border-[#0E5C44] transition-colors cursor-pointer inline-block"
+                            className="font-extrabold text-slate-900 dark:text-white text-sm border-b border-dashed border-slate-400/60 hover:border-[#0E5C44] transition-colors cursor-pointer inline-block max-w-full truncate"
+                            title={studentName}
                           >
                             {studentName}
                           </HoverCardTrigger>
@@ -914,40 +1045,52 @@ export default function RekapAbsensiGerbangPage() {
                               <button
                                 type="button"
                                 onClick={() => setSelectedDetailStudent(row)}
-                                className="w-full py-2 bg-[#0E5C44] text-white text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all hover:bg-[#1E8E5A] active:scale-98 shadow-xs cursor-pointer"
+                                className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-5 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white text-xs font-extrabold rounded-2xl border border-emerald-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                               >
-                                Lihat Detail Presensi Siswa
+                                Lihat Rincian Data
                               </button>
                             </div>
                           </HoverCardContent>
                         </HoverCard>
+                        {/* Mobile Compact Metadata Row (§7.5) */}
+                        <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                            {kelasName}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 tabular-nums">
+                            {row.check_in_time || '-'}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
+                            {row.status || 'HADIR'}
+                          </span>
+                        </div>
                       </TableCell>
 
-                      <TableCell className="text-center font-mono font-semibold text-slate-600 dark:text-slate-400 text-xs">
+                      <TableCell className="hidden lg:table-cell text-center font-mono font-semibold text-slate-600 dark:text-slate-400 text-xs">
                         {studentNis}
                       </TableCell>
 
-                      <TableCell className="text-center font-medium text-slate-700 dark:text-slate-300">
+                      <TableCell className="hidden lg:table-cell text-center font-medium text-slate-700 dark:text-slate-300 text-xs">
                         {unitName}
                       </TableCell>
 
-                      <TableCell className="text-center font-semibold text-slate-800 dark:text-slate-200">
+                      <TableCell className="hidden sm:table-cell text-center font-semibold text-slate-800 dark:text-slate-200 text-xs">
                         {kelasName}
                       </TableCell>
 
-                      <TableCell className="text-center font-extrabold text-emerald-700 dark:text-emerald-400">
+                      <TableCell className="text-center font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums text-xs">
                         {row.check_in_time || '-'}
                       </TableCell>
 
-                      <TableCell className="text-center font-extrabold text-sky-700 dark:text-sky-400">
+                      <TableCell className="hidden md:table-cell text-center font-extrabold text-sky-700 dark:text-sky-400 tabular-nums text-xs">
                         {row.check_out_time || '-'}
                       </TableCell>
 
-                      <TableCell className="text-center text-xs font-semibold text-slate-500">
+                      <TableCell className="hidden lg:table-cell text-center text-xs font-semibold text-slate-500">
                         {row.attendance_method || 'RFID'}
                       </TableCell>
 
-                      <TableCell className="text-right">
+                      <TableCell className="text-right align-middle">
                         <AppBadge
                           variant={statusVariant}
                           className="hover:scale-105 transition-transform cursor-pointer"
@@ -964,57 +1107,81 @@ export default function RekapAbsensiGerbangPage() {
           )}
         </div>
 
-        {/* Footer Pagination Navigation */}
-        <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={(page) => setCurrentPage(page)}
-            sideLayout="full"
-          />
+        {/* Footer Pagination Navigation (§7.6) */}
+        <div className="border-t border-emerald-200/80 bg-gradient-to-r from-emerald-50/40 via-white to-emerald-50/40 p-3.5 sm:px-6 md:px-8 py-3 sm:py-3.5 dark:border-emerald-800/60 dark:from-emerald-950/20 dark:via-transparent dark:to-emerald-950/20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center sm:text-left">
+            Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{sortedRows.length ? (currentPage - 1) * perPage + 1 : 0}</span> -{' '}
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(currentPage * perPage, sortedRows.length)}</span> dari{' '}
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{formatAngka(sortedRows.length)}</span> data
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={(page) => setCurrentPage(page)}
+              sideLayout="icon"
+            />
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Summary Card Interactive Datatable Modal */}
       {cardModal.isOpen && (
-        <Dialog
-          isOpen={cardModal.isOpen}
-          onOpenChange={(open) => !open && closeCardModal()}
-          className="w-full max-w-4xl max-h-[90vh] flex flex-col p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
-        >
-          <DialogHeader className="flex flex-row items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-            <div>
+        <Backdrop isOpen={cardModal.isOpen} onOpenChange={closeCardModal} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <Dialog
+            isOpen={cardModal.isOpen}
+            onOpenChange={(open) => !open && closeCardModal()}
+            showCloseButton={false}
+            className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden p-0"
+          >
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+            <DialogHeader className="p-5 flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-3">
-                <DialogTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  {cardModal.title}
-                </DialogTitle>
-                <AppBadge variant={cardModal.tone === 'rose' ? 'danger' : cardModal.tone === 'amber' ? 'warning' : 'success'}>
-                  {modalRows.length} Data Scan
-                </AppBadge>
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30 shrink-0">
+                  <Sparkles className="size-5 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <DialogTitle className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                      {cardModal.title}
+                    </DialogTitle>
+                    <AppBadge variant={cardModal.tone === 'rose' ? 'danger' : cardModal.tone === 'amber' ? 'warning' : cardModal.tone === 'sky' || cardModal.tone === 'violet' ? 'info' : 'success'}>
+                      {modalRows.length} Data Scan
+                    </AppBadge>
+                  </div>
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Daftar rincian log scan gerbang siswa dengan status {cardModal.title} pada periode {dateFrom || date} s/d {dateTo || date}
+                  </DialogDescription>
+                </div>
               </div>
-              <DialogDescription className="text-xs text-slate-500 mt-1">
-                Daftar rincian log scan gerbang siswa dengan status {cardModal.title} pada periode {dateFrom || date} s/d {dateTo || date}
-              </DialogDescription>
-            </div>
-          </DialogHeader>
+              <button
+                type="button"
+                onClick={closeCardModal}
+                aria-label="Tutup modal"
+                className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+              >
+                <X className="size-4 text-white" strokeWidth={2.25} />
+              </button>
+            </DialogHeader>
 
           <DialogBody className="flex-1 overflow-y-auto py-4 space-y-4">
             {/* Modal Search Toolbar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/60 p-3 rounded-2xl">
               <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600/70 dark:text-emerald-400" />
                 <input
                   type="text"
                   placeholder="Cari nama siswa, NIS, atau kelas..."
                   value={cardModal.searchQuery}
                   onChange={(e) => setCardModal((prev) => ({ ...prev, searchQuery: e.target.value, page: 1 }))}
-                  className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-2xl border border-emerald-200/90 bg-white pl-10 pr-8 py-2 text-xs font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-100"
                 />
                 {cardModal.searchQuery && (
                   <button
                     type="button"
                     onClick={() => setCardModal((prev) => ({ ...prev, searchQuery: '', page: 1 }))}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label="Bersihkan pencarian"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -1023,20 +1190,20 @@ export default function RekapAbsensiGerbangPage() {
             </div>
 
             {/* Modal Datatable */}
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 font-extrabold uppercase">
                   <tr>
-                    <th className="py-3 px-4">No</th>
-                    <th className="py-3 px-4">Siswa</th>
-                    <th className="py-3 px-4">NIS/NISN</th>
-                    <th className="py-3 px-4">Kelas</th>
-                    <th className="py-3 px-4">Jam Masuk</th>
-                    <th className="py-3 px-4">Jam Pulang</th>
-                    <th className="py-3 px-4">Status</th>
+                    <th className="py-2.5 px-4 text-[11px]">No</th>
+                    <th className="py-2.5 px-4 text-[11px]">Siswa</th>
+                    <th className="py-2.5 px-4 text-[11px]">NIS/NISN</th>
+                    <th className="py-2.5 px-4 text-[11px]">Kelas</th>
+                    <th className="py-2.5 px-4 text-[11px]">Jam Masuk</th>
+                    <th className="py-2.5 px-4 text-[11px]">Jam Pulang</th>
+                    <th className="py-2.5 px-4 text-[11px]">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {paginatedModalRows.length > 0 ? (
                     paginatedModalRows.map((row, idx) => {
                       const studentName = row.student?.nama_lengkap || row.student?.full_name || 'Siswa'
@@ -1045,8 +1212,8 @@ export default function RekapAbsensiGerbangPage() {
                       const st = String(row.status || '').toUpperCase()
 
                       return (
-                        <tr key={row.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3 px-4 font-medium text-slate-500">
+                        <tr key={row.id || idx} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                          <td className="py-3 px-4 font-medium text-slate-500 tabular-nums">
                             {(cardModal.page - 1) * MODAL_PAGE_SIZE + idx + 1}
                           </td>
                           <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
@@ -1058,10 +1225,10 @@ export default function RekapAbsensiGerbangPage() {
                           <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">
                             {kelasName}
                           </td>
-                          <td className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-bold">
+                          <td className="py-3 px-4 text-emerald-700 dark:text-emerald-400 font-bold tabular-nums">
                             {row.check_in_time || '-'}
                           </td>
-                          <td className="py-3 px-4 text-sky-700 dark:text-sky-400 font-bold">
+                          <td className="py-3 px-4 text-sky-700 dark:text-sky-400 font-bold tabular-nums">
                             {row.check_out_time || '-'}
                           </td>
                           <td className="py-3 px-4">
@@ -1084,61 +1251,78 @@ export default function RekapAbsensiGerbangPage() {
             </div>
           </DialogBody>
 
-          <DialogFooter className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+          <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
             <span className="text-xs text-slate-500 font-medium">
               Menampilkan {modalRows.length ? (cardModal.page - 1) * MODAL_PAGE_SIZE + 1 : 0}–{Math.min(cardModal.page * MODAL_PAGE_SIZE, modalRows.length)} dari {modalRows.length} data
             </span>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 mr-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1.5 mr-2">
                 <button
                   type="button"
                   disabled={cardModal.page === 1}
                   onClick={() => setCardModal((prev) => ({ ...prev, page: prev.page - 1 }))}
-                  className="p-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  aria-label="Halaman sebelumnya"
+                  className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:disabled:bg-emerald-950/40 dark:disabled:text-white/30 cursor-pointer"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="size-5 shrink-0" />
                 </button>
-                <span className="text-xs font-semibold px-2 text-slate-700 dark:text-slate-300">
+                <span className="text-xs font-semibold px-2 text-slate-700 dark:text-slate-300 tabular-nums">
                   {cardModal.page} / {modalTotalPages}
                 </span>
                 <button
                   type="button"
                   disabled={cardModal.page === modalTotalPages}
                   onClick={() => setCardModal((prev) => ({ ...prev, page: prev.page + 1 }))}
-                  className="p-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  aria-label="Halaman berikutnya"
+                  className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 disabled:bg-emerald-600/30 disabled:text-white/40 disabled:pointer-events-none dark:disabled:bg-emerald-950/40 dark:disabled:text-white/30 cursor-pointer"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="size-5 shrink-0" />
                 </button>
               </div>
-              <Button variant="ghost" onClick={closeCardModal}>
-                Tutup
-              </Button>
+              <button
+                type="button"
+                onClick={closeCardModal}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20">
+                  <X className="size-3.5 text-white" strokeWidth={2.2} />
+                </div>
+                <span>Tutup</span>
+              </button>
             </div>
           </DialogFooter>
         </Dialog>
+      </Backdrop>
       )}
 
       {/* Modal Detail Rincian Presensi Siswa saat Klik Data */}
       <OverlayWrapper isOpen={!!selectedDetailStudent} onOpenChange={() => setSelectedDetailStudent(null)}>
-        <Backdrop isOpen={!!selectedDetailStudent} onOpenChange={() => setSelectedDetailStudent(null)}>
+        <Backdrop isOpen={!!selectedDetailStudent} onOpenChange={() => setSelectedDetailStudent(null)} className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
           <Dialog
             isOpen={!!selectedDetailStudent}
             onOpenChange={() => setSelectedDetailStudent(null)}
             showCloseButton={true}
-            className="w-full max-w-lg rounded-2xl p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
+            className="w-full max-w-lg rounded-3xl p-0 bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
           >
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
             {selectedDetailStudent && (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="text-lg font-bold text-[#0E5C44] dark:text-[#3FBF75] flex items-center gap-3">
-                    <div className="size-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-[#0E5C44] dark:text-[#3FBF75] flex items-center justify-center font-extrabold text-sm shrink-0">
+              <div className="p-6 space-y-4">
+                <DialogHeader className="p-0">
+                  <DialogTitle className="flex items-center gap-3">
+                    <div className="size-11 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white flex items-center justify-center font-extrabold text-sm shrink-0 shadow-md shadow-emerald-500/20 border border-emerald-300/30">
                       {(selectedDetailStudent.student?.nama_lengkap || selectedDetailStudent.student?.full_name || 'S')[0]}
                     </div>
-                    <div>
-                      <h3 className="text-lg font-extrabold leading-tight text-slate-900 dark:text-white">
-                        {selectedDetailStudent.student?.nama_lengkap || selectedDetailStudent.student?.full_name}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium font-mono">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm sm:text-base font-black leading-tight text-slate-900 dark:text-white truncate">
+                          {selectedDetailStudent.student?.nama_lengkap || selectedDetailStudent.student?.full_name}
+                        </h3>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                          <Sparkles className="size-3" />
+                          Detail Presensi
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium font-mono mt-0.5">
                         NIS: {selectedDetailStudent.student?.nis || selectedDetailStudent.student?.nisn || '-'}
                       </p>
                     </div>
@@ -1194,28 +1378,32 @@ export default function RekapAbsensiGerbangPage() {
                   </div>
                 </DialogBody>
 
-                <DialogFooter className="pt-2 flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    appearance="outline"
-                    size="sm"
+                <DialogFooter className="pt-2 flex flex-wrap items-center justify-end gap-2.5">
+                  <button
+                    type="button"
                     onClick={() => setSelectedDetailStudent(null)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                   >
-                    Tutup
-                  </Button>
-                  <Button
-                    variant="primary"
-                    appearance="fill"
-                    size="sm"
+                    <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                      <X className="size-3.5 text-white" strokeWidth={2.2} />
+                    </div>
+                    <span>Tutup</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => {
                       setSelectedDetailStudent(null)
                       setIsPrintModalOpen(true)
                     }}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white px-5 py-2.5 text-xs font-extrabold border border-indigo-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                   >
-                    <Printer className="size-4 mr-1.5" /> Cetak Data Gerbang
-                  </Button>
+                    <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                      <Printer className="size-3.5 text-white" strokeWidth={2.2} />
+                    </div>
+                    <span>Cetak Data Gerbang</span>
+                  </button>
                 </DialogFooter>
-              </>
+              </div>
             )}
           </Dialog>
         </Backdrop>

@@ -55,7 +55,73 @@ function useDebounce(value, delay = 350) {
   return debouncedValue
 }
 
+function HarmonizedDeleteBillModal({ isOpen, onClose, onConfirm, bill, isSubmitting, error }) {
+  if (!isOpen || !bill) return null
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Tagihan
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                Hapus Tagihan Siswa?
+              </h3>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus tagihan <strong className="text-slate-900 dark:text-white">"{bill.title}"</strong> untuk siswa <strong className="text-slate-900 dark:text-white">{bill.student?.nama_lengkap || 'ini'}</strong>?
+          </p>
+          {error && (
+            <div className="rounded-xl border border-rose-200/80 bg-rose-50/80 p-3 mb-4 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+              {error}
+            </div>
+          )}
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 dark:border-rose-900/40 dark:bg-rose-950/20 mb-6">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-rose-800 dark:text-rose-300">
+                Data tagihan yang terhapus tidak dapat dipulihkan kembali.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-xs font-extrabold text-white shadow-md shadow-rose-600/30 transition cursor-pointer disabled:opacity-50"
+            >
+              {isSubmitting ? 'Menghapus...' : 'Ya, Hapus Tagihan'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function StudentBillsManagementPage() {
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, bill: null, isSubmitting: false, error: '' })
   const [bills, setBills] = useState([])
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 20 })
   const [stats, setStats] = useState({
@@ -295,14 +361,24 @@ export default function StudentBillsManagementPage() {
     }
   }
 
-  const handleDeleteBill = async (bill) => {
-    if (!window.confirm(`Hapus tagihan "${bill.title}" untuk siswa ${bill.student?.nama_lengkap || 'ini'}?`)) return
+  const handleDeleteBill = (bill) => {
+    setDeleteModal({ isOpen: true, bill, isSubmitting: false, error: '' })
+  }
+
+  const confirmDeleteBill = async () => {
+    if (!deleteModal.bill) return
+    setDeleteModal((prev) => ({ ...prev, isSubmitting: true, error: '' }))
     try {
-      await api.delete(`/finance/bills/${bill.id}`)
+      await api.delete(`/finance/bills/${deleteModal.bill.id}`)
       loadBills()
       loadStats()
+      setDeleteModal({ isOpen: false, bill: null, isSubmitting: false, error: '' })
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal menghapus tagihan.')
+      setDeleteModal((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        error: err.response?.data?.message || 'Gagal menghapus tagihan.',
+      }))
     }
   }
 
@@ -1047,6 +1123,16 @@ export default function StudentBillsManagementPage() {
           </div>
         </div>
       )}
+
+      {/* TailGrids Harmonized Delete Bill Confirmation Modal */}
+      <HarmonizedDeleteBillModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, bill: null, isSubmitting: false, error: '' })}
+        onConfirm={confirmDeleteBill}
+        bill={deleteModal.bill}
+        isSubmitting={deleteModal.isSubmitting}
+        error={deleteModal.error}
+      />
     </div>
   )
 }

@@ -54,9 +54,7 @@ export const employeeService = {
   },
 
   importData: async (formData) => {
-    const { data } = await api.post('/employees/import', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await api.post('/employees/import', formData)
     return data
   },
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppModal from '../components/app/AppModal'
 import {
@@ -35,8 +36,9 @@ import {
   BookOpen,
   Tag,
   Download,
+  MapPin,
+  AlertCircle,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
 import {
   defaultPengaturan,
   usePengaturanStore,
@@ -106,13 +108,164 @@ const presetThemes = [
   },
 ]
 
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const add = (type, title, message) => {
+    const id = Date.now() + Math.random()
+    setToasts((p) => [...p, { id, type, title, message }])
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4000)
+  }
+  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
+  return {
+    toasts,
+    dismiss,
+    success: (t, m) => add('success', t, m),
+    error: (t, m) => add('error', t, m),
+    warning: (t, m) => add('warning', t, m),
+    info: (t, m) => add('info', t, m),
+  }
+}
+
+function ToastStack({ toasts, onDismiss }) {
+  return (
+    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
+              t.type === 'success'
+                ? 'border-emerald-300 bg-emerald-50/95 text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/90 dark:text-emerald-100'
+                : t.type === 'error'
+                ? 'border-rose-300 bg-rose-50/95 text-rose-900 dark:border-rose-700/60 dark:bg-rose-950/90 dark:text-rose-100'
+                : t.type === 'warning'
+                ? 'border-amber-300 bg-amber-50/95 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/90 dark:text-amber-100'
+                : 'border-blue-300 bg-blue-50/95 text-blue-900 dark:border-blue-700/60 dark:bg-blue-950/90 dark:text-blue-100'
+            }`}
+          >
+            <div className="shrink-0 mt-0.5">
+              {t.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+              {t.type === 'error' && <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
+              {t.type === 'warning' && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+              {t.type === 'info' && <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h5 className="text-xs font-bold leading-tight">{t.title}</h5>
+              {t.message && <p className="text-[11px] opacity-85 mt-0.5 leading-snug">{t.message}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => onDismiss(t.id)}
+              className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs p-0.5 cursor-pointer"
+            >
+              ✕
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function HarmonizedActionModal({ isOpen, onClose, onConfirm, title, desc, confirmLabel, variant = 'danger' }) {
+  if (!isOpen) return null
+  const isDanger = variant === 'danger'
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className={`h-1.5 w-full ${isDanger ? 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-700' : 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600'}`} />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${
+              isDanger
+                ? 'bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/30'
+                : 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/30'
+            }`}>
+              {isDanger ? <Trash2 className="h-6 w-6" /> : <RotateCcw className="h-6 w-6" />}
+            </div>
+            <div>
+              <span className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
+                isDanger
+                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+              }`}>
+                {isDanger ? 'Konfirmasi Hapus' : 'Konfirmasi Reset'}
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">{title}</h3>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            {desc}
+          </p>
+          <div className={`rounded-xl border p-3 mb-6 ${
+            isDanger
+              ? 'border-rose-200/80 bg-rose-50/50 dark:border-rose-900/40 dark:bg-rose-950/20'
+              : 'border-emerald-200/80 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20'
+          }`}>
+            <div className="flex items-start gap-2">
+              {isDanger ? (
+                <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              ) : (
+                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              )}
+              <p className={`text-[11px] ${isDanger ? 'text-rose-800 dark:text-rose-300' : 'text-emerald-800 dark:text-emerald-300'}`}>
+                {isDanger ? 'Data yang dihapus tidak dapat dipulihkan kembali dari daftar ini.' : 'Data konfigurasi akan dikembalikan sesuai pengaturan awal SIMSIT.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className={`h-10 px-5 rounded-xl text-xs font-extrabold text-white shadow-md transition cursor-pointer ${
+                isDanger
+                  ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-600/30'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-600/30'
+              }`}
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function PengaturanPage() {
+  const toast = useToast()
   const user = useAuthStore((state) => state.user)
 
   const settings = usePengaturanStore((state) => state.pengaturan)
   const saveSettings = usePengaturanStore((state) => state.simpanPengaturan)
   const loadSettings = usePengaturanStore((state) => state.muatPengaturan)
   const previewSettings = usePengaturanStore((state) => state.previewPengaturan)
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    action: '',
+    id: null,
+    title: '',
+    desc: '',
+    confirmLabel: '',
+    variant: 'danger',
+  })
 
   // Otorisasi & Peran Pengguna (Strict Super Admin & Admin Check)
   const userRoles = useMemo(() => {
@@ -142,6 +295,12 @@ export default function PengaturanPage() {
   const [files, setFiles] = useState({})
   const [previews, setPreviews] = useState({})
   const [saving, setSaving] = useState(false)
+  const [statusModal, setStatusModal] = useState({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: '',
+  })
 
   // FAQ Modal & Editing States
   const [isFaqModalOpen, setIsFaqModalOpen] = useState(false)
@@ -238,7 +397,12 @@ export default function PengaturanPage() {
     setFiles({})
     setPreviews({})
     previewSettings(defaultPengaturan)
-    Swal.fire('Reset Berhasil', 'Pengaturan tampilan & tema telah dikembalikan ke warna semula (Zamrud Klasik).', 'info')
+    setStatusModal({
+      isOpen: true,
+      type: 'info',
+      title: 'Reset Berhasil',
+      message: 'Pengaturan tampilan & tema telah dikembalikan ke warna semula (Zamrud Klasik).',
+    })
   }
 
   // Submit School System Settings
@@ -249,16 +413,21 @@ export default function PengaturanPage() {
       await saveSettings(form, files)
       setFiles({})
       setPreviews({})
-      await Swal.fire({
+      setStatusModal({
+        isOpen: true,
+        type: 'success',
         title: 'Berhasil Disimpan!',
-        text: 'Pengaturan identitas sekolah, style & tema website, serta konten Bantuan & FAQ berhasil diperbarui.',
-        icon: 'success',
-        confirmButtonColor: '#0E5C44',
+        message: 'Pengaturan identitas sekolah, style & tema website, serta konten Bantuan & FAQ berhasil diperbarui.',
       })
     } catch (error) {
       const errors = error?.response?.data?.errors
       const message = errors ? Object.values(errors).flat()[0] : 'Pengaturan belum dapat disimpan.'
-      await Swal.fire('Gagal Menyimpan', message, 'error')
+      setStatusModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Gagal Menyimpan',
+        message,
+      })
     } finally {
       setSaving(false)
     }
@@ -296,7 +465,7 @@ export default function PengaturanPage() {
   const handleSaveFaq = (e) => {
     e.preventDefault()
     if (!faqForm.question.trim() || !faqForm.answer.trim()) {
-      Swal.fire('Form Belum Lengkap', 'Mohon isi Pertanyaan dan Jawaban Detail.', 'warning')
+      toast.warning('Form Belum Lengkap', 'Mohon isi Pertanyaan dan Jawaban Detail.')
       return
     }
 
@@ -324,43 +493,31 @@ export default function PengaturanPage() {
 
     update('custom_faqs', updatedFaqs)
     setIsFaqModalOpen(false)
-    Swal.fire('Berhasil', editingFaq ? 'Topik FAQ berhasil diperbarui.' : 'Topik FAQ baru berhasil ditambahkan.', 'success')
+    toast.success('Berhasil', editingFaq ? 'Topik FAQ berhasil diperbarui.' : 'Topik FAQ baru berhasil ditambahkan.')
   }
 
   const handleDeleteFaq = (id) => {
-    Swal.fire({
+    const faq = (form.custom_faqs || INITIAL_FAQS).find((f) => f.id === id)
+    setConfirmModal({
+      isOpen: true,
+      action: 'delete_faq',
+      id,
       title: 'Hapus Topik FAQ?',
-      text: 'FAQ ini tidak akan tampil lagi pada halaman Bantuan & Panduan.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e11d48',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Hapus FAQ',
-      cancelButtonText: 'Batal',
-    }).then((res) => {
-      if (res.isConfirmed) {
-        const currentFaqs = form.custom_faqs || INITIAL_FAQS
-        const updated = currentFaqs.filter((f) => f.id !== id)
-        update('custom_faqs', updated)
-        Swal.fire('Terhapus', 'Topik FAQ telah dihapus.', 'success')
-      }
+      desc: `Apakah Anda yakin ingin menghapus topik FAQ "${faq?.question || 'ini'}"? FAQ ini tidak akan tampil lagi pada halaman Bantuan & Panduan.`,
+      confirmLabel: 'Ya, Hapus FAQ',
+      variant: 'danger',
     })
   }
 
   const handleResetFaqs = () => {
-    Swal.fire({
+    setConfirmModal({
+      isOpen: true,
+      action: 'reset_faq',
+      id: null,
       title: 'Reset Semua FAQ?',
-      text: 'Seluruh daftar FAQ akan dikembalikan ke data standar bawaan SIMSIT.',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#0E5C44',
-      cancelButtonText: 'Batal',
-      confirmButtonText: 'Ya, Reset FAQ',
-    }).then((res) => {
-      if (res.isConfirmed) {
-        update('custom_faqs', INITIAL_FAQS)
-        Swal.fire('Berhasil', 'Daftar FAQ dikembalikan ke versi bawaan.', 'success')
-      }
+      desc: 'Seluruh daftar FAQ akan dikembalikan ke data standar bawaan SIMSIT.',
+      confirmLabel: 'Ya, Reset FAQ',
+      variant: 'emerald',
     })
   }
 
@@ -398,7 +555,7 @@ export default function PengaturanPage() {
   const handleSaveManual = (e) => {
     e.preventDefault()
     if (!manualForm.title.trim() || !manualForm.desc.trim()) {
-      Swal.fire('Form Belum Lengkap', 'Mohon isi Judul Buku Panduan dan Deskripsi Ringkas.', 'warning')
+      toast.warning('Form Belum Lengkap', 'Mohon isi Judul Buku Panduan dan Deskripsi Ringkas.')
       return
     }
 
@@ -424,27 +581,38 @@ export default function PengaturanPage() {
 
     update('custom_manuals', updatedManuals)
     setIsManualModalOpen(false)
-    Swal.fire('Berhasil', editingManual ? 'Buku Panduan diperbarui.' : 'Buku Panduan baru ditambahkan.', 'success')
+    toast.success('Berhasil', editingManual ? 'Buku Panduan diperbarui.' : 'Buku Panduan baru ditambahkan.')
   }
 
   const handleDeleteManual = (id) => {
-    Swal.fire({
+    const manual = (form.custom_manuals || INITIAL_MANUALS).find((m) => m.id === id)
+    setConfirmModal({
+      isOpen: true,
+      action: 'delete_manual',
+      id,
       title: 'Hapus Buku Panduan?',
-      text: 'Buku panduan ini tidak akan dapat diunduh pengguna lagi.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e11d48',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Hapus',
-      cancelButtonText: 'Batal',
-    }).then((res) => {
-      if (res.isConfirmed) {
-        const currentManuals = form.custom_manuals || INITIAL_MANUALS
-        const updated = currentManuals.filter((m) => m.id !== id)
-        update('custom_manuals', updated)
-        Swal.fire('Terhapus', 'Buku panduan telah dihapus.', 'success')
-      }
+      desc: `Apakah Anda yakin ingin menghapus buku panduan "${manual?.title || 'ini'}"? Buku panduan ini tidak akan dapat diunduh pengguna lagi.`,
+      confirmLabel: 'Ya, Hapus Panduan',
+      variant: 'danger',
     })
+  }
+
+  const executeConfirmAction = () => {
+    if (confirmModal.action === 'delete_faq') {
+      const currentFaqs = form.custom_faqs || INITIAL_FAQS
+      const updated = currentFaqs.filter((f) => f.id !== confirmModal.id)
+      update('custom_faqs', updated)
+      toast.success('Terhapus', 'Topik FAQ telah dihapus.')
+    } else if (confirmModal.action === 'reset_faq') {
+      update('custom_faqs', INITIAL_FAQS)
+      toast.success('Berhasil', 'Daftar FAQ dikembalikan ke versi bawaan.')
+    } else if (confirmModal.action === 'delete_manual') {
+      const currentManuals = form.custom_manuals || INITIAL_MANUALS
+      const updated = currentManuals.filter((m) => m.id !== confirmModal.id)
+      update('custom_manuals', updated)
+      toast.success('Terhapus', 'Buku panduan telah dihapus.')
+    }
+    setConfirmModal({ isOpen: false, action: '', id: null, title: '', desc: '', confirmLabel: '', variant: 'danger' })
   }
 
   // Strict 403 Forbidden Access Guard
@@ -510,7 +678,7 @@ export default function PengaturanPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
             <Button
               type="button"
               variant="ghost"
@@ -608,6 +776,34 @@ export default function PengaturanPage() {
                     maxLength={20}
                     onChange={(v) => update('logo_text', v)}
                     placeholder="Contoh: YDE"
+                  />
+                  <Field
+                    label="Alamat Kantor / Yayasan (Kop Surat)"
+                    value={form.address || ''}
+                    onChange={(v) => update('address', v)}
+                    icon={MapPin}
+                    placeholder="Contoh: Jl. Belanti Barat No. 1, Khatib Sulaiman, Padang"
+                  />
+                  <Field
+                    label="No. Telepon Resmi Lembaga"
+                    value={form.phone || ''}
+                    onChange={(v) => update('phone', v)}
+                    icon={Phone}
+                    placeholder="Contoh: (0751) 7051234 atau 08123456789"
+                  />
+                  <Field
+                    label="Legalitas / SK Kemenkumham / No. AHU"
+                    value={form.sk_pendirian || ''}
+                    onChange={(v) => update('sk_pendirian', v)}
+                    icon={FileText}
+                    placeholder="Contoh: AHU-0012345.AH.01.04.2005"
+                  />
+                  <Field
+                    label="Slogan / Motto Lembaga"
+                    value={form.motto || ''}
+                    onChange={(v) => update('motto', v)}
+                    icon={Sparkles}
+                    placeholder="Contoh: Membina Generasi Rabbani Berakhlak Mulia"
                   />
                   <Field
                     label="Teks Footer Halaman"
@@ -806,6 +1002,68 @@ export default function PengaturanPage() {
                       >
                         Sidebar mengecil secara default (Collapsed Icon-Only)
                       </Label>
+                    </div>
+                  </div>
+
+                  {/* PENGATURAN BREADCRUMB STANDAR TAILGRIDS */}
+                  <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800 md:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <Sliders className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>Gaya Navigasi Breadcrumbs (Jalur Navigasi)</span>
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Atur format pemisah (divider) dan tampilan ikon Beranda pada jalur navigasi seluruh halaman aplikasi.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Select
+                        value={form.breadcrumb_divider || 'chevron'}
+                        onChange={(v) => update('breadcrumb_divider', String(v))}
+                      >
+                        <SelectLabel>Pemisah Breadcrumbs (Divider Type)</SelectLabel>
+                        <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                          <SelectValue placeholder="Pilih pemisah..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem id="chevron">Chevron (›) — Rekomendasi TailGrids</SelectItem>
+                          <SelectItem id="slash">Garis Miring (/) — Slash</SelectItem>
+                          <SelectItem id="dot">Titik Bulat (•) — Dot</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3.5 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <Checkbox
+                          id="breadcrumb_show_home"
+                          checked={form.breadcrumb_show_home !== false}
+                          onChange={(e) => update('breadcrumb_show_home', e.target.checked)}
+                        />
+                        <Label
+                          htmlFor="breadcrumb_show_home"
+                          className="cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-200"
+                        >
+                          Tampilkan Ikon Beranda di Awal Navigasi (Home Icon)
+                        </Label>
+                      </div>
+                    </div>
+
+                    {/* Live Preview Breadcrumbs */}
+                    <div className="rounded-xl border border-dashed border-emerald-300/80 bg-emerald-50/30 p-3.5 dark:border-emerald-800/80 dark:bg-emerald-950/20">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block mb-2">
+                        Pratinjau Langsung (Live Preview Breadcrumb):
+                      </span>
+                      <AppBreadcrumb
+                        dividerType={form.breadcrumb_divider || 'chevron'}
+                        homeTo={form.breadcrumb_show_home !== false ? '/dashboard' : null}
+                        items={[
+                          { label: 'Master Data', href: '/dashboard' },
+                          { label: 'Kelas & Rombel' },
+                        ]}
+                        className="mb-0"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1318,6 +1576,54 @@ export default function PengaturanPage() {
           </div>
         </form>
       </AppModal>
+
+      {/* Status & Feedback Modal (Native TailGrids Dialog) */}
+      <AppModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+        title={statusModal.title}
+        subtitle={statusModal.message}
+        icon={
+          statusModal.type === 'success' ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          ) : statusModal.type === 'error' ? (
+            <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+          ) : (
+            <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          )
+        }
+        maxWidth="max-w-md"
+        footer={
+          <div className="flex w-full justify-end">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => setStatusModal((prev) => ({ ...prev, isOpen: false }))}
+            >
+              OK, Mengerti
+            </Button>
+          </div>
+        }
+      >
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3.5 text-xs font-semibold text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+          {statusModal.message}
+        </div>
+      </AppModal>
+
+      {/* TailGrids Harmonized Action & Delete Confirmation Modal */}
+      <HarmonizedActionModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={executeConfirmAction}
+        title={confirmModal.title}
+        desc={confirmModal.desc}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant}
+      />
+
+      {/* Toast Notification Stack */}
+      <ToastStack toasts={toast.toasts} onDismiss={toast.dismiss} />
     </form>
   )
 }

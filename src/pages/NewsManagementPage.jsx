@@ -114,14 +114,8 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', on
   )
 }
 
-const FALLBACK_UNITS = [
+const DEFAULT_BASE_UNITS = [
   { id: 'all', name: 'Seluruh Unit (Yayasan)', code: 'YAYASAN' },
-  { id: 'tkit', name: 'TKIT Dar El-Iman 1 & 2', code: 'TKIT' },
-  { id: 'sdit1', name: 'SDIT 01 Dar El-Iman', code: 'SDIT 01' },
-  { id: 'sdit2', name: 'SDIT 02 Dar El-Iman', code: 'SDIT 02' },
-  { id: 'smpit', name: 'SMPIT Dar El-Iman', code: 'SMPIT' },
-  { id: 'smait', name: 'SMAIT Dar El-Iman', code: 'SMAIT' },
-  { id: 'pesantren', name: 'STDI & Pesantren Dar El-Iman', code: 'PESANTREN' },
 ]
 
 const CATEGORY_OPTIONS = [
@@ -132,127 +126,12 @@ const CATEGORY_OPTIONS = [
   { id: 'Umum', label: 'Informasi Umum', color: 'cyan', icon: FileText },
 ]
 
-const INITIAL_SEED_NEWS = [
-  {
-    id: 'news-1',
-    judul: 'Penerimaan Peserta Didik Baru (PPDB) T.A. 2026/2027 Resmi Dibuka',
-    kategori: 'PPDB',
-    target_unit: 'all',
-    target_unit_name: 'Seluruh Unit (Yayasan)',
-    ringkasan: 'Pendaftaran online siswa baru untuk seluruh jenjang TKIT, SDIT 01, SDIT 02, SMPIT, SMAIT, dan Pesantren Dar El-Iman.',
-    isi: 'Pendaftaran peserta didik baru Yayasan Dar El-Iman Padang Tahun Ajaran 2026/2027 telah dibuka secara resmi. Orang tua dapat melakukan pendaftaran melalui website portal atau mendatangi sekretariat PPDB di unit masing-masing.',
-    tanggal_publikasi: '2026-08-20',
-    status: 'Dipublikasikan',
-    penerbit: 'Humas & Informasi Yayasan',
-    penerbit_role: 'Pengurus Yayasan',
-    gambar_url: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'news-2',
-    judul: 'Peluncuran Sistem Jurnal Mutaba’ah Yaumiyah & Pemantauan Tahfizh Digital',
-    kategori: 'Kegiatan',
-    target_unit: 'all',
-    target_unit_name: 'Seluruh Unit (Yayasan)',
-    ringkasan: 'Yayasan merilis fitur pemantauan kedisiplinan ibadah dan hafalan Al-Qur’an siswa secara online terpadu.',
-    isi: 'Dalam rangka meningkatkan kedisiplinan ibadah yaumiyah dan hafalan Al-Qur’an santri, Yayasan meluncurkan portal mutabaah digital yang terhubung langsung dengan aplikasi orang tua.',
-    tanggal_publikasi: '2026-08-19',
-    status: 'Dipublikasikan',
-    penerbit: 'Divisi Pendidikan Yayasan',
-    penerbit_role: 'Pengurus Yayasan',
-    gambar_url: 'https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=800&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'news-3',
-    judul: 'Kegiatan Outbound Ceria & Euklid Edukasi Usia Dini TKIT Dar El-Iman',
-    kategori: 'Kegiatan',
-    target_unit: 'tkit',
-    target_unit_name: 'TKIT Dar El-Iman 1 & 2',
-    ringkasan: 'Murid TKIT mengikuti kegiatan outing class edukatif melatih kemandirian dan motorik halus anak.',
-    isi: 'TKIT Dar El-Iman menyelenggarakan kegiatan outbound edukatif yang bertujuan melatih keberanian, kerjasama, dan kedisiplinan anak sejak dini.',
-    tanggal_publikasi: '2026-08-18',
-    status: 'Dipublikasikan',
-    penerbit: 'Kepala Sekolah TKIT',
-    penerbit_role: 'Kepala Sekolah',
-    gambar_url: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?w=800&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'news-4',
-    judul: 'Prestasi Santri SDIT 01: Medali Emas Olimpiade Sains & Wisuda Tahfizh 10 Juz',
-    kategori: 'Prestasi',
-    target_unit: 'sdit1',
-    target_unit_name: 'SDIT 01 Dar El-Iman',
-    ringkasan: 'Santri SDIT 01 memborong medali emas sains nasional serta lulus tasmi’ hafalan 10 juz sekali duduk predikat Mumtaz.',
-    isi: 'Alhamdulillah, santri SDIT 01 Dar El-Iman kembali mengukir prestasi gemilang tingkat nasional dalam ajang Olimpiade Sains dan Musabaqah Hifzhil Qur’an 10 Juz.',
-    tanggal_publikasi: '2026-08-17',
-    status: 'Dipublikasikan',
-    penerbit: 'Kepala Sekolah SDIT 01',
-    penerbit_role: 'Kepala Sekolah',
-    gambar_url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'news-5',
-    judul: 'Market Day Wirausaha Cilik & Pembiasaan Shalat Dhuha Berjamaah SDIT 02',
-    kategori: 'Kegiatan',
-    target_unit: 'sdit2',
-    target_unit_name: 'SDIT 02 Dar El-Iman',
-    ringkasan: 'Siswa SDIT 02 mempraktikkan muamalah syariah melalui kegiatan Market Day sekolah.',
-    isi: 'SDIT 02 Dar El-Iman menggelar acara Market Day tahunan untuk melatih kejujuran, kewirausahaan Islam, serta adab berbelanja bagi seluruh siswa.',
-    tanggal_publikasi: '2026-08-16',
-    status: 'Dipublikasikan',
-    penerbit: 'Waka Kesiswaan SDIT 02',
-    penerbit_role: 'Waka Kesiswaan',
-    gambar_url: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'news-6',
-    judul: 'Simulasi Ujian CBT Akademik & Pelatihan Bahasa Arab SMPIT Dar El-Iman',
-    kategori: 'Akademik',
-    target_unit: 'smpit',
-    target_unit_name: 'SMPIT Dar El-Iman',
-    ringkasan: 'Siswa SMPIT mengikuti simulasi portal CBT ujian berbasis komputer dan integrasi jurnal mutabaah digital.',
-    isi: 'Dalam rangka meningkatkan kesiapan akademik, SMPIT Dar El-Iman menyelenggarakan simulasi ujian berbasis komputer (CBT) serta evaluasi kedisiplinan ibadah yaumiyah.',
-    tanggal_publikasi: '2026-08-15',
-    status: 'Dipublikasikan',
-    penerbit: 'Tata Usaha SMPIT',
-    penerbit_role: 'Tata Usaha',
-    gambar_url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'news-7',
-    judul: 'Program Bimbingan Intensif UTBK-SNBT & Kelulusan PTN Favorit SMAIT',
-    kategori: 'Akademik',
-    target_unit: 'smait',
-    target_unit_name: 'SMAIT Dar El-Iman',
-    ringkasan: 'Santri SMAIT Dar El-Iman meraih persentase kelulusan 92% masuk Perguruan Tinggi Negeri terkemuka.',
-    isi: 'Selamat kepada para santri kelas XII SMAIT Dar El-Iman yang berhasil diterima di PTN favorit melalui jalur SNBP dan SNBT tahun ajaran ini.',
-    tanggal_publikasi: '2026-08-14',
-    status: 'Dipublikasikan',
-    penerbit: 'Waka Kurikulum SMAIT',
-    penerbit_role: 'Waka Kurikulum',
-    gambar_url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'news-8',
-    judul: 'Dauroh Bahasa Arab & Matsama Pembekalan Santri Baru Pesantren',
-    kategori: 'Kegiatan',
-    target_unit: 'pesantren',
-    target_unit_name: 'STDI & Pesantren Dar El-Iman',
-    ringkasan: 'Pembekalan kedisiplinan dan bahasa Arab intensif bagi santri baru Ma’had Dar El-Iman.',
-    isi: 'Kegiatan dauroh bahasa Arab dan matrikulasi keislaman diselenggarakan untuk membekali santri baru Pesantren Dar El-Iman Padang.',
-    tanggal_publikasi: '2026-08-12',
-    status: 'Dipublikasikan',
-    penerbit: 'Divisi Tahfizh & Pesantren',
-    penerbit_role: 'Pengurus Yayasan',
-    gambar_url: 'https://images.unsplash.com/photo-1585036156171-384164a8c675?w=800&auto=format&fit=crop&q=60',
-  },
-]
-
 export default function NewsManagementPage() {
   const user = useAuthStore((state) => state.user)
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
 
   // 1. Dynamic Units State (Fetched from Database)
-  const [unitOptions, setUnitOptions] = useState(FALLBACK_UNITS)
+  const [unitOptions, setUnitOptions] = useState(DEFAULT_BASE_UNITS)
 
   useEffect(() => {
     let cancelled = false
@@ -381,30 +260,17 @@ export default function NewsManagementPage() {
           }
         })
 
-        const mergedMap = new Map()
-        INITIAL_SEED_NEWS.forEach(item => mergedMap.set(item.id, item))
-        normalized.forEach(item => mergedMap.set(item.id, item))
-        const finalList = Array.from(mergedMap.values())
-
-        setNewsList(finalList)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalList))
+        setNewsList(normalized)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
       } else {
         const stored = localStorage.getItem(STORAGE_KEY)
-        let parsed = stored ? JSON.parse(stored) : []
-        if (!Array.isArray(parsed) || parsed.length < INITIAL_SEED_NEWS.length) {
-          parsed = INITIAL_SEED_NEWS
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED_NEWS))
-        }
-        setNewsList(parsed)
+        const parsed = stored ? JSON.parse(stored) : []
+        setNewsList(Array.isArray(parsed) ? parsed : [])
       }
     } catch {
       const stored = localStorage.getItem(STORAGE_KEY)
-      let parsed = stored ? JSON.parse(stored) : []
-      if (!Array.isArray(parsed) || parsed.length < INITIAL_SEED_NEWS.length) {
-        parsed = INITIAL_SEED_NEWS
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED_NEWS))
-      }
-      setNewsList(parsed)
+      const parsed = stored ? JSON.parse(stored) : []
+      setNewsList(Array.isArray(parsed) ? parsed : [])
     } finally {
       setLoading(false)
     }
@@ -862,19 +728,19 @@ export default function NewsManagementPage() {
         {/* TAILGRIDS TABLE ROOT & ROWS WITH RICH COLOR STYLING */}
         <div className="overflow-x-auto">
           <TableRoot fullBleed={false}>
-            <TableHeader className="bg-[#F8FAFB] dark:bg-[#202B3A]">
-              <TableRow className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">
+            <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <TableRow className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent hover:bg-transparent">
+                <TableHead className="bg-transparent font-extrabold text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 py-3.5 px-4">
                   <div className="flex items-center gap-1.5 cursor-pointer">
-                    <span className="font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1]">Judul Berita & Kategori</span>
+                    <span className="font-extrabold text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">Judul Berita & Kategori</span>
                     <ArrowBothDirectionHorizontal2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                 </TableHead>
-                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Target Unit Sekolah</TableHead>
-                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Penerbit & Peran</TableHead>
-                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Tanggal Publikasi</TableHead>
-                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Status</TableHead>
-                <TableHead className="bg-[#F8FAFB] dark:bg-[#202B3A] text-center font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] py-3.5 px-4">Aksi</TableHead>
+                <TableHead className="bg-transparent font-extrabold text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 py-3.5 px-4">Target Unit Sekolah</TableHead>
+                <TableHead className="bg-transparent font-extrabold text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 py-3.5 px-4">Penerbit & Peran</TableHead>
+                <TableHead className="bg-transparent font-extrabold text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 py-3.5 px-4">Tanggal Publikasi</TableHead>
+                <TableHead className="bg-transparent font-extrabold text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 py-3.5 px-4">Status</TableHead>
+                <TableHead className="bg-transparent text-center font-extrabold text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 py-3.5 px-4">Aksi</TableHead>
               </TableRow>
             </TableHeader>
 

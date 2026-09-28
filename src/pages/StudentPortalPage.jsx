@@ -121,11 +121,6 @@ function ExamWorkspace({ session, onClose, onFinished }) {
 
   const save = useCallback(async (silent = false) => {
     if (!silent) setSaving(true)
-    if (String(session.sesi_id).startsWith('mock-session-')) {
-      setSavedAt(new Date().toISOString())
-      if (!silent) setSaving(false)
-      return
-    }
     try {
       const response = await studentLmsService.saveAnswers(session.sesi_id, answerPayload(answersRef.current))
       setSavedAt(response.data?.saved_at || new Date().toISOString())
@@ -142,15 +137,6 @@ function ExamWorkspace({ session, onClose, onFinished }) {
     if (!automatic && !window.confirm('Yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah setelah dikumpulkan.')) return
     finishLock.current = true
     setSubmitting(true)
-    if (String(session.sesi_id).startsWith('mock-session-')) {
-      onFinished({
-        sesi_id: session.sesi_id,
-        nilai_final: 85,
-        status: 'selesai',
-        message: 'Ujian simulasi berhasil dikumpulkan.',
-      })
-      return
-    }
     try {
       const response = await studentLmsService.finishExam(session.sesi_id, answerPayload(answersRef.current))
       onFinished(response.data)

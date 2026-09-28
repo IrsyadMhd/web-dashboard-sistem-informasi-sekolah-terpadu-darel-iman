@@ -25,6 +25,7 @@ import {
   UserCheck,
   Check,
   Printer,
+  Pencil,
 } from 'lucide-react'
 import { Download1, Upload1 } from '@tailgrids/icons'
 
@@ -39,6 +40,10 @@ import PemantauanDivisiFormModal from '../components/pemantauan/PemantauanDivisi
 import ImporDivisiModal from '../components/pemantauan/ImporDivisiModal'
 import { useAuthStore } from '../stores/authStore'
 import { useUnitStore } from '../stores/unitStore'
+import { useQuery } from '@tanstack/react-query'
+import { educationUnitService } from '../services/educationUnitService'
+import { divisionService } from '../services/divisionService'
+import useDebounce from '../hooks/useDebounce'
 
 import { AlertDialog } from '@/components/tailgrids/core/alert-dialog'
 import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/tailgrids/core/dialog'
@@ -100,7 +105,7 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', on
       whileTap={{ scale: 0.96 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={onClick}
-      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-pointer group`}
+      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-[box-shadow,border-color] duration-150 hover:shadow-md cursor-pointer group`}
     >
       <div className="flex items-center justify-between">
         <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
@@ -120,13 +125,19 @@ export default function MonitoringDivisiPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(15)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
   const [filterDivisi, setFilterDivisi] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterUnit, setFilterUnit] = useState('')
 
-  // Detail Modal State (Read-only Capability Compliance)
+  // Detail & Action Modal States
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [localItems, setLocalItems] = useState([])
 
   // Auth & Role Context
   const user = useAuthStore((state) => state.user)
@@ -140,9 +151,9 @@ export default function MonitoringDivisiPage() {
   }, [user])
 
   const isSuperAdminOrYayasan = useMemo(() => {
-    if (!user) return true
+    if (!user) return false
+    if (user.is_superadmin) return true
     const rolesLower = userRoles.map((r) => String(r).toLowerCase().replace(/[\s_-]+/g, ''))
-    if (user.is_superadmin || rolesLower.length === 0) return true
     return rolesLower.some((r) =>
       r.includes('superadmin') ||
       r.includes('admin') ||
@@ -162,27 +173,80 @@ export default function MonitoringDivisiPage() {
     )
   }, [isSuperAdminOrYayasan, userRoles])
 
-  const isUnitRestricted = isKepalaSekolahOrDivisiPendidikan
-  const currentUserUnit = user?.education_unit || user?.unit_name || user?.unit || activeUnitFromStore || 'SD IT'
-
   // React Query Hooks
+  const { data: unitsData } = useQuery({
+    queryKey: ['education-units-monitoring-divisi'],
+    queryFn: () => educationUnitService.getDaftar({ per_page: 100 }),
+  })
+  const educationUnits = useMemo(() => {
+    const list = unitsData?.data?.data || unitsData?.data || (Array.isArray(unitsData) ? unitsData : [])
+    return Array.isArray(list) ? list : []
+  }, [unitsData])
+
+  const isUnitRestricted = isKepalaSekolahOrDivisiPendidikan
+  const currentUserUnit =
+    user?.education_unit ||
+    user?.unit_name ||
+    user?.unit ||
+    activeUnitFromStore ||
+    educationUnits[0]?.name ||
+    educationUnits[0]?.code ||
+    ''
+
   const { data, isLoading, isError, refetch } = useDaftarPemantauanDivisi({
     page,
     per_page: perPage,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
+  })
+
+  const { data: rawDivisionsData } = useQuery({
+    queryKey: ['divisions-dropdown-monitoring-divisi'],
+    queryFn: () => divisionService.getDropdown(),
   })
 
   const { tambah, ubah, hapus } = useAksiPemantauanDivisi()
 
   const rawApiItems = data?.data || []
+
+  const divisionOptions = useMemo(() => {
+    const fromApi = Array.isArray(rawDivisionsData) ? rawDivisionsData : []
+    const set = new Set()
+    const list = []
+    fromApi.forEach((d) => {
+      const name = d.name || d.nama || d.code
+      if (name && !set.has(name)) {
+        set.add(name)
+        list.push({ id: d.id || name, name })
+      }
+    })
+    rawApiItems.forEach((item) => {
+      if (item.nama_divisi && !set.has(item.nama_divisi)) {
+        set.add(item.nama_divisi)
+        list.push({ id: item.nama_divisi, name: item.nama_divisi })
+      }
+    })
+    return list
+  }, [rawDivisionsData, rawApiItems])
+
   const combinedItems = useMemo(() => {
-    return rawApiItems.map((item) => ({
-      unit_pendidikan: item.unit_pendidikan || 'SD IT',
-      petugas_supervisi: item.petugas_supervisi || 'Pengawas Sekolah',
-      kategori_laporan: item.kategori_laporan || 'Target Program Harian/Mingguan',
+    const deletedSet = new Set(localItems.filter((i) => i._deleted).map((i) => i.id))
+    const localActive = localItems.filter((i) => !i._deleted)
+    const localMap = new Map(localActive.map((i) => [i.id, i]))
+
+    const fromApi = rawApiItems
+      .filter((item) => !deletedSet.has(item.id))
+      .map((item) => localMap.get(item.id) || item)
+
+    const newLocals = localActive.filter((i) => !rawApiItems.some((a) => a.id === i.id))
+    const all = [...newLocals, ...fromApi]
+
+    return all.map((item) => ({
+      unit_pendidikan: item.unit_pendidikan || (educationUnits[0]?.name || educationUnits[0]?.code || ''),
+      petugas_supervisi: item.petugas_supervisi || '',
+      kategori_laporan: item.kategori_laporan || '',
       ...item,
     }))
-  }, [rawApiItems])
+  }, [rawApiItems, localItems, educationUnits])
 
   // Filter items by Unit scope, Divisi, Status, Search
   const filteredItems = useMemo(() => {
@@ -198,14 +262,14 @@ export default function MonitoringDivisiPage() {
         if (!d.includes(f) && !f.includes(d)) return false
       }
       if (filterStatus && item.status_pemantauan !== filterStatus) return false
-      if (search) {
-        const q = search.toLowerCase()
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase()
         const text = `${item.nama_divisi} ${item.aspek_pemantauan} ${item.catatan} ${item.petugas_supervisi} ${item.unit_pendidikan}`.toLowerCase()
         if (!text.includes(q)) return false
       }
       return true
     })
-  }, [combinedItems, filterUnit, filterDivisi, filterStatus, search])
+  }, [combinedItems, filterUnit, filterDivisi, filterStatus, debouncedSearch])
 
   const pagination = {
     currentPage: page,
@@ -289,8 +353,8 @@ export default function MonitoringDivisiPage() {
   const avgCapaian =
     filteredItems.length > 0
       ? Math.round(
-          filteredItems.reduce((acc, curr) => acc + (Number(curr.persentase_capaian) || 0), 0) / filteredItems.length
-        )
+        filteredItems.reduce((acc, curr) => acc + (Number(curr.persentase_capaian) || 0), 0) / filteredItems.length
+      )
       : 0
 
   // Modal Action Handlers
@@ -346,7 +410,7 @@ export default function MonitoringDivisiPage() {
 
   const handleConfirmDelete = async () => {
     if (!deleteTargetId) return
-    setLocalItems((prev) => prev.filter((i) => i.id !== deleteTargetId))
+    setLocalItems((prev) => [...prev.filter((i) => i.id !== deleteTargetId), { id: deleteTargetId, _deleted: true }])
     await hapus.mutateAsync(deleteTargetId, {
       onSuccess: () => {
         setIsDeleteOpen(false)
@@ -405,7 +469,7 @@ export default function MonitoringDivisiPage() {
                 <div className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-300">
                   <p>
                     <strong className="text-slate-900 dark:text-white">Unit Pendidikan:</strong>{' '}
-                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{row.unit_pendidikan || 'SD IT'}</span>
+                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{row.unit_pendidikan || '-'}</span>
                   </p>
                   <p>
                     <strong className="text-slate-900 dark:text-white">Aspek Pemantauan:</strong> {row.aspek_pemantauan || '-'}
@@ -438,7 +502,7 @@ export default function MonitoringDivisiPage() {
             </HoverCard>
             <div className="flex items-center gap-1.5">
               <span className="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                {row.unit_pendidikan || 'SD IT'}
+                {row.unit_pendidikan || '-'}
               </span>
             </div>
           </div>
@@ -513,10 +577,10 @@ export default function MonitoringDivisiPage() {
             <span>
               {row.tanggal_pemantauan
                 ? new Date(row.tanggal_pemantauan).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })
                 : '-'}
             </span>
           </div>
@@ -532,20 +596,41 @@ export default function MonitoringDivisiPage() {
     {
       key: 'aksi',
       label: 'AKSI',
-      headerProps: { className: 'text-right w-24' },
-      cellProps: { className: 'text-right w-24' },
+      headerProps: { className: 'text-right w-36' },
+      cellProps: { className: 'text-right w-36' },
       render: (row) => (
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedRecord(row)
-            setIsDetailOpen(true)
-          }}
-          className="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-emerald-950 dark:hover:text-emerald-300 transition-colors cursor-pointer"
-        >
-          <FileText className="h-3.5 w-3.5" />
-          <span>Detail</span>
-        </button>
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            title="Lihat Detail"
+            aria-label="Lihat Detail"
+            onClick={() => {
+              setSelectedRecord(row)
+              setIsDetailOpen(true)
+            }}
+            className="inline-flex size-8 items-center justify-center rounded-xl bg-slate-100 text-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-emerald-950 dark:hover:text-emerald-300 transition-colors cursor-pointer shadow-2xs"
+          >
+            <FileText className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            title="Ubah Data Supervisi"
+            aria-label="Ubah Data Supervisi"
+            onClick={() => handleOpenEdit(row)}
+            className="inline-flex size-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300 transition-colors cursor-pointer shadow-2xs border border-amber-200/60 dark:border-amber-900/60"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            title="Hapus Data Supervisi"
+            aria-label="Hapus Data Supervisi"
+            onClick={() => handleOpenDelete(row.id)}
+            className="inline-flex size-8 items-center justify-center rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 transition-colors cursor-pointer shadow-2xs border border-rose-200/60 dark:border-rose-900/60"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       ),
     },
   ]
@@ -553,6 +638,39 @@ export default function MonitoringDivisiPage() {
   // Soft Pastel Squircle Action Buttons (Toolbar Row 1 Header) - Compliant with Capability Lock
   const renderActionButtons = (
     <div className="flex items-center gap-2">
+      {/* Tambah Supervisi Button - Soft Pastel Emerald Squircle */}
+      <div className="group relative inline-flex">
+        <button
+          type="button"
+          title="Tambah Laporan Supervisi Divisi"
+          aria-label="Tambah Laporan Supervisi Divisi"
+          onClick={handleOpenCreate}
+          className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+        >
+          <Plus className="size-5" />
+        </button>
+        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+          Tambah Supervisi
+        </div>
+      </div>
+
+      {/* Impor CSV Button - Soft Pastel Sky Squircle */}
+      <div className="group relative inline-flex">
+        <button
+          type="button"
+          title="Impor Data Laporan Supervisi (CSV)"
+          aria-label="Impor Data Laporan Supervisi (CSV)"
+          onClick={() => setIsImportOpen(true)}
+          className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+        >
+          <Upload1 className="size-5" />
+        </button>
+        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+          Impor CSV
+        </div>
+      </div>
       {/* Ekspor CSV/Excel Button - Soft Pastel Amber/Orange Squircle */}
       <div className="group relative inline-flex">
         <button
@@ -621,11 +739,11 @@ export default function MonitoringDivisiPage() {
             className="h-10 cursor-pointer appearance-none rounded-xl border border-emerald-300/80 bg-emerald-50/60 pl-3.5 pr-8 text-xs font-bold text-emerald-900 shadow-2xs transition-all hover:border-emerald-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200"
           >
             <option value="">Semua Unit Pendidikan</option>
-            <option value="SD IT">SD IT</option>
-            <option value="SMP IT">SMP IT</option>
-            <option value="SMA IT">SMA IT</option>
-            <option value="Pondok Pesantren">Pondok Pesantren</option>
-            <option value="TK IT">TK IT</option>
+            {educationUnits.map((u) => (
+              <option key={u.id} value={u.name || u.code}>
+                {u.name}
+              </option>
+            ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-emerald-600" />
         </div>
@@ -636,7 +754,7 @@ export default function MonitoringDivisiPage() {
         </div>
       )}
 
-      {/* Filter Divisi Dropdown */}
+      {/* Filter Divisi Dropdown (Populated Dynamically from Database) */}
       <div className="relative">
         <select
           value={filterDivisi}
@@ -646,16 +764,12 @@ export default function MonitoringDivisiPage() {
           }}
           className="h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
         >
-          <option value="">Semua Divisi SIT</option>
-          <option value="Divisi Al-Qur'an / Tahfidz">Divisi Al-Qur'an / Tahfidz</option>
-          <option value="Divisi Kesiswaan & BPI">Divisi Kesiswaan & BPI</option>
-          <option value="Divisi Kurikulum / Akademik">Divisi Kurikulum / Akademik</option>
-          <option value="Divisi Sarana & Prasarana">Divisi Sarana & Prasarana</option>
-          <option value="Divisi Keasramaan / Musyrif">Divisi Keasramaan / Musyrif</option>
-          <option value="Divisi Bahasa">Divisi Bahasa</option>
-          <option value="Tata Usaha">Tata Usaha & Administrasi</option>
-          <option value="HRD & Kepegawaian">HRD & Kepegawaian</option>
-          <option value="Keuangan">Keuangan</option>
+          <option value="">Semua Divisi {divisionOptions.length > 0 ? `(${divisionOptions.length})` : ''}</option>
+          {divisionOptions.map((opt) => (
+            <option key={opt.id || opt.name} value={opt.name}>
+              {opt.name}
+            </option>
+          ))}
         </select>
         <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
       </div>
@@ -732,7 +846,7 @@ export default function MonitoringDivisiPage() {
             <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">{row.nama_divisi || '-'}</h4>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">
-                {row.unit_pendidikan || 'SD IT'}
+                {row.unit_pendidikan || '-'}
               </span>
               <span className="text-[11px] text-slate-400 line-clamp-1">{row.aspek_pemantauan || '-'}</span>
             </div>
@@ -750,13 +864,12 @@ export default function MonitoringDivisiPage() {
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
           <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              Number(row.persentase_capaian) >= 80
+            className={`h-full rounded-full transition-all duration-300 ${Number(row.persentase_capaian) >= 80
                 ? 'bg-emerald-500'
                 : Number(row.persentase_capaian) >= 50
-                ? 'bg-amber-500'
-                : 'bg-rose-500'
-            }`}
+                  ? 'bg-amber-500'
+                  : 'bg-rose-500'
+              }`}
             style={{ width: `${Math.min(Number(row.persentase_capaian) || 0, 100)}%` }}
           />
         </div>
@@ -773,10 +886,10 @@ export default function MonitoringDivisiPage() {
           <Calendar className="h-3 w-3" />
           {row.tanggal_pemantauan
             ? new Date(row.tanggal_pemantauan).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })
             : '-'}
         </span>
         <div className="flex items-center gap-1">
@@ -843,11 +956,11 @@ export default function MonitoringDivisiPage() {
                   </h1>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                     <ShieldCheck className="h-3.5 w-3.5" />
-                    {isUnitRestricted ? currentUserUnit : 'Seluruh Unit SIT'}
+                    {isUnitRestricted ? (currentUserUnit || 'Unit Anda') : (filterUnit || (educationUnits.length > 0 ? `${educationUnits.length} Unit Pendidikan` : 'Seluruh Unit'))}
                   </span>
                 </div>
                 <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
-                  Pemantauan terpadu ketercapaian target divisi (Al-Qur'an, Kesiswaan/BPI, Kurikulum, Sarpras, dan Keuangan) di seluruh unit pendidikan.
+                  Pemantauan terpadu ketercapaian target divisi operasional di seluruh unit pendidikan.
                 </p>
               </div>
             </div>
@@ -862,19 +975,19 @@ export default function MonitoringDivisiPage() {
         </motion.div>
 
         {/* Role Access Scope Info Alert */}
-        <motion.div variants={itemVariants} className="print:hidden">
+        {/* <motion.div variants={itemVariants} className="print:hidden">
           {!isUnitRestricted ? (
-            <Alert status="info" className="rounded-2xl border-sky-200 bg-sky-50/90 dark:border-sky-900/60 dark:bg-sky-950/40">
-              <ShieldCheck className="h-5 w-5 text-sky-600 dark:text-sky-400 shrink-0" />
-              <AlertContent>
-                <AlertTitle className="text-xs font-extrabold text-sky-900 dark:text-sky-200">
-                  Akses Hak Akses: Superadmin / Admin / Pengurus Yayasan
-                </AlertTitle>
-                <AlertDescription className="text-xs text-sky-700 dark:text-sky-300">
-                  Anda dapat melakukan manajemen data monitoring divisi di <strong>seluruh unit pendidikan</strong> (SD IT, SMP IT, SMA IT, Pondok Pesantren). Gunakan filter unit di bawah untuk memilah data secara spesifik.
-                </AlertDescription>
-              </AlertContent>
-            </Alert>
+            // <Alert status="info" className="rounded-2xl border-sky-200 bg-sky-50/90 dark:border-sky-900/60 dark:bg-sky-950/40">
+            //   <ShieldCheck className="h-5 w-5 text-sky-600 dark:text-sky-400 shrink-0" />
+            //   <AlertContent>
+            //     <AlertTitle className="text-xs font-extrabold text-sky-900 dark:text-sky-200">
+            //       Akses Hak Akses: Superadmin / Admin / Pengurus Yayasan
+            //     </AlertTitle>
+            //     <AlertDescription className="text-xs text-sky-700 dark:text-sky-300">
+            //       Anda dapat melakukan manajemen data monitoring divisi di <strong>seluruh unit pendidikan</strong> (SD IT, SMP IT, SMA IT, Pondok Pesantren). Gunakan filter unit di bawah untuk memilah data secara spesifik.
+            //     </AlertDescription>
+            //   </AlertContent>
+            // </Alert>
           ) : (
             <Alert status="warning" className="rounded-2xl border-amber-200 bg-amber-50/90 dark:border-amber-900/60 dark:bg-amber-950/40">
               <Lock className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -888,93 +1001,42 @@ export default function MonitoringDivisiPage() {
               </AlertContent>
             </Alert>
           )}
-        </motion.div>
+        </motion.div> */}
 
-        {/* Quick Preset Filter Tabs (SIT Specific) with Soft Pastel Squircle Pills */}
+        {/* Quick Preset Filter Tabs (Populated Dynamically from Database Divisions) */}
         <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-2 pb-1 overflow-x-auto print:hidden">
           <button
             type="button"
             onClick={() => setFilterDivisi('')}
-            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${
-              filterDivisi === ''
+            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${filterDivisi === ''
                 ? 'bg-slate-900 text-white shadow-md dark:bg-slate-100 dark:text-slate-900'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-            }`}
+              }`}
           >
             <Layers className="h-4 w-4" />
-            <span>Semua Divisi SIT</span>
+            <span>Semua Divisi</span>
             <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px]">{combinedItems.length}</span>
           </button>
 
-          {/* Divisi Al-Qur'an / Tahfidz */}
-          <button
-            type="button"
-            onClick={() => setFilterDivisi('Divisi Al-Qur\'an / Tahfidz')}
-            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${
-              filterDivisi === 'Divisi Al-Qur\'an / Tahfidz'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'bg-sky-100/90 text-sky-700 hover:bg-sky-200 dark:bg-sky-950/60 dark:text-sky-300'
-            }`}
-          >
-            <BookOpen className="h-4 w-4 text-sky-500" />
-            <span>Divisi Al-Qur'an & Tahfidz</span>
-          </button>
-
-          {/* Divisi Kesiswaan & BPI */}
-          <button
-            type="button"
-            onClick={() => setFilterDivisi('Divisi Kesiswaan & BPI')}
-            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${
-              filterDivisi === 'Divisi Kesiswaan & BPI'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300'
-            }`}
-          >
-            <Zap className="h-4 w-4 text-emerald-500" />
-            <span>Kesiswaan & BPI (Amal Yaumi)</span>
-          </button>
-
-          {/* Divisi Kurikulum / Akademik */}
-          <button
-            type="button"
-            onClick={() => setFilterDivisi('Divisi Kurikulum / Akademik')}
-            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${
-              filterDivisi === 'Divisi Kurikulum / Akademik'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'bg-purple-100/90 text-purple-700 hover:bg-purple-200 dark:bg-purple-950/60 dark:text-purple-300'
-            }`}
-          >
-            <LayoutGrid className="h-4 w-4 text-purple-500" />
-            <span>Kurikulum Integrasi</span>
-          </button>
-
-          {/* Divisi Sarana & Prasarana */}
-          <button
-            type="button"
-            onClick={() => setFilterDivisi('Divisi Sarana & Prasarana')}
-            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${
-              filterDivisi === 'Divisi Sarana & Prasarana'
-                ? 'bg-amber-600 text-white shadow-md'
-                : 'bg-amber-100/90 text-amber-700 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300'
-            }`}
-          >
-            <Building2 className="h-4 w-4 text-amber-500" />
-            <span>Sarana & Prasarana</span>
-          </button>
-
-          {/* Divisi Keasramaan */}
-          <button
-            type="button"
-            onClick={() => setFilterDivisi('Divisi Keasramaan / Musyrif')}
-            className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${
-              filterDivisi === 'Divisi Keasramaan / Musyrif'
-                ? 'bg-pink-600 text-white shadow-md'
-                : 'bg-pink-100/90 text-pink-700 hover:bg-pink-200 dark:bg-pink-950/60 dark:text-pink-300'
-            }`}
-          >
-            <FileText className="h-4 w-4 text-pink-500" />
-            <span>Keasramaan / Musyrif</span>
-          </button>
+          {divisionOptions.map((div) => {
+            const isSelected = filterDivisi === div.name
+            const count = combinedItems.filter((i) => i.nama_divisi === div.name).length
+            return (
+              <button
+                key={div.id || div.name}
+                type="button"
+                onClick={() => setFilterDivisi(isSelected ? '' : div.name)}
+                className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer shadow-2xs ${isSelected
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                  }`}
+              >
+                <Layers className="h-4 w-4 text-emerald-500" />
+                <span>{div.name}</span>
+                {count > 0 && <span className="rounded-full bg-black/10 dark:bg-white/10 px-1.5 py-0.2 text-[10px]">{count}</span>}
+              </button>
+            )
+          })}
         </motion.div>
 
         {/* KPI Stats Grid Complying with TAILGRIDS_CARD_COMPONENT */}
@@ -1022,33 +1084,33 @@ export default function MonitoringDivisiPage() {
                     Sekolah Islam Terpadu — Unit: {filterUnit || 'Semua Unit Pendidikan'} {filterDivisi ? `| Divisi: ${filterDivisi}` : ''}
                   </p>
                 </div>
-              <div className="text-right text-[9px] text-slate-600 font-medium leading-tight space-y-0.5">
-                <p>Tanggal Cetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                <p>Total Data: {filteredItems.length} Catatan Laporan</p>
+                <div className="text-right text-[9px] text-slate-600 font-medium leading-tight space-y-0.5">
+                  <p>Tanggal Cetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p>Total Data: {filteredItems.length} Catatan Laporan</p>
+                </div>
               </div>
-            </div>
-          }
-          title="Daftar Pemantauan Divisi Sekolah Islam Terpadu"
-          description="Tabel rekam data riil, evaluasi ketercapaian indikator, dan catatan supervisi operasional antar divisi."
-          columns={columns}
-          data={paginatedItems}
-          isLoading={isLoading}
-          isError={isError}
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Cari nama divisi, aspek pemantauan, petugas pengawas, atau unit..."
-          actions={renderActionButtons}
-          filters={renderFilterControls}
-          hasActiveFilters={hasActiveFilters}
-          onResetFilters={resetFilters}
-          page={page}
-          totalPages={pagination.totalPages}
-          totalItems={pagination.totalRecords}
-          itemsPerPage={perPage}
-          onPageChange={setPage}
-          renderMobileCard={renderMobileCard}
-        />
-      </motion.div>
+            }
+            title="Daftar Pemantauan Divisi Sekolah Islam Terpadu"
+            description="Tabel rekam data riil, evaluasi ketercapaian indikator, dan catatan supervisi operasional antar divisi."
+            columns={columns}
+            data={paginatedItems}
+            isLoading={isLoading}
+            isError={isError}
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Cari nama divisi, aspek pemantauan, petugas pengawas, atau unit..."
+            actions={renderActionButtons}
+            filters={renderFilterControls}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={resetFilters}
+            page={page}
+            totalPages={pagination.totalPages}
+            totalItems={pagination.totalRecords}
+            itemsPerPage={perPage}
+            onPageChange={setPage}
+            renderMobileCard={renderMobileCard}
+          />
+        </motion.div>
 
         {/* Detail Modal (Read-only Capability Compliance) */}
         {isDetailOpen && selectedRecord && (
@@ -1105,9 +1167,87 @@ export default function MonitoringDivisiPage() {
                 )}
               </div>
 
-              <div className="flex justify-end pt-2">
-                <Button type="button" variant="ghost" onClick={() => setIsDetailOpen(false)}>
-                  Tutup
+              <div className="flex items-center justify-between pt-2">
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={() => {
+                    const id = selectedRecord.id
+                    setIsDetailOpen(false)
+                    handleOpenDelete(id)
+                  }}
+                >
+                  Hapus
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="ghost" onClick={() => setIsDetailOpen(false)}>
+                    Tutup
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => {
+                      const rec = selectedRecord
+                      setIsDetailOpen(false)
+                      handleOpenEdit(rec)
+                    }}
+                  >
+                    Ubah Data
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Form Modal (Create / Edit) */}
+        <PemantauanDivisiFormModal
+          isOpen={isFormOpen}
+          onClose={() => setIsFormOpen(false)}
+          onSubmit={handleFormSubmit}
+          initialData={selectedRecord}
+          isSubmitting={tambah.isPending || ubah.isPending}
+          currentUserUnit={currentUserUnit}
+          isUnitRestricted={isUnitRestricted}
+          unitOptions={educationUnits}
+          divisionOptions={divisionOptions}
+        />
+
+        {/* Impor CSV Modal */}
+        <ImporDivisiModal
+          isOpen={isImportOpen}
+          onClose={() => setIsImportOpen(false)}
+          onImportSuccess={handleImportSuccess}
+        />
+
+        {/* Delete Confirmation Alert Dialog */}
+        {isDeleteOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#1B2433] dark:border dark:border-slate-800 space-y-4 animate-[masterModalFadeScale_0.25s_ease-out]">
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                Hapus Data Pemantauan Divisi?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Data laporan monitoring yang dihapus tidak dapat dipulihkan kembali. Apakah Anda yakin ingin melanjutkan?
+              </p>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsDeleteOpen(false)
+                    setDeleteTargetId(null)
+                  }}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={hapus.isPending}
+                  onClick={handleConfirmDelete}
+                >
+                  {hapus.isPending ? 'Menghapus...' : 'Ya, Hapus Data'}
                 </Button>
               </div>
             </div>

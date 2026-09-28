@@ -135,7 +135,7 @@ export default function FamilyPortalLoginPage() {
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300">
-                  {portalType === 'parent' ? 'NIK, nomor HP, atau email' : 'NIS, NISN, atau email'}
+                  {portalType === 'parent' ? 'No. KK, NIK, Nomor HP, atau Email' : 'NIS, NISN, atau Email'}
                 </label>
                 <div className="relative">
                   <UserRound className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
@@ -145,7 +145,7 @@ export default function FamilyPortalLoginPage() {
                     required
                     autoComplete="username"
                     className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800"
-                    placeholder={portalType === 'parent' ? 'Masukkan identitas orang tua' : 'Masukkan identitas siswa'}
+                    placeholder={portalType === 'parent' ? 'Masukkan No. KK, NIK, HP, atau Email orang tua' : 'Masukkan NIS, NISN, atau Email siswa'}
                   />
                 </div>
               </div>

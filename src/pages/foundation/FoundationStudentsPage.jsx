@@ -471,7 +471,7 @@ export function FoundationStudentsPage() {
                   <th className="w-[7%] px-2 py-3 text-center font-bold">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                 {loading ? (
                   Array.from({ length: 6 }).map((_, index) => (
                     <tr key={index} className="animate-pulse">

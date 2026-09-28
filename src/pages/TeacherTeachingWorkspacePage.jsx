@@ -40,6 +40,7 @@ import {
   GraduationCap,
   Heart,
   HeartHandshake,
+  HelpCircle,
   History,
   Layers,
   Lock,
@@ -94,7 +95,7 @@ import ActiveScheduleNotice from '../components/attendance/ActiveScheduleNotice'
 import ChatGuruWorkspace from '../components/portal/ChatGuruWorkspace'
 import TahfizhReportSummaryPage from './tahfizh/TahfizhReportSummaryPage'
 import { VideoEmbedPlayer, PdfDocumentViewer } from '../components/common/MateriMediaEmbed'
-import { printCleanTable, downloadPdfTable, printWeeklyStudentEvaluation } from '../utils/printHelper'
+import { printCleanTable, downloadPdfTable, printWeeklyStudentEvaluation, generateOfficialPrintHeaderHtml } from '../utils/printHelper'
 import { requestCameraStream, parseCameraError, isBarcodeDetectorSupported } from '../utils/cameraHelper'
 
 function calculatePekanFromDate(dateStr) {
@@ -723,7 +724,10 @@ export default function TeacherTeachingWorkspacePage() {
   }, [showCommandPalette, showAttendanceMethodModal, showPresensiModal, showFaceModal, showModal, showDetailModal, showTahfizhDetail, showExportModal, showAktivitasModal])
 
   useEffect(() => {
-    if (activeTab === 'jadwal') fetchSchedules()
+    if (activeTab === 'jadwal') {
+      fetchSchedules()
+      fetchStudentsForClass()
+    }
     if (activeTab === 'presensi') fetchStudentsForClass()
     if (activeTab === 'penugasan') {
       fetchAssignments()
@@ -818,10 +822,16 @@ export default function TeacherTeachingWorkspacePage() {
       }
 
       const resClasses = await api.get('/teacher/classes')
+      let initialClassId = ''
       if (resClasses?.data?.data) {
         setClasses(resClasses.data.data)
-        if (resClasses.data.data.length > 0 && (!selectedClass || selectedClass === 'all')) {
-          setSelectedClass(String(resClasses.data.data[0].id))
+        if (resClasses.data.data.length > 0) {
+          initialClassId = (!selectedClass || selectedClass === 'all')
+            ? String(resClasses.data.data[0].id)
+            : selectedClass
+          if (!selectedClass || selectedClass === 'all') {
+            setSelectedClass(initialClassId)
+          }
         }
       }
       const resAllSch = await api.get('/teacher/schedules').catch(() => null)
@@ -832,7 +842,7 @@ export default function TeacherTeachingWorkspacePage() {
 
       // Eagerly fetch core operational dataset so Master KPI cards show real database counts immediately
       await Promise.allSettled([
-        fetchStudentsForClass(),
+        fetchStudentsForClass(initialClassId || null),
         fetchMaterials(),
         fetchAssignments(),
         fetchTahfizh(),
@@ -858,6 +868,17 @@ export default function TeacherTeachingWorkspacePage() {
       }
 
       let res = await api.get('/teacher/students', { params }).catch(() => null)
+      if ((!res?.data?.data || (Array.isArray(res.data.data) && res.data.data.length === 0)) && classIdToUse && classIdToUse !== 'all') {
+        const fallbackRes = await api.get(`/kelas/${classIdToUse}/siswa`).catch(() => null)
+        if (fallbackRes?.data?.data) {
+          const fbData = fallbackRes.data.data
+          res = {
+            data: {
+              data: fbData.siswa || (Array.isArray(fbData) ? fbData : [])
+            }
+          }
+        }
+      }
       if (!res?.data?.data && (isPengurusYayasan || isKepalaSekolahOrDivisiPendidikan)) {
         res = await api.get('/students', { params }).catch(() => null)
       }
@@ -2022,6 +2043,8 @@ export default function TeacherTeachingWorkspacePage() {
       subtitle: subtitleInfo,
       headers,
       rows,
+      user,
+      unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
     })
     addToast('info', 'Dokumen Siap Dicetak', 'Pratinjau cetak daftar presensi pembelajaran berhasil dibuka.')
   }
@@ -2110,6 +2133,8 @@ export default function TeacherTeachingWorkspacePage() {
       subtitle: `Pertemuan ke-${session.meeting_number || 1} | Mapel: ${subjectName} | Rombel: ${clsName} | Tanggal: ${dateFormatted} (${timeRange}) | Guru: ${teacherName} | Topik: ${session.topic || 'KBM Reguler'} | Hadir: ${hadir}/${total} Siswa (${rate}%)`,
       headers,
       rows,
+      user,
+      unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
     })
     addToast('info', 'Dokumen Siap Dicetak', `Pratinjau cetak sesi pertemuan ke-${session.meeting_number || 1} berhasil dibuka.`)
   }
@@ -2442,6 +2467,8 @@ export default function TeacherTeachingWorkspacePage() {
       subtitle: `NIS: ${student.nis || '-'} | NISN: ${student.nisn || '-'} | Rombel: ${curClassName} | Mapel: ${subjectName} | Guru: ${teacherName} | Filter: ${periodLabel} | Kehadiran: ${hadirCount}/${terlaksanaCount} Sesi (${pct}%)`,
       headers,
       rows,
+      user,
+      unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
     })
   }
 
@@ -2952,7 +2979,8 @@ export default function TeacherTeachingWorkspacePage() {
 
     setSavingTahfizh(true)
     try {
-      const res = await api.post('/teacher/tahfizh', { ...tahfizhForm, class_id: getCurrentClassId() })
+      const targetClass = selectedTahfizhStudent?.kelas_id || selectedTahfizhStudent?.class_id || getCurrentClassId()
+      const res = await api.post('/teacher/tahfizh', { ...tahfizhForm, class_id: targetClass })
       setShowModal(false)
       await fetchTahfizh()
       addToast('success', 'Setoran Tahfizh Disimpan', res?.data?.message || 'Catatan setoran hafalan siswa berhasil disimpan!')
@@ -4045,9 +4073,17 @@ export default function TeacherTeachingWorkspacePage() {
       ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date(publishedAt))
       : new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date())
 
+    const officialHeaderHtml = generateOfficialPrintHeaderHtml({
+      unit: teacherProfile?.education_unit_data || teacherProfile?.education_unit || user?.unit,
+      user,
+      title: material.judul || 'MATERI BELAJAR',
+      subtitle: `${material.subject?.name || 'Mata Pelajaran'} · ${selectedClassName} · ${formattedDate}`,
+      showDivider: true,
+    })
+
     printWindow.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(material.judul)} — Materi Belajar</title><style>
-      @page{size:A4;margin:18mm}*{box-sizing:border-box}body{margin:0;color:#172033;font:12pt/1.65 Arial,sans-serif}.header{border-bottom:3px solid #0e5c44;padding-bottom:18px}.brand{color:#0e5c44;font-size:10pt;font-weight:700;letter-spacing:.14em;text-transform:uppercase}.title{margin:8px 0 5px;font-size:24pt;line-height:1.2;color:#0f172a}.meta{color:#64748b;font-size:9.5pt}.summary{margin:24px 0;padding:16px 18px;border:1px solid #cce5da;border-radius:10px;background:#f0f9f5}.summary strong{display:block;margin-bottom:5px;color:#0e5c44}.content{white-space:normal}.footer{margin-top:36px;padding-top:12px;border-top:1px solid #dbe3ea;color:#64748b;font-size:8.5pt;display:flex;justify-content:space-between}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}@media screen{body{max-width:794px;margin:32px auto;padding:32px;box-shadow:0 8px 30px #0f172a20}.no-print{position:fixed;right:24px;top:24px;border:0;border-radius:10px;background:#0e5c44;color:white;padding:11px 16px;font-weight:700;cursor:pointer}}
-    </style></head><body><button class="no-print" onclick="window.print()">${saveAsPdf ? 'Simpan sebagai PDF' : 'Cetak Materi'}</button><header class="header"><div class="brand">SIMSIT · Materi Belajar</div><h1 class="title">${escapeHtml(material.judul)}</h1><div class="meta">${escapeHtml(material.subject?.name || 'Mata Pelajaran')} · ${escapeHtml(selectedClassName)} · ${formattedDate}</div></header><section class="summary"><strong>Ringkasan Materi</strong>${summary}</section><main class="content">${content}</main><footer class="footer"><span>${escapeHtml(teacherName)}</span><span>Workspace Pengajaran Guru</span></footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250))</script></body></html>`)
+      @page{size:A4 portrait;margin:15mm}*{box-sizing:border-box}body{margin:0;color:#172033;font:10pt/1.5 Arial,sans-serif}.print-official-header{display:grid;grid-template-columns:80px 1fr 90px;align-items:center;gap:12px;min-height:50mm;padding-bottom:4px}.print-logo-left-box{width:76px;height:76px;display:flex;align-items:center;justify-content:center}.print-logo-left-img{max-width:76px;max-height:76px;width:auto;height:auto;object-fit:contain;display:block}.print-center-box{text-align:center;padding:0 4px}.print-org-name{font-size:11pt;font-weight:800;color:#0f172a;letter-spacing:0.5px;text-transform:uppercase;margin:0 0 2px 0;line-height:1.2}.print-school-unit{font-size:12.5pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;margin:0 0 2px 0;line-height:1.2}.print-slogan{font-size:8.5pt;font-style:italic;font-weight:600;color:#475569;margin:1px 0}.print-address{font-size:7.8pt;color:#475569;margin:1px 0}.print-legality{font-size:7.8pt;font-weight:700;color:#0f172a;margin:1px 0 0 0}.print-logo-right-box{width:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.print-unit-logo-wrapper{width:74px;height:74px;display:flex;align-items:center;justify-content:center}.print-logo-right-img{max-width:74px;max-height:74px;width:auto;height:auto;object-fit:contain;display:block}.print-unit-type-badge{margin-top:3px;font-size:8pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;text-align:center;line-height:1}.print-header-divider{border-bottom:2px solid #0f172a;margin-top:4px;margin-bottom:12px}.print-doc-title-container{text-align:center;margin-bottom:12px}.print-doc-title{font-size:13.5pt;font-weight:900;color:#047857;letter-spacing:0.5px;text-transform:uppercase;margin:0;line-height:1.25}.print-doc-period{font-size:9pt;font-weight:700;color:#334155;margin-top:3px}.print-doc-meta-row{display:flex;justify-content:space-between;align-items:center;font-size:8pt;color:#64748b;font-weight:600;margin-top:6px;padding-bottom:6px;border-bottom:1px dashed #cbd5e1}.summary{margin:18px 0;padding:14px 16px;border:1px solid #cce5da;border-radius:10px;background:#f0f9f5}.summary strong{display:block;margin-bottom:4px;color:#0e5c44}.content{white-space:normal;line-height:1.6}.footer{margin-top:32px;padding-top:10px;border-top:1px solid #dbe3ea;color:#64748b;font-size:8pt;display:flex;justify-content:space-between}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none}}@media screen{body{max-width:794px;margin:24px auto;padding:24px;box-shadow:0 8px 30px #0f172a20}.no-print{position:fixed;right:24px;top:24px;border:0;border-radius:10px;background:#0e5c44;color:white;padding:10px 16px;font-weight:700;cursor:pointer}}
+    </style></head><body><button class="no-print" onclick="window.print()">${saveAsPdf ? 'Simpan sebagai PDF' : 'Cetak Materi'}</button>${officialHeaderHtml}<section class="summary"><strong>Ringkasan Materi</strong>${summary}</section><main class="content">${content}</main><footer class="footer"><span>${escapeHtml(teacherName)}</span><span>Workspace Pengajaran Guru · Dokumen Sah SIMSIT</span></footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250))</script></body></html>`)
     printWindow.document.close()
     if (saveAsPdf) addToast('info', 'Export PDF Dibuka', 'Pada dialog cetak, pilih “Save as PDF” atau “Simpan sebagai PDF”.')
   }
@@ -4376,7 +4412,11 @@ export default function TeacherTeachingWorkspacePage() {
                       <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Rombel:</span>
                       <select
                         value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setSelectedClass(val)
+                          fetchStudentsForClass(val)
+                        }}
                         className="bg-transparent font-extrabold text-xs text-emerald-900 dark:text-emerald-200 outline-none cursor-pointer pr-1"
                       >
                         <option value="all" className="dark:bg-slate-900 text-slate-900 dark:text-white">
@@ -4587,6 +4627,8 @@ export default function TeacherTeachingWorkspacePage() {
                                 s.kelas?.nama_kelas || selectedClassName || '-',
                                 s.ruangan || s.room || 'Ruang Kelas',
                               ]),
+                              user,
+                              unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
                             })
                           }}
                           className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
@@ -5590,8 +5632,10 @@ export default function TeacherTeachingWorkspacePage() {
                   <select
                     value={selectedClass}
                     onChange={(e) => {
-                      setSelectedClass(e.target.value)
+                      const val = e.target.value
+                      setSelectedClass(val)
                       setMaterialMapelFilter('all')
+                      fetchStudentsForClass(val)
                     }}
                     aria-label="Filter rombel materi"
                     className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold outline-none focus:border-emerald-700 focus:ring-3 focus:ring-emerald-700/15 dark:border-slate-700 dark:bg-[#111827] dark:text-white"
@@ -5854,6 +5898,8 @@ export default function TeacherTeachingWorkspacePage() {
                           `${t.bobot || 100} Poin`,
                           `${t.submissions_count || t.total_pengumpulan || 0} Siswa`,
                         ]),
+                        user,
+                        unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
                       })
                       addToast('info', 'Dokumen Siap Dicetak', 'Pratinjau cetak daftar penugasan siswa berhasil dibuka.')
                     }}
@@ -5926,7 +5972,11 @@ export default function TeacherTeachingWorkspacePage() {
                   {/* Filter Rombel Kelas */}
                   <select
                     value={selectedClass}
-                    onChange={(e) => setSelectedClass(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setSelectedClass(val)
+                      fetchStudentsForClass(val)
+                    }}
                     className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                   >
                     {classes.map((c) => (
@@ -6217,6 +6267,8 @@ export default function TeacherTeachingWorkspacePage() {
                             : '-'
                           return [idx + 1, st.nis || st.student_id || '-', st.name || st.full_name || '-', tugas, kuis, uts, uas, akhir]
                         }),
+                        user,
+                        unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
                       })
                       addToast('info', 'Dokumen Siap Dicetak', 'Pratinjau cetak buku nilai siswa berhasil dibuka.')
                     }}
@@ -7020,6 +7072,8 @@ export default function TeacherTeachingWorkspacePage() {
                           n.date || '-',
                           n.priority || 'Normal',
                         ]),
+                        user,
+                        unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
                       })
                       addToast('info', 'Dokumen Siap Dicetak', 'Pratinjau cetak rekapitulasi catatan perkembangan siswa berhasil dibuka.')
                     }}

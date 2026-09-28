@@ -20,6 +20,7 @@ import {
   Building2,
   Calendar,
   AlertCircle,
+  AlertTriangle,
   FileSpreadsheet,
   Download,
   Share2,
@@ -582,7 +583,68 @@ export function printRaporDocument(digitalData) {
   }, 300)
 }
 
+function HarmonizedDeleteRaporModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                Hapus Data Rapor?
+              </h3>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus data rapor siswa <strong className="text-slate-900 dark:text-white">{item.siswa?.nama_lengkap || item.siswa_nama || 'ini'}</strong>?
+          </p>
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 dark:border-rose-900/40 dark:bg-rose-950/20 mb-6">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-rose-800 dark:text-rose-300">
+                Data rapor yang terhapus tidak dapat dipulihkan. Nilai dapat dihitung ulang jika diperlukan.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-xs font-extrabold text-white shadow-md shadow-rose-600/30 transition cursor-pointer disabled:opacity-50"
+            >
+              {isSubmitting ? 'Menghapus...' : 'Ya, Hapus Rapor'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function LmsRaporPage({ tabNav = null }) {
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, item: null, isSubmitting: false })
   const [dataList, setDataList] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, total: 0 })
@@ -816,10 +878,15 @@ export default function LmsRaporPage({ tabNav = null }) {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus data Rapor ini?')) return
+  const handleDelete = (id, item) => {
+    setDeleteModal({ isOpen: true, id, item, isSubmitting: false })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return
+    setDeleteModal((prev) => ({ ...prev, isSubmitting: true }))
     try {
-      const res = await lmsRaporService.delete(id)
+      const res = await lmsRaporService.delete(deleteModal.id)
       if (res.success) {
         showToastNotification('Rapor Digital berhasil dihapus.')
         fetchData(pagination.currentPage)
@@ -827,6 +894,8 @@ export default function LmsRaporPage({ tabNav = null }) {
       }
     } catch (err) {
       showToastNotification('Gagal menghapus Rapor.', 'error')
+    } finally {
+      setDeleteModal({ isOpen: false, id: null, item: null, isSubmitting: false })
     }
   }
 
@@ -1575,7 +1644,7 @@ export default function LmsRaporPage({ tabNav = null }) {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDelete(item.id)}
+                              onClick={() => handleDelete(item.id, item)}
                               className="size-8 rounded-xl bg-rose-50/90 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-rose-600/30 cursor-pointer shadow-2xs flex items-center justify-center"
                               title="Hapus Rapor"
                             >
@@ -2322,6 +2391,14 @@ export default function LmsRaporPage({ tabNav = null }) {
             </DialogFooter>
           </Dialog>
         )}
+
+        <HarmonizedDeleteRaporModal
+          isOpen={deleteModal.isOpen}
+          onClose={() => setDeleteModal({ isOpen: false, id: null, item: null, isSubmitting: false })}
+          onConfirm={confirmDelete}
+          item={deleteModal.item}
+          isSubmitting={deleteModal.isSubmitting}
+        />
       </motion.div>
     </PageContainer>
   )

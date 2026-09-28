@@ -32,7 +32,6 @@ import {
   Users,
   UsersRound,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
 import {
   ArrowBothDirectionHorizontal2,
   CheckCircle1,
@@ -79,13 +78,26 @@ import {
 } from '@/components/tailgrids/core/dialog'
 import { Backdrop } from '@/components/tailgrids/core/overlay'
 
+// ── TOAST NOTIFICATION HELPER ──────────────────────────────────────────────
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const add = (type, title, message) => {
+    const id = Date.now() + Math.random()
+    setToasts((p) => [...p, { id, type, title, message }])
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000)
+  }
+  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
+  return { toasts, dismiss, success: (t, m) => add('success', t, m), error: (t, m) => add('error', t, m), warning: (t, m) => add('warning', t, m), info: (t, m) => add('info', t, m) }
+}
+
 export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') || initialTab
+  const { toasts, dismiss, success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo } = useToast()
 
   const handleTabChange = (tabKey) => {
     setSearchParams({ tab: tabKey })
-    if (tabKey === 'verifikasi') setPermStatusFilter('submitted')
+    if (tabKey === 'verifikasi') setPermStatusFilter('pending')
     if (tabKey === 'koreksi') setCorrStatusFilter('submitted')
     if (tabKey === 'tindak-lanjut') setFollowUpStatusFilter('all')
   }
@@ -115,7 +127,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
   const [selectedTeacherId, setSelectedTeacherId] = useState('')
   const [selectedClassId, setSelectedClassId] = useState('')
   const [selectedSessionDate, setSelectedSessionDate] = useState('')
-  const [permStatusFilter, setPermStatusFilter] = useState('submitted')
+  const [permStatusFilter, setPermStatusFilter] = useState('pending')
   const [corrStatusFilter, setCorrStatusFilter] = useState('submitted')
   const [followUpStatusFilter, setFollowUpStatusFilter] = useState('all')
 
@@ -306,23 +318,20 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
     try {
       await lmsPresensiService.reviewPermission(selectedItem.id, {
         status: reviewAction,
+        review_notes: reviewNote,
         review_note: reviewNote,
       })
-      Swal.fire({
-        icon: 'success',
-        title: reviewAction === 'approved' ? 'Izin Disetujui' : 'Izin Ditolak',
-        text: `Pengajuan izin siswa berhasil di-${reviewAction === 'approved' ? 'setujui' : 'tolak'}.`,
-        timer: 2000,
-        showConfirmButton: false,
-      })
+      toastSuccess(
+        reviewAction === 'approved' ? 'Izin Disetujui' : 'Izin Ditolak',
+        `Pengajuan izin siswa berhasil di-${reviewAction === 'approved' ? 'setujui' : 'tolak'}.`
+      )
       setPermReviewModalOpen(false)
       loadData()
     } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal memproses verifikasi',
-        text: err.response?.data?.message || 'Terjadi kesalahan saat memproses izin.',
-      })
+      toastError(
+        'Gagal memproses verifikasi',
+        err.response?.data?.message || 'Terjadi kesalahan saat memproses izin.'
+      )
     } finally {
       setBusy(false)
     }
@@ -343,21 +352,17 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
         status: reviewAction,
         review_note: reviewNote,
       })
-      Swal.fire({
-        icon: 'success',
-        title: reviewAction === 'approved' ? 'Koreksi Disetujui' : 'Koreksi Ditolak',
-        text: `Pengajuan koreksi presensi berhasil di-${reviewAction === 'approved' ? 'setujui' : 'tolak'}.`,
-        timer: 2000,
-        showConfirmButton: false,
-      })
+      toastSuccess(
+        reviewAction === 'approved' ? 'Koreksi Disetujui' : 'Koreksi Ditolak',
+        `Pengajuan koreksi presensi berhasil di-${reviewAction === 'approved' ? 'setujui' : 'tolak'}.`
+      )
       setCorrReviewModalOpen(false)
       loadData()
     } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal memproses koreksi',
-        text: err.response?.data?.message || 'Terjadi kesalahan saat memproses koreksi presensi.',
-      })
+      toastError(
+        'Gagal memproses koreksi',
+        err.response?.data?.message || 'Terjadi kesalahan saat memproses koreksi presensi.'
+      )
     } finally {
       setBusy(false)
     }
@@ -368,13 +373,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
     setBusy(true)
     try {
       await lmsPresensiService.createFollowUp(followUpForm)
-      Swal.fire({
-        icon: 'success',
-        title: 'Tindak Lanjut Berhasil Ditambahkan',
-        text: 'Catatan penanganan siswa telah disimpan.',
-        timer: 2000,
-        showConfirmButton: false,
-      })
+      toastSuccess('Tindak Lanjut Berhasil Ditambahkan', 'Catatan penanganan siswa telah disimpan.')
       setFollowUpCreateModalOpen(false)
       setFollowUpForm({
         student_id: '',
@@ -384,11 +383,10 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
       })
       loadData()
     } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal menyimpan tindak lanjut',
-        text: err.response?.data?.message || 'Terjadi kesalahan saat menambahkan catatan tindak lanjut.',
-      })
+      toastError(
+        'Gagal menyimpan tindak lanjut',
+        err.response?.data?.message || 'Terjadi kesalahan saat menambahkan catatan tindak lanjut.'
+      )
     } finally {
       setBusy(false)
     }
@@ -717,6 +715,35 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
+      {/* ── TOAST NOTIFICATIONS ──────────────────────────────────────────── */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto flex items-start gap-3 rounded-xl p-3.5 shadow-lg border backdrop-blur-md transition-all ${
+              t.type === 'success'
+                ? 'bg-emerald-600/95 text-white border-emerald-400'
+                : t.type === 'error'
+                ? 'bg-rose-600/95 text-white border-rose-400'
+                : t.type === 'warning'
+                ? 'bg-amber-600/95 text-white border-amber-400'
+                : 'bg-sky-600/95 text-white border-sky-400'
+            }`}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold leading-tight">{t.title}</p>
+              {t.message && <p className="mt-0.5 text-xs opacity-90 leading-snug">{t.message}</p>}
+            </div>
+            <button
+              onClick={() => dismiss(t.id)}
+              className="rounded-lg p-0.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
+            >
+              <Xmark2x className="size-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       {/* BREADCRUMB NAV */}
       <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi/rekap-kehadiran' }, { label: 'Manajemen Kehadiran Siswa' }]} />
 
@@ -951,12 +978,12 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
               {activeTab === 'tindak-lanjut' && <><ShieldAlert size={18} className="text-rose-600" /> Catatan Penanganan & Tindak Lanjut Siswa</>}
             </h2>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
               {/* Import Button (.csv, .xlsx, .xls) */}
               <SquircleActionButton
                 variant="import"
                 label="Import Data (.csv, .xlsx, .xls)"
-                onClick={() => Swal.fire({ icon: 'info', title: 'Import Data Presensi', text: 'Membuka dialog pengunggahan berkas masal...' })}
+                onClick={() => toastInfo('Import Data Presensi', 'Membuka dialog pengunggahan berkas masal...')}
               />
 
               {/* Export Button */}
@@ -1020,10 +1047,10 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
               {/* Filter Tab 1: Month */}
               {activeTab === 'rekap' && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Calendar size={14} /> Periode:
                   </label>
@@ -1031,7 +1058,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                     type="month"
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                   />
                 </div>
               )}
@@ -1043,7 +1070,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                   <select
                     value={selectedSubjectId}
                     onChange={(e) => setSelectedSubjectId(e.target.value)}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 max-w-[180px] truncate"
+                    className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 truncate"
                   >
                     <option value="">Semua Mata Pelajaran</option>
                     {subjectOptions.map((subj) => (
@@ -1057,7 +1084,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                   <select
                     value={selectedTeacherId}
                     onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 max-w-[180px] truncate"
+                    className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 truncate"
                   >
                     <option value="">Semua Guru Pengajar</option>
                     {teacherOptions.map((t) => (
@@ -1071,7 +1098,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                   <select
                     value={selectedClassId}
                     onChange={(e) => setSelectedClassId(e.target.value)}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                   >
                     <option value="">Semua Rombel</option>
                     {classOptions.map((c) => (
@@ -1086,7 +1113,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                     type="date"
                     value={selectedSessionDate}
                     onChange={(e) => setSelectedSessionDate(e.target.value)}
-                    className="rounded-xl border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    className="w-full sm:w-auto min-w-[130px] rounded-xl border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                   />
                 </>
               )}
@@ -1096,9 +1123,10 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                 <select
                   value={permStatusFilter}
                   onChange={(e) => setPermStatusFilter(e.target.value)}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
-                  <option value="submitted">Menunggu Verifikasi</option>
+                  <option value="pending">Menunggu Verifikasi (Pending)</option>
+                  <option value="submitted">Submitted (Legacy)</option>
                   <option value="approved">Disetujui (Approved)</option>
                   <option value="rejected">Ditolak (Rejected)</option>
                   <option value="all">Semua Status</option>
@@ -1110,7 +1138,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                 <select
                   value={corrStatusFilter}
                   onChange={(e) => setCorrStatusFilter(e.target.value)}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
                   <option value="submitted">Menunggu Persetujuan</option>
                   <option value="approved">Disetujui (Approved)</option>
@@ -1124,18 +1152,16 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
                 <select
                   value={followUpStatusFilter}
                   onChange={(e) => setFollowUpStatusFilter(e.target.value)}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
-                  <option value="all">Semua Status Penanganan</option>
-                  <option value="open">Open (Baru)</option>
-                  <option value="in_progress">In Progress (Diproses)</option>
-                  <option value="completed">Completed (Selesai)</option>
+                  <option value="all">Semua Status Tindakan</option>
+                  <option value="new">Belum Ditangani (New)</option>
+                  <option value="in_progress">Dalam Proses</option>
+                  <option value="resolved">Selesai (Resolved)</option>
                   <option value="closed">Closed (Ditutup)</option>
                 </select>
               )}
 
-              {/* perPage Selector */}
-              <div className="flex items-center gap-1.5">
                 <span className="text-xs font-medium text-slate-500">Tampilkan:</span>
                 <select
                   value={perPage}
@@ -1155,7 +1181,6 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
               </div>
             </div>
           </div>
-        </div>
 
         {/* Content Table Body (px-4 sm:px-6 md:px-8) */}
         {loading ? (

@@ -5,30 +5,6 @@ import { Phone, Megaphone, Award, BookOpen } from 'lucide-react'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import { dashboardPemantauanService } from '../services/dashboardPemantauanService'
 
-const INITIAL_FALLBACK_BERITA = [
-  {
-    id: 1,
-    judul: 'Penerimaan Peserta Didik Baru (PPDB) T.A. 2026/2027 Resmi Dibuka',
-    tanggal: '20 Agustus 2026',
-    ringkasan: 'Pendaftaran peserta didik baru telah dibuka secara online dan offline untuk jenjang TKIT, SDIT, SMPIT, SMAIT, dan Pesantren Dar El-Iman.',
-    kategori: 'PPDB',
-  },
-  {
-    id: 2,
-    judul: 'Program Tahfizh Intensif & Tasmi’ 10 Juz Sekali Duduk',
-    tanggal: '18 Agustus 2026',
-    ringkasan: 'Sekolah menyiapkan target setoran hafalan per jenjang untuk memperkuat capaian tahfizh siswa dengan kelulusan predikat Mumtaz.',
-    kategori: 'Tahfizh',
-  },
-  {
-    id: 3,
-    judul: 'Workshop Parenting & Mutaba’ah Yaumiyah Orang Tua',
-    tanggal: '15 Agustus 2026',
-    ringkasan: 'Kegiatan parenting bulanan dilaksanakan untuk membangun sinergi sekolah dan keluarga dalam membentuk karakter santri Rabbani.',
-    kategori: 'Parenting',
-  },
-]
-
 export default function BeritaPublikPage() {
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || ''
@@ -36,21 +12,20 @@ export default function BeritaPublikPage() {
   const namaAplikasi = pengaturan?.application_name || 'Sistem Manajemen Sekolah Terpadu'
 
   const [beritaList, setBeritaList] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
     const fetchDatabaseBerita = async () => {
       try {
+        setLoading(true)
         const res = await dashboardPemantauanService.getDaftarPengumumanSekolah()
         const apiData = res?.data || res || []
 
         const rawCache = localStorage.getItem('school_news_announcements_db')
         const cachedList = rawCache ? JSON.parse(rawCache) : []
 
-        let finalBerita = Array.isArray(apiData) && apiData.length > 0 ? apiData : cachedList
-        if (!finalBerita || finalBerita.length === 0) {
-          finalBerita = INITIAL_FALLBACK_BERITA
-        }
+        const finalBerita = Array.isArray(apiData) && apiData.length > 0 ? apiData : (Array.isArray(cachedList) ? cachedList : [])
 
         if (mounted) {
           setBeritaList(finalBerita)
@@ -59,7 +34,11 @@ export default function BeritaPublikPage() {
         const rawCache = localStorage.getItem('school_news_announcements_db')
         const cachedList = rawCache ? JSON.parse(rawCache) : []
         if (mounted) {
-          setBeritaList(cachedList.length > 0 ? cachedList : INITIAL_FALLBACK_BERITA)
+          setBeritaList(Array.isArray(cachedList) ? cachedList : [])
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
         }
       }
     }
@@ -141,20 +120,30 @@ export default function BeritaPublikPage() {
           </div>
         </header>
 
-        <div className="berita-publik-grid grid grid-cols-1 md:grid-cols-3 gap-5">
-          {beritaList.map((berita) => (
-            <article key={berita.id || berita.judul} className="berita-card p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 transition hover:shadow-md">
-              <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                <span>{berita.tanggal || berita.tanggal_publikasi || berita.date || '2026-08-20'}</span>
-                <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  {berita.kategori || berita.category || 'AKADEMIK'}
-                </span>
-              </div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{berita.judul || berita.title}</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{berita.ringkasan || berita.desc || berita.isi}</p>
-            </article>
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-12 text-slate-500 text-xs">Memuat informasi dan berita...</div>
+        ) : beritaList.length === 0 ? (
+          <div className="text-center py-16 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-500 space-y-2">
+            <Megaphone className="h-8 w-8 mx-auto text-slate-400 opacity-60" />
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Belum Ada Berita Publik</p>
+            <p className="text-xs text-slate-400">Informasi dan berita terbaru akan ditampilkan di sini saat dipublikasikan.</p>
+          </div>
+        ) : (
+          <div className="berita-publik-grid grid grid-cols-1 md:grid-cols-3 gap-5">
+            {beritaList.map((berita) => (
+              <article key={berita.id || berita.judul} className="berita-card p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 transition hover:shadow-md">
+                <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                  <span>{berita.tanggal || berita.tanggal_publikasi || berita.date || '-'}</span>
+                  <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    {berita.kategori || berita.category || 'INFORMASI'}
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{berita.judul || berita.title}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{berita.ringkasan || berita.desc || berita.isi}</p>
+              </article>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Footer Bar */}

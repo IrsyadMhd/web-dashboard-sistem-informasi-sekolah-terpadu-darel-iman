@@ -36,8 +36,14 @@ export const educationUnitService = {
     return data?.data || []
   },
 
-  prosesImport: async (dataRows) => {
-    const { data } = await api.post('/education-units/import', { data: dataRows })
+  prosesImport: async (payload) => {
+    if (payload instanceof FormData) {
+      const { data } = await api.post('/education-units/import', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data
+    }
+    const { data } = await api.post('/education-units/import', { data: payload })
     return data
   },
 

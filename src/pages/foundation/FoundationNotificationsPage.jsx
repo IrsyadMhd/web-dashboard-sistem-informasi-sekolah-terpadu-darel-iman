@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Bell,
   CheckCheck,
@@ -17,13 +18,13 @@ import {
   ChevronRight,
   Eye,
   Calendar,
+  Sparkles,
 } from 'lucide-react'
 import { reportService } from '../../services/reportService'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { Skeleton } from '../../components/ui/skeleton'
 import { EmptyState } from '../../components/ui/empty-state'
-import Swal from 'sweetalert2'
 
 const TAB_CATEGORIES = [
   { key: 'all', label: 'Semua' },
@@ -35,7 +36,70 @@ const TAB_CATEGORIES = [
   { key: 'system', label: 'Sistem' },
 ]
 
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const add = (type, title, message) => {
+    const id = Date.now() + Math.random()
+    setToasts((p) => [...p, { id, type, title, message }])
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4000)
+  }
+  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
+  return {
+    toasts,
+    dismiss,
+    success: (t, m) => add('success', t, m),
+    error: (t, m) => add('error', t, m),
+    warning: (t, m) => add('warning', t, m),
+    info: (t, m) => add('info', t, m),
+  }
+}
+
+function ToastStack({ toasts, onDismiss }) {
+  return (
+    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
+              t.type === 'success'
+                ? 'border-emerald-300 bg-emerald-50/95 text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/90 dark:text-emerald-100'
+                : t.type === 'error'
+                ? 'border-rose-300 bg-rose-50/95 text-rose-900 dark:border-rose-700/60 dark:bg-rose-950/90 dark:text-rose-100'
+                : t.type === 'warning'
+                ? 'border-amber-300 bg-amber-50/95 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/90 dark:text-amber-100'
+                : 'border-blue-300 bg-blue-50/95 text-blue-900 dark:border-blue-700/60 dark:bg-blue-950/90 dark:text-blue-100'
+            }`}
+          >
+            <div className="shrink-0 mt-0.5">
+              {t.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+              {t.type === 'error' && <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
+              {t.type === 'warning' && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+              {t.type === 'info' && <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h5 className="text-xs font-bold leading-tight">{t.title}</h5>
+              {t.message && <p className="text-[11px] opacity-85 mt-0.5 leading-snug">{t.message}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => onDismiss(t.id)}
+              className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs p-0.5 cursor-pointer"
+            >
+              ✕
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export function FoundationNotificationsPage() {
+  const toast = useToast()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -74,7 +138,7 @@ export function FoundationNotificationsPage() {
       )
     } catch (err) {
       console.error('Gagal menandai dibaca:', err)
-      Swal.fire('Gagal', 'Terjadi kesalahan saat menandai notifikasi.', 'error')
+      toast.error('Gagal', 'Terjadi kesalahan saat menandai notifikasi.')
     }
   }
 
@@ -85,16 +149,10 @@ export function FoundationNotificationsPage() {
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
       )
-      Swal.fire({
-        title: 'Berhasil!',
-        text: 'Semua notifikasi telah ditandai sebagai dibaca.',
-        icon: 'success',
-        timer: 2000,
-        showConfirmButton: false,
-      })
+      toast.success('Berhasil!', 'Semua notifikasi telah ditandai sebagai dibaca.')
     } catch (err) {
       console.error('Gagal menandai semua dibaca:', err)
-      Swal.fire('Gagal', 'Gagal menandai semua notifikasi dibaca.', 'error')
+      toast.error('Gagal', 'Gagal menandai semua notifikasi dibaca.')
     } finally {
       setMarkingAll(false)
     }
@@ -169,7 +227,7 @@ export function FoundationNotificationsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
             <Button
               variant="outline"
               onClick={fetchNotifications}
@@ -405,6 +463,8 @@ export function FoundationNotificationsPage() {
           )}
         </div>
       </div>
+
+      <ToastStack toasts={toast.toasts} onDismiss={toast.dismiss} />
     </div>
   )
 }
