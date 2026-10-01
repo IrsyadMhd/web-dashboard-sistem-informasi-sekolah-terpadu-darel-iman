@@ -25,4 +25,8 @@ export const scheduleService = {
     const { data } = await api.delete(`/schedules/${id}`)
     return data
   },
+  checkConflict: async (payload) => {
+    const { data } = await api.post('/schedules/check-conflict', payload)
+    return data
+  },
 }
