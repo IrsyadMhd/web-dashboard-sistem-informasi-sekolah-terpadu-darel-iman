@@ -384,6 +384,9 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const [dayFilter, setDayFilter] = useState('')
   const [teacherFilter, setTeacherFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [conflictOnlyFilter, setConflictOnlyFilter] = useState(false)
+  const [liveConflictChecking, setLiveConflictChecking] = useState(false)
+  const [liveConflicts, setLiveConflicts] = useState([])
 
   // View state
   const [viewMode, setViewMode] = useState('table') // 'table' | 'weekly'
@@ -417,6 +420,63 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   const [formErrors, setFormErrors] = useState({})
   const [conflictWarning, setConflictWarning] = useState('')
   const [isDirty, setIsDirty] = useState(false)
+
+  // Live debounced conflict check saat modal dibuka dan form diubah
+  useEffect(() => {
+    if (!modal) {
+      setLiveConflicts([])
+      setConflictWarning('')
+      return
+    }
+
+    const { academic_year_id, semester_id, day_of_week, time_start, time_end, employee_id, kelas_id } = form
+
+    if (!academic_year_id || !semester_id || !day_of_week || !time_start || !time_end || (!employee_id && !kelas_id)) {
+      setLiveConflicts([])
+      setConflictWarning('')
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setLiveConflictChecking(true)
+        const payload = {
+          academic_year_id,
+          semester_id,
+          day_of_week: Number(day_of_week),
+          time_start: time_start.slice(0, 5),
+          time_end: time_end.slice(0, 5),
+          employee_id: employee_id || undefined,
+          kelas_id: kelas_id || undefined,
+          ignore_id: editing?.id || undefined,
+        }
+        const res = await scheduleService.checkConflict(payload)
+        if (res?.has_conflict && Array.isArray(res.conflicts) && res.conflicts.length > 0) {
+          setLiveConflicts(res.conflicts)
+          setConflictWarning(res.conflicts.map((c) => c.message).join(' • '))
+        } else {
+          setLiveConflicts([])
+          setConflictWarning('')
+        }
+      } catch {
+        // Abaikan error jaringan saat pengecekan live
+      } finally {
+        setLiveConflictChecking(false)
+      }
+    }, 350)
+
+    return () => clearTimeout(timer)
+  }, [
+    modal,
+    form.academic_year_id,
+    form.semester_id,
+    form.day_of_week,
+    form.time_start,
+    form.time_end,
+    form.employee_id,
+    form.kelas_id,
+    editing?.id,
+  ])
 
   // Fetch Options
   const { data: options = {}, isLoading: optionsLoading } = useQuery({
@@ -487,6 +547,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       effectiveDayFilter,
       teacherFilter,
       statusFilter,
+      conflictOnlyFilter,
       viewMode,
     ],
     queryFn: () =>
@@ -502,6 +563,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         day_of_week: effectiveDayFilter || undefined,
         employee_id: teacherFilter || undefined,
         is_active: statusFilter || undefined,
+        conflict_only: conflictOnlyFilter ? true : undefined,
       }),
   })
 
@@ -783,6 +845,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     setDayFilter('')
     setTeacherFilter(isGuru && guruEmployeeId ? guruEmployeeId : '')
     setStatusFilter('')
+    setConflictOnlyFilter(false)
     setPage(1)
   }
 
@@ -796,6 +859,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     dayFilter,
     !isGuru ? teacherFilter : null,
     statusFilter,
+    conflictOnlyFilter ? 'conflict' : null,
   ].filter(Boolean).length
 
 
@@ -1568,8 +1632,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         </div>
       )}
 
-      {/* ── Stats Summary Cards (Modern 4-Card Grid - TailGrids Gold Standard) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── Stats Summary Cards (Modern 5-Card Grid - TailGrids Gold Standard) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <ModernKpiCard
           icon={CalendarDays}
           label="TOTAL JADWAL"
@@ -1602,7 +1666,92 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
           tag="Pengajar"
           tone="indigo"
         />
+        <ModernKpiCard
+          icon={AlertTriangle}
+          label="JADWAL BENTROK"
+          value={isLoading ? '—' : Number(stats.total_bentrok ?? 0).toLocaleString('id-ID')}
+          subtext={(stats.total_bentrok ?? 0) > 0 ? "Klik filter jadwal bentrok" : "Semua slot jadwal aman"}
+          tag={(stats.total_bentrok ?? 0) > 0 ? "Perhatian" : "Aman (0)"}
+          tone={(stats.total_bentrok ?? 0) > 0 ? "rose" : "emerald"}
+          onClick={() => {
+            setConflictOnlyFilter((prev) => !prev)
+            setPage(1)
+          }}
+          isClickable={true}
+        />
       </div>
+
+      {/* ── RADAR NOTICE BENTROK JADWAL ── */}
+      {(conflictOnlyFilter || (stats.total_bentrok ?? 0) > 0) && (
+        <div
+          className={cn(
+            'flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5 rounded-2xl border-2 p-4.5 shadow-sm transition-all duration-200',
+            (stats.total_bentrok ?? 0) > 0
+              ? 'border-rose-300 bg-gradient-to-r from-rose-50 via-pink-50/60 to-white text-rose-950 dark:border-rose-800/80 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900 dark:text-rose-200'
+              : 'border-emerald-300 bg-gradient-to-r from-emerald-50 via-teal-50/60 to-white text-emerald-950 dark:border-emerald-800/80 dark:from-emerald-950/40 dark:to-slate-900 dark:text-emerald-200'
+          )}
+        >
+          <div className="flex items-center gap-3.5">
+            <div
+              className={cn(
+                'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-md',
+                (stats.total_bentrok ?? 0) > 0
+                  ? 'bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/30'
+                  : 'bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 shadow-emerald-500/30'
+              )}
+            >
+              {(stats.total_bentrok ?? 0) > 0 ? (
+                <AlertTriangle className="h-5.5 w-5.5" />
+              ) : (
+                <CheckCircle2 className="h-5.5 w-5.5" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-wider',
+                    (stats.total_bentrok ?? 0) > 0
+                      ? 'bg-rose-200 text-rose-800 dark:bg-rose-900 dark:text-rose-200'
+                      : 'bg-emerald-200 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                  )}
+                >
+                  {(stats.total_bentrok ?? 0) > 0 ? 'Radar Peringatan' : 'Radar Keamanan'}
+                </span>
+                <p className="text-xs font-black">
+                  {(stats.total_bentrok ?? 0) > 0
+                    ? `Terdeteksi ${stats.total_bentrok} Jadwal Mengalami Bentrok Jam Operasional`
+                    : 'Seluruh Jadwal Pelajaran Aktif 100% Bebas Tabrakan Waktu'}
+                </p>
+              </div>
+              <p className="text-[11px] font-medium opacity-85 mt-1">
+                {(stats.total_bentrok ?? 0) > 0
+                  ? 'Terdapat guru atau kelas yang dijadwalkan pada hari dan jam yang bertabrakan. Silakan klik tombol filter di samping untuk meninjau dan merapikan slot.'
+                  : 'Sistem validasi backend memastikan tidak ada alokasi jam mengajar yang ganda antara guru, kelas, maupun ruangan.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {(stats.total_bentrok ?? 0) > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setConflictOnlyFilter((prev) => !prev)
+                  setPage(1)
+                }}
+                className={cn(
+                  'rounded-xl px-4 py-2 text-xs font-black shadow-xs transition-all duration-150 cursor-pointer',
+                  conflictOnlyFilter
+                    ? 'bg-rose-700 text-white hover:bg-rose-800 dark:bg-rose-600 dark:hover:bg-rose-700'
+                    : 'bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300 dark:bg-rose-900/60 dark:text-rose-200 dark:border-rose-700'
+                )}
+              >
+                {conflictOnlyFilter ? 'Tampilkan Semua Jadwal' : 'Filter Hanya Bentrok'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── UNIFIED MASTER DATA CONTAINER (EMERALD DATATABLE CONTAINER) ── */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
@@ -1787,6 +1936,47 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               <option value="0">Nonaktif</option>
             </MasterFilterSelect>
 
+            {/* Quick Toggle: Hanya Bentrok */}
+            <button
+              type="button"
+              onClick={() => {
+                setConflictOnlyFilter((prev) => !prev)
+                setPage(1)
+              }}
+              className={cn(
+                'w-full sm:w-auto inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-all duration-150 shrink-0 cursor-pointer',
+                conflictOnlyFilter
+                  ? 'border-rose-500 bg-rose-600 text-white shadow-xs'
+                  : (stats.total_bentrok ?? 0) > 0
+                    ? 'border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300'
+              )}
+            >
+              <AlertTriangle
+                className={cn(
+                  'size-3.5',
+                  conflictOnlyFilter
+                    ? 'text-white'
+                    : (stats.total_bentrok ?? 0) > 0
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : 'text-slate-400'
+                )}
+              />
+              <span>Hanya Bentrok</span>
+              {(stats.total_bentrok ?? 0) > 0 && (
+                <span
+                  className={cn(
+                    'rounded-full px-1.5 py-0.2 text-[10px] font-black',
+                    conflictOnlyFilter
+                      ? 'bg-white/20 text-white'
+                      : 'bg-rose-200 text-rose-800 dark:bg-rose-900 dark:text-rose-200'
+                  )}
+                >
+                  {stats.total_bentrok}
+                </span>
+              )}
+            </button>
+
             {(Boolean(search) || activeFilterCount > 0) && (
               <button
                 type="button"
@@ -1884,9 +2074,17 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         <Clock className="h-3.5 w-3.5" />
                         {formatTime(item.time_start)} – {formatTime(item.time_end)}
                       </span>
-                      <AppBadge variant={item.is_active ? 'success' : 'neutral'} dot>
-                        {item.is_active ? 'Aktif' : 'Nonaktif'}
-                      </AppBadge>
+                      <div className="flex items-center gap-1.5">
+                        {item.has_conflict && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-black text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                            <AlertTriangle className="size-3 text-rose-600 dark:text-rose-400" />
+                            Bentrok
+                          </span>
+                        )}
+                        <AppBadge variant={item.is_active ? 'success' : 'neutral'} dot>
+                          {item.is_active ? 'Aktif' : 'Nonaktif'}
+                        </AppBadge>
+                      </div>
                     </div>
 
                     <h4 className="mt-2 text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-400">
@@ -1994,9 +2192,17 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         <div className="text-slate-500">{item.semester?.name || '-'}</div>
                       </td>
                       <td className="p-4">
-                        <AppBadge variant={item.is_active ? 'success' : 'neutral'} dot>
-                          {item.is_active ? 'Aktif' : 'Nonaktif'}
-                        </AppBadge>
+                        <div className="flex flex-col items-start gap-1">
+                          {item.has_conflict && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-black text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                              <AlertTriangle className="size-3 text-rose-600 dark:text-rose-400" />
+                              Bentrok
+                            </span>
+                          )}
+                          <AppBadge variant={item.is_active ? 'success' : 'neutral'} dot>
+                            {item.is_active ? 'Aktif' : 'Nonaktif'}
+                          </AppBadge>
+                        </div>
                       </td>
                       <td className="p-4 text-center">
                         <span className="inline-flex justify-center">
@@ -2025,8 +2231,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     item.employee?.avatar_url ||
                     item.employee?.foto
                   }
-                  badge={item.is_active ? 'Aktif' : 'Nonaktif'}
-                  badgeVariant={item.is_active ? 'success' : 'neutral'}
+                  badge={item.has_conflict ? 'Bentrok' : item.is_active ? 'Aktif' : 'Nonaktif'}
+                  badgeVariant={item.has_conflict ? 'danger' : item.is_active ? 'success' : 'neutral'}
                   fields={[
                     {
                       label: 'Kelas & Unit',
@@ -2211,22 +2417,46 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         description="Lengkapi informasi akademik, penugasan guru, dan alokasi waktu mengajar."
         maxWidth="max-w-2xl"
         footer={
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setModal(false)}
-              className="h-11 rounded-xl border border-slate-200 bg-slate-100 px-4 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-all cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              form="schedule-form"
-              disabled={saveMutation.isPending}
-              className="h-11 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 text-xs font-bold text-white hover:from-emerald-700 hover:to-teal-700 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-            >
-              {saveMutation.isPending ? 'Menyimpan...' : 'Simpan Jadwal'}
-            </button>
+          <div className="flex items-center justify-between w-full">
+            <div className="text-left">
+              {liveConflicts.length > 0 ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  <span>Jadwal bentrok dengan jadwal lain ({liveConflicts.length})</span>
+                </span>
+              ) : liveConflictChecking ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                  <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Mengecek bentrok...</span>
+                </span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModal(false)}
+                className="h-11 rounded-xl border border-slate-200 bg-slate-100 px-4 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="schedule-form"
+                disabled={saveMutation.isPending || liveConflicts.length > 0}
+                className={cn(
+                  'h-11 rounded-xl px-5 text-xs font-bold text-white active:scale-95 disabled:opacity-50 transition-all',
+                  liveConflicts.length > 0
+                    ? 'bg-rose-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 cursor-pointer'
+                )}
+              >
+                {saveMutation.isPending
+                  ? 'Menyimpan...'
+                  : liveConflicts.length > 0
+                    ? 'Bentrok Terdeteksi'
+                    : 'Simpan Jadwal'}
+              </button>
+            </div>
           </div>
         }
       >
@@ -2236,7 +2466,22 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
           className="space-y-6 p-6 text-xs font-semibold text-slate-700 dark:text-slate-200"
         >
           {/* Conflict Warning Banner */}
-          {conflictWarning && (
+          {liveConflicts.length > 0 ? (
+            <div className="flex flex-col gap-2 rounded-2xl border-2 border-rose-300 bg-rose-50/95 p-4 text-rose-900 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200 shadow-sm animate-fadeIn">
+              <div className="flex items-center gap-2 font-black text-xs text-rose-800 dark:text-rose-300 uppercase tracking-wide">
+                <AlertTriangle className="size-4.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>Terdeteksi {liveConflicts.length} Jadwal Bertabrakan (Bentrok)</span>
+              </div>
+              <div className="space-y-1.5 text-xs pl-6">
+                {liveConflicts.map((c, idx) => (
+                  <div key={idx} className="rounded-xl border border-rose-200 bg-white/80 p-2.5 dark:border-rose-900/50 dark:bg-slate-900/60">
+                    <span className="font-black text-rose-800 dark:text-rose-300 block mb-0.5">{c.title || 'Tabrakan Waktu'}:</span>
+                    <p className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{c.message}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : conflictWarning ? (
             <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
               <AlertTriangle className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
               <div className="text-xs">
@@ -2244,7 +2489,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 <span>{conflictWarning}</span>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* GRUP 1: INFORMASI AKADEMIK */}
           <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">

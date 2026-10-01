@@ -1102,9 +1102,13 @@ export default function LmsUjianPage({
   // Launch CBT Student Simulation
   const handleLaunchCbtEngine = async (ujianItem) => {
     try {
-      const response = await lmsUjianService.startSession(ujianItem.id)
+      const response = await lmsUjianService.startSession(ujianItem.id, { is_simulation: true })
       if (response && response.data) {
         const sess = response.data
+        if (!sess.soal || sess.soal.length === 0) {
+          notify('Soal Belum Siap', 'Ujian ini belum memiliki butir soal aktif di bank soal.', 'warning')
+          return
+        }
         setCbtSession(sess)
         setCurrentQuestionIdx(0)
         setUserAnswers({})
@@ -1114,7 +1118,8 @@ export default function LmsUjianPage({
       }
     } catch (error) {
       console.error('Error launching CBT Engine:', error)
-      notify('Simulasi Gagal', 'Tidak dapat memulai simulasi engine CBT.', 'error')
+      const errorMsg = error?.response?.data?.message || 'Tidak dapat memulai simulasi engine CBT.'
+      notify('Simulasi Gagal', errorMsg, 'error')
     }
   }
 

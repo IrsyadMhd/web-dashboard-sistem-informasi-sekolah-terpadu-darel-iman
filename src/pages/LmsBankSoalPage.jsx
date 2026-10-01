@@ -31,6 +31,10 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   Check,
+  Folder,
+  Table,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { lmsBankSoalService } from '../services/lmsBankSoalService'
 import { subjectService } from '../services/subjectService'
@@ -772,6 +776,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
   })
   const [options, setOptions] = useState({
     kisi_kisi: [],
+    subjects: [],
+    kelas: [],
     tipe_soal: [],
     tingkat_kesulitan: [],
   })
@@ -782,6 +788,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
   const [filters, setFilters] = useState({
     mata_pelajaran_id: '',
     kisi_kisi_id: '',
+    kelas_id: '',
     tipe_soal: '',
     tingkat_kesulitan: '',
     status: '',
@@ -814,6 +821,11 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
   // Export Modal State
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+
+  // Layout View Mode State: 'grouped' (per Kisi-kisi & Mapel) | 'flat' (Semua Soal)
+  const [viewLayout, setViewLayout] = useState('grouped')
+  // Expanded Kisi-kisi Groups in Grouped View (default open)
+  const [expandedGroups, setExpandedGroups] = useState({})
 
   // In-Modal Session Questions
   const [modalSessionQuestions, setModalSessionQuestions] = useState([])
@@ -848,6 +860,87 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
   const selectedKisiObj = useMemo(() => {
     return (options.kisi_kisi || []).find((k) => k.id === formData.kisi_kisi_id)
   }, [options.kisi_kisi, formData.kisi_kisi_id])
+
+  // Memoized grouped questions by Kisi-kisi & Mapel
+  const groupedData = useMemo(() => {
+    const map = new Map()
+
+    dataList.forEach((item) => {
+      const rawKisiId = item.kisi_kisi_id
+      const kisiId = rawKisiId ? String(rawKisiId) : 'unassigned'
+      if (!map.has(kisiId)) {
+        const kisiMeta = (options.kisi_kisi || []).find((k) => String(k.id) === String(kisiId)) || item.kisi_kisi || {}
+        map.set(kisiId, {
+          kisi_kisi_id: kisiId !== 'unassigned' ? kisiId : '',
+          judul_kisi: kisiMeta.judul_kisi || item.kisi_kisi?.judul_kisi || (kisiId === 'unassigned' ? 'Soal Mandiri (Tanpa Kisi-kisi)' : `Kisi-kisi #${kisiId}`),
+          mata_pelajaran_id: item.mata_pelajaran_id || kisiMeta.mata_pelajaran_id || '',
+          mapel_name: getMapelName(item) || kisiMeta.mata_pelajaran || 'Mata Pelajaran Umum',
+          kelas: kisiMeta.kelas || item.kisi_kisi?.kelas || '',
+          jenis_ujian: kisiMeta.jenis_ujian || item.kisi_kisi?.jenis_ujian || '',
+          target_jumlah_soal: Number(kisiMeta.jumlah_soal) || null,
+          total_poin: 0,
+          items: [],
+        })
+      }
+      const grp = map.get(kisiId)
+      grp.items.push(item)
+      grp.total_poin += Number(item.poin || 0)
+    })
+
+    // If no search filter is active and not filtering specific single kisi-kisi,
+    // include available empty kisi-kisi from options so teacher can directly add questions to them
+    if (!debouncedSearch && (!filters.kisi_kisi_id || filters.kisi_kisi_id === 'Semua')) {
+      (options.kisi_kisi || []).forEach((k) => {
+        const kId = String(k.id)
+        if (!map.has(kId)) {
+          if (filters.mata_pelajaran_id && filters.mata_pelajaran_id !== 'Semua' && String(k.mata_pelajaran_id) !== String(filters.mata_pelajaran_id)) {
+            return
+          }
+          map.set(kId, {
+            kisi_kisi_id: kId,
+            judul_kisi: k.judul_kisi || `Kisi-kisi #${kId}`,
+            mata_pelajaran_id: k.mata_pelajaran_id || '',
+            mapel_name: k.mata_pelajaran || 'Mata Pelajaran Umum',
+            kelas: k.kelas || '',
+            jenis_ujian: k.jenis_ujian || '',
+            target_jumlah_soal: Number(k.jumlah_soal) || null,
+            total_poin: 0,
+            items: [],
+          })
+        }
+      })
+    }
+
+    return Array.from(map.values()).sort((a, b) => {
+      // unassigned placed at bottom
+      if (a.kisi_kisi_id === '') return 1
+      if (b.kisi_kisi_id === '') return -1
+      return b.items.length - a.items.length
+    })
+  }, [dataList, options.kisi_kisi, debouncedSearch, filters])
+
+  const toggleGroup = (groupId) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: prev[groupId] === false ? true : false,
+    }))
+  }
+
+  const expandAllGroups = () => {
+    const all = {}
+    groupedData.forEach((g) => {
+      all[g.kisi_kisi_id || 'unassigned'] = true
+    })
+    setExpandedGroups(all)
+  }
+
+  const collapseAllGroups = () => {
+    const all = {}
+    groupedData.forEach((g) => {
+      all[g.kisi_kisi_id || 'unassigned'] = false
+    })
+    setExpandedGroups(all)
+  }
 
   useEffect(() => {
     fetchStats()
@@ -968,14 +1061,22 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
         return true
       })
 
+      const kelasList = (bankSoalOptions.kelas || []).filter((c) => {
+        if (!c) return false
+        const cUnitId = c.unit_pendidikan_id || c.unit_id
+        if (userUnitId && cUnitId) return String(cUnitId) === String(userUnitId)
+        return true
+      })
+
+      const scopedSubjects = (bankSoalOptions.subjects && bankSoalOptions.subjects.length > 0)
+        ? bankSoalOptions.subjects
+        : (dbSubjects.length > 0 ? dbSubjects : (bankSoalOptions.subjects || []))
+
       setOptions({
         ...bankSoalOptions,
         kisi_kisi: kisiList,
-        subjects: dbSubjects.length > 0 ? dbSubjects : (bankSoalOptions.subjects || []).filter((s) => {
-          const sUnitId = s.unit_pendidikan_id || s.unit_id
-          if (userUnitId && sUnitId) return String(sUnitId) === String(userUnitId)
-          return true
-        }),
+        subjects: scopedSubjects,
+        kelas: kelasList,
       })
     } catch (error) {
       console.error('Error loading options:', error)
@@ -1103,9 +1204,9 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
     fetchStats()
   }
 
-  const resetSingleQuestionForm = () => {
+  const resetSingleQuestionForm = (customNextNum = null) => {
     setEditingModalQuestionId(null)
-    const nextNum = modalSessionQuestions.length + 1
+    const nextNum = customNextNum !== null ? customNextNum : (modalSessionQuestions.length + 1)
     setFormData((prev) => ({
       ...prev,
       kode_soal: `SOAL-${String(nextNum).padStart(2, '0')}`,
@@ -1171,9 +1272,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
     })
   }
 
-  const handleTriggerSave = (e) => {
-    if (e) e.preventDefault()
-
+  const handleSaveQuestion = async (shouldClose = false) => {
     if (!formData.kisi_kisi_id) {
       notify('Pilih Kisi-kisi', 'Pilih Kisi-kisi Ujian / Mata Pelajaran terlebih dahulu.', 'warning')
       return
@@ -1192,12 +1291,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
       }
     }
 
-    setIsSaveModalOpen(true)
-  }
-
-  const handleConfirmSave = async () => {
     let payload = { ...formData }
-
     if (formData.tipe_soal === 'menjodohkan') {
       const validPairs = matchingPairs.filter((p) => p.kiri.trim() && p.kanan.trim())
       payload.kunci_jawaban = JSON.stringify(validPairs)
@@ -1214,22 +1308,42 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
         )
         notify('Berhasil Disimpan', 'Butir soal berhasil diperbarui!', 'success')
         setIsSaveModalOpen(false)
-        if (editingItem) {
+
+        if (editingItem || shouldClose) {
           handleCloseModal()
           fetchData(pagination.currentPage)
           fetchStats()
           return
         }
+
+        resetSingleQuestionForm(modalSessionQuestions.length + 1)
       } else {
         const res = await lmsBankSoalService.create(payload)
         const newItem = res?.data || { ...payload, id: Date.now() + Math.random() }
 
-        setModalSessionQuestions((prev) => [...prev, newItem])
-        notify('Berhasil Ditambahkan', 'Butir soal berhasil ditambahkan ke bank soal!', 'success')
+        const updatedList = [...modalSessionQuestions, newItem]
+        setModalSessionQuestions(updatedList)
         setIsSaveModalOpen(false)
+
+        const currentNum = updatedList.length
+        const nextNum = currentNum + 1
+
+        notify(
+          'Soal Berhasil Disimpan!',
+          `Soal #${currentNum} telah berhasil ditambahkan ke bank soal.${shouldClose ? '' : ` Silakan lanjutkan mengisi Soal #${nextNum}.`}`,
+          'success'
+        )
+
+        if (shouldClose) {
+          handleCloseModal()
+          fetchData(1)
+          fetchStats()
+          return
+        }
+
+        resetSingleQuestionForm(nextNum)
       }
 
-      resetSingleQuestionForm()
       fetchData(1)
       fetchStats()
     } catch (error) {
@@ -1238,6 +1352,15 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
     } finally {
       setIsSubmittingForm(false)
     }
+  }
+
+  const handleTriggerSave = (e) => {
+    if (e) e.preventDefault()
+    handleSaveQuestion(false)
+  }
+
+  const handleConfirmSave = async () => {
+    await handleSaveQuestion(false)
   }
 
   const handleEditModalQuestionRow = (item) => {
@@ -1548,36 +1671,71 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                 </p>
               </div>
 
-              {/* 4 Soft Squircle Action Buttons */}
-              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
-                <SquircleActionButton
-                  variant="view"
-                  icon={Printer}
-                  label="Cetak &amp; PDF"
-                  onClick={() => setIsPrintModalOpen(true)}
-                  className="!size-10 !rounded-2xl !bg-gradient-to-br !from-indigo-500 !via-indigo-600 !to-violet-700 !text-white !border-0 hover:!brightness-110 !shadow-sm"
-                />
-                <SquircleActionButton
-                  variant="import"
-                  icon={Upload}
-                  label="Import Data"
-                  onClick={() => setImportOpen(true)}
-                  className="!size-10 !rounded-2xl !bg-gradient-to-br !from-sky-400 !via-sky-500 !to-blue-600 !text-white !border-0 hover:!brightness-110 !shadow-sm"
-                />
-                <SquircleActionButton
-                  variant="export"
-                  icon={Download}
-                  label="Export Data"
-                  onClick={() => setIsExportModalOpen(true)}
-                  className="!size-10 !rounded-2xl !bg-gradient-to-br !from-amber-400 !via-amber-500 !to-orange-600 !text-white !border-0 hover:!brightness-110 !shadow-sm"
-                />
-                <SquircleActionButton
-                  variant="primary"
-                  icon={Plus}
-                  label="Tambah Soal Baru"
-                  onClick={() => handleOpenModal()}
-                  className="!size-10 !rounded-2xl !bg-gradient-to-br !from-emerald-500 !via-emerald-600 !to-teal-700 !text-white !border-0 hover:!brightness-110 !shadow-sm"
-                />
+              {/* Segmented Layout Mode Toggle & 4 Soft Squircle Action Buttons */}
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0 self-start sm:self-auto flex-wrap">
+                {/* Layout Mode Segmented Control */}
+                <div className="inline-flex items-center rounded-xl bg-emerald-900/10 dark:bg-emerald-950/60 p-1 border border-emerald-200/80 dark:border-emerald-800/60">
+                  <button
+                    type="button"
+                    onClick={() => setViewLayout('grouped')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      viewLayout === 'grouped'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300'
+                    }`}
+                    title="Tampilan Grup per Kisi-kisi & Mapel"
+                  >
+                    <Folder className="h-3.5 w-3.5" />
+                    <span>Grup Kisi-kisi</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewLayout('flat')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      viewLayout === 'flat'
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300'
+                    }`}
+                    title="Tampilan Tabel Rata Semua Soal"
+                  >
+                    <Table className="h-3.5 w-3.5" />
+                    <span>Semua Soal</span>
+                  </button>
+                </div>
+
+                <div className="hidden sm:block h-6 w-px bg-emerald-200 dark:bg-emerald-800" />
+
+                {/* 4 Soft Squircle Action Buttons */}
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <SquircleActionButton
+                    variant="view"
+                    icon={Printer}
+                    label="Cetak &amp; PDF"
+                    onClick={() => setIsPrintModalOpen(true)}
+                    className="!size-10 !rounded-2xl !bg-gradient-to-br !from-indigo-500 !via-indigo-600 !to-violet-700 !text-white !border-0 hover:!brightness-110 !shadow-sm"
+                  />
+                  <SquircleActionButton
+                    variant="import"
+                    icon={Upload}
+                    label="Import Data"
+                    onClick={() => setImportOpen(true)}
+                    className="!size-10 !rounded-2xl !bg-gradient-to-br !from-sky-400 !via-sky-500 !to-blue-600 !text-white !border-0 hover:!brightness-110 !shadow-sm"
+                  />
+                  <SquircleActionButton
+                    variant="export"
+                    icon={Download}
+                    label="Export Data"
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="!size-10 !rounded-2xl !bg-gradient-to-br !from-amber-400 !via-amber-500 !to-orange-600 !text-white !border-0 hover:!brightness-110 !shadow-sm"
+                  />
+                  <SquircleActionButton
+                    variant="primary"
+                    icon={Plus}
+                    label="Tambah Soal Baru"
+                    onClick={() => handleOpenModal()}
+                    className="!size-10 !rounded-2xl !bg-gradient-to-br !from-emerald-500 !via-emerald-600 !to-teal-700 !text-white !border-0 hover:!brightness-110 !shadow-sm"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1648,6 +1806,23 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                 ))}
               </select>
 
+              {/* Filter Rombel / Kelas */}
+              <select
+                value={filters.kelas_id || ''}
+                onChange={(e) => {
+                  setFilters((prev) => ({ ...prev, kelas_id: e.target.value }))
+                  setPage(1)
+                }}
+                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="">Semua Rombel / Kelas</option>
+                {(options.kelas || []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nama_kelas || c.name}
+                  </option>
+                ))}
+              </select>
+
               {/* Filter Kisi-kisi */}
               <select
                 value={filters.kisi_kisi_id}
@@ -1697,12 +1872,12 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
               </select>
 
               {/* Reset Filter Button */}
-              {(searchInput || filters.mata_pelajaran_id || filters.kisi_kisi_id || filters.tipe_soal || filters.tingkat_kesulitan) && (
+              {(searchInput || filters.mata_pelajaran_id || filters.kisi_kisi_id || filters.kelas_id || filters.tipe_soal || filters.tingkat_kesulitan) && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearchInput('')
-                    setFilters({ mata_pelajaran_id: '', kisi_kisi_id: '', tipe_soal: '', tingkat_kesulitan: '', status: '' })
+                    setFilters({ mata_pelajaran_id: '', kisi_kisi_id: '', kelas_id: '', tipe_soal: '', tingkat_kesulitan: '', status: '' })
                     setPage(1)
                   }}
                   className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
@@ -1715,165 +1890,504 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
             </div>
           </div>
 
-          {/* Master Datatable Body */}
-          <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 text-xs font-black uppercase tracking-wider">
-                  <th className="hidden sm:table-cell w-[16%] bg-transparent px-4 py-3.5 font-black text-[11px] uppercase tracking-wider">
-                    Kode &amp; Tipe
-                  </th>
-                  <th className="w-auto sm:w-[38%] md:w-[42%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
-                    Pertanyaan / Butir Soal
-                  </th>
-                  <th className="hidden md:table-cell w-[18%] bg-transparent px-3 py-3.5 font-black text-[11px] uppercase tracking-wider">
-                    Kisi-kisi &amp; Mapel
-                  </th>
-                  <th className="hidden sm:table-cell w-[10%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
-                    Poin &amp; Level
-                  </th>
-                  <th className="hidden lg:table-cell w-[8%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="w-14 sm:w-[8%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" className="py-14 text-center text-slate-400">
-                      <RefreshCw className="h-7 w-7 animate-spin mx-auto mb-2 text-[#0E5C44]" />
-                      <p className="text-xs font-semibold">Memuat data butir bank soal...</p>
-                    </td>
+          {/* Master Datatable / Grouped View Conditional Body */}
+          {viewLayout === 'flat' ? (
+            <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                  <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 text-xs font-black uppercase tracking-wider">
+                    <th className="hidden sm:table-cell w-[16%] bg-transparent px-4 py-3.5 font-black text-[11px] uppercase tracking-wider">
+                      Kode &amp; Tipe
+                    </th>
+                    <th className="w-auto sm:w-[38%] md:w-[42%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
+                      Pertanyaan / Butir Soal
+                    </th>
+                    <th className="hidden md:table-cell w-[18%] bg-transparent px-3 py-3.5 font-black text-[11px] uppercase tracking-wider">
+                      Kisi-kisi &amp; Mapel
+                    </th>
+                    <th className="hidden sm:table-cell w-[10%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                      Poin &amp; Level
+                    </th>
+                    <th className="hidden lg:table-cell w-[8%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="w-14 sm:w-[8%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                      Aksi
+                    </th>
                   </tr>
-                ) : dataList.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="py-16 text-center text-slate-400">
-                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 mb-3">
-                        <HelpCircle className="h-7 w-7" />
-                      </div>
-                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Belum Ada Butir Soal</p>
-                      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                        Tidak ditemukan butir soal sesuai kata kunci pencarian atau filter yang dipilih.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenModal()}
-                        className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 transition-all"
-                      >
-                        <Plus className="h-4 w-4" /> Tambah Soal Pertama
-                      </button>
-                    </td>
-                  </tr>
-                ) : (
-                  dataList.map((item) => (
-                    <tr
-                      key={item.id}
-                      onClick={() => {
-                        setRowDetailItem(item)
-                        setShowRowDetailModal(true)
-                      }}
-                      className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer group"
-                    >
-                      {/* Kode & Tipe */}
-                      <td className="hidden sm:table-cell py-3.5 px-4 align-top">
-                        <span className="font-mono text-xs font-extrabold text-emerald-800 dark:text-emerald-400 block mb-1">
-                          {item.kode_soal || 'SOAL-SYS'}
-                        </span>
-                        <div>{getTipeBadge(item.tipe_soal)}</div>
-                      </td>
-
-                      {/* Pertanyaan */}
-                      <td className="py-3.5 px-3.5 sm:px-6 md:px-8 align-top">
-                        <p className="font-bold text-slate-900 dark:text-white line-clamp-2 leading-relaxed group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
-                          {item.pertanyaan}
-                        </p>
-                        {item.indikator && (
-                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1 truncate">
-                            Indikator: {item.indikator}
-                          </p>
-                        )}
-
-                        {/* Mobile-only compact metadata row */}
-                        <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
-                          <span className="font-mono text-[10px] font-extrabold text-emerald-800 dark:text-emerald-400">
-                            {item.kode_soal || 'SOAL-SYS'}
-                          </span>
-                          <span className="text-slate-300 dark:text-slate-600">·</span>
-                          {getTipeBadge(item.tipe_soal)}
-                          <span className="text-slate-300 dark:text-slate-600">·</span>
-                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
-                            {item.kisi_kisi?.judul_kisi || getMapelName(item)}
-                          </span>
-                          <span className="text-slate-300 dark:text-slate-600">·</span>
-                          <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400">
-                            {item.poin} Poin
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Kisi-kisi & Mapel */}
-                      <td className="hidden md:table-cell py-3.5 px-3 align-top">
-                        <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate max-w-xs">
-                          {item.kisi_kisi?.judul_kisi || 'Umum'}
-                        </div>
-                        <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs">
-                          {getMapelName(item)}
-                        </div>
-                      </td>
-
-                      {/* Poin & Level */}
-                      <td className="hidden sm:table-cell py-3.5 px-3 text-center align-top">
-                        <div className="space-y-1">
-                          <div>{getKesulitanBadge(item.tingkat_kesulitan)}</div>
-                          <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 block tabular-nums">
-                            {item.poin} Poin
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className="hidden lg:table-cell py-3.5 px-3 text-center align-top" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(item)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${
-                            item.status
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                          }`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                          {item.status ? 'Aktif' : 'Non-Aktif'}
-                        </button>
-                      </td>
-
-                      {/* Aksi */}
-                      <td className="py-3.5 px-2 sm:px-3 text-center align-top" onClick={(e) => e.stopPropagation()}>
-                        <ActionDropdown
-                          onView={() => {
-                            setViewingItem(item)
-                            setShowDetailModal(true)
-                          }}
-                          onEdit={() => handleOpenModal(item)}
-                          onDelete={() => handleDeletePrompt(item)}
-                          customActions={[
-                            {
-                              label: 'Duplikasi Butir Soal',
-                              icon: Copy,
-                              onClick: () => handleDuplicate(item.id),
-                            },
-                          ]}
-                        />
+                </thead>
+                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="6" className="py-14 text-center text-slate-400">
+                        <RefreshCw className="h-7 w-7 animate-spin mx-auto mb-2 text-[#0E5C44]" />
+                        <p className="text-xs font-semibold">Memuat data butir bank soal...</p>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </MasterDataTable>
+                  ) : dataList.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-16 text-center text-slate-400">
+                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 mb-3">
+                          <HelpCircle className="h-7 w-7" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Belum Ada Butir Soal</p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                          Tidak ditemukan butir soal sesuai kata kunci pencarian atau filter yang dipilih.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenModal()}
+                          className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 transition-all"
+                        >
+                          <Plus className="h-4 w-4" /> Tambah Soal Pertama
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    dataList.map((item) => (
+                      <tr
+                        key={item.id}
+                        onClick={() => {
+                          setRowDetailItem(item)
+                          setShowRowDetailModal(true)
+                        }}
+                        className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer group"
+                      >
+                        {/* Kode & Tipe */}
+                        <td className="hidden sm:table-cell py-3.5 px-4 align-top">
+                          <span className="font-mono text-xs font-extrabold text-emerald-800 dark:text-emerald-400 block mb-1">
+                            {item.kode_soal || 'SOAL-SYS'}
+                          </span>
+                          <div>{getTipeBadge(item.tipe_soal)}</div>
+                        </td>
+
+                        {/* Pertanyaan */}
+                        <td className="py-3.5 px-3.5 sm:px-6 md:px-8 align-top">
+                          <p className="font-bold text-slate-900 dark:text-white line-clamp-2 leading-relaxed group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                            {item.pertanyaan}
+                          </p>
+                          {item.indikator && (
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1 truncate">
+                              Indikator: {item.indikator}
+                            </p>
+                          )}
+
+                          {/* Mobile-only compact metadata row */}
+                          <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                            <span className="font-mono text-[10px] font-extrabold text-emerald-800 dark:text-emerald-400">
+                              {item.kode_soal || 'SOAL-SYS'}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-600">·</span>
+                            {getTipeBadge(item.tipe_soal)}
+                            <span className="text-slate-300 dark:text-slate-600">·</span>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
+                              {item.kisi_kisi?.judul_kisi || getMapelName(item)}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-600">·</span>
+                            <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400">
+                              {item.poin} Poin
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Kisi-kisi & Mapel */}
+                        <td className="hidden md:table-cell py-3.5 px-3 align-top">
+                          <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate max-w-xs flex items-center gap-1.5">
+                            <span className="truncate">{item.kisi_kisi?.judul_kisi || 'Umum'}</span>
+                            {item.kisi_kisi?.kelas && (
+                              <span className="inline-flex shrink-0 items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100/80 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                                {item.kisi_kisi.kelas}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs">
+                            {getMapelName(item)}
+                          </div>
+                        </td>
+
+                        {/* Poin & Level */}
+                        <td className="hidden sm:table-cell py-3.5 px-3 text-center align-top">
+                          <div className="space-y-1">
+                            <div>{getKesulitanBadge(item.tingkat_kesulitan)}</div>
+                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 block tabular-nums">
+                              {item.poin} Poin
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="hidden lg:table-cell py-3.5 px-3 text-center align-top" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(item)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${
+                              item.status
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                            {item.status ? 'Aktif' : 'Non-Aktif'}
+                          </button>
+                        </td>
+
+                        {/* Aksi */}
+                        <td className="py-3.5 px-2 sm:px-3 text-center align-top" onClick={(e) => e.stopPropagation()}>
+                          <ActionDropdown
+                            onView={() => {
+                              setViewingItem(item)
+                              setShowDetailModal(true)
+                            }}
+                            onEdit={() => handleOpenModal(item)}
+                            onDelete={() => handleDeletePrompt(item)}
+                            customActions={[
+                              {
+                                label: 'Duplikasi Butir Soal',
+                                icon: Copy,
+                                onClick: () => handleDuplicate(item.id),
+                              },
+                            ]}
+                          />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </MasterDataTable>
+          ) : (
+            <div className="p-4 sm:p-6 space-y-4">
+              {/* Group View Top Summary Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-emerald-50/70 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 rounded-2xl p-3 sm:px-4 border border-emerald-200/80 dark:border-emerald-800/60">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-600 text-white font-black text-xs shadow-2xs">
+                    <Folder className="h-4 w-4" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                    Paket Soal per Kisi-kisi &amp; Mapel
+                  </span>
+                  <span className="rounded-full bg-emerald-200/70 dark:bg-emerald-900/60 px-2 py-0.5 text-[11px] font-black text-emerald-800 dark:text-emerald-300">
+                    {groupedData.length} Paket
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={expandAllGroups}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40 transition-colors"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    <span>Buka Semua</span>
+                  </button>
+                  <span className="text-slate-300 dark:text-slate-700">|</span>
+                  <button
+                    type="button"
+                    onClick={collapseAllGroups}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    <span>Tutup Semua</span>
+                  </button>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="py-14 text-center text-slate-400">
+                  <RefreshCw className="h-7 w-7 animate-spin mx-auto mb-2 text-[#0E5C44]" />
+                  <p className="text-xs font-semibold">Memuat paket kisi-kisi dan butir soal...</p>
+                </div>
+              ) : groupedData.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 rounded-2xl border-2 border-dashed border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/20 dark:bg-emerald-950/10">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 mb-3">
+                    <HelpCircle className="h-7 w-7" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Belum Ada Paket Kisi-kisi &amp; Soal</p>
+                  <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                    Belum ditemukan kisi-kisi atau butir soal sesuai kata kunci pencarian atau filter yang dipilih.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenModal()}
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 transition-all"
+                  >
+                    <Plus className="h-4 w-4" /> Tambah Soal Baru
+                  </button>
+                </div>
+              ) : (
+                groupedData.map((group) => {
+                  const groupKey = group.kisi_kisi_id || 'unassigned'
+                  const isExpanded = expandedGroups[groupKey] !== false
+                  const hasTarget = Boolean(group.target_jumlah_soal && group.target_jumlah_soal > 0)
+                  const isComplete = hasTarget ? group.items.length >= group.target_jumlah_soal : false
+                  const percent = hasTarget
+                    ? Math.min(100, Math.round((group.items.length / group.target_jumlah_soal) * 100))
+                    : 100
+
+                  return (
+                    <div
+                      key={groupKey}
+                      className="rounded-2xl border-2 border-emerald-200/90 dark:border-emerald-800/70 bg-white dark:bg-[#1B2433] shadow-xs overflow-hidden transition-all"
+                    >
+                      {/* Accordion Group Header */}
+                      <div
+                        onClick={() => toggleGroup(groupKey)}
+                        className="cursor-pointer select-none bg-gradient-to-r from-emerald-50/70 via-teal-50/30 to-transparent dark:from-emerald-950/50 dark:via-teal-950/20 dark:to-transparent px-4 py-3.5 sm:px-5 border-b border-emerald-200/70 dark:border-emerald-800/60 hover:bg-emerald-50/90 dark:hover:bg-emerald-950/70 transition-colors"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          {/* Left Group Info */}
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="size-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5 sm:mt-0">
+                              <Folder className="h-4.5 w-4.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                                  {group.judul_kisi}
+                                </h3>
+                                {group.kelas && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                                    {group.kelas}
+                                  </span>
+                                )}
+                                {group.jenis_ujian && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                    {group.jenis_ujian}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-xs font-semibold text-slate-600 dark:text-slate-400 flex-wrap">
+                                <span className="inline-flex items-center gap-1 text-emerald-800 dark:text-emerald-300 font-bold">
+                                  <BookOpen className="h-3.5 w-3.5" />
+                                  {group.mapel_name}
+                                </span>
+                                <span>•</span>
+                                <span className="text-slate-500 dark:text-slate-400">
+                                  {group.items.length} Soal Terdaftar
+                                </span>
+                                <span>•</span>
+                                <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">
+                                  Total {group.total_poin.toFixed(1)} Poin
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right Controls & Target Progress */}
+                          <div className="flex items-center gap-2.5 sm:gap-4 shrink-0 justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-emerald-100 dark:border-emerald-900/40">
+                            {hasTarget && (
+                              <div className="flex flex-col gap-1 min-w-[120px] max-w-[150px]">
+                                <div className="flex items-center justify-between text-[11px] font-extrabold">
+                                  <span className={isComplete ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}>
+                                    {group.items.length}/{group.target_jumlah_soal} Soal
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+                                    {percent}%
+                                  </span>
+                                </div>
+                                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      isComplete
+                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                                        : 'bg-gradient-to-r from-amber-400 to-emerald-500'
+                                    }`}
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* + Tambah Soal Button directly into this Kisi-kisi */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenModal(null, {
+                                  kisi_kisi_id: group.kisi_kisi_id,
+                                  mata_pelajaran_id: group.mata_pelajaran_id,
+                                })
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:brightness-105 transition-all"
+                              title={`Tambah Soal Baru ke ${group.judul_kisi}`}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">Tambah Soal</span>
+                            </button>
+
+                            {/* Chevron Toggle Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleGroup(groupKey)
+                              }}
+                              className="size-8 rounded-xl bg-emerald-100/70 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 flex items-center justify-center hover:bg-emerald-200/80 dark:hover:bg-emerald-900 transition-colors"
+                              title={isExpanded ? 'Tutup Detail Soal' : 'Lihat Butir Soal'}
+                            >
+                              {isExpanded ? <ChevronUp className="h-4.5 w-4.5" /> : <ChevronDown className="h-4.5 w-4.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Accordion Group Body */}
+                      {isExpanded && (
+                        <div>
+                          {group.items.length === 0 ? (
+                            <div className="p-8 text-center bg-emerald-50/20 dark:bg-emerald-950/10">
+                              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-700 mb-2">
+                                <FileText className="h-5 w-5" />
+                              </div>
+                              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                Belum Ada Butir Soal di Paket Ini
+                              </p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                Mulai buat butir soal pertama untuk {group.judul_kisi} {hasTarget ? `(target ${group.target_jumlah_soal} soal)` : ''}.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleOpenModal(null, {
+                                    kisi_kisi_id: group.kisi_kisi_id,
+                                    mata_pelajaran_id: group.mata_pelajaran_id,
+                                  })
+                                }
+                                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:brightness-105 transition-all"
+                              >
+                                <Plus className="h-3.5 w-3.5" /> Buat Butir Soal Pertama
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-sm border-collapse">
+                                <thead className="bg-emerald-100/60 dark:bg-emerald-950/60 border-b border-emerald-200/80 dark:border-emerald-800/60">
+                                  <tr className="text-emerald-950 dark:text-emerald-200 text-xs font-black uppercase tracking-wider">
+                                    <th className="w-[16%] px-4 py-2.5 text-[11px]">Kode &amp; Tipe</th>
+                                    <th className="w-auto px-4 py-2.5 text-[11px]">Pertanyaan / Butir Soal</th>
+                                    <th className="hidden sm:table-cell w-[14%] px-3 py-2.5 text-center text-[11px]">Poin &amp; Level</th>
+                                    <th className="hidden md:table-cell w-[10%] px-3 py-2.5 text-center text-[11px]">Status</th>
+                                    <th className="w-14 sm:w-[8%] px-3 py-2.5 text-center text-[11px]">Aksi</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40 text-sm">
+                                  {group.items.map((item, itemIdx) => (
+                                    <tr
+                                      key={item.id}
+                                      onClick={() => {
+                                        setRowDetailItem(item)
+                                        setShowRowDetailModal(true)
+                                      }}
+                                      className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer group"
+                                    >
+                                      {/* Kode & Tipe */}
+                                      <td className="py-3 px-4 align-top">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-[11px] font-black text-slate-400 dark:text-slate-500 w-5">
+                                            #{itemIdx + 1}
+                                          </span>
+                                          <span className="font-mono text-xs font-extrabold text-emerald-800 dark:text-emerald-400">
+                                            {item.kode_soal || `SOAL-${itemIdx + 1}`}
+                                          </span>
+                                        </div>
+                                        <div className="mt-1">{getTipeBadge(item.tipe_soal)}</div>
+                                      </td>
+
+                                      {/* Pertanyaan */}
+                                      <td className="py-3 px-4 align-top">
+                                        <p className="font-bold text-slate-900 dark:text-white line-clamp-2 leading-relaxed group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                                          {item.pertanyaan}
+                                        </p>
+                                        {item.indikator && (
+                                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                            Indikator: {item.indikator}
+                                          </p>
+                                        )}
+                                      </td>
+
+                                      {/* Poin & Level */}
+                                      <td className="hidden sm:table-cell py-3 px-3 text-center align-top">
+                                        <div className="space-y-1">
+                                          <div>{getKesulitanBadge(item.tingkat_kesulitan)}</div>
+                                          <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 block tabular-nums">
+                                            {item.poin} Poin
+                                          </span>
+                                        </div>
+                                      </td>
+
+                                      {/* Status */}
+                                      <td
+                                        className="hidden md:table-cell py-3 px-3 text-center align-top"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() => handleToggleStatus(item)}
+                                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold transition-all shadow-2xs ${
+                                            item.status
+                                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                          }`}
+                                        >
+                                          <span className={`w-1.5 h-1.5 rounded-full ${item.status ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                          {item.status ? 'Aktif' : 'Non-Aktif'}
+                                        </button>
+                                      </td>
+
+                                      {/* Aksi */}
+                                      <td
+                                        className="py-3 px-3 text-center align-top"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <ActionDropdown
+                                          onView={() => {
+                                            setViewingItem(item)
+                                            setShowDetailModal(true)
+                                          }}
+                                          onEdit={() => handleOpenModal(item)}
+                                          onDelete={() => handleDeletePrompt(item)}
+                                          customActions={[
+                                            {
+                                              label: 'Duplikasi Butir Soal',
+                                              icon: Copy,
+                                              onClick: () => handleDuplicate(item.id),
+                                            },
+                                          ]}
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+
+                              {/* Footer of Kisi-kisi card */}
+                              <div className="bg-gradient-to-r from-emerald-50/40 via-white to-emerald-50/40 dark:bg-slate-900/50 p-2.5 px-4 border-t border-emerald-100 dark:border-emerald-900/40 flex items-center justify-between">
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                  Menampilkan {group.items.length} butir pertanyaan
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleOpenModal(null, {
+                                      kisi_kisi_id: group.kisi_kisi_id,
+                                      mata_pelajaran_id: group.mata_pelajaran_id,
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors"
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                  <span>Tambah Soal Berikutnya ke Paket Ini</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
 
           {/* Pagination Toolbar Squircle Icon-Only */}
           <div className="border-t border-emerald-200/80 bg-gradient-to-r from-emerald-50/40 via-white to-emerald-50/40 p-3.5 sm:px-6 md:px-8 py-3 sm:py-3.5 dark:border-emerald-800/60 dark:bg-[#1B2433] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2143,13 +2657,54 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
               </div>
 
               <form onSubmit={handleTriggerSave} className="p-6 space-y-5 flex-1 overflow-y-auto overflow-x-hidden">
+                {/* Active Question Step Indicator (Multi-question builder header) */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/5 border border-emerald-300/80 dark:border-emerald-700/60 rounded-2xl shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-sm shadow-md shadow-emerald-700/20">
+                      #{editingModalQuestionId ? (modalSessionQuestions.findIndex((q) => q.id === editingModalQuestionId) + 1 || '?') : (modalSessionQuestions.length + 1)}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                          {editingModalQuestionId ? 'Mengubah Soal Terpilih' : `Mengisi Butir Soal #${modalSessionQuestions.length + 1}`}
+                        </h4>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          {formData.tipe_soal.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                        {modalSessionQuestions.length > 0
+                          ? `${modalSessionQuestions.length} soal telah tersimpan di kisi-kisi ini. Klik "Simpan & Tambah Soal #${modalSessionQuestions.length + 2}" setelah butir ini selesai.`
+                          : 'Mulai buat butir soal pertama untuk kisi-kisi ini, lalu lanjutkan ke soal kedua dan seterusnya.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    {editingModalQuestionId ? (
+                      <button
+                        type="button"
+                        onClick={() => resetSingleQuestionForm(modalSessionQuestions.length + 1)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition shadow-xs cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Batal &amp; Tambah Soal Baru</span>
+                      </button>
+                    ) : (
+                      <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-white/80 dark:bg-slate-900/80 px-3 py-1 rounded-xl border border-emerald-200/60 shadow-2xs">
+                        {modalSessionQuestions.length} Soal Tersimpan
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 {/* Notification Banner when in Edit Mode */}
                 {editingModalQuestionId && (
                   <div className="p-3 bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 rounded-2xl flex items-center justify-between text-xs text-amber-800 dark:text-amber-300 font-bold">
                     <span>Anda sedang mengubah butir pertanyaan terpilih dari tabel di bawah.</span>
                     <button
                       type="button"
-                      onClick={resetSingleQuestionForm}
+                      onClick={() => resetSingleQuestionForm(modalSessionQuestions.length + 1)}
                       className="text-xs underline text-amber-950 dark:text-amber-200 hover:opacity-80"
                     >
                       Batal Edit &amp; Tambah Baru
@@ -2441,7 +2996,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   />
                 </div>
 
-                <div className="flex items-center justify-between gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -2455,14 +3010,62 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                     </label>
                   </div>
 
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 text-white text-xs font-bold shadow-md hover:brightness-105 transition-all cursor-pointer"
-                  >
-                    {editingModalQuestionId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                    <span>{editingModalQuestionId ? 'Simpan Perubahan Pertanyaan' : '+ Tambah Pertanyaan Ke Kisi-kisi'}</span>
-                  </button>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {editingModalQuestionId ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => resetSingleQuestionForm(modalSessionQuestions.length + 1)}
+                          className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                        >
+                          Batal Ubah
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveQuestion(false)}
+                          disabled={isSubmittingForm}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold shadow-md hover:brightness-105 transition-all cursor-pointer"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                          <span>Simpan Perubahan Soal</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Simpan & Selesai Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSaveQuestion(true)}
+                          disabled={isSubmittingForm}
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 transition-all cursor-pointer"
+                          title="Simpan butir soal ini dan tutup form modal"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Simpan &amp; Selesai</span>
+                        </button>
+
+                        {/* Primary: Simpan & Tambah Soal Berikutnya */}
+                        <button
+                          type="button"
+                          onClick={() => handleSaveQuestion(false)}
+                          disabled={isSubmittingForm}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 text-white text-xs font-bold shadow-md hover:brightness-105 transition-all cursor-pointer active:scale-95"
+                          title={`Simpan soal #${modalSessionQuestions.length + 1} dan langsung siapkan input untuk soal #${modalSessionQuestions.length + 2}`}
+                        >
+                          {isSubmittingForm ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Plus className="w-4 h-4" />
+                          )}
+                          <span>
+                            {modalSessionQuestions.length === 0
+                              ? 'Simpan & Tambah Soal Kedua (#2)'
+                              : `Simpan & Tambah Soal #${modalSessionQuestions.length + 2}`}
+                          </span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* DATATABLE DALAM MODAL: DAFTAR PERTANYAAN TERSIMPAN */}
@@ -2488,7 +3091,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                         Memuat data database...
                       </span>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {selectedKisiObj?.jumlah_soal > 0 && (
                           <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
                             modalSessionQuestions.length >= selectedKisiObj.jumlah_soal
@@ -2503,6 +3106,15 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                         <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-full border border-emerald-200/60">
                           {modalSessionQuestions.length} Tersimpan
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => resetSingleQuestionForm(modalSessionQuestions.length + 1)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-[11px] font-bold shadow-xs transition active:scale-95 cursor-pointer"
+                          title="Siapkan form untuk mengisi soal baru berikutnya"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Tambah Soal #{modalSessionQuestions.length + 1}</span>
+                        </button>
                       </div>
                     )}
                   </div>

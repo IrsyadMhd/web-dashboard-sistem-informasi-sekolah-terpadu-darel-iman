@@ -162,6 +162,22 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     return c.length > 0 ? String(c[0]) : null
   }, [user])
 
+  const userRoles = useMemo(() => {
+    const rawRoles = user?.roles || []
+    return rawRoles.map((r) => (typeof r === 'string' ? r : r?.name || '')).filter(Boolean)
+  }, [user])
+
+  const isAdminOrKurikulum = useMemo(() => {
+    const normalized = userRoles.map((r) => r.toLowerCase().replace(/[\s_-]+/g, ''))
+    return normalized.some((r) =>
+      ['superadmin', 'yayasan', 'ketuayayasan', 'pengurusyayasan', 'sekretarisyayasan', 'bendaharayayasan', 'kepalasekolah', 'tatausaha', 'tu', 'divisipendidikan', 'wakakurikulum', 'kurikulum'].includes(r)
+    )
+  }, [userRoles])
+
+  const currentTeacherName = useMemo(() => {
+    return user?.employee?.nama_lengkap || user?.name || user?.username || 'Anda'
+  }, [user])
+
   const [dataList, setDataList] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, total: 0 })
@@ -247,23 +263,31 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
       if (activeUnit) params.jenjang = activeUnit
       if (mapelId) params.mata_pelajaran_id = mapelId
       if (cpId) params.cp_id = cpId
-      const [resOpts, resSub] = await Promise.allSettled([lmsKisiKisiService.getOptions(params), subjectService.getDaftar({ ...params, status: 1, per_page: 100 })])
-      const response = resOpts.status === 'fulfilled' ? resOpts.value : {}
-      const resData = response?.data?.data ?? response?.data ?? response ?? {}
-      let dbSubRaw = resSub.status === 'fulfilled' ? resSub.value?.data || resSub.value || [] : []
-      if (Array.isArray(dbSubRaw?.data)) dbSubRaw = dbSubRaw.data
-      let dbSub = Array.isArray(dbSubRaw) ? dbSubRaw.filter((s) => {
+
+      const resOpts = await lmsKisiKisiService.getOptions(params)
+      const resData = resOpts?.data?.data ?? resOpts?.data ?? resOpts ?? {}
+
+      const rawSubjects = resData.subjects ?? resData.mata_pelajaran ?? resData.mata_pelajarans
+      const subjects = normalizeArray(rawSubjects).filter((s) => {
         if (!s) return false
-        const sU = s.unit_pendidikan_id || s.unit_id || s.education_unit_id
+        const sU = s.unit_pendidikan_id || s.unit_id
         if (userUnitId && sU) return String(sU) === String(userUnitId)
         return true
-      }) : []
-      const subjects = dbSub.length > 0 ? dbSub : normalizeArray(resData.subjects ?? resData.mata_pelajaran ?? resData.mata_pelajarans).filter((s) => { const sU = s.unit_pendidikan_id || s.unit_id; if (userUnitId && sU) return String(sU) === String(userUnitId); return true })
+      })
+
+      const rawKelas = resData.kelas
+      const kelas = normalizeArray(rawKelas).filter((k) => {
+        if (!k) return false
+        const kU = k.unit_pendidikan_id || k.unit_id
+        if (userUnitId && kU) return String(kU) === String(userUnitId)
+        return true
+      })
+
       setOptions((prev) => ({
         ...prev,
-        subjects: (dbSub.length > 0 || resData.subjects !== undefined || resData.mata_pelajaran !== undefined) ? subjects : prev.subjects,
+        subjects: rawSubjects !== undefined ? subjects : prev.subjects,
         kurikulum: resData.kurikulum !== undefined ? normalizeArray(resData.kurikulum) : prev.kurikulum,
-        kelas: resData.kelas !== undefined ? normalizeArray(resData.kelas) : prev.kelas,
+        kelas: rawKelas !== undefined ? kelas : prev.kelas,
         semesters: resData.semesters !== undefined ? normalizeArray(resData.semesters) : prev.semesters,
         tahun_ajaran: resData.tahun_ajaran !== undefined ? normalizeArray(resData.tahun_ajaran) : prev.tahun_ajaran,
         guru: resData.guru !== undefined ? normalizeArray(resData.guru) : prev.guru,
@@ -284,7 +308,13 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
   }
 
   const handleCpChange = async (cpId) => {
-    setFormData((p) => ({ ...p, cp_id: cpId, tp_id: '' }))
+    const selectedCp = options.capaian_pembelajaran.find((c) => String(c.id) === String(cpId))
+    setFormData((p) => ({
+      ...p,
+      cp_id: cpId,
+      tp_id: '',
+      kompetensi_dasar: p.kompetensi_dasar || selectedCp?.deskripsi || selectedCp?.nama_cp || p.kompetensi_dasar,
+    }))
     setOptions((p) => ({ ...p, tujuan_pembelajaran: [] }))
     if (!cpId) return
     await fetchOptions(formData.mata_pelajaran_id, cpId)
@@ -334,8 +364,12 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     const totalBobot = pg + isian + esai
     if (totalBobot > 0 && totalBobot !== 100) { setDistribusiError(`Total bobot harus 100%. Saat ini: ${totalBobot}%`); return }
     try {
-      if (editingItem) { await lmsKisiKisiService.update(editingItem.id, formData); showNotification('Kisi-kisi Ujian berhasil diperbarui.') }
-      else { await lmsKisiKisiService.create(formData); showNotification('Kisi-kisi Ujian berhasil dibuat.') }
+      const payload = {
+        ...formData,
+        guru_id: (!isAdminOrKurikulum && userEmployeeId) ? userEmployeeId : formData.guru_id,
+      }
+      if (editingItem) { await lmsKisiKisiService.update(editingItem.id, payload); showNotification('Kisi-kisi Ujian berhasil diperbarui.') }
+      else { await lmsKisiKisiService.create(payload); showNotification('Kisi-kisi Ujian berhasil dibuat.') }
       setShowModal(false); fetchData(pagination.currentPage); fetchStats()
     } catch (err) { showNotification(err?.response?.data?.message || 'Gagal menyimpan kisi-kisi ujian.', 'error') }
   }
@@ -707,22 +741,35 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                       </select></div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className={labelCls}>Capaian Pembelajaran (CP)</label>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className={labelCls + ' mb-0'}>Capaian Pembelajaran (CP)</label>
+                        <span className="text-[10px] text-slate-400 font-medium">Opsional</span>
+                      </div>
                       <select value={formData.cp_id} disabled={!formData.mata_pelajaran_id} onChange={(e) => handleCpChange(e.target.value)} className={`${inputCls} disabled:opacity-50`}>
                         {!formData.mata_pelajaran_id ? <option value="">Pilih mapel terlebih dahulu</option>
                           : loadingOptions ? <option value="">Memuat CP...</option>
                           : options.capaian_pembelajaran.length > 0
                             ? <>{<option value="">-- Pilih CP (Opsional) --</option>}{options.capaian_pembelajaran.map((cp) => <option key={cp.id} value={cp.id}>{cp.label || (cp.kode_cp ? `[${cp.kode_cp}] ${cp.nama_cp}` : cp.nama_cp)}</option>)}</>
-                            : <option value="">Belum ada CP untuk mapel ini</option>}
-                      </select></div>
-                    <div><label className={labelCls}>Tujuan Pembelajaran (TP)</label>
+                            : <option value="">Belum ada master CP untuk mapel ini</option>}
+                      </select>
+                      {formData.mata_pelajaran_id && options.capaian_pembelajaran.length === 0 && !loadingOptions && (
+                        <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Master CP belum tersedia untuk mapel ini. Anda dapat langsung mengisikan indikator kompetensi pada kolom uraian di bawah.</p>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className={labelCls + ' mb-0'}>Tujuan Pembelajaran (TP)</label>
+                        <span className="text-[10px] text-slate-400 font-medium">Opsional</span>
+                      </div>
                       <select value={formData.tp_id} disabled={!formData.cp_id} onChange={(e) => setFormData({ ...formData, tp_id: e.target.value })} className={`${inputCls} disabled:opacity-50`}>
                         {!formData.cp_id ? <option value="">Pilih CP terlebih dahulu</option>
                           : loadingOptions ? <option value="">Memuat TP...</option>
                           : options.tujuan_pembelajaran.length > 0
                             ? <>{<option value="">-- Pilih TP (Opsional) --</option>}{options.tujuan_pembelajaran.map((tp) => <option key={tp.id} value={tp.id}>{tp.label || (tp.kode_tp ? `[${tp.kode_tp}] ${tp.nama_tp}` : tp.nama_tp)}</option>)}</>
-                            : <option value="">Belum ada TP untuk CP ini</option>}
-                      </select></div>
+                            : <option value="">Belum ada TP untuk CP ini (Opsional)</option>}
+                      </select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div><label className={labelCls}>Kelas</label>
@@ -763,10 +810,17 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                       : (() => { const tot = (formData.distribusi_bobot?.pg || 0) + (formData.distribusi_bobot?.isian || 0) + (formData.distribusi_bobot?.esai || 0); return tot > 0 ? <p className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">✓ Total: {tot}% {tot === 100 ? '— Valid' : ''}</p> : <p className="mt-1 text-[10px] text-slate-400">Kosongkan jika tidak ingin mengatur distribusi bobot</p> })()}
                   </div>
                   <div><label className={labelCls}>Guru Penyusun</label>
-                    <select value={formData.guru_id} onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })} className={inputCls}>
-                      <option value="">-- Pilih Guru --</option>
-                      {options.guru.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap || g.name || g.nama}{String(g.id) === String(userEmployeeId) ? ' (Anda)' : ''}</option>)}
-                    </select></div>
+                    {isAdminOrKurikulum ? (
+                      <select value={formData.guru_id} onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })} className={inputCls}>
+                        <option value="">-- Pilih Guru --</option>
+                        {options.guru.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap || g.name || g.nama}{String(g.id) === String(userEmployeeId) ? ' (Anda)' : ''}</option>)}
+                      </select>
+                    ) : (
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="truncate">{currentTeacherName} (Akun Anda)</span>
+                      </div>
+                    )}</div>
                   <div><label className={labelCls}>Uraian Indikator / Kompetensi Dasar</label>
                     <textarea rows="3" placeholder="Tuliskan materi pokok atau indikator pencapaian..." value={formData.kompetensi_dasar} onChange={(e) => setFormData({ ...formData, kompetensi_dasar: e.target.value })} className={`${inputCls} resize-none`} /></div>
                   <div className="flex items-center gap-3 pt-1">

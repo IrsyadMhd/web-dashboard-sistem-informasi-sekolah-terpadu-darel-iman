@@ -548,9 +548,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
   // Handlers Modals
   const handleOpenAddModal = () => {
     setSelectedModul(null)
+    const defaultUnitId = options.education_units?.[0]?.id || ''
     setFormData({
       ...initialFormState(),
-      unit_pendidikan_id: options.education_units?.[0]?.id || '',
+      unit_pendidikan_id: defaultUnitId,
       tahun_ajaran_id: options.academic_years?.[0]?.id || '',
       semester_id: options.semesters?.[0]?.id || '',
       kurikulum_id: options.kurikulums?.[0]?.id || '',
@@ -1182,8 +1183,8 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                 Filter Data:
               </span>
 
-              {/* Unit Dropdown */}
-              {options.education_units && options.education_units.length > 0 && (
+              {/* Unit Filter: Dropdown jika multi-unit, atau Badge Tetap jika hanya 1 unit */}
+              {options.education_units && options.education_units.length > 1 && (
                 <select
                   value={selectedUnitFilter}
                   onChange={(e) => {
@@ -1199,6 +1200,12 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                     </option>
                   ))}
                 </select>
+              )}
+              {options.education_units && options.education_units.length === 1 && (
+                <div className="flex h-9 items-center gap-1.5 rounded-xl border border-emerald-300/80 bg-white dark:bg-[#111827] px-3 text-xs font-bold text-emerald-800 dark:border-emerald-800/80 dark:text-emerald-300 shadow-xs">
+                  <Building2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>{options.education_units[0].name || options.education_units[0].nama}</span>
+                </div>
               )}
 
               {/* Mapel Dropdown */}
@@ -1729,9 +1736,14 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                             Unit Pendidikan
                           </label>
                           <select
-                            value={formData.unit_pendidikan_id}
+                            value={formData.unit_pendidikan_id || (options.education_units?.length === 1 ? options.education_units[0].id : '')}
                             onChange={(e) => setFormData({ ...formData, unit_pendidikan_id: e.target.value })}
-                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
+                            disabled={options.education_units?.length === 1}
+                            className={`w-full rounded-xl border border-slate-200/90 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:text-slate-100 ${
+                              options.education_units?.length === 1
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed'
+                                : 'bg-slate-50/50 dark:bg-slate-900/50 cursor-pointer'
+                            }`}
                           >
                             <option value="">-- Pilih Unit Pendidikan --</option>
                             {options.education_units?.map((u) => (
@@ -1740,6 +1752,11 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                               </option>
                             ))}
                           </select>
+                          {options.education_units?.length === 1 && (
+                            <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                              Unit otomatis disesuaikan dengan penugasan mengajar Anda.
+                            </p>
+                          )}
                         </div>
 
                         <div>

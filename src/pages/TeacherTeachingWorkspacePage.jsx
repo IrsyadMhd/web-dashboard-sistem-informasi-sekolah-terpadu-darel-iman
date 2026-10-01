@@ -602,6 +602,11 @@ export default function TeacherTeachingWorkspacePage() {
   const [penilaianPage, setPenilaianPage] = useState(1)
   const penilaianPerPage = 10
 
+  // Pending permissions from parents (for attendance approval)
+  const [pendingPermissions, setPendingPermissions] = useState({}) // { [student_id]: permission_object }
+  const [approvingPermissionId, setApprovingPermissionId] = useState(null)
+
+
   // Datatable Interactive Sorting states
   const [attendanceSortField, setAttendanceSortField] = useState('name') // 'name', 'nis', 'status', 'time'
   const [attendanceSortOrder, setAttendanceSortOrder] = useState('asc') // 'asc', 'desc'
@@ -932,6 +937,10 @@ export default function TeacherTeachingWorkspacePage() {
         })
         setAttendanceData(initialAtt)
         setGradesData(initialGrade)
+
+        // Muat daftar izin ortu pending hari ini untuk class yang aktif
+        const activeClassId = overrideClassId !== null ? overrideClassId : selectedClass
+        void fetchPendingPermissions(activeClassId)
       }
     } catch (e) {
       console.error(e)
@@ -1969,7 +1978,64 @@ export default function TeacherTeachingWorkspacePage() {
     setFaceNotes('')
   }
 
+  // ─── Fetch pending parent permissions for the teacher's class ───────────
+  const fetchPendingPermissions = async (classId) => {
+    try {
+      const today = new Date().toLocaleDateString('en-CA')
+      const params = new URLSearchParams({ date: today, per_page: 0 })
+      if (classId && classId !== 'all') params.set('class_id', classId)
+      const res = await api.get(`/teacher/permissions?${params}`)
+      const list = res?.data?.data?.data || res?.data?.data || res?.data || []
+      if (Array.isArray(list)) {
+        const map = {}
+        list.forEach((p) => {
+          if (p.student_id) {
+            const sid = String(p.student_id)
+            if (!map[sid] || ['submitted', 'waiting_verification'].includes(p.status)) {
+              map[sid] = p
+            }
+          }
+        })
+        setPendingPermissions(map)
+      }
+    } catch (err) {
+      console.warn('[TeacherWorkspace] fetchPendingPermissions error:', err)
+    }
+  }
+
+  // ─── 1-klik Approve izin ortu oleh guru pengampu ──────────────────────
+  const handleApprovePermission = async (permissionId, studentId, permType = 'izin') => {
+    try {
+      setApprovingPermissionId(permissionId)
+      await api.post(`/teacher/permissions/${permissionId}/approve`, { review_notes: 'Disetujui oleh Guru Pengampu' })
+
+      setPendingPermissions((prev) => ({
+        ...prev,
+        [String(studentId)]: { ...prev[String(studentId)], status: 'approved' },
+      }))
+
+      const isSick = String(permType || '').toLowerCase().includes('sakit')
+      const newStatus = isSick ? 'Sakit' : 'Izin'
+      setAttendanceData((prev) => ({
+        ...prev,
+        [studentId]: {
+          ...prev[studentId],
+          status: newStatus,
+          method: 'Izin Orang Tua (Disetujui Guru)',
+          notes: `Izin disetujui guru — ${isSick ? 'Sakit' : 'Izin'}.`,
+        },
+      }))
+
+      addToast('success', 'Izin Disetujui', `Pengajuan izin siswa berhasil disetujui dan status presensi diperbarui ke ${newStatus}.`)
+    } catch (err) {
+      addToast('error', 'Gagal Menyetujui', err?.response?.data?.message || 'Terjadi kesalahan saat menyetujui izin.')
+    } finally {
+      setApprovingPermissionId(null)
+    }
+  }
+
   const handleSaveAttendance = async () => {
+
     const activeSchedule = presensiModalSchedule || getCurrentSchedule()
 
     if (!activeSchedule) {
@@ -3970,6 +4036,96 @@ export default function TeacherTeachingWorkspacePage() {
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
   }, [allTeacherSchedules, schedules, selectedClass, materials])
 
+  // Daftar rombel unik yang disaring sesuai Mapel yang dipilih (jika memilih mapel tertentu)
+  const filteredClassesOptions = useMemo(() => {
+    if (!materialMapelFilter || materialMapelFilter === 'all') {
+      return classes
+    }
+    const pool = (allTeacherSchedules && allTeacherSchedules.length > 0) ? allTeacherSchedules : schedules
+    const matchingClassIds = new Set()
+    pool.forEach((s) => {
+      const subjId = s.subject_id || s.subject?.id
+      if (String(subjId) === String(materialMapelFilter)) {
+        const sClassId = s.class_id || s.kelas_id || s.kelas?.id || s.class?.id
+        if (sClassId) matchingClassIds.add(String(sClassId))
+      }
+    })
+    // Fallback dari materials
+    materials.forEach((m) => {
+      const subjId = m.subject?.id || m.mata_pelajaran_id || m.subject_id
+      if (String(subjId) === String(materialMapelFilter)) {
+        const mClassId = m.modul_ajar?.kelas_id || m.modul_ajar?.rombel_id || m.class_id || m.kelas_id
+        if (mClassId) matchingClassIds.add(String(mClassId))
+      }
+    })
+    const matched = classes.filter((c) => matchingClassIds.has(String(c.id)))
+    return matched.length > 0 ? matched : classes
+  }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials])
+
+  // Handler interaksi 2-arah: saat memilih Rombel
+  const handleWorkspaceClassChange = (newClassId) => {
+    setSelectedClass(newClassId)
+    fetchStudentsForClass(newClassId)
+
+    // Jika memilih kelas spesifik: cek mata pelajaran yang ada di kelas ini
+    if (newClassId && newClassId !== 'all') {
+      const pool = (allTeacherSchedules && allTeacherSchedules.length > 0) ? allTeacherSchedules : schedules
+      const classSubjects = []
+      const seen = new Set()
+      pool.forEach((s) => {
+        const sClassId = s.class_id || s.kelas_id || s.kelas?.id || s.class?.id
+        if (String(sClassId) === String(newClassId)) {
+          const id = s.subject_id || s.subject?.id
+          const name = s.subject?.nama_mapel || s.subject?.name
+          if (id && !seen.has(String(id))) {
+            seen.add(String(id))
+            classSubjects.push({ id: String(id), name })
+          }
+        }
+      })
+      // Jika kelas ini hanya punya 1 mata pelajaran yang diajar guru ini, otomatis pilih mapel tersebut!
+      if (classSubjects.length === 1) {
+        setMaterialMapelFilter(classSubjects[0].id)
+      } else if (materialMapelFilter !== 'all' && !classSubjects.some((s) => String(s.id) === String(materialMapelFilter))) {
+        // Jika mapel sebelumnya tidak diajarkan di kelas ini, otomatis pilih mapel pertama atau 'all'
+        setMaterialMapelFilter(classSubjects[0]?.id || 'all')
+      }
+    }
+  }
+
+  // Handler interaksi 2-arah: saat memilih Mapel
+  const handleWorkspaceMapelChange = (newSubjectId) => {
+    setMaterialMapelFilter(newSubjectId)
+
+    // Jika memilih mapel spesifik: periksa rombel yang memiliki mapel ini
+    if (newSubjectId && newSubjectId !== 'all') {
+      const pool = (allTeacherSchedules && allTeacherSchedules.length > 0) ? allTeacherSchedules : schedules
+      const matchingClassIds = new Set()
+      pool.forEach((s) => {
+        const subjId = s.subject_id || s.subject?.id
+        if (String(subjId) === String(newSubjectId)) {
+          const sClassId = s.class_id || s.kelas_id || s.kelas?.id || s.class?.id
+          if (sClassId) matchingClassIds.add(String(sClassId))
+        }
+      })
+      const validClasses = classes.filter((c) => matchingClassIds.has(String(c.id)))
+
+      // Jika mapel ini hanya diajarkan di 1 kelas, otomatis pilih kelas tersebut!
+      if (validClasses.length === 1) {
+        const onlyClassId = String(validClasses[0].id)
+        setSelectedClass(onlyClassId)
+        fetchStudentsForClass(onlyClassId)
+      } else if (selectedClass !== 'all' && !validClasses.some((c) => String(c.id) === String(selectedClass))) {
+        // Jika kelas yang sedang aktif tidak memiliki mapel ini, ganti ke kelas pertama yang valid
+        if (validClasses.length > 0) {
+          const firstClassId = String(validClasses[0].id)
+          setSelectedClass(firstClassId)
+          fetchStudentsForClass(firstClassId)
+        }
+      }
+    }
+  }
+
   // Filter client-side tambahan: hanya secondary check (backend sudah filter utama)
   const filteredMaterials = useMemo(() => materials.filter((material) => {
     // Secondary class check (jika kelas_id ada di response dan berbeda → tolak)
@@ -4407,41 +4563,9 @@ export default function TeacherTeachingWorkspacePage() {
                     <Sparkles className="size-3 text-amber-300 animate-pulse" />
                     Portal Guru Terpadu
                   </span>
-                  {classes.length > 0 ? (
-                    <div className="inline-flex items-center gap-1.5 rounded-xl bg-white/95 dark:bg-slate-800/95 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-700/80 shadow-xs backdrop-blur-md">
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Rombel:</span>
-                      <select
-                        value={selectedClass}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          setSelectedClass(val)
-                          fetchStudentsForClass(val)
-                        }}
-                        className="bg-transparent font-extrabold text-xs text-emerald-900 dark:text-emerald-200 outline-none cursor-pointer pr-1"
-                      >
-                        <option value="all" className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                          Semua Rombel
-                        </option>
-                        {classes.map((c) => (
-                          <option key={c.id} value={c.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                            {c.nama_kelas || c.name}{c.kode_kelas ? ` · ${c.kode_kelas}` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    selectedClassName && (
-                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
-                        Rombel {selectedClassName}
-                      </span>
-                    )
-                  )}
-                  {getCurrentSchedule() && (
-                    <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-100/90 dark:bg-emerald-950/80 px-3 py-1 text-xs font-extrabold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
-                      <BookOpen className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                      Mapel: {getScheduleSubject(getCurrentSchedule() || {})}
-                    </span>
-                  )}
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    Tahun Ajaran 2026/2027
+                  </span>
                 </div>
                 <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                   Workspace Pembelajaran Guru
@@ -4457,6 +4581,89 @@ export default function TeacherTeachingWorkspacePage() {
                 <User className="size-4 text-emerald-600 dark:text-emerald-400" />
                 {teacherProfile?.name || user?.name || 'Ustadz / Ustadzah'}
               </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── BAR KONTROL ROMBEL & MATA PELAJARAN (SUB-HEADER WORKSPACE) ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="relative overflow-hidden rounded-[20px] border-2 border-emerald-500/25 bg-white p-4 sm:p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433]"
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-600/30">
+              <Layers className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
+                  Filter Rombel & Mata Pelajaran
+                </h3>
+                <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                  Aktif
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Pilih rombel dan mata pelajaran untuk memfilter jadwal, presensi, materi, tugas, nilai, &amp; mutaba'ah siswa.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Pemilihan Rombel / Kelas */}
+            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-800/80 px-3 py-2 shadow-xs">
+              <Users className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <label htmlFor="workspace-rombel-select" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                Rombel:
+              </label>
+              <select
+                id="workspace-rombel-select"
+                value={selectedClass}
+                onChange={(e) => handleWorkspaceClassChange(e.target.value)}
+                className="bg-transparent font-extrabold text-xs text-emerald-900 dark:text-emerald-200 outline-none cursor-pointer pr-1"
+              >
+                <option value="all" className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                  Semua Rombel
+                </option>
+                {filteredClassesOptions.map((c) => (
+                  <option key={c.id} value={c.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                    {c.nama_kelas || c.name}{c.kode_kelas ? ` · ${c.kode_kelas}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Pemilihan Mata Pelajaran */}
+            <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-800/80 px-3 py-2 shadow-xs">
+              <BookOpen className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <label htmlFor="workspace-mapel-select" className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                Mapel:
+              </label>
+              <select
+                id="workspace-mapel-select"
+                value={materialMapelFilter}
+                onChange={(e) => handleWorkspaceMapelChange(e.target.value)}
+                className="bg-transparent font-extrabold text-xs text-emerald-900 dark:text-emerald-200 outline-none cursor-pointer pr-1 max-w-[210px] truncate"
+              >
+                <option value="all" className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                  Semua Mata Pelajaran
+                </option>
+                {uniqueMapelOptions.map((subj) => (
+                  <option key={subj.id} value={subj.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                    {subj.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Pill Jumlah Siswa */}
+            <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+              <Sparkles className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>{students.length} Siswa Terdaftar</span>
             </div>
           </div>
         </div>
@@ -5322,6 +5529,12 @@ export default function TeacherTeachingWorkspacePage() {
                           const rowNumber = (attendancePage - 1) * attendancePerPage + idx + 1
                           const status = record.status || 'Belum Dicatat'
 
+                          // Izin Ortu
+                          const perm = pendingPermissions[String(student.id)]
+                          const isPending = perm && ['submitted', 'waiting_verification'].includes(perm.status)
+                          const isApproved = perm && perm.status === 'approved'
+                          const isApprovingThis = approvingPermissionId !== null && String(approvingPermissionId) === String(perm?.id)
+
                           // Color configuration per status
                           const statusColorMap = {
                             'Belum Dicatat': 'bg-slate-100 border-slate-300 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300',
@@ -5354,6 +5567,17 @@ export default function TeacherTeachingWorkspacePage() {
                                     <p className="text-[11px] text-slate-400">
                                       NIS: {student.nis || '-'} • NISN: {student.nisn || '-'}
                                     </p>
+                                    {/* Badge izin ortu */}
+                                    {perm && (isPending || isApproved) && (
+                                      <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                                        isPending
+                                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                                          : 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300'
+                                      }`}>
+                                        {isPending ? '⏳' : '✅'}
+                                        {isPending ? 'Izin Pending' : 'Izin Disetujui'} · {String(perm.type || '').toUpperCase()}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </td>
@@ -5382,7 +5606,23 @@ export default function TeacherTeachingWorkspacePage() {
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-center">
-                                <div className="flex items-center justify-center gap-1.5">
+                                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                  {/* Tombol Setujui Izin Ortu — hanya tampil jika ada izin pending */}
+                                  {isPending && (
+                                    <button
+                                      type="button"
+                                      disabled={isApprovingThis}
+                                      onClick={() => handleApprovePermission(perm.id, student.id, perm.type)}
+                                      className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-amber-300 bg-amber-50 px-2.5 text-[10px] font-bold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900/60 dark:text-amber-300 cursor-pointer"
+                                      title={`Setujui izin ${perm.type} orang tua untuk ${student.nama_lengkap || student.full_name}`}
+                                    >
+                                      {isApprovingThis
+                                        ? <svg className="h-3 w-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                        : <Check className="h-3 w-3" />
+                                      }
+                                      Setujui
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => toggleStudentChecklist(student, status !== 'Hadir')}
@@ -7033,7 +7273,11 @@ export default function TeacherTeachingWorkspacePage() {
 
           {/* TAB 7: MUTABAAH */}
           {activeTab === 'mutabaah' && (
-            <TeacherMutabaahWeekly selectedClassId={selectedClass} />
+            <TeacherMutabaahWeekly
+              selectedClassId={selectedClass}
+              user={user}
+              teacherProfile={teacherProfile}
+            />
           )}
 
           {/* TAB 8: CATATAN SISWA */}
@@ -8921,11 +9165,25 @@ export default function TeacherTeachingWorkspacePage() {
                         .map((st, idx) => {
                           const currentStatus = attendanceData[st.id]?.status || 'Belum Dicatat'
                           const currentRecord = attendanceData[st.id] || {}
+                          // Izin ortu
+                          const perm = pendingPermissions[String(st.id)]
+                          const isPending = perm && ['submitted', 'waiting_verification'].includes(perm.status)
+                          const isApprovingThis = approvingPermissionId !== null && String(approvingPermissionId) === String(perm?.id)
                           return (
                             <tr key={st.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                               <td className="p-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
                               <td className="p-3 font-bold text-slate-900 dark:text-white">
                                 {st.nama_lengkap}
+                                {isPending && (
+                                  <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                                    ⏳ Izin Pending · {String(perm.type || '').toUpperCase()}
+                                  </span>
+                                )}
+                                {perm?.status === 'approved' && (
+                                  <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] font-bold text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
+                                    ✅ Izin Disetujui
+                                  </span>
+                                )}
                               </td>
                               <td className="p-3 text-slate-500 font-mono text-[11px]">
                                 {st.nis || st.nisn || '-'}
@@ -8956,6 +9214,19 @@ export default function TeacherTeachingWorkspacePage() {
                                 </div>
                               </td>
                               <td className="p-3 text-[11px] text-slate-500">
+                                {isPending && (
+                                  <button
+                                    type="button"
+                                    disabled={isApprovingThis}
+                                    onClick={() => handleApprovePermission(perm.id, st.id, perm.type)}
+                                    className="mb-1 inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-700 dark:bg-amber-900/60 dark:text-amber-300"
+                                  >
+                                    {isApprovingThis
+                                      ? <svg className="h-3 w-3 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                      : <>✓</>}
+                                    Setujui
+                                  </button>
+                                )}
                                 {currentRecord.check_in_time ? (
                                   <span>{currentRecord.check_in_time} • {currentRecord.method || 'Roll Call'}</span>
                                 ) : (

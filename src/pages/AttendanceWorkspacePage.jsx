@@ -509,7 +509,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
     return curMin >= startMin && curMin <= endMin
   }, [selected, date])
 
-  const isLockedForTeacher = (!isScheduleTimeActive && !isOverrideUser) || step04Blocked || sessionFinal
+  const isLockedForTeacher = sessionFinal
 
   const updateStudent = (id, values) => setStudents((list) => list.map((student) => student.id === id ? { ...student, ...values } : student))
   const markAllPresent = () => setStudents((list) => list.map((student) => ({
@@ -527,7 +527,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
 
   const save = async (finalize = false, { silent = false } = {}) => {
     if (isLockedForTeacher) {
-      if (!silent) toastError('Absensi Terkunci!', step04Blocked ? 'Aktifkan sesi mengajar Step 04 terlebih dahulu.' : 'Presensi hanya dapat diisi saat jam pelajaran berlangsung.')
+      if (!silent) toastError('Absensi Telah Selesai!', 'Sesi presensi ini telah berstatus final dan tidak dapat diubah lagi.')
       return null
     }
     if (!scheduleId || !students.length) return null
@@ -652,25 +652,16 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
           { label: 'Finalisasi' },
         ]}
       />
-      {/* Time Lock Security Alert Banner */}
-      {selected && isLockedForTeacher && (
+      {/* Sesi Final Alert Banner */}
+      {selected && sessionFinal && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50/90 p-4 text-sm font-semibold text-rose-800 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 flex items-center gap-3">
           <Lock size={22} className="text-rose-600 dark:text-rose-400 shrink-0" />
           <div>
-            <b>{step04Blocked ? 'Absensi Terkunci: Sesi Mengajar Belum Aktif' : 'Absensi Terkunci: Hanya Dapat Diisi Saat Jam Pelajaran Berlangsung'}</b>
+            <b>Absensi Telah Selesai (Final)</b>
             <p className="text-xs font-normal mt-0.5 text-rose-700 dark:text-rose-400">
-              {step04Blocked
-                ? `Status sesi Step 04 saat ini ${teachingSessionStatus || 'belum tersedia'}. Mulai sesi mengajar terlebih dahulu; server tetap menjadi pengambil keputusan.`
-                : <>Jadwal mata pelajaran <b>{selected.subject?.name}</b> ({selected.time_start?.slice(0, 5)}–{selected.time_end?.slice(0, 5)}) tidak sedang dalam jam mengajar aktif saat ini. Penginputan presensi di luar jam pelajaran dinonaktifkan untuk mencegah manipulasi data absensi.</>}
+              Sesi presensi untuk jadwal ini telah difinalisasi dan berstatus read-only.
             </p>
           </div>
-        </div>
-      )}
-
-      {selected && isOverrideUser && !isScheduleTimeActive && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300 flex items-center gap-2">
-          <ShieldCheck size={18} className="text-amber-600 shrink-0" />
-          <span>Mode Override Admin/TU: Anda memiliki izin akses khusus untuk perbaikan data resmi di luar jam pelajaran.</span>
         </div>
       )}
 
@@ -711,8 +702,8 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
                 Jam Pelajaran Aktif
               </Badge>
             ) : (
-              <Badge color="error" size="sm">
-                Di Luar Jam Pelajaran
+              <Badge color="primary" size="sm">
+                Akses Terbuka
               </Badge>
             )}
             <SquircleActionButton
