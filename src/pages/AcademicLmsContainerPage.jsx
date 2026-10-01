@@ -321,19 +321,19 @@ export default function AcademicLmsContainerPage({ section }) {
   const availableTabs = useMemo(() => config.tabs.filter((tab) => !tab.requiredPermission || userPermissions.has(tab.requiredPermission) || userPermissions.has('*')), [config.tabs, userPermissions])
   const location = useLocation()
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
-  if (isRestrictedRole) {
-    return <Navigate to="/dashboard" replace />
-  }
   const activeTab = searchParams.get('tab')
-  const defaultTab = availableTabs[0].key
+  const defaultTab = availableTabs[0]?.key || ''
   const selected = useMemo(() => {
     return availableTabs.find((t) =>
       t.key === activeTab ||
       (activeTab === 'modul-semester' && t.key === 'semester') ||
       (activeTab === 'semester' && t.key === 'modul-semester') ||
       (activeTab === 'ujian-cbt' && t.key === 'cbt') ||
-      (activeTab === 'cbt' && t.key === 'ujian-cbt')
+      (activeTab === 'cbt' && t.key === 'ujian-cbt') ||
+      (activeTab === 'jadwal-pelajaran' && t.key === 'jadwal') ||
+      (activeTab === 'jadwal' && t.key === 'jadwal-pelajaran')
     )
   }, [activeTab, availableTabs])
 
@@ -341,7 +341,12 @@ export default function AcademicLmsContainerPage({ section }) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [activeTab])
 
-  const navigate = useNavigate()
+  const breadcrumbItems = useMemo(() => [
+    { label: 'Akademik', to: location.pathname },
+    { label: config.title, to: `${location.pathname}?tab=${defaultTab}` },
+    { label: selected?.label || '' }
+  ], [location.pathname, config.title, defaultTab, selected?.label])
+
   const handleNavigateToBankSoal = (kisiKisiItem) => {
     // Simpan kisi_kisi_id ke sessionStorage agar tab bank-soal bisa pre-filter
     if (kisiKisiItem?.id) {
@@ -355,6 +360,10 @@ export default function AcademicLmsContainerPage({ section }) {
       params.set('kisi_id', kisiKisiItem.id)
     }
     navigate(`${location.pathname}?${params.toString()}`)
+  }
+
+  if (isRestrictedRole) {
+    return <Navigate to="/dashboard" replace />
   }
 
   if (!selected) {
@@ -371,12 +380,6 @@ export default function AcademicLmsContainerPage({ section }) {
     description: t.description,
     squircleStyle: t.squircleStyle,
   }))
-
-  const breadcrumbItems = useMemo(() => [
-    { label: 'Akademik', to: location.pathname },
-    { label: config.title, to: `${location.pathname}?tab=${defaultTab}` },
-    { label: selected.label }
-  ], [location.pathname, config.title, defaultTab, selected.label])
 
   return (
     <AcademicModuleContainer

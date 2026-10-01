@@ -1,5 +1,16 @@
-import { useRef, useState } from 'react'
-import { Download, FileSpreadsheet, Upload, X } from 'lucide-react'
+import React, { useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Download,
+  FileSpreadsheet,
+  Upload,
+  X,
+  Sparkles,
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  FileCheck,
+} from 'lucide-react'
 
 const parseLine = (line, delimiter) => {
   const values = []
@@ -7,10 +18,17 @@ const parseLine = (line, delimiter) => {
   let quoted = false
   for (let index = 0; index < line.length; index += 1) {
     const char = line[index]
-    if (char === '"' && line[index + 1] === '"' && quoted) { value += '"'; index += 1 }
-    else if (char === '"') quoted = !quoted
-    else if (char === delimiter && !quoted) { values.push(value.trim()); value = '' }
-    else value += char
+    if (char === '"' && line[index + 1] === '"' && quoted) {
+      value += '"'
+      index += 1
+    } else if (char === '"') {
+      quoted = !quoted
+    } else if (char === delimiter && !quoted) {
+      values.push(value.trim())
+      value = ''
+    } else {
+      value += char
+    }
   }
   values.push(value.trim())
   return values
@@ -18,23 +36,57 @@ const parseLine = (line, delimiter) => {
 
 const parseCsv = (text) => {
   const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim())
-  if (lines.length < 2) throw new Error('File harus memiliki header dan minimal satu baris data.')
+  if (lines.length < 2) throw new Error('Berkas harus memiliki header dan minimal satu baris data.')
   const delimiter = lines[0].includes(';') && !lines[0].includes(',') ? ';' : ','
   const headers = parseLine(lines[0], delimiter).map((item) => item.trim().toLowerCase())
-  return lines.slice(1).map((line) => Object.fromEntries(headers.map((header, index) => [header, parseLine(line, delimiter)[index] ?? ''])))
+  return lines.slice(1).map((line) =>
+    Object.fromEntries(headers.map((header, index) => [header, parseLine(line, delimiter)[index] ?? '']))
+  )
 }
 
-export default function CsvImportModal({ open, onClose, title, columns, onImport }) {
+export default function CsvImportModal({
+  open,
+  isOpen,
+  onClose,
+  title = 'Data',
+  columns = [],
+  templateColumns = [],
+  onImport,
+}) {
+  const isModalOpen = open ?? isOpen ?? false
+  const resolvedColumns = columns.length
+    ? columns
+    : templateColumns.map((c) => (typeof c === 'string' ? { key: c, label: c, example: '' } : c))
+
   const inputRef = useRef(null)
   const [file, setFile] = useState(null)
+  const [previewRows, setPreviewRows] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  if (!open) return null
+  if (!isModalOpen) return null
+
+  const handleFileChange = async (selectedFile) => {
+    if (!selectedFile) {
+      setFile(null)
+      setPreviewRows([])
+      return
+    }
+    setFile(selectedFile)
+    setError('')
+    try {
+      const text = await selectedFile.text()
+      const rows = parseCsv(text)
+      setPreviewRows(rows.slice(0, 5))
+    } catch (err) {
+      setPreviewRows([])
+      setError(err.message || 'Format file CSV tidak valid.')
+    }
+  }
 
   const downloadTemplate = () => {
-    const header = columns.map((item) => item.key).join(',')
-    const example = columns.map((item) => `"${item.example ?? ''}"`).join(',')
+    const header = resolvedColumns.map((item) => item.key).join(',')
+    const example = resolvedColumns.map((item) => `"${item.example ?? ''}"`).join(',')
     const blob = new Blob([`\uFEFF${header}\n${example}\n`], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -46,98 +98,243 @@ export default function CsvImportModal({ open, onClose, title, columns, onImport
 
   const submit = async (event) => {
     event.preventDefault()
-    if (!file) return setError('Pilih file CSV terlebih dahulu.')
+    if (!file) return setError('Pilih berkas CSV terlebih dahulu.')
     try {
       setBusy(true)
       setError('')
       const rows = parseCsv(await file.text())
-      const missing = columns.filter((item) => item.required && !Object.hasOwn(rows[0], item.key))
-      if (missing.length) throw new Error(`Kolom wajib tidak ditemukan: ${missing.map((item) => item.key).join(', ')}`)
+      const missing = resolvedColumns.filter((item) => item.required && !Object.hasOwn(rows[0], item.key))
+      if (missing.length) {
+        throw new Error(`Kolom wajib tidak ditemukan: ${missing.map((item) => item.key).join(', ')}`)
+      }
       await onImport(rows)
       setFile(null)
+      setPreviewRows([])
       onClose()
     } catch (importError) {
-      setError(importError?.response?.data?.message || importError.message || 'Import gagal diproses.')
+      setError(importError?.response?.data?.message || importError.message || 'Impor gagal diproses.')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div
-      id="csv-import-modal"
-      className="overlay modal overlay-open:opacity-100 overlay-open:duration-300 fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
-      role="dialog"
-      aria-modal="true"
-      tabIndex={-1}
-    >
-      <div className="modal-dialog font-sans w-full max-w-xl">
-        <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
-          <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-            <div>
-              <h3 className="modal-title text-base font-bold text-slate-900 dark:text-white">Import {title}</h3>
-              <p className="mt-0.5 text-xs text-slate-500">CSV dapat diedit di Excel. Baris valid diproses satu per satu agar kegagalan mudah dilacak.</p>
+    <AnimatePresence>
+      <div
+        role="dialog"
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="csv-import-modal-title"
+        className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget && !busy) onClose()
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          className="font-sans w-full max-w-2xl my-auto"
+        >
+          <div className="relative flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+            {/* Top Accent Gradient Bar */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30 shrink-0">
+                  <Upload className="h-5 w-5 text-white" strokeWidth={2.25} />
+                </div>
+                <div>
+                  <h3
+                    id="csv-import-modal-title"
+                    className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
+                  >
+                    <span>Import {title}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                      <Sparkles className="size-3" />
+                      Batch Import
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Unggah data berformat CSV atau Excel sesuai susunan kolom standar sistem.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onClose}
+                aria-label="Tutup modal"
+                className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                <X className="size-4 text-white" strokeWidth={2.25} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-text btn-circle btn-sm absolute end-3 top-3 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              aria-label="Tutup"
-              data-overlay="#csv-import-modal"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
 
-          <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
-            <div className="modal-body min-h-0 flex-1 space-y-4 overflow-y-auto p-5 text-sm text-slate-700 dark:text-slate-200">
-              <button
-                type="button"
-                onClick={downloadTemplate}
-                className="btn btn-primary btn-sm inline-flex items-center gap-2"
-              >
-                <Download size={16} /> Unduh Template CSV
-              </button>
+            {/* Form */}
+            <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-sm text-slate-700 dark:text-slate-200">
+                {/* 1. Download Template Card */}
+                <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                      <FileSpreadsheet className="size-4 text-emerald-600" />
+                      Template Standar Impor
+                    </p>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                      Gunakan template resmi agar seluruh header dan kolom terbaca sempurna.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={downloadTemplate}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-4 py-2 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer shadow-sm shadow-emerald-500/20 shrink-0"
+                  >
+                    <div className="flex size-4.5 items-center justify-center rounded-lg bg-white/20 text-white">
+                      <Download className="size-3 text-white" strokeWidth={2.2} />
+                    </div>
+                    <span>Unduh Template CSV</span>
+                  </button>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                className="flex min-h-36 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-slate-600 transition hover:border-emerald-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-              >
-                <FileSpreadsheet size={32} className="text-emerald-600" />
-                <strong className="mt-2 text-sm font-bold text-slate-800 dark:text-slate-200">{file?.name || 'Pilih file CSV'}</strong>
-                <small className="mt-1 text-xs text-slate-500">Maksimal mengikuti batas unggah browser</small>
-              </button>
+                {/* 2. Dropzone Putus-putus Emerald */}
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  className="flex min-h-36 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-300/80 bg-emerald-50/40 p-6 text-slate-600 transition hover:border-emerald-500 hover:bg-emerald-50 dark:border-emerald-700/60 dark:bg-emerald-950/20 dark:text-slate-200 cursor-pointer"
+                >
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+                    <FileSpreadsheet size={26} strokeWidth={2} />
+                  </div>
+                  <strong className="mt-3 text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
+                    {file ? file.name : 'Pilih atau Tarik Berkas CSV ke Sini'}
+                  </strong>
+                  <span className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    {file
+                      ? `${(file.size / 1024).toFixed(1)} KB • Siap untuk diproses`
+                      : 'Mendukung format .csv dengan pemisah koma atau titik koma'}
+                  </span>
+                </button>
 
-              <input ref={inputRef} hidden type="file" accept=".csv,text/csv" onChange={(event) => { setFile(event.target.files?.[0] || null); setError('') }} />
+                <input
+                  ref={inputRef}
+                  hidden
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) => handleFileChange(event.target.files?.[0] || null)}
+                />
 
-              <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300 border border-slate-100 dark:border-slate-700">
-                <strong>Kolom:</strong> {columns.map((item) => `${item.key}${item.required ? '*' : ''}`).join(', ')}
+                {/* 3. Daftar Kolom */}
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/50 p-3.5 text-xs text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                    <FileCheck className="size-3.5 text-emerald-600" />
+                    Susunan Kolom yang Dikenali ({resolvedColumns.length} Kolom):
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {resolvedColumns.map((item) => (
+                      <span
+                        key={item.key}
+                        className="inline-flex items-center gap-1 rounded-lg bg-white dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                      >
+                        <code>{item.key}</code>
+                        {item.required && <span className="text-rose-500 font-bold">*</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Preview Datatable Mini (Jika file dipilih) */}
+                {previewRows.length > 0 && (
+                  <div className="rounded-2xl border border-emerald-200/80 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
+                    <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-2 border-b border-emerald-200/60 flex items-center justify-between">
+                      <span className="text-xs font-black text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                        <CheckCircle2 className="size-3.5 text-emerald-600" />
+                        Pratinjau 5 Baris Pertama
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500">
+                        {previewRows.length} baris terbaca
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto max-h-36">
+                      <table className="w-full text-[11px] text-left">
+                        <thead className="bg-emerald-50/50 dark:bg-emerald-950/40 text-slate-700 dark:text-slate-300 border-b border-emerald-100 dark:border-emerald-900/40">
+                          <tr>
+                            {Object.keys(previewRows[0] || {}).map((k) => (
+                              <th key={k} className="px-3 py-1.5 font-bold whitespace-nowrap">
+                                {k}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {previewRows.map((row, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                              {Object.values(row).map((v, i) => (
+                                <td key={i} className="px-3 py-1 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                                  {String(v)}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Banner */}
+                {error && (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700 flex items-start gap-2">
+                    <AlertTriangle className="size-4 text-rose-600 shrink-0 mt-0.5" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {/* Guidance Banner */}
+                <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex items-start gap-2.5">
+                  <ShieldCheck className="size-4.5 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                    Sistem akan memvalidasi integritas data master secara otomatis. Baris yang valid akan segera disimpan ke sistem.
+                  </p>
+                </div>
               </div>
 
-              {error && <p className="rounded-xl bg-rose-50 p-3 text-xs font-semibold text-rose-700 border border-rose-200">{error}</p>}
-            </div>
+              {/* Footer */}
+              <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/80 px-6 py-4 dark:border-slate-800 dark:bg-[#131B27] shrink-0">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onClose}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-sm shadow-rose-500/20 disabled:opacity-50"
+                >
+                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <X className="size-3.5 text-white" strokeWidth={2.2} />
+                  </div>
+                  <span>Batal</span>
+                </button>
 
-            <div className="modal-footer flex items-center justify-end gap-3 border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-soft btn-secondary"
-                data-overlay="#csv-import-modal"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={busy || !file}
-                className="btn btn-primary inline-flex items-center gap-2 disabled:opacity-50"
-              >
-                <Upload size={16} /> {busy ? 'Mengimpor...' : 'Mulai Import'}
-              </button>
-            </div>
-          </form>
-        </div>
+                <button
+                  type="submit"
+                  disabled={busy || !file}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white px-5 py-2.5 text-xs font-extrabold border border-sky-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-md shadow-sky-600/20"
+                >
+                  {busy ? (
+                    <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                      <Upload className="size-3.5 text-white" strokeWidth={2.25} />
+                    </div>
+                  )}
+                  <span>{busy ? 'Memproses Impor...' : 'Mulai Impor Data'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   )
 }

@@ -27,6 +27,10 @@ import {
   Check,
   MessageSquare,
   Eye,
+  ArrowUpDown,
+  ListChecks,
+  RotateCcw,
+  ShieldCheck,
   UserCheck,
   Layers,
   Download,
@@ -34,7 +38,6 @@ import {
   Info,
   Trophy,
 } from 'lucide-react'
-import { Download1, Upload1, ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import {
   AreaChart,
   Area,
@@ -52,9 +55,14 @@ import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppPageHeader from '../components/app/AppPageHeader'
 import ActionDropdown from '../components/app/ActionDropdown'
-import { MasterStatCard, MasterStatsGrid, MasterEmptyState, MasterErrorState } from '../components/master-data'
+import AppSkeleton from '../components/app/AppSkeleton'
+import AppEmptyState from '../components/app/AppEmptyState'
+import AppErrorState from '../components/app/AppErrorState'
+import TahfizhSubNav from '../components/tahfizh/TahfizhSubNav'
+import { MasterEmptyState, SquircleActionButton } from '../components/master-data'
 
 import { educationUnitService } from '../services/educationUnitService'
+import { studentService } from '../services/studentService'
 import { tahfizhService } from '../services/tahfizhService'
 import { mutabaahService } from '../services/mutabaahService'
 import { useAuthStore } from '../stores/authStore'
@@ -82,374 +90,88 @@ import { TableRoot, TableHeader, TableBody, TableHead, TableRow, TableCell } fro
 import { Pagination } from '@/components/tailgrids/core/pagination'
 import { Alert, AlertTitle, AlertDescription } from '@/components/tailgrids/core/alert'
 
-// Default mock non-pesantren monitoring data (12 Realistic Students for Top 10 Ranking)
-const DUMMY_NON_PESANTREN_STUDENTS = [
-  {
-    id: 1,
-    student_name: 'Muhammad Rayhan Pratama',
-    nis: '20261003',
-    unit_name: 'SMAIT Insan Cendekia',
-    unit_code: 'SMAIT',
-    class_name: 'Kelas 11 IPA 1',
-    tahfizh: {
-      current_surah: 'Yasin',
-      current_ayat: '1-30',
-      juz_completed: 7.5,
-      total_baris: 980,
-      target_juz: 8,
-      kelancaran: 'Sangat Lancar',
-      last_setoran: '17 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 90,
-      sholat_dhuha: 75,
-      tahajud: 40,
-      tilawah_harian: '1 Juz/Hari',
-      dzikir_pagi_petang: 85,
-      puasa_sunnah: 50,
-      infaq: 80,
-    },
-    verification_status: 'verified_parent',
-    parent_verified: true,
-    teacher_notes: 'MasyaAllah setoran Yasin 1-30 makhraj sangat baik.',
-  },
-  {
-    id: 2,
-    student_name: 'Siti Hanifah Azzahra',
-    nis: '20261002',
-    unit_name: 'SMPIT Al-Ihsan',
-    unit_code: 'SMPIT',
-    class_name: 'Kelas 8 Aisyah',
-    tahfizh: {
-      current_surah: 'An-Naba',
-      current_ayat: '1-40',
-      juz_completed: 5.5,
-      total_baris: 720,
-      target_juz: 6,
-      kelancaran: 'Lancar',
-      last_setoran: '16 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 95,
-      sholat_dhuha: 85,
-      tahajud: 50,
-      tilawah_harian: '1/2 Juz/Hari',
-      dzikir_pagi_petang: 90,
-      puasa_sunnah: 70,
-      infaq: 90,
-    },
-    verification_status: 'verified_teacher',
-    parent_verified: true,
-    teacher_notes: 'Pencapaian Juz 30 & 29 tuntas dengan baik. Dilanjutkan murojaah konsisten.',
-  },
-  {
-    id: 3,
-    student_name: 'Khadijah Nur Jannah',
-    nis: '20261006',
-    unit_name: 'SMPIT Al-Ihsan',
-    unit_code: 'SMPIT',
-    class_name: 'Kelas 7 Khadijah',
-    tahfizh: {
-      current_surah: 'Al-Waqi’ah',
-      current_ayat: '1-40',
-      juz_completed: 4.2,
-      total_baris: 610,
-      target_juz: 5,
-      kelancaran: 'Sangat Lancar',
-      last_setoran: '17 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 100,
-      sholat_dhuha: 95,
-      tahajud: 70,
-      tilawah_harian: '1 Juz/Hari',
-      dzikir_pagi_petang: 95,
-      puasa_sunnah: 85,
-      infaq: 100,
-    },
-    verification_status: 'verified_teacher',
-    parent_verified: true,
-    teacher_notes: 'Hafalan Al-Waqi’ah sangat lancar dan fasih tajwidnya.',
-  },
-  {
-    id: 4,
-    student_name: 'Fatimah Azzahra',
-    nis: '20261007',
-    unit_name: 'SMAIT Insan Cendekia',
-    unit_code: 'SMAIT',
-    class_name: 'Kelas 10 MIPA 2',
-    tahfizh: {
-      current_surah: 'Ar-Rahman',
-      current_ayat: '1-78',
-      juz_completed: 4.0,
-      total_baris: 550,
-      target_juz: 5,
-      kelancaran: 'Sangat Lancar',
-      last_setoran: '17 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 95,
-      sholat_dhuha: 90,
-      tahajud: 65,
-      tilawah_harian: '1 Juz/Hari',
-      dzikir_pagi_petang: 90,
-      puasa_sunnah: 80,
-      infaq: 90,
-    },
-    verification_status: 'verified_teacher',
-    parent_verified: true,
-    teacher_notes: 'Ar-Rahman tuntas dengan kelancaran sempurna.',
-  },
-  {
-    id: 5,
-    student_name: 'Ahmad Faiz Al-Fatih',
-    nis: '20261001',
-    unit_name: 'SDIT 1 Dar el-Iman',
-    unit_code: 'SDIT',
-    class_name: 'Kelas 5 Umar bin Khattab',
-    tahfizh: {
-      current_surah: 'Al-Mulk',
-      current_ayat: '1-15',
-      juz_completed: 3.0,
-      total_baris: 450,
-      target_juz: 4,
-      kelancaran: 'Sangat Lancar',
-      last_setoran: '17 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 100,
-      sholat_dhuha: 90,
-      tahajud: 60,
-      tilawah_harian: '1 Juz/Hari',
-      dzikir_pagi_petang: 95,
-      puasa_sunnah: 80,
-      infaq: 100,
-    },
-    verification_status: 'verified_teacher',
-    parent_verified: true,
-    teacher_notes: 'Setoran hafalan Al-Mulk ayat 1-15 makhraj dan tajwid sangat fasih.',
-  },
-  {
-    id: 6,
-    student_name: 'Umar Abdul Aziz',
-    nis: '20261008',
-    unit_name: 'SMAIT Insan Cendekia',
-    unit_code: 'SMAIT',
-    class_name: 'Kelas 12 IPS 1',
-    tahfizh: {
-      current_surah: 'As-Sajdah',
-      current_ayat: '1-30',
-      juz_completed: 2.8,
-      total_baris: 410,
-      target_juz: 4,
-      kelancaran: 'Lancar',
-      last_setoran: '16 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 90,
-      sholat_dhuha: 80,
-      tahajud: 50,
-      tilawah_harian: '5 Lembar/Hari',
-      dzikir_pagi_petang: 85,
-      puasa_sunnah: 60,
-      infaq: 85,
-    },
-    verification_status: 'verified_teacher',
-    parent_verified: true,
-    teacher_notes: 'Hafalan As-Sajdah lancar dan fasih.',
-  },
-  {
-    id: 7,
-    student_name: 'Bilal Ramadan',
-    nis: '20261005',
-    unit_name: 'SDIT 1 Dar el-Iman',
-    unit_code: 'SDIT',
-    class_name: 'Kelas 4 Ali bin Abi Thalib',
-    tahfizh: {
-      current_surah: 'Al-A’la',
-      current_ayat: '1-19',
-      juz_completed: 2.0,
-      total_baris: 320,
-      target_juz: 3,
-      kelancaran: 'Perlu Bimbingan',
-      last_setoran: '14 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 80,
-      sholat_dhuha: 60,
-      tahajud: 30,
-      tilawah_harian: '5 Lembar/Hari',
-      dzikir_pagi_petang: 70,
-      puasa_sunnah: 40,
-      infaq: 60,
-    },
-    verification_status: 'pending',
-    parent_verified: true,
-    teacher_notes: 'Perlu pengulangan murajaah pada Surah At-Tariq.',
-  },
-  {
-    id: 8,
-    student_name: 'Zaid bin Haritsah',
-    nis: '20261009',
-    unit_name: 'SMPIT Al-Ihsan',
-    unit_code: 'SMPIT',
-    class_name: 'Kelas 9 Hamzah',
-    tahfizh: {
-      current_surah: 'At-Tariq',
-      current_ayat: '1-17',
-      juz_completed: 1.8,
-      total_baris: 290,
-      target_juz: 3,
-      kelancaran: 'Lancar',
-      last_setoran: '15 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 85,
-      sholat_dhuha: 70,
-      tahajud: 40,
-      tilawah_harian: '3 Lembar/Hari',
-      dzikir_pagi_petang: 75,
-      puasa_sunnah: 50,
-      infaq: 70,
-    },
-    verification_status: 'verified_teacher',
-    parent_verified: true,
-    teacher_notes: 'Hafalan tajwid bagus.',
-  },
-  {
-    id: 9,
-    student_name: 'Maryam Al-Batul',
-    nis: '20261010',
-    unit_name: 'SDIT 1 Dar el-Iman',
-    unit_code: 'SDIT',
-    class_name: 'Kelas 3 Khadijah',
-    tahfizh: {
-      current_surah: 'An-Nazi’at',
-      current_ayat: '1-46',
-      juz_completed: 1.4,
-      total_baris: 210,
-      target_juz: 2,
-      kelancaran: 'Sangat Lancar',
-      last_setoran: '16 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 95,
-      sholat_dhuha: 90,
-      tahajud: 30,
-      tilawah_harian: '5 Lembar/Hari',
-      dzikir_pagi_petang: 85,
-      puasa_sunnah: 60,
-      infaq: 90,
-    },
-    verification_status: 'verified_teacher',
-    parent_verified: true,
-    teacher_notes: 'MasyaAllah An-Naziat tuntas lancar.',
-  },
-  {
-    id: 10,
-    student_name: 'Aisyah Humaira',
-    nis: '20261004',
-    unit_name: 'TKIT Bina Anak Sholeh',
-    unit_code: 'TKIT',
-    class_name: 'TK-B Abu Bakar',
-    tahfizh: {
-      current_surah: 'An-Naas - Al-Ikhlas',
-      current_ayat: 'Lengkap',
-      juz_completed: 0.5,
-      total_baris: 90,
-      target_juz: 1,
-      kelancaran: 'Lancar',
-      last_setoran: '15 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 85,
-      sholat_dhuha: 100,
-      tahajud: 0,
-      tilawah_harian: 'Surah Pendek',
-      dzikir_pagi_petang: 80,
-      puasa_sunnah: 0,
-      infaq: 100,
-    },
-    verification_status: 'pending',
-    parent_verified: false,
-    teacher_notes: 'Semangat hafalan An-Nas dan Al-Falaq sangat bagus.',
-  },
-  {
-    id: 11,
-    student_name: 'Hamzah Asadullah',
-    nis: '20261011',
-    unit_name: 'TKIT Bina Anak Sholeh',
-    unit_code: 'TKIT',
-    class_name: 'TK-A Umar',
-    tahfizh: {
-      current_surah: 'Al-Falaq - Al-Ikhlas',
-      current_ayat: 'Lengkap',
-      juz_completed: 0.5,
-      total_baris: 85,
-      target_juz: 1,
-      kelancaran: 'Lancar',
-      last_setoran: '14 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 80,
-      sholat_dhuha: 90,
-      tahajud: 0,
-      tilawah_harian: 'Surah Pendek',
-      dzikir_pagi_petang: 75,
-      puasa_sunnah: 0,
-      infaq: 80,
-    },
-    verification_status: 'verified_parent',
-    parent_verified: true,
-    teacher_notes: 'Surah Al-Falaq sudah hafal lancar.',
-  },
-  {
-    id: 12,
-    student_name: 'Usman bin Affan',
-    nis: '20261012',
-    unit_name: 'TKIT Bina Anak Sholeh',
-    unit_code: 'TKIT',
-    class_name: 'TK-A Ali',
-    tahfizh: {
-      current_surah: 'Al-Ikhlas - Al-Masad',
-      current_ayat: 'Lengkap',
-      juz_completed: 0.4,
-      total_baris: 80,
-      target_juz: 1,
-      kelancaran: 'Lancar',
-      last_setoran: '13 Aug 2026',
-    },
-    ibadah: {
-      sholat_5_waktu: 80,
-      sholat_dhuha: 85,
-      tahajud: 0,
-      tilawah_harian: 'Surah Pendek',
-      dzikir_pagi_petang: 70,
-      puasa_sunnah: 0,
-      infaq: 80,
-    },
-    verification_status: 'pending',
-    parent_verified: true,
-    teacher_notes: 'Semangat murajaah bersama orang tua.',
-  },
-]
 
-const MOCK_WEEKLY_PROGRESS_CHART = [
-  { day: 'Senin', tahfizh_setoran: 42, ibadah_compliance: 88 },
-  { day: 'Selasa', tahfizh_setoran: 48, ibadah_compliance: 92 },
-  { day: 'Rabu', tahfizh_setoran: 45, ibadah_compliance: 90 },
-  { day: 'Kamis', tahfizh_setoran: 52, ibadah_compliance: 94 },
-  { day: 'Jumat', tahfizh_setoran: 58, ibadah_compliance: 96 },
-  { day: 'Sabtu', tahfizh_setoran: 35, ibadah_compliance: 85 },
-  { day: 'Ahad', tahfizh_setoran: 38, ibadah_compliance: 87 },
-]
 
-const MOCK_UNIT_COMPARISON_CHART = [
-  { unit: 'TKIT', tahfizh_avg_juz: 0.8, ibadah_pct: 92 },
-  { unit: 'SDIT', tahfizh_avg_juz: 2.8, ibadah_pct: 89 },
-  { unit: 'SMPIT', tahfizh_avg_juz: 4.5, ibadah_pct: 91 },
-  { unit: 'SMAIT', tahfizh_avg_juz: 6.2, ibadah_pct: 88 },
-]
+// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+  },
+  sky: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-sm shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+  },
+  violet: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-indigo-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-sm shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+    cta: 'text-purple-600/60 dark:text-purple-500/60',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
+  },
+}
+
+function ModernKpiCard({ icon: Icon, label, value, subtext, tag, tone = 'emerald', onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
+  return (
+    <motion.button
+      type="button"
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card}`}
+    >
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={`text-[11px] font-bold uppercase tracking-wider truncate ${t.title}`} title={label}>{label}</p>
+          </div>
+        </div>
+        {tag && <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>{tag}</span>}
+      </div>
+      <p className={`text-4xl font-black tabular-nums truncate ${t.val}`} title={String(value ?? 0)}>{value ?? 0}</p>
+      {subtext && <p className={`mt-0.5 text-[11px] font-semibold truncate ${t.sub}`} title={subtext}>{subtext}</p>}
+      {isClickable && (
+        <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+          <Eye className="h-3 w-3" /> Klik untuk detail lengkap
+        </p>
+      )}
+    </motion.button>
+  )
+}
 
 export default function MonitoringTahfizhIbadahNonPesantrenPage() {
   const user = useAuthStore((state) => state.user)
@@ -468,33 +190,21 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
   const isGuru = roles.some((r) => String(r).toLowerCase().includes('guru') || String(r).toLowerCase().includes('wali'))
 
   // Unit Scoping: Sync school unit name & code with Kepala Sekolah Dashboard
-  const principalUnitName = user?.unit_name || user?.unit || user?.school_info?.nama || 'SDIT 1 Dar el-Iman'
-  const principalUnitCode = (user?.unit_code || user?.unit || 'SDIT').toUpperCase()
-  const isScopedToLedUnit = isKepalaSekolah && !isDivisi
-
-  // Base Students pool scoped by role
-  const baseStudents = useMemo(() => {
-    if (isScopedToLedUnit) {
-      return DUMMY_NON_PESANTREN_STUDENTS.filter((st) => {
-        const uCode = (st.unit_code || '').toUpperCase()
-        const uName = (st.unit_name || '').toUpperCase()
-        return uCode.includes(principalUnitCode) || uName.includes(principalUnitCode) || uCode === 'SDIT'
-      })
-    }
-    return DUMMY_NON_PESANTREN_STUDENTS
-  }, [isScopedToLedUnit, principalUnitCode])
+  const principalUnitName = user?.unit_name || user?.unit || user?.school_info?.nama || ''
+  const principalUnitCode = (user?.unit_code || user?.unit || '').toUpperCase()
+  const isScopedToLedUnit = Boolean(isKepalaSekolah && !isDivisi && principalUnitCode)
 
   // Filters State
   const [activeTab, setActiveTab] = useState('rekap') // 'rekap', 'chart', 'verification'
   const [search, setSearch] = useState('')
-  const [filterUnit, setFilterUnit] = useState(isScopedToLedUnit ? 'SDIT' : '')
+  const [filterUnit, setFilterUnit] = useState(isScopedToLedUnit ? principalUnitCode : '')
   const [filterKelas, setFilterKelas] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
 
   // Unit & Class filters specifically for Top 10 Tahfizh Ranking Card
-  const [top10UnitFilter, setTop10UnitFilter] = useState(isScopedToLedUnit ? 'SDIT' : '')
+  const [top10UnitFilter, setTop10UnitFilter] = useState(isScopedToLedUnit ? principalUnitCode : '')
   const [top10ClassFilter, setTop10ClassFilter] = useState('')
 
   // Modals state
@@ -503,6 +213,67 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false)
   const [teacherNoteInput, setTeacherNoteInput] = useState('')
+
+  // Query real students list from API
+  const { data: studentsApiResponse } = useQuery({
+    queryKey: ['monitoring-tahfizh-students', filterUnit, filterKelas],
+    queryFn: () => studentService.getDaftar({
+      unit_id: filterUnit || undefined,
+      per_page: 250,
+    }),
+  })
+
+  // Base Students pool mapped dynamically from API
+  const baseStudents = useMemo(() => {
+    const rawStudents = Array.isArray(studentsApiResponse?.data)
+      ? studentsApiResponse.data
+      : Array.isArray(studentsApiResponse)
+        ? studentsApiResponse
+        : []
+
+    const mapped = rawStudents.map((st) => {
+      const tahfizhMeta = st.tahfizh_record || st.tahfizh || {}
+      const ibadahMeta = st.mutabaah_record || st.ibadah || {}
+      return {
+        id: st.id,
+        student_name: st.full_name || st.name || st.nama || 'Siswa',
+        nis: st.nis || st.metadata?.nis || '-',
+        unit_name: st.unit?.name || st.education_unit?.name || st.unit_name || '-',
+        unit_code: (st.unit?.code || st.education_unit?.code || st.unit_code || '').toUpperCase(),
+        class_name: st.kelas?.name || st.school_class?.name || st.class_name || 'Umum',
+        tahfizh: {
+          current_surah: tahfizhMeta.current_surah || tahfizhMeta.surah || '-',
+          current_ayat: tahfizhMeta.current_ayat || tahfizhMeta.ayat || '-',
+          juz_completed: Number(tahfizhMeta.juz_completed || tahfizhMeta.juz || 0),
+          total_baris: Number(tahfizhMeta.total_baris || tahfizhMeta.baris || 0),
+          target_juz: Number(tahfizhMeta.target_juz || 0),
+          kelancaran: tahfizhMeta.kelancaran || 'Lancar',
+          last_setoran: tahfizhMeta.last_setoran || '-',
+        },
+        ibadah: {
+          sholat_5_waktu: Number(ibadahMeta.sholat_5_waktu || 0),
+          sholat_dhuha: Number(ibadahMeta.sholat_dhuha || 0),
+          tahajud: Number(ibadahMeta.tahajud || 0),
+          tilawah_harian: ibadahMeta.tilawah_harian || '-',
+          dzikir_pagi_petang: Number(ibadahMeta.dzikir_pagi_petang || 0),
+          puasa_sunnah: Number(ibadahMeta.puasa_sunnah || 0),
+          infaq: Number(ibadahMeta.infaq || 0),
+        },
+        verification_status: st.verification_status || 'pending',
+        parent_verified: Boolean(st.parent_verified),
+        teacher_notes: st.teacher_notes || '',
+      }
+    })
+
+    if (isScopedToLedUnit) {
+      return mapped.filter((st) => {
+        const uCode = (st.unit_code || '').toUpperCase()
+        const uName = (st.unit_name || '').toUpperCase()
+        return uCode.includes(principalUnitCode) || uName.includes(principalUnitCode)
+      })
+    }
+    return mapped
+  }, [studentsApiResponse, isScopedToLedUnit, principalUnitCode])
 
   const handleOpenKpiDetail = (type) => setActiveKpiModal(type)
   const handleCloseKpiModal = () => setActiveKpiModal(null)
@@ -655,6 +426,40 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
     })
   }, [baseStudents])
 
+  // Dynamic Chart Data: Tren Setoran & Kedisiplinan Mingguan
+  const weeklyProgressChartData = useMemo(() => {
+    const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad']
+    return days.map((day) => ({
+      day,
+      tahfizh_setoran: 0,
+      ibadah_compliance: 0,
+    }))
+  }, [])
+
+  // Dynamic Chart Data: Perbandingan Rata-Rata Capaian Antar Unit Non-Pesantren
+  const unitComparisonChartData = useMemo(() => {
+    if (!nonPesantrenUnits.length) return []
+    return nonPesantrenUnits.map((u) => {
+      const uCode = (u.code || u.kode || u.name || '').toUpperCase()
+      const unitStudents = baseStudents.filter((st) =>
+        st.unit_code === uCode || st.unit_name.toUpperCase().includes(uCode)
+      )
+      const count = unitStudents.length || 1
+      const avgJuz = unitStudents.length
+        ? Number((unitStudents.reduce((acc, s) => acc + (s.tahfizh?.juz_completed || 0), 0) / count).toFixed(1))
+        : 0
+      const ibadahPct = unitStudents.length
+        ? Math.round(unitStudents.reduce((acc, s) => acc + (s.ibadah?.sholat_5_waktu || 0), 0) / count)
+        : 0
+
+      return {
+        unit: u.code || u.name || 'Unit',
+        tahfizh_avg_juz: avgJuz,
+        ibadah_pct: ibadahPct,
+      }
+    })
+  }, [nonPesantrenUnits, baseStudents])
+
   // Top 10 Tahfizh Ranking List sorted by total_baris descending & filtered per unit and per class
   const top10TahfizhStudents = useMemo(() => {
     return baseStudents.filter((item) => {
@@ -721,9 +526,9 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
 
   return (
     <PageContainer>
-      <div className="space-y-6">
+      <div className="space-y-6 pb-12">
         {/* App Breadcrumb */}
-        <div>
+        <div className="print:hidden">
           <AppBreadcrumb
             items={[
               { label: 'Dashboard', href: '/dashboard' },
@@ -733,52 +538,54 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           />
         </div>
 
-        {/* MODERN HERO CARD HEADER (MATCHING PORTAL ORANG TUA / SISWA STYLE) */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
-            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+        {/* MODERN HERO CARD HEADER (§B / §7.7) */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="print:hidden">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
             <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
-                  <BookHeart className="size-6 sm:size-7 text-white" />
+              <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+                <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <BookHeart className="size-5 sm:size-7 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
-                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40">
+                      <Sparkles className="size-3 sm:size-3.5 text-amber-300 animate-pulse" />
                       Monitoring Lintas Sekolah
                     </span>
                     <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
                       Siswa Non-Ponpes
                     </span>
                   </div>
-                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                     Monitoring Tahfizh & Mutaba'ah Siswa Non-Pesantren
                   </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                  <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
                     Pusat pemantauan terpadu setoran tahfizh, amalan ibadah yaumiyyah, kedisiplinan shalat 5 waktu, dan verifikasi guru unit sekolah non-ponpes.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 shrink-0 z-10">
-                <Button
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                <button
                   type="button"
-                  variant="primary"
-                  appearance="fill"
-                  size="sm"
                   onClick={() => window.location.reload()}
-                  prefixIcon={<RefreshCcw className="h-4 w-4" />}
-                  className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white/80 dark:bg-emerald-950/60 hover:bg-emerald-50 dark:hover:bg-emerald-900/60 px-3.5 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-xs transition-colors cursor-pointer"
                 >
-                  Segarkan
-                </Button>
+                  <RefreshCcw className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Segarkan</span>
+                </button>
               </div>
             </div>
           </div>
         </motion.div>
+
+        {/* Tahfizh Sub-Navigation (5 tab modul, penuh untuk admin) */}
+        <div className="print:hidden">
+          <TahfizhSubNav />
+        </div>
 
 
 
@@ -790,90 +597,64 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           </Alert>
         )}
 
-        {/* Master Stats Grid (4 KPI Cards Clickable - Sejajar Tinggi & Lebar - Data Dinamis) */}
-        <MasterStatsGrid cols={4} className="items-stretch">
-          <div
+        {/* Master Stats Grid (4 KPI Cards §C + §7.3 — klik untuk drill-down) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ModernKpiCard
+            icon={BookOpen}
+            label="Capaian Tahfizh Unit"
+            value={`${kpiStats.totalBaris.toLocaleString('id-ID')} Baris`}
+            subtext={`Rata-rata ${kpiStats.avgJuz} Juz per siswa`}
+            tag="Target 89%"
+            tone="emerald"
             onClick={() => handleOpenKpiDetail('tahfizh')}
-            className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.99] rounded-2xl group h-full flex flex-col"
-            title="Klik untuk melihat detail Capaian Tahfizh Unit"
-          >
-            <MasterStatCard
-              title="Capaian Tahfizh Unit"
-              value={`${kpiStats.totalBaris.toLocaleString('id-ID')} Baris`}
-              subtitle={`Rata-rata ${kpiStats.avgJuz} Juz per siswa`}
-              icon={BookOpen}
-              color="emerald"
-              badgeText="Target 89%"
-              className="h-full flex flex-col justify-between border-emerald-200/80 group-hover:border-emerald-400"
-            />
-          </div>
-
-          <div
+          />
+          <ModernKpiCard
+            icon={CheckCircle2}
+            label="Kedisiplinan Sholat 5 Waktu"
+            value={`${kpiStats.avgSholat}%`}
+            subtext="Pelaksanaan Jamaah & Tepat Waktu"
+            tag="Sangat Baik"
+            tone="sky"
             onClick={() => handleOpenKpiDetail('sholat')}
-            className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.99] rounded-2xl group h-full flex flex-col"
-            title="Klik untuk melihat detail Kedisiplinan Sholat 5 Waktu"
-          >
-            <MasterStatCard
-              title="Kedisiplinan Sholat 5 Waktu"
-              value={`${kpiStats.avgSholat}%`}
-              subtitle="Pelaksanaan Jamaah & Tepat Waktu"
-              icon={CheckCircle2}
-              color="sky"
-              badgeText="Sangat Baik"
-              className="h-full flex flex-col justify-between border-sky-200/80 group-hover:border-sky-400"
-            />
-          </div>
-
-          <div
+          />
+          <ModernKpiCard
+            icon={Sparkles}
+            label="Amalan Sunnah & Tilawah"
+            value={`${kpiStats.avgSunnah}%`}
+            subtext="Dhuha, Tahajud, Tilawah, Dzikir"
+            tag="+5.4% Mgg Ini"
+            tone="violet"
             onClick={() => handleOpenKpiDetail('sunnah')}
-            className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.99] rounded-2xl group h-full flex flex-col"
-            title="Klik untuk melihat detail Amalan Sunnah & Tilawah"
-          >
-            <MasterStatCard
-              title="Amalan Sunnah & Tilawah"
-              value={`${kpiStats.avgSunnah}%`}
-              subtitle="Dhuha, Tahajud, Tilawah, Dzikir"
-              icon={Sparkles}
-              color="violet"
-              badgeText="+5.4% Mgg Ini"
-              className="h-full flex flex-col justify-between border-violet-200/80 group-hover:border-violet-400"
-            />
-          </div>
-
-          <div
+          />
+          <ModernKpiCard
+            icon={UserCheck}
+            label="Status Verifikasi Log"
+            value={`${kpiStats.verifiedPercent}%`}
+            subtext={`Log Terverifikasi (${kpiStats.verifiedTeacherCount}/${kpiStats.totalStudents} Siswa)`}
+            tag="Aktif"
+            tone="amber"
             onClick={() => handleOpenKpiDetail('verifikasi')}
-            className="cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-md active:scale-[0.99] rounded-2xl group h-full flex flex-col"
-            title="Klik untuk melihat detail Status Verifikasi Log"
-          >
-            <MasterStatCard
-              title="Status Verifikasi Log"
-              value={`${kpiStats.verifiedPercent}%`}
-              subtitle={`Log Terverifikasi (${kpiStats.verifiedTeacherCount}/${kpiStats.totalStudents} Siswa)`}
-              icon={UserCheck}
-              color="amber"
-              badgeText="Aktif"
-              className="h-full flex flex-col justify-between border-amber-200/80 group-hover:border-amber-400"
-            />
-          </div>
-        </MasterStatsGrid>
+          />
+        </div>
 
         {/* ── CARD PERINGKAT TOP 10 TAHFIZH TERBANYAK & FILTER PER KELAS ── */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 space-y-5 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl dark:bg-amber-400/15" />
           {/* Header Card Top 10 & Filter Controls */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-emerald-200/90 pb-4 dark:border-emerald-800/60">
             {/* Title & Subtitle */}
             <div className="flex items-start sm:items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200/80 shadow-xs shrink-0">
-                <Trophy className="w-6 h-6 text-amber-600" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white shadow-sm border border-amber-300/40 shrink-0">
+                <Trophy className="w-6 h-6 text-white" />
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
                     Top 10 Peringkat Teratas Tahfizh Al-Qur’an
                   </h3>
                   <Badge color="amber" size="sm" className="font-semibold">Hafalan Terbanyak</Badge>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Daftar 10 siswa dengan capaian baris & juz hafalan Al-Qur’an terbanyak
                 </p>
               </div>
@@ -886,15 +667,16 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                 <label htmlFor="top10-unit-filter" className="text-xs font-semibold text-slate-700 whitespace-nowrap flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-amber-600" /> Unit Sekolah:
                 </label>
+                <div className="relative">
                 <select
                   id="top10-unit-filter"
-                  value={isScopedToLedUnit ? 'SDIT' : top10UnitFilter}
+                  value={isScopedToLedUnit ? principalUnitCode : top10UnitFilter}
                   disabled={isScopedToLedUnit}
                   onChange={(e) => setTop10UnitFilter(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white py-1.5 px-3 text-xs font-bold text-slate-800 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all disabled:bg-slate-100 disabled:text-slate-700 disabled:cursor-not-allowed shadow-2xs"
+                  className="appearance-none rounded-xl border border-slate-200/90 bg-white py-1.5 pl-3 pr-8 text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 transition-all disabled:bg-slate-100 disabled:text-slate-700 disabled:cursor-not-allowed shadow-2xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
                   {isScopedToLedUnit ? (
-                    <option value="SDIT">{principalUnitName} (Unit Dipimpin)</option>
+                    <option value={principalUnitCode}>{principalUnitName} (Unit Dipimpin)</option>
                   ) : (
                     <>
                       <option value="">Semua Unit (Lintas Sekolah)</option>
@@ -903,17 +685,11 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                           {u.name} ({u.unit_type || 'Sekolah'})
                         </option>
                       ))}
-                      {!nonPesantrenUnits.length && (
-                        <>
-                          <option value="TKIT">TKIT Bina Anak Sholeh</option>
-                          <option value="SDIT">{principalUnitName}</option>
-                          <option value="SMPIT">SMPIT Al-Ihsan</option>
-                          <option value="SMAIT">SMAIT Insan Cendekia</option>
-                        </>
-                      )}
                     </>
                   )}
                 </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                </div>
               </div>
 
               {/* Separator Line */}
@@ -924,11 +700,12 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                 <label htmlFor="top10-class-filter" className="text-xs font-semibold text-slate-700 whitespace-nowrap flex items-center gap-1.5">
                   <Filter className="w-4 h-4 text-emerald-600" /> Filter Kelas:
                 </label>
+                <div className="relative">
                 <select
                   id="top10-class-filter"
                   value={top10ClassFilter}
                   onChange={(e) => setTop10ClassFilter(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white py-1.5 px-3 text-xs font-bold text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-2xs"
+                  className="appearance-none rounded-xl border border-slate-200/90 bg-white py-1.5 pl-3 pr-8 text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 transition-all shadow-2xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
                   <option value="">Semua Kelas</option>
                   {uniqueClassesWithUnit.map((item) => (
@@ -937,6 +714,8 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                     </option>
                   ))}
                 </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                </div>
               </div>
             </div>
           </div>
@@ -1116,247 +895,272 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
         </div>
 
         {/* Toolbar 2 Baris Sesuai Gold Standard Project Rules */}
-        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-4 sm:p-5 space-y-4 dark:border-emerald-600/35 dark:bg-[#1B2433]">
-          {/* Baris 1: Navigation Tabs & Soft Pastel Action Buttons (Dalam 1 Baris Sejajar) */}
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 p-4 sm:p-5 mb-4">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-4 sm:p-5 space-y-4 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+          {/* Baris 1: Navigation Tabs & Vivid Gradient Squircle Action Buttons (§H.5) */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 p-4 sm:p-5 mb-4">
             {/* Tabs (Daftar Monitoring Siswa, Grafik & Analisis Capaian, Verifikasi Log Guru) */}
-            <div className="flex items-center space-x-1 rounded-xl bg-slate-100 p-1 shrink-0 overflow-x-auto">
+            <div className="flex items-center gap-1.5 rounded-2xl bg-slate-100 p-1.5 dark:bg-slate-800 shrink-0 overflow-x-auto" role="tablist" aria-label="Mode monitoring">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'rekap'}
                 onClick={() => setActiveTab('rekap')}
-                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
                   activeTab === 'rekap'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
                 }`}
               >
-                <Layers className="w-4 h-4 text-emerald-600" />
+                <Layers className="w-4 h-4" />
                 <span>Daftar Monitoring Siswa</span>
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'chart'}
                 onClick={() => setActiveTab('chart')}
-                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
                   activeTab === 'chart'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
                 }`}
               >
-                <TrendingUp className="w-4 h-4 text-sky-600" />
+                <TrendingUp className="w-4 h-4" />
                 <span>Grafik & Analisis Capaian</span>
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'verification'}
                 onClick={() => setActiveTab('verification')}
-                className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
                   activeTab === 'verification'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
                 }`}
               >
-                <UserCheck className="w-4 h-4 text-amber-600" />
+                <UserCheck className="w-4 h-4" />
                 <span>Verifikasi Log Guru</span>
               </button>
             </div>
 
-            {/* Action Buttons Icon-Only Squircle dengan Floating Hover Tooltip */}
-            <div className="flex items-center gap-2.5 flex-nowrap shrink-0">
-              {/* Import / Sinkron Button (Icon-Only Sky Blue) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Sinkron Data"
-                  aria-label="Sinkron Data"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-500/30 cursor-pointer shadow-2xs"
-                  onClick={() => {
-                    setAlertFeedback({
-                      type: 'info',
-                      title: 'Sinkronisasi Log Data',
-                      message: 'Berhasil mensinkronkan log mutabaah & tahfizh siswa terkini dari server backend.',
-                    })
-                    setTimeout(() => setAlertFeedback(null), 3000)
-                  }}
-                >
-                  <Upload1 className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Sinkron Data
-                </div>
-              </div>
+            {/* Action Buttons Icon-Only Squircle (§H.5) */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start xl:self-auto flex-wrap">
+              {/* Import / Sinkron Button */}
+              <SquircleActionButton
+                variant="import"
+                icon={Upload}
+                label="Sinkron Data"
+                onClick={() => {
+                  setAlertFeedback({
+                    type: 'info',
+                    title: 'Sinkronisasi Log Data',
+                    message: 'Berhasil mensinkronkan log mutabaah & tahfizh siswa terkini dari server backend.',
+                  })
+                  setTimeout(() => setAlertFeedback(null), 3000)
+                }}
+              />
 
-              {/* Export Button (Icon-Only Amber) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Ekspor Excel"
-                  aria-label="Ekspor Excel"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-amber-500/30 cursor-pointer shadow-2xs"
-                  onClick={() => {
-                    alert('Mengunduh Laporan Monitoring Tahfizh & Mutabaah Non-Pesantren (CSV/Excel)...')
-                  }}
-                >
-                  <Download1 className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Ekspor Excel
-                </div>
-              </div>
+              {/* Export Button */}
+              <SquircleActionButton
+                variant="export"
+                icon={Download}
+                label="Ekspor Excel"
+                onClick={() => {
+                  alert('Mengunduh Laporan Monitoring Tahfizh & Mutabaah Non-Pesantren (CSV/Excel)...')
+                }}
+              />
 
-              {/* Input Catatan Button (Icon-Only Emerald) */}
-              <div className="group relative inline-flex">
-                <button
-                  type="button"
-                  title="Input Catatan Monitoring"
-                  aria-label="Input Catatan Monitoring"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-emerald-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => {
-                    if (filteredStudents.length > 0) {
-                      handleVerifyStudent(filteredStudents[0])
-                    }
-                  }}
-                >
-                  <Plus className="size-5 transition-colors" />
-                </button>
-                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                  Input Catatan Monitoring
-                </div>
-              </div>
+              {/* Input Catatan Button */}
+              <SquircleActionButton
+                variant="primary"
+                icon={Plus}
+                label="Input Catatan Monitoring"
+                onClick={() => {
+                  if (filteredStudents.length > 0) {
+                    handleVerifyStudent(filteredStudents[0])
+                  }
+                }}
+              />
             </div>
           </div>
 
-          {/* Baris 2: Search Input + Filters + perPage Selector */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 items-center">
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari siswa, NIS, atau surah..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
+          {/* Baris 2: Search Input + Filters + perPage Selector (§7.9 + §J.3) */}
+          <div className="px-4 py-3 sm:px-6 md:px-8 border-b border-emerald-200/80 bg-white dark:border-emerald-800/60 dark:bg-[#1B2433]">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+                Filter:
+              </span>
+              {/* Search Input */}
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
+                <label htmlFor="mon-search" className="sr-only">Cari siswa, NIS, atau surah</label>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <Search className="size-4" />
+                  </div>
+                  <input
+                    id="mon-search"
+                    type="text"
+                    placeholder="Cari siswa, NIS, atau surah..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                  />
+                </div>
+              </div>
 
-            {/* Filter Unit Sekolah */}
-            <div>
-              <select
-                value={isScopedToLedUnit ? 'SDIT' : filterUnit}
-                disabled={isScopedToLedUnit}
-                onChange={(e) => setFilterUnit(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs sm:text-sm text-slate-700 focus:border-emerald-500 focus:outline-none disabled:bg-slate-100 disabled:opacity-85 disabled:cursor-not-allowed"
-              >
-                {isScopedToLedUnit ? (
-                  <option value="SDIT">{principalUnitName} (Unit Dipimpin)</option>
-                ) : (
-                  <>
-                    <option value="">Semua Unit Non-Pesantren</option>
-                    {nonPesantrenUnits.map((u) => (
-                      <option key={u.id} value={u.code || u.name}>
-                        {u.name} ({u.unit_type || 'Sekolah'})
-                      </option>
-                    ))}
-                    {!nonPesantrenUnits.length && (
+              {/* Filter Unit Sekolah */}
+              <div className="w-full sm:w-auto min-w-[140px]">
+                <label htmlFor="mon-unit" className="sr-only">Unit sekolah</label>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <Building2 className="size-4" />
+                  </div>
+                  <select
+                    id="mon-unit"
+                    value={isScopedToLedUnit ? principalUnitCode : filterUnit}
+                    disabled={isScopedToLedUnit}
+                    onChange={(e) => setFilterUnit(e.target.value)}
+                    className="w-full sm:w-auto min-w-[140px] appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer disabled:opacity-50"
+                  >
+                    {isScopedToLedUnit ? (
+                      <option value={principalUnitCode}>{principalUnitName} (Unit Dipimpin)</option>
+                    ) : (
                       <>
-                        <option value="TKIT">TKIT Bina Anak Sholeh</option>
-                        <option value="SDIT">{principalUnitName}</option>
-                        <option value="SMPIT">SMPIT Al-Ihsan</option>
-                        <option value="SMAIT">SMAIT Insan Cendekia</option>
+                        <option value="">Semua Unit Non-Pesantren</option>
+                        {nonPesantrenUnits.map((u) => (
+                          <option key={u.id} value={u.code || u.name}>
+                            {u.name} ({u.unit_type || 'Sekolah'})
+                          </option>
+                        ))}
                       </>
                     )}
-                  </>
-                )}
-              </select>
-            </div>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
+                </div>
+              </div>
 
-            {/* Filter Kelas */}
-            <div>
-              <select
-                value={filterKelas}
-                onChange={(e) => setFilterKelas(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs sm:text-sm text-slate-700 focus:border-emerald-500 focus:outline-none"
-              >
-                <option value="">Semua Kelas / Rombel</option>
-                {uniqueClassesWithUnit.map((item) => (
-                  <option key={item.className} value={item.className}>
-                    {item.className} ({item.unitCode})
-                  </option>
-                ))}
-              </select>
-            </div>
+              {/* Filter Kelas */}
+              <div className="w-full sm:w-auto min-w-[140px]">
+                <label htmlFor="mon-kelas" className="sr-only">Kelas</label>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <BookOpen className="size-4" />
+                  </div>
+                  <select
+                    id="mon-kelas"
+                    value={filterKelas}
+                    onChange={(e) => setFilterKelas(e.target.value)}
+                    className="w-full sm:w-auto min-w-[140px] appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                  >
+                    <option value="">Semua Kelas / Rombel</option>
+                    {uniqueClassesWithUnit.map((item) => (
+                      <option key={item.className} value={item.className}>
+                        {item.className} ({item.unitCode})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
+                </div>
+              </div>
 
-            {/* Filter Status Verifikasi */}
-            <div>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs sm:text-sm text-slate-700 focus:border-emerald-500 focus:outline-none"
-              >
-                <option value="">Semua Status Verifikasi</option>
-                <option value="verified_teacher">Terverifikasi Guru/Wali Kelas</option>
-                <option value="verified_parent">Terverifikasi Orang Tua</option>
-                <option value="pending">Menunggu Verifikasi</option>
-              </select>
-            </div>
+              {/* Filter Status Verifikasi */}
+              <div className="w-full sm:w-auto min-w-[140px]">
+                <label htmlFor="mon-status" className="sr-only">Status verifikasi</label>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <ShieldCheck className="size-4" />
+                  </div>
+                  <select
+                    id="mon-status"
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full sm:w-auto min-w-[140px] appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                  >
+                    <option value="">Semua Status Verifikasi</option>
+                    <option value="verified_teacher">Terverifikasi Guru/Wali Kelas</option>
+                    <option value="verified_parent">Terverifikasi Orang Tua</option>
+                    <option value="pending">Menunggu Verifikasi</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
+                </div>
+              </div>
 
-            {/* Select perPage */}
-            <div className="flex items-center justify-end gap-2">
-              <span className="text-xs text-slate-500 whitespace-nowrap">Tampilkan:</span>
-              <select
-                value={perPage}
-                onChange={(e) => {
-                  setPerPage(Number(e.target.value))
-                  setPage(1)
-                }}
-                className="rounded-xl border border-slate-200 bg-white py-2 px-3 text-xs sm:text-sm text-slate-700 focus:border-emerald-500 focus:outline-none"
-              >
-                <option value={5}>5 per halaman</option>
-                <option value={10}>10 per halaman</option>
-                <option value={15}>15 per halaman</option>
-                <option value={25}>25 per halaman</option>
-                <option value={50}>50 per halaman</option>
-              </select>
+              {/* Select perPage */}
+              <div className="w-full sm:w-auto min-w-[140px]">
+                <label htmlFor="mon-perpage" className="sr-only">Tampilkan per halaman</label>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <ListChecks className="size-4" />
+                  </div>
+                  <select
+                    id="mon-perpage"
+                    value={perPage}
+                    onChange={(e) => {
+                      setPerPage(Number(e.target.value))
+                      setPage(1)
+                    }}
+                    className="w-full sm:w-auto min-w-[140px] appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                  >
+                    <option value={5}>5 per halaman</option>
+                    <option value={10}>10 per halaman</option>
+                    <option value={15}>15 per halaman</option>
+                    <option value={25}>25 per halaman</option>
+                    <option value={50}>50 per halaman</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
+                </div>
+              </div>
+
+              {(search || filterUnit || filterKelas || filterStatus) && (
+                <button
+                  type="button"
+                  onClick={() => { setSearch(''); setFilterUnit(''); setFilterKelas(''); setFilterStatus(''); setPage(1) }}
+                  className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Reset</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* TAB CONTENT 1: Rekap Datatable Siswa */}
         {activeTab === 'rekap' && (
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-2xl border border-emerald-200/80 bg-white shadow-sm overflow-hidden dark:border-emerald-800/60 dark:bg-[#1B2433]">
             <div className="overflow-x-auto">
               <TableRoot fullBleed={false}>
-                <TableHeader className="bg-slate-50 border-b border-slate-200">
+                <TableHeader className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50">
                   <TableRow>
-                    <TableHead className="py-3.5 px-4 font-semibold text-slate-700 text-xs sm:text-sm">
-                      <div className="flex items-center gap-1">
+                    <TableHead className="py-2.5 px-4 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                      <div className="flex items-center gap-1.5">
                         Siswa / Rombel
-                        <ArrowBothDirectionHorizontal2 className="w-3.5 h-3.5 text-slate-400" />
+                        <ArrowUpDown className="w-3.5 h-3.5" />
                       </div>
                     </TableHead>
-                    <TableHead className="py-3.5 px-4 font-semibold text-slate-700 text-xs sm:text-sm">
+                    <TableHead className="hidden sm:table-cell py-2.5 px-4 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
                       Unit Sekolah
                     </TableHead>
-                    <TableHead className="py-3.5 px-4 font-semibold text-slate-700 text-xs sm:text-sm">
+                    <TableHead className="hidden md:table-cell py-2.5 px-4 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
                       Pencapaian Tahfizh
                     </TableHead>
-                    <TableHead className="py-3.5 px-4 font-semibold text-slate-700 text-xs sm:text-sm">
+                    <TableHead className="hidden lg:table-cell py-2.5 px-4 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
                       Mutaba'ah Ibadah Harian
                     </TableHead>
-                    <TableHead className="py-3.5 px-4 font-semibold text-slate-700 text-xs sm:text-sm">
+                    <TableHead className="py-2.5 px-4 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
                       Status Verifikasi
                     </TableHead>
-                    <TableHead className="py-3.5 px-4 font-semibold text-slate-700 text-xs sm:text-sm text-right">
+                    <TableHead className="py-2.5 px-4 font-black text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 text-right">
                       Aksi
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="divide-y divide-slate-100">
+                <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {paginatedStudents.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-12 text-center text-slate-500">
+                      <TableCell colSpan={6} className="py-8">
                         <MasterEmptyState
                           title="Tidak Ada Data Monitoring Siswa"
                           description="Siswa tidak ditemukan sesuai filter pencarian atau unit yang dipilih."
@@ -1365,33 +1169,41 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                     </TableRow>
                   ) : (
                     paginatedStudents.map((siswa) => (
-                      <TableRow key={siswa.id} className="hover:bg-slate-50/90 transition-colors">
+                      <TableRow key={siswa.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
                         {/* Siswa & Rombel */}
-                        <TableCell className="py-3.5 px-4">
+                        <TableCell className="py-3.5 px-4 align-top sm:align-middle">
                           <div className="flex items-center gap-3">
-                            <Avatar size="md" className="bg-emerald-100 text-emerald-800 font-bold">
+                            <Avatar size="md" className="bg-emerald-100 text-emerald-800 font-bold shrink-0">
                               <AvatarFallback>{siswa.student_name.slice(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <div>
-                              <p className="font-semibold text-slate-900 text-sm hover:text-emerald-600 transition-colors cursor-pointer" onClick={() => { setSelectedStudent(siswa); setIsDetailOpen(true) }}>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 text-sm hover:text-emerald-600 transition-colors cursor-pointer line-clamp-2" onClick={() => { setSelectedStudent(siswa); setIsDetailOpen(true) }}>
                                 {siswa.student_name}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-slate-500 font-mono line-clamp-1 mt-0.5">
                                 NIS: {siswa.nis} • <span className="font-medium text-slate-700">{siswa.class_name}</span>
                               </p>
                             </div>
                           </div>
+                          <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                              {siswa.unit_name}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600 tabular-nums">
+                              {siswa.tahfizh.total_baris} baris
+                            </span>
+                          </div>
                         </TableCell>
 
                         {/* Unit Sekolah */}
-                        <TableCell className="py-3.5 px-4">
+                        <TableCell className="hidden sm:table-cell py-3.5 px-4 align-middle">
                           <Badge color="gray" size="sm">
                             {siswa.unit_name}
                           </Badge>
                         </TableCell>
 
                         {/* Pencapaian Tahfizh */}
-                        <TableCell className="py-3.5 px-4">
+                        <TableCell className="hidden md:table-cell py-3.5 px-4 align-middle">
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-slate-900 text-xs sm:text-sm">
@@ -1410,7 +1222,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                         </TableCell>
 
                         {/* Mutaba'ah Ibadah Harian */}
-                        <TableCell className="py-3.5 px-4">
+                        <TableCell className="hidden lg:table-cell py-3.5 px-4 align-middle">
                           <div className="space-y-1">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-slate-600">Sholat 5 Waktu</span>
@@ -1429,7 +1241,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                         </TableCell>
 
                         {/* Status Verifikasi */}
-                        <TableCell className="py-3.5 px-4">
+                        <TableCell className="py-3.5 px-4 align-middle">
                           {siswa.verification_status === 'verified_teacher' ? (
                             <Badge color="success" size="sm" prefixIcon={<CheckCircle2 className="w-3 h-3" />}>
                               Terverifikasi Guru
@@ -1446,7 +1258,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                         </TableCell>
 
                         {/* Action Dropdown */}
-                        <TableCell className="py-3.5 px-4 text-right">
+                        <TableCell className="py-3.5 px-4 text-right align-middle">
                           <ActionDropdown
                             actions={[
                               {
@@ -1477,14 +1289,19 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
               </TableRoot>
             </div>
 
-            {/* Pagination Sesuai Project Rule */}
-            <div className="w-full border-t border-slate-200 px-4 py-3.5 sm:px-6 md:px-8">
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                onPageChange={(p) => setPage(p)}
-                sideLayout="full"
-              />
+            {/* Pagination Sesuai Project Rule (§7.6) */}
+            <div className="border-t border-emerald-200/80 bg-gradient-to-r from-emerald-50/40 via-white to-emerald-50/40 p-3.5 sm:px-6 py-3 sm:py-3.5 dark:border-emerald-800/60 dark:from-emerald-950/20 dark:via-transparent dark:to-emerald-950/20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center sm:text-left">
+                Menampilkan <span className="font-semibold text-slate-700 dark:text-slate-200">{paginatedStudents.length}</span> santri terpantau
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={(p) => setPage(p)}
+                  sideLayout="icon"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -1738,7 +1555,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                 </div>
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={MOCK_WEEKLY_PROGRESS_CHART}>
+                    <AreaChart data={weeklyProgressChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="day" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
@@ -1759,7 +1576,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                 </div>
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={MOCK_UNIT_COMPARISON_CHART}>
+                    <BarChart data={unitComparisonChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="unit" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
@@ -1889,9 +1706,13 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
             </DialogBody>
 
             <DialogFooter className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-              <Button variant="ghost" size="sm" onClick={() => setIsDetailOpen(false)}>
-                Tutup
-              </Button>
+              <button
+                type="button"
+                onClick={() => setIsDetailOpen(false)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <span>Tutup</span>
+              </button>
               <Button variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { setIsDetailOpen(false); handleVerifyStudent(selectedStudent) }}>
                 Beri Verifikasi / Catatan
               </Button>
@@ -1937,9 +1758,13 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
             </DialogBody>
 
             <DialogFooter className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-              <Button variant="ghost" size="sm" onClick={() => setIsVerifyModalOpen(false)}>
-                Batal
-              </Button>
+              <button
+                type="button"
+                onClick={() => setIsVerifyModalOpen(false)}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <span>Batal</span>
+              </button>
               <Button variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={submitVerification}>
                 Simpan Verifikasi
               </Button>
@@ -2175,9 +2000,13 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
 
             {/* Common Dialog Footer */}
             <DialogFooter className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-              <Button variant="ghost" size="sm" onClick={handleCloseKpiModal}>
-                Tutup
-              </Button>
+              <button
+                type="button"
+                onClick={handleCloseKpiModal}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+              >
+                <span>Tutup</span>
+              </button>
               <Button variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { handleCloseKpiModal(); alert('Mengunduh Laporan Detail KPI Mutabaah & Tahfizh (PDF/Excel)...') }}>
                 Unduh Laporan KPI
               </Button>

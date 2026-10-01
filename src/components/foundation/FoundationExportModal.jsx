@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { FileSpreadsheet, FileText, LoaderCircle } from 'lucide-react'
 import { MasterFormModal } from '../master-data'
 

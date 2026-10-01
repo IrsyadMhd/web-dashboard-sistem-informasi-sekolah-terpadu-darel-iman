@@ -57,7 +57,7 @@ export default function SummaryCard({
           : undefined
       }
       className={cn(
-        'summary-card group flex items-start gap-2.5 sm:gap-3.5 rounded-[16px] sm:rounded-[18px] border border-slate-200/80 bg-white p-3 sm:p-4 shadow-xs transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E5C44]/30 dark:border-slate-800 dark:bg-[#1B2433]',
+        'summary-card group flex items-start gap-2.5 sm:gap-3.5 rounded-[16px] sm:rounded-[18px] border border-slate-200/80 bg-white p-3 sm:p-4 shadow-xs transition-[border-color,box-shadow,background-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E5C44]/30 dark:border-slate-800 dark:bg-[#1B2433]',
         isClickable && 'cursor-pointer hover:border-[#3FBF75]/40 hover:shadow-md dark:hover:border-[#3FBF75]/30',
         className
       )}

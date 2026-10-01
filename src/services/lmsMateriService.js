@@ -11,8 +11,8 @@ export const lmsMateriService = {
     return res.data
   },
 
-  getOptions: async () => {
-    const res = await api.get('/lms/materi/options')
+  getOptions: async (params = {}) => {
+    const res = await api.get('/lms/materi/options', { params })
     return res.data
   },
 

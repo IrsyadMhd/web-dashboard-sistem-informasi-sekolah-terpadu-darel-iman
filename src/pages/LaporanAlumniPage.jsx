@@ -548,6 +548,8 @@ export default function LaporanAlumniPage() {
         `${item.persentaseLanjut}%`,
         item.total,
       ]),
+      unit: unit !== 'semua' ? unit : null,
+      orientation: 'landscape',
     })
   }
 
@@ -566,6 +568,8 @@ export default function LaporanAlumniPage() {
         `${item.persentaseLanjut}%`,
         item.total,
       ]),
+      unit: unit !== 'semua' ? unit : null,
+      orientation: 'landscape',
     })
   }
 
@@ -586,7 +590,7 @@ export default function LaporanAlumniPage() {
     },
     {
       key: 'tahun',
-      label: 'Tahun (Lulus/Mutasi)',
+      label: 'Tahun',
       export: (row) =>
         row.metadata?.tahun_lulus ||
         row.metadata?.tahun_mutasi ||
@@ -603,6 +607,10 @@ export default function LaporanAlumniPage() {
     const subtitle = printTargetAlumni
       ? `NIS: ${printTargetAlumni.nis || printTargetAlumni.nisn || '-'} | Unit: ${printTargetAlumni.education_unit?.name || printTargetAlumni.unit?.name || '-'}`
       : `Total Data: ${listToPrint.length} Siswa/Alumni`
+
+    const activeUnitTarget = printTargetAlumni
+      ? (printTargetAlumni.education_unit?.name || printTargetAlumni.unit?.name || printTargetAlumni.unit)
+      : (unit !== 'semua' ? unit : null)
 
     printCleanTable({
       title,
@@ -624,6 +632,8 @@ export default function LaporanAlumniPage() {
           new Date(item.updated_at || item.created_at || Date.now()).getFullYear(),
         getTujuanText(item),
       ]),
+      unit: activeUnitTarget,
+      orientation: 'landscape',
     })
   }
 
@@ -635,6 +645,10 @@ export default function LaporanAlumniPage() {
     const filename = printTargetAlumni
       ? `laporan-alumni-${printTargetAlumni.nis || printTargetAlumni.id || 'detail'}.pdf`
       : `Laporan_Alumni_Mutasi_${new Date().toISOString().slice(0, 10)}.pdf`
+
+    const activeUnitTarget = printTargetAlumni
+      ? (printTargetAlumni.education_unit?.name || printTargetAlumni.unit?.name || printTargetAlumni.unit)
+      : (unit !== 'semua' ? unit : null)
 
     downloadPdfTable({
       title,
@@ -656,6 +670,8 @@ export default function LaporanAlumniPage() {
           new Date(item.updated_at || item.created_at || Date.now()).getFullYear(),
         getTujuanText(item),
       ]),
+      unit: activeUnitTarget,
+      orientation: 'landscape',
     })
   }
 
@@ -762,6 +778,11 @@ export default function LaporanAlumniPage() {
             printTargetAlumni
               ? `Cetak Laporan Alumni: ${printTargetAlumni.full_name || printTargetAlumni.nama}`
               : 'Rekap Kelulusan, Pemindahan, & Alumni'
+          }
+          activeUnit={
+            printTargetAlumni
+              ? (printTargetAlumni.education_unit?.name || printTargetAlumni.unit?.name || printTargetAlumni.unit)
+              : (unit !== 'semua' ? unit : null)
           }
           onPrint={handlePrintClean}
           onDownloadPdf={handleDownloadPdf}

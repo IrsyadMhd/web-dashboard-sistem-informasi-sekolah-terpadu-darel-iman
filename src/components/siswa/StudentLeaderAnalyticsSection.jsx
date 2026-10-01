@@ -51,20 +51,20 @@ import {
 } from '../tailgrids/core/table'
 import { MenuMeatballs1, Search1, Eye, Upload1, Download1, Plus as PlusIcon } from '@tailgrids/icons'
 
-// Default sample trend data for pergerakan siswa (Baru, Keluar, Berhenti) per bulan
-const DEFAULT_MOVEMENT_DATA = [
-  { bulan: 'Jan', siswaBaru: 14, siswaKeluar: 2, siswaBerhenti: 1 },
-  { bulan: 'Feb', siswaBaru: 8, siswaKeluar: 1, siswaBerhenti: 0 },
-  { bulan: 'Mar', siswaBaru: 12, siswaKeluar: 3, siswaBerhenti: 1 },
-  { bulan: 'Apr', siswaBaru: 6, siswaKeluar: 0, siswaBerhenti: 0 },
-  { bulan: 'Mei', siswaBaru: 9, siswaKeluar: 2, siswaBerhenti: 1 },
-  { bulan: 'Jun', siswaBaru: 45, siswaKeluar: 5, siswaBerhenti: 2 },
-  { bulan: 'Jul', siswaBaru: 68, siswaKeluar: 4, siswaBerhenti: 1 },
-  { bulan: 'Agu', siswaBaru: 22, siswaKeluar: 1, siswaBerhenti: 0 },
-  { bulan: 'Sep', siswaBaru: 15, siswaKeluar: 2, siswaBerhenti: 1 },
-  { bulan: 'Okt', siswaBaru: 11, siswaKeluar: 1, siswaBerhenti: 0 },
-  { bulan: 'Nov', siswaBaru: 7, siswaKeluar: 0, siswaBerhenti: 0 },
-  { bulan: 'Des', siswaBaru: 18, siswaKeluar: 2, siswaBerhenti: 1 },
+// Zero-state baseline for pergerakan siswa trend data when backend movement API is empty
+const ZERO_MOVEMENT_DATA = [
+  { bulan: 'Jan', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Feb', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Mar', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Apr', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Mei', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Jun', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Jul', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Agu', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Sep', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Okt', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Nov', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
+  { bulan: 'Des', siswaBaru: 0, siswaKeluar: 0, siswaBerhenti: 0 },
 ]
 
 export default function StudentLeaderAnalyticsSection({
@@ -135,65 +135,72 @@ export default function StudentLeaderAnalyticsSection({
     })
   }, [students, modalKelasFilter, modalSearchInput])
 
-  // Derive Tahfizh achievements list per kelas
+  // Derive Tahfizh achievements list per kelas based strictly on database metadata/records
   const tahfizhAchievements = useMemo(() => {
     const sourceList = filteredStudents.length > 0 ? filteredStudents : students
 
-    return sourceList.map((st, idx) => {
-      const meta = st.raw?.metadata || {}
-      const juzCount = meta.jumlah_juz || (30 - ((idx * 3) % 29))
-      const hafalanDesc = meta.hafalan || `${juzCount} Juz (Juz 1 - ${juzCount})`
+    return sourceList
+      .filter((st) => {
+        const meta = st.raw?.metadata || {}
+        return Boolean(meta.jumlah_juz || meta.hafalan || meta.tahfizh)
+      })
+      .map((st, idx) => {
+        const meta = st.raw?.metadata || {}
+        const juzCount = Number(meta.jumlah_juz || 0)
+        const hafalanDesc = meta.hafalan || (juzCount > 0 ? `${juzCount} Juz (Juz 1 - ${juzCount})` : 'Hafalan Al-Qur\'an')
 
-      return {
-        id: st.id || idx + 1,
-        nama: st.nama || st.full_name || `Siswa Tahfizh ${idx + 1}`,
-        nis: st.nis || `23010${idx}`,
-        kelas: st.kelas || '1A',
-        unit: st.unit || 'SDIT 1 Dar el-Iman',
-        foto: st.foto || st.photo_url || '',
-        jenisPrestasi: 'Tahfizh',
-        namaPrestasi: `Capaian Tahfizh Al-Qur'an (${juzCount} Juz)`,
-        tingkatPrestasi: 'Internal Sekolah',
-        juzCount: juzCount,
-        hafalanDesc: hafalanDesc,
-        score: juzCount * 10,
-        status: 'Aktif Berprestasi',
-        raw: st.raw || st,
-      }
-    }).sort((a, b) => b.juzCount - a.juzCount)
+        return {
+          id: st.id || idx + 1,
+          nama: st.nama || st.full_name || '-',
+          nis: st.nis || '-',
+          kelas: st.kelas || '-',
+          unit: st.unit || '-',
+          foto: st.foto || st.photo_url || '',
+          jenisPrestasi: 'Tahfizh',
+          namaPrestasi: `Capaian Tahfizh Al-Qur'an (${juzCount} Juz)`,
+          tingkatPrestasi: meta.tingkat_prestasi || 'Internal Sekolah',
+          juzCount: juzCount,
+          hafalanDesc: hafalanDesc,
+          score: juzCount * 10,
+          status: 'Aktif Berprestasi',
+          raw: st.raw || st,
+        }
+      })
+      .sort((a, b) => b.juzCount - a.juzCount)
   }, [filteredStudents, students])
 
-  // Derive Academic achievements list (Top 3 Terbaik Prestasi Akademik Sekolah)
+  // Derive Academic achievements list strictly from student database metadata
   const academicAchievements = useMemo(() => {
     const sourceList = filteredStudents.length > 0 ? filteredStudents : students
 
-    const titles = [
-      { nama: 'Juara 1 Olimpiade Sains & Matematika (OSN)', tingkat: 'Nasional', score: 98 },
-      { nama: 'Juara 1 Musabaqah Hifdzil Qur\'an (MHQ)', tingkat: 'Provinsi', score: 95 },
-      { nama: 'Juara 1 Turnamen Panahan Tradisional', tingkat: 'Kota/Kabupaten', score: 92 },
-      { nama: 'Juara 2 Lomba Karya Tulis Ilmiah Remaja', tingkat: 'Provinsi', score: 90 },
-      { nama: 'Juara 1 Lomba Pidato Bahasa Arab', tingkat: 'Kota/Kabupaten', score: 88 },
-      { nama: 'Juara 3 Cerdas Cermat Al-Qur\'an', tingkat: 'Internal Sekolah', score: 85 },
-    ]
+    return sourceList
+      .filter((st) => {
+        const meta = st.raw?.metadata || {}
+        return Boolean(meta.prestasi_akademik || meta.prestasi || meta.juara)
+      })
+      .map((st, idx) => {
+        const meta = st.raw?.metadata || {}
+        const prestasiTitle = meta.prestasi_akademik || meta.prestasi || 'Prestasi Akademik'
+        const tingkat = meta.tingkat_prestasi || 'Sekolah'
+        const score = Number(meta.skor_prestasi || 0)
 
-    return sourceList.map((st, idx) => {
-      const t = titles[idx % titles.length]
-      return {
-        id: st.id || idx + 100,
-        nama: st.nama || st.full_name || `Siswa Akademik ${idx + 1}`,
-        nis: st.nis || `23010${idx}`,
-        kelas: st.kelas || '1A',
-        unit: st.unit || 'SDIT 1 Dar el-Iman',
-        foto: st.foto || st.photo_url || '',
-        jenisPrestasi: 'Akademik',
-        namaPrestasi: t.nama,
-        tingkatPrestasi: t.tingkat,
-        juzCount: 0,
-        score: t.score,
-        status: 'Aktif Berprestasi',
-        raw: st.raw || st,
-      }
-    }).sort((a, b) => b.score - a.score)
+        return {
+          id: st.id || idx + 100,
+          nama: st.nama || st.full_name || '-',
+          nis: st.nis || '-',
+          kelas: st.kelas || '-',
+          unit: st.unit || '-',
+          foto: st.foto || st.photo_url || '',
+          jenisPrestasi: 'Akademik',
+          namaPrestasi: prestasiTitle,
+          tingkatPrestasi: tingkat,
+          juzCount: 0,
+          score: score,
+          status: 'Aktif Berprestasi',
+          raw: st.raw || st,
+        }
+      })
+      .sort((a, b) => b.score - a.score)
   }, [filteredStudents, students])
 
   // Combined achievement list for "Semua Capaian"
@@ -225,11 +232,11 @@ export default function StudentLeaderAnalyticsSection({
     )
   }, [rank4PlusRankings, tableSearch])
 
-  // Calculations for Movement Summary
+  // Calculations for Movement Summary with zero fallback
   const movementTotals = useMemo(() => {
-    const newStudents = dashboardStats.siswa_baru ?? 48
-    const leftStudents = dashboardStats.mutasi_keluar ?? 5
-    const stoppedStudents = dashboardStats.siswa_nonaktif ?? 3
+    const newStudents = dashboardStats.siswa_baru ?? 0
+    const leftStudents = dashboardStats.mutasi_keluar ?? 0
+    const stoppedStudents = dashboardStats.siswa_nonaktif ?? 0
     return {
       baru: newStudents,
       keluar: leftStudents,
@@ -266,10 +273,10 @@ export default function StudentLeaderAnalyticsSection({
                     type="button"
                     title="Import Data Siswa"
                     aria-label="Import Data Siswa"
-                    className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-600 hover:bg-sky-500 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-500/30 cursor-pointer shadow-2xs"
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     onClick={onOpenImport}
                   >
-                    <Upload1 className="size-5 transition-colors" />
+                    <Upload1 className="size-5 text-white" strokeWidth={2.2} />
                   </button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -278,17 +285,17 @@ export default function StudentLeaderAnalyticsSection({
                 </div>
               )}
 
-              {/* Export Button (Soft Amber Squircle) */}
+              {/* Export Button (Vivid Amber / Orange Squircle) */}
               {onOpenExport && canExportStudent && (
                 <div className="group relative inline-flex">
                   <button
                     type="button"
                     title="Export Data Siswa"
                     aria-label="Export Data Siswa"
-                    className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-600 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-amber-500/30 cursor-pointer shadow-2xs"
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     onClick={onOpenExport}
                   >
-                    <Download1 className="size-5 transition-colors" />
+                    <Download1 className="size-5 text-white" strokeWidth={2.2} />
                   </button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -297,17 +304,17 @@ export default function StudentLeaderAnalyticsSection({
                 </div>
               )}
 
-              {/* Tambah Siswa Button (Soft Emerald Squircle) */}
+              {/* Tambah Siswa Button (Vivid Emerald / Teal Squircle) */}
               {onOpenAdd && canCreateStudent && (
                 <div className="group relative inline-flex">
                   <button
                     type="button"
                     title="Tambah Data Siswa"
                     aria-label="Tambah Data Siswa"
-                    className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-emerald-600/30 cursor-pointer shadow-2xs"
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     onClick={onOpenAdd}
                   >
-                    <PlusIcon className="size-5 transition-colors" />
+                    <PlusIcon className="size-5 text-white" strokeWidth={2.5} />
                   </button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -316,16 +323,16 @@ export default function StudentLeaderAnalyticsSection({
                 </div>
               )}
 
-              {/* Lihat Data Siswa Pop-up Datatable Button (Soft Indigo Squircle) */}
+              {/* Lihat Data Siswa Pop-up Datatable Button (Vivid Indigo / Violet Squircle) */}
               <div className="group relative inline-flex">
                 <button
                   type="button"
                   title="Lihat Datatable Siswa (Pop-up)"
                   aria-label="Lihat Datatable Siswa (Pop-up)"
-                  className="flex size-10 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-600 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-indigo-600/30 cursor-pointer shadow-2xs"
+                  className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                   onClick={() => setShowStudentTableModal(true)}
                 >
-                  <Eye className="size-5 transition-colors" />
+                  <Eye className="size-5 text-white" strokeWidth={2.2} />
                 </button>
                 <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                   <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -383,11 +390,11 @@ export default function StudentLeaderAnalyticsSection({
                   aria-label="Filter berdasarkan Kelas"
                 >
                   <option value="">Semua Kelas</option>
-                  {availableKelasList.map((c) => {
+                  {availableKelasList.map((c, idx) => {
                     const val = typeof c === 'string' ? c : (c.nama_kelas || c.name || c.id)
                     const label = typeof c === 'string' ? c : (c.nama_kelas || c.name || `Kelas ${c.id}`)
                     return (
-                      <option key={val} value={val}>
+                      <option key={c.id ? `opt-kls-${c.id}-${idx}` : `opt-kls-${val}-${idx}`} value={val}>
                         {String(label).toLowerCase().startsWith('kelas') ? label : `Kelas ${label}`}
                       </option>
                     )
@@ -400,7 +407,7 @@ export default function StudentLeaderAnalyticsSection({
           <CardContent className="pt-6 px-6 pb-6">
             <div className="h-72 w-full">
               <ChartContainer className="h-full w-full">
-                <BarChart data={DEFAULT_MOVEMENT_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={dashboardStats?.pergerakan_bulanan || ZERO_MOVEMENT_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis dataKey="bulan" tickLine={false} axisLine={false} className="text-[11px] font-medium" />
                   <YAxis tickLine={false} axisLine={false} className="text-[11px] font-medium" />
@@ -490,9 +497,14 @@ export default function StudentLeaderAnalyticsSection({
               </Badge>
             </div>
 
-            <div className="grid grid-cols-1 gap-4.5 md:grid-cols-3">
-              {top3Rankings.map((item, index) => {
-                const isRank1 = index === 0
+            {top3Rankings.length === 0 ? (
+              <div className="text-center py-10 px-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+                Belum ada data prestasi {activeTab === 'tahfizh' ? 'tahfizh' : activeTab === 'akademik' ? 'akademik' : ''} siswa yang tercatat pada filter ini.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4.5 md:grid-cols-3">
+                {top3Rankings.map((item, index) => {
+                  const isRank1 = index === 0
                 const isRank2 = index === 1
                 const isRank3 = index === 2
 
@@ -570,6 +582,7 @@ export default function StudentLeaderAnalyticsSection({
                 )
               })}
             </div>
+            )}
           </div>
 
           {/* SECTION B: DATATABLE PERINGKAT SELANJUTNYA (TINGKATAN 4 SETERUSNYA) */}
@@ -762,11 +775,11 @@ export default function StudentLeaderAnalyticsSection({
                     aria-label="Filter Modal Kelas"
                   >
                     <option value="">Semua Kelas</option>
-                    {availableKelasList.map((c) => {
+                    {availableKelasList.map((c, idx) => {
                       const val = typeof c === 'string' ? c : (c.nama_kelas || c.name || c.id)
                       const label = typeof c === 'string' ? c : (c.nama_kelas || c.name || `Kelas ${c.id}`)
                       return (
-                        <option key={val} value={val}>
+                        <option key={c.id ? `modal-kls-${c.id}-${idx}` : `modal-kls-${val}-${idx}`} value={val}>
                           {String(label).toLowerCase().startsWith('kelas') ? label : `Kelas ${label}`}
                         </option>
                       )

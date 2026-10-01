@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { attendanceService } from '../services/attendanceService'
 import { DataTable } from '../components/common/DataTable'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
-import { Input } from '../components/ui/input'
-import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/tailgrids/core/card'
+import { Button } from '@/components/tailgrids/core/button'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Input } from '@/components/tailgrids/core/input'
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/tailgrids/core/dialog'
 import {
   LuClipboardCheck,
   LuUserCheck,
@@ -384,17 +384,24 @@ export default function AttendancePage() {
       {/* Input Modal */}
       <Dialog isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <DialogHeader>
-          <DialogTitle>Input Presensi Manual</DialogTitle>
-          <DialogDescription>Catat kehadiran siswa atau pegawai secara manual.</DialogDescription>
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+              <LuClipboardCheck className="size-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">Input Presensi Manual</DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Catat kehadiran siswa atau pegawai secara manual ke dalam sistem.</DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleCreateCheckin} className="space-y-4 my-2">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Tipe Presensi</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">Tipe Presensi</label>
             <select
               value={modalForm.tipe_presensi}
               onChange={(e) => setModalForm((p) => ({ ...p, tipe_presensi: e.target.value }))}
-              className="w-full h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
+              className="w-full h-10 rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:ring-4 focus:border-emerald-600 focus:ring-emerald-500/15 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:bg-slate-900"
             >
               <option value="Siswa">Siswa</option>
               <option value="Pegawai">Pegawai / Guru</option>
@@ -402,21 +409,22 @@ export default function AttendancePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Lengkap *</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">Nama Lengkap *</label>
             <Input
               value={modalForm.nama}
               onChange={(e) => setModalForm((p) => ({ ...p, nama: e.target.value }))}
               placeholder="Masukkan nama"
+              className="rounded-xl border-slate-200/90 bg-slate-50/50 text-xs font-semibold dark:border-slate-700/80 dark:bg-slate-900/50"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Status Kehadiran</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">Status Kehadiran</label>
             <select
               value={modalForm.status}
               onChange={(e) => setModalForm((p) => ({ ...p, status: e.target.value }))}
-              className="w-full h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
+              className="w-full h-10 rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:ring-4 focus:border-emerald-600 focus:ring-emerald-500/15 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:bg-slate-900"
             >
               <option value="HADIR">Hadir Tepat Waktu</option>
               <option value="TERLAMBAT">Hadir Terlambat</option>
@@ -427,11 +435,11 @@ export default function AttendancePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Metode Presensi</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">Metode Presensi</label>
             <select
               value={modalForm.attendance_method}
               onChange={(e) => setModalForm((p) => ({ ...p, attendance_method: e.target.value }))}
-              className="w-full h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100"
+              className="w-full h-10 rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:ring-4 focus:border-emerald-600 focus:ring-emerald-500/15 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:focus:border-emerald-400 dark:focus:bg-slate-900"
             >
               <option value="MANUAL">Manual Input Operator</option>
               <option value="QRCODE">QR Code Gate</option>
@@ -440,19 +448,20 @@ export default function AttendancePage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Keterangan / Catatan</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">Keterangan / Catatan</label>
             <Input
               value={modalForm.keterangan}
               onChange={(e) => setModalForm((p) => ({ ...p, keterangan: e.target.value }))}
               placeholder="Contoh: Izin acara keluarga"
+              className="rounded-xl border-slate-200/90 bg-slate-50/50 text-xs font-semibold dark:border-slate-700/80 dark:bg-slate-900/50"
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+          <DialogFooter className="mt-6 flex items-center justify-end gap-2.5">
+            <Button type="button" variant="ghost" appearance="outline" size="sm" onClick={() => setIsModalOpen(false)}>
               <LuX className="h-4 w-4 mr-1.5" /> Batal
             </Button>
-            <Button type="submit" disabled={checkinMutation.isPending}>
+            <Button type="submit" variant="primary" size="sm" disabled={checkinMutation.isPending}>
               <LuSave className="h-4 w-4 mr-1.5" /> Simpan Presensi
             </Button>
           </DialogFooter>

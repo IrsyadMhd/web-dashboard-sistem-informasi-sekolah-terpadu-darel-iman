@@ -25,8 +25,9 @@ import {
 } from 'lucide-react'
 import { Upload1, Download1, CheckCircle1 } from '@tailgrids/icons'
 import { FaGraduationCap, FaSchool, FaExchangeAlt, FaUserSlash } from 'react-icons/fa'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import useDebounce from '../hooks/useDebounce'
+import { printCleanTable } from '../utils/printHelper'
 
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -880,93 +881,31 @@ export default function KelolaAlumniPage() {
     exportCsv(exportData, `Data_Pengolahan_Alumni_${new Date().toISOString().slice(0, 10)}.csv`)
   }
 
-  // Silent Print Handler Identik StudentsPage
+  // Official Global SIMSIT Print Handler
   const handlePrintMainTable = () => {
-    const currentDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-
-    const rowsHtml = filteredList.map((std) => {
+    const rows = filteredList.map((std) => {
       const meta = std.metadata || {}
       const tujuan = meta.perguruan_tinggi || meta.tujuan_kelulusan || meta.status_lanjutan || 'Belum Diisi'
       const nisNisn = `NIS: ${std.nis || '-'} / NISN: ${std.nisn || '-'}`
-      return `
-        <tr>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold;">
-            ${std.full_name || std.nama || '-'}<br/>
-            <span style="font-size: 8pt; color: #64748b; font-family: monospace;">${nisNisn}</span>
-          </td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${std.education_unit?.name || std.unit?.name || 'Unit Utama'}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center;">${meta.tahun_lulus || std.tahun_masuk || '-'}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${tujuan}</td>
-          <td style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold;">${meta.mutasi_type === 'keluar' ? 'Pindah Keluar' : meta.mutasi_type === 'masuk_unit_baru' ? 'Mutasi Internal' : 'Lulus / Alumni'}</td>
-        </tr>
-      `
-    }).join('')
+      const studentLabel = `${std.full_name || std.nama || '-'} (${nisNisn})`
+      const unitLabel = std.education_unit?.name || std.unit?.name || 'Unit Utama'
+      const tahun = meta.tahun_lulus || std.tahun_masuk || '-'
+      const statusLabel = meta.mutasi_type === 'keluar' ? 'Pindah Keluar' : meta.mutasi_type === 'masuk_unit_baru' ? 'Mutasi Internal' : 'Lulus / Alumni'
+      return [studentLabel, unitLabel, tahun, tujuan, statusLabel]
+    })
 
-    let iframe = document.getElementById('print-isolation-frame')
-    if (!iframe) {
-      iframe = document.createElement('iframe')
-      iframe.id = 'print-isolation-frame'
-      iframe.style.position = 'fixed'
-      iframe.style.right = '0'
-      iframe.style.bottom = '0'
-      iframe.style.width = '0'
-      iframe.style.height = '0'
-      iframe.style.border = '0'
-      document.body.appendChild(iframe)
-    }
+    const activeUnitObj = selectedUnit && selectedUnit !== 'all'
+      ? units.find((u) => String(u.id) === String(selectedUnit))
+      : null
 
-    const doc = iframe.contentWindow.document
-    doc.open()
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Laporan Pengolahan Data Alumni SIT</title>
-          <style>
-            @page { size: A4 landscape; margin: 10mm; }
-            body { font-family: system-ui, -apple-system, sans-serif; font-size: 9pt; color: #0f172a; margin: 0; padding: 10px; }
-            .kop { border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
-            .kop h1 { font-size: 14pt; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; }
-            .kop p { font-size: 9.5pt; margin: 3px 0 0 0; color: #334155; font-weight: 600; }
-            .meta { display: flex; justify-content: space-between; font-size: 8.5pt; color: #475569; margin-top: 5px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8.5pt; }
-            th { background-color: #0E5C44; color: #ffffff; padding: 7px 8px; font-size: 8.5pt; text-align: left; border: 1px solid #0E5C44; font-weight: bold; }
-            td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: middle; }
-            tr:nth-child(even) { background-color: #f8fafc; }
-          </style>
-        </head>
-        <body>
-          <div class="kop">
-            <h1>LAPORAN PENGOLAHAN DATA ALUMNI & MUTASI SIT</h1>
-            <p>Sekolah Islam Terpadu — Pengolahan Studi Lanjut</p>
-            <div class="meta">
-              <span>Tanggal Cetak: ${currentDate}</span>
-              <span>Total Terfilter: ${filteredList.length} Alumni</span>
-            </div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 30%;">NIS / NISN & Nama Siswa</th>
-                <th style="width: 20%;">Unit Asal</th>
-                <th style="width: 15%; text-align: center;">Tahun Lulus</th>
-                <th style="width: 20%;">Tujuan Lanjut / PTN</th>
-                <th style="width: 15%; text-align: center;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml || '<tr><td colSpan="5" style="text-align:center;">Tidak ada data alumni</td></tr>'}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `)
-    doc.close()
-
-    setTimeout(() => {
-      iframe.contentWindow.focus()
-      iframe.contentWindow.print()
-    }, 250)
+    printCleanTable({
+      title: 'Laporan Pengolahan Data Alumni & Mutasi',
+      subtitle: `Pengolahan Studi Lanjut & Mutasi Siswa (Total: ${filteredList.length} Siswa)`,
+      headers: ['NIS / NISN & Nama Siswa', 'Unit Asal', 'Tahun Lulus', 'Tujuan Lanjut / PTN', 'Status'],
+      rows,
+      unit: activeUnitObj,
+      orientation: 'landscape',
+    })
   }
 
   // Action Handlers: Tambah Alumni Baru
@@ -1952,14 +1891,14 @@ export default function KelolaAlumniPage() {
           serverControlled
           renderTable={() => (
             <table className="w-full table-fixed text-left text-sm text-slate-600" aria-label="Daftar alumni">
-              <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-                <tr>
-                  <th className="w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
-                  <th className="w-[34%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa / Alumni</th>
-                  <th className="hidden w-[18%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Unit Asal</th>
-                  <th className="hidden w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Tahun Lulus</th>
-                  <th className="hidden w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Tujuan Lanjut Sekolah / PTN</th>
-                  <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-2 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider"></th>
+              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                  <th className="w-[6%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</th>
+                  <th className="w-[34%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Identitas Siswa / Alumni</th>
+                  <th className="hidden w-[18%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Unit Asal</th>
+                  <th className="hidden w-[12%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Tahun Lulus</th>
+                  <th className="hidden w-[20%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Tujuan Lanjut Sekolah / PTN</th>
+                  <th className="w-[10%] bg-transparent px-2 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">

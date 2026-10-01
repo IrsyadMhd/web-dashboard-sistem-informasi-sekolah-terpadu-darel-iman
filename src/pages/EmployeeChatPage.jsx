@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { MessageSquare, Users, HeartHandshake, ShieldCheck, Sparkles } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import ChatGuruWorkspace from '../components/portal/ChatGuruWorkspace'
+import { useSearchParams } from 'react-router-dom'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 
@@ -18,7 +19,9 @@ export default function EmployeeChatPage() {
     return /super.*admin|admin|kepala|kepsek|divisi/i.test(name)
   })
 
-  const [activeTabMode, setActiveTabMode] = useState('employee') // 'employee' | 'teacher'
+  const [searchParams] = useSearchParams()
+  const initialMode = searchParams.get('mode') === 'teacher' ? 'teacher' : 'employee'
+  const [activeTabMode, setActiveTabMode] = useState(initialMode) // 'employee' | 'teacher'
   const [parentUnreadCount, setParentUnreadCount] = useState(0)
 
   // Check unread messages from parents periodically for teachers
@@ -151,7 +154,13 @@ export default function EmployeeChatPage() {
       )}
 
       {/* Main Chat Workspace */}
-      <ChatGuruWorkspace mode={activeTabMode} hideHeader={false} />
+      <ChatGuruWorkspace
+        mode={activeTabMode}
+        hideHeader={false}
+        targetStudentId={searchParams.get('student_id')}
+        targetParentId={searchParams.get('parent_id')}
+        initialMessage={searchParams.get('initial_message')}
+      />
     </PageContainer>
   )
 }

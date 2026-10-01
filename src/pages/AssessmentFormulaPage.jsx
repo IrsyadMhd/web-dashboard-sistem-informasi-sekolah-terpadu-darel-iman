@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import {
   Calculator,
   CheckCircle2,
@@ -108,10 +108,9 @@ export default function AssessmentFormulaPage({
   }, [user])
 
   const isSuperAdmin = useMemo(() => {
-    if (!user) return true // fallback saat dev / auth mock
+    if (!user) return false
     return (
       Boolean(user?.is_superadmin) ||
-      userRoles.length === 0 ||
       userRoles.some((r) => /super|admin|yayasan|pimpinan/i.test(r))
     )
   }, [user, userRoles])

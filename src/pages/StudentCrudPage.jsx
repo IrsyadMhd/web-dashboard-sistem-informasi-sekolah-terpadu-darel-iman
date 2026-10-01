@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react'
-import Swal from 'sweetalert2'
+import { useQuery } from '@tanstack/react-query'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import { educationUnitService } from '../services/educationUnitService'
 import {
   useStudents,
   useCreateStudent,
@@ -8,9 +10,9 @@ import {
 } from '../hooks/useStudentCrud'
 import { DataTable } from '../components/common/DataTable'
 import { StudentFormModal } from '../components/crud/StudentFormModal'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card'
-import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/tailgrids/core/card'
+import { Button } from '@/components/tailgrids/core/button'
+import { Badge } from '@/components/tailgrids/core/badge'
 import {
   LuPlus,
   LuPencil,
@@ -31,6 +33,14 @@ export default function StudentCrudPage() {
   // React Query Hooks
   const queryParams = useMemo(() => ({ search, unit: unitFilter, status: statusFilter }), [search, unitFilter, statusFilter])
   const { data: apiData, isLoading, isFetching, refetch } = useStudents(queryParams)
+  const { data: unitsRes } = useQuery({
+    queryKey: ['education-units-student-crud'],
+    queryFn: () => educationUnitService.getDaftar({ per_page: 100 }),
+  })
+  const educationUnits = useMemo(() => {
+    const list = unitsRes?.data?.data || unitsRes?.data || (Array.isArray(unitsRes) ? unitsRes : [])
+    return Array.isArray(list) ? list : []
+  }, [unitsRes])
   const createMutation = useCreateStudent()
   const updateMutation = useUpdateStudent()
   const deleteMutation = useDeleteStudent()
@@ -378,10 +388,11 @@ export default function StudentCrudPage() {
                   className="h-10 rounded-lg border border-slate-800 bg-slate-950/60 px-3 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 >
                   <option value="">Semua Unit</option>
-                  <option value="TKIT">TKIT</option>
-                  <option value="SDIT">SDIT</option>
-                  <option value="SMPIT">SMPIT</option>
-                  <option value="SMAIT">SMAIT</option>
+                  {educationUnits.map((u) => (
+                    <option key={u.id} value={u.code || u.name}>
+                      {u.name}
+                    </option>
+                  ))}
                 </select>
 
                 <select

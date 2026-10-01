@@ -12,8 +12,9 @@ import {
   Table as TableIcon,
   User,
   X,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
 import { dashboardPemantauanService } from '../../services/dashboardPemantauanService'
 import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
@@ -48,10 +49,16 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 }
 
+function extractCategory(info) {
+  const meta = info?.data_tambahan || {}
+  return info?.kategori || meta.kategori || info?.jenis || meta.tipe || info?.type || 'Pengumuman'
+}
+
 function categoryVariant(category) {
   const key = (category || '').toLowerCase()
-  if (key.includes('berita')) return 'info'
-  if (key.includes('agenda')) return 'warning'
+  if (key.includes('berita') || key === 'news') return 'purple'
+  if (key.includes('agenda') || key === 'event') return 'warning'
+  if (key.includes('edaran') || key === 'circular') return 'danger'
   return 'success'
 }
 
@@ -61,7 +68,70 @@ function formatFullDate(value) {
   return Number.isNaN(date.getTime()) ? 'Terbaru' : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const add = (type, title, message) => {
+    const id = Date.now() + Math.random()
+    setToasts((p) => [...p, { id, type, title, message }])
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4000)
+  }
+  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
+  return {
+    toasts,
+    dismiss,
+    success: (t, m) => add('success', t, m),
+    error: (t, m) => add('error', t, m),
+    warning: (t, m) => add('warning', t, m),
+    info: (t, m) => add('info', t, m),
+  }
+}
+
+function ToastStack({ toasts, onDismiss }) {
+  return (
+    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
+              t.type === 'success'
+                ? 'border-emerald-300 bg-emerald-50/95 text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/90 dark:text-emerald-100'
+                : t.type === 'error'
+                ? 'border-rose-300 bg-rose-50/95 text-rose-900 dark:border-rose-700/60 dark:bg-rose-950/90 dark:text-rose-100'
+                : t.type === 'warning'
+                ? 'border-amber-300 bg-amber-50/95 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/90 dark:text-amber-100'
+                : 'border-blue-300 bg-blue-50/95 text-blue-900 dark:border-blue-700/60 dark:bg-blue-950/90 dark:text-blue-100'
+            }`}
+          >
+            <div className="shrink-0 mt-0.5">
+              {t.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+              {t.type === 'error' && <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
+              {t.type === 'warning' && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+              {t.type === 'info' && <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h5 className="text-xs font-bold leading-tight">{t.title}</h5>
+              {t.message && <p className="text-[11px] opacity-85 mt-0.5 leading-snug">{t.message}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => onDismiss(t.id)}
+              className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs p-0.5 cursor-pointer"
+            >
+              ✕
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export function FoundationInformationPage() {
+  const toast = useToast()
   const [information, setInformation] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -121,13 +191,13 @@ export function FoundationInformationPage() {
   const filteredInfo = useMemo(() => information.filter((info) => {
     const title = (info.judul_pengumuman || info.judul || info.title || '').toString().toLowerCase()
     const content = (info.isi_pengumuman || info.content || '').toString().toLowerCase()
-    const type = (info.kategori || info.jenis || 'pengumuman').toString().toLowerCase()
+    const type = extractCategory(info).toLowerCase()
 
     const matchesTab =
       activeTab === 'all' ||
       (activeTab === 'pengumuman' && type.includes('pengumuman')) ||
-      (activeTab === 'berita' && type.includes('berita')) ||
-      (activeTab === 'agenda' && type.includes('agenda'))
+      (activeTab === 'berita' && (type.includes('berita') || type === 'news')) ||
+      (activeTab === 'agenda' && (type.includes('agenda') || type === 'event'))
 
     const matchesSearch = title.includes(search.toLowerCase()) || content.includes(search.toLowerCase())
 
@@ -152,8 +222,8 @@ export function FoundationInformationPage() {
         aVal = (a.judul_pengumuman || a.judul || a.title || '').toString().toLowerCase()
         bVal = (b.judul_pengumuman || b.judul || b.title || '').toString().toLowerCase()
       } else if (sortKey === 'kategori') {
-        aVal = (a.kategori || a.jenis || '').toString().toLowerCase()
-        bVal = (b.kategori || b.jenis || '').toString().toLowerCase()
+        aVal = extractCategory(a).toLowerCase()
+        bVal = extractCategory(b).toLowerCase()
       } else if (sortKey === 'penulis') {
         aVal = (a.penulis || 'Humas Yayasan').toString().toLowerCase()
         bVal = (b.penulis || 'Humas Yayasan').toString().toLowerCase()
@@ -173,9 +243,15 @@ export function FoundationInformationPage() {
   const paginatedInfo = sortedInfo.slice((page - 1) * perPage, page * perPage)
 
   const totalCount = information.length
-  const pengumumanCount = information.filter((i) => (i.kategori || i.jenis || 'pengumuman').toLowerCase().includes('pengumuman')).length
-  const beritaCount = information.filter((i) => (i.kategori || i.jenis || '').toLowerCase().includes('berita')).length
-  const agendaCount = information.filter((i) => (i.kategori || i.jenis || '').toLowerCase().includes('agenda')).length
+  const pengumumanCount = information.filter((i) => extractCategory(i).toLowerCase().includes('pengumuman')).length
+  const beritaCount = information.filter((i) => {
+    const c = extractCategory(i).toLowerCase()
+    return c.includes('berita') || c === 'news'
+  }).length
+  const agendaCount = information.filter((i) => {
+    const c = extractCategory(i).toLowerCase()
+    return c.includes('agenda') || c === 'event'
+  }).length
 
   const handleRefresh = () => {
     setPage(1)
@@ -412,7 +488,7 @@ export function FoundationInformationPage() {
                     {paginatedInfo.map((info, idx) => {
                       const title = info.judul_pengumuman || info.judul || info.title || 'Informasi Resmi'
                       const content = info.isi_pengumuman || info.content || 'Konten informasi sekolah.'
-                      const category = info.kategori || info.jenis || 'Pengumuman'
+                      const category = extractCategory(info)
                       return (
                         <tr key={info.id || idx} className="border-b border-slate-100/80 transition-colors hover:bg-emerald-50/40 dark:border-slate-800/70 dark:hover:bg-emerald-950/20">
                           <td className="px-2 py-3.5 text-center font-bold text-slate-500">
@@ -465,32 +541,45 @@ export function FoundationInformationPage() {
                   {paginatedInfo.map((info, idx) => {
                     const title = info.judul_pengumuman || info.judul || info.title || 'Informasi Resmi'
                     const content = info.isi_pengumuman || info.content || 'Konten informasi sekolah.'
-                    const category = info.kategori || info.jenis || 'Pengumuman'
+                    const category = extractCategory(info)
+                    const cover = info.gambar_url || info.cover || info.data_tambahan?.gambar_url || info.data_tambahan?.cover
                     return (
-                      <article key={info.id || idx} className={`${masterStyles.card} flex flex-col justify-between p-6 transition hover:-translate-y-0.5`}>
-                        <div className="space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <MasterBadge variant={categoryVariant(category)}>{category}</MasterBadge>
-                            <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {formatFullDate(info.created_at)}
-                            </span>
+                      <article key={info.id || idx} className={`${masterStyles.card} flex flex-col justify-between overflow-hidden transition hover:-translate-y-0.5`}>
+                        {cover ? (
+                          <div className="h-36 w-full overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                            <img src={cover} alt={title} className="h-full w-full object-cover" />
+                            <div className="absolute top-2.5 left-2.5">
+                              <MasterBadge variant={categoryVariant(category)}>{category}</MasterBadge>
+                            </div>
                           </div>
-                          <h3 className="line-clamp-2 text-sm font-bold leading-snug text-slate-900 dark:text-white">{title}</h3>
-                          <p className="line-clamp-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{content}</p>
-                        </div>
-                        <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
-                          <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
-                            <User className="h-3 w-3" />
-                            {info.penulis || 'Humas Yayasan'}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedInfo(info)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300 cursor-pointer"
-                          >
-                            Baca Detail
-                          </button>
+                        ) : null}
+                        <div className="p-5 space-y-2.5 flex-1 flex flex-col justify-between">
+                          <div className="space-y-2">
+                            {!cover && (
+                              <div className="flex items-center justify-between">
+                                <MasterBadge variant={categoryVariant(category)}>{category}</MasterBadge>
+                                <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatFullDate(info.created_at)}
+                                </span>
+                              </div>
+                            )}
+                            <h3 className="line-clamp-2 text-sm font-bold leading-snug text-slate-900 dark:text-white">{title}</h3>
+                            <p className="line-clamp-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{content}</p>
+                          </div>
+                          <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800 mt-2">
+                            <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                              <User className="h-3 w-3" />
+                              {info.penulis || 'Humas Yayasan'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedInfo(info)}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300 cursor-pointer"
+                            >
+                              Baca Detail
+                            </button>
+                          </div>
                         </div>
                       </article>
                     )
@@ -578,7 +667,7 @@ export function FoundationInformationPage() {
                 onSubmit={async (e) => {
                   e.preventDefault()
                   if (!infoForm.judul.trim() || !infoForm.isi.trim()) {
-                    Swal.fire('Form Belum Lengkap', 'Judul dan isi informasi/berita wajib diisi.', 'warning')
+                    toast.warning('Form Belum Lengkap', 'Judul dan isi informasi/berita wajib diisi.')
                     return
                   }
                   setIsSubmittingInfo(true)
@@ -619,15 +708,9 @@ export function FoundationInformationPage() {
                       status: 'Dipublikasikan',
                     })
 
-                    Swal.fire({
-                      icon: 'success',
-                      title: 'Informasi Berhasil Disimpan',
-                      text: 'Pengumuman / berita baru telah dipublikasikan di portal yayasan.',
-                      timer: 2000,
-                      showConfirmButton: false,
-                    })
+                    toast.success('Informasi Berhasil Disimpan', 'Pengumuman / berita baru telah dipublikasikan di portal yayasan.')
                   } catch (err) {
-                    Swal.fire('Gagal', 'Terjadi kesalahan saat menyimpan informasi.', 'error')
+                    toast.error('Gagal', 'Terjadi kesalahan saat menyimpan informasi.')
                   } finally {
                     setIsSubmittingInfo(false)
                   }
@@ -746,6 +829,8 @@ export function FoundationInformationPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <ToastStack toasts={toast.toasts} onDismiss={toast.dismiss} />
     </MasterDataPage>
   )
 }

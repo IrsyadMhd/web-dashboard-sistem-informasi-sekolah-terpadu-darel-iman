@@ -134,17 +134,53 @@ export function ReportState({ loading, error, children }) {
   return children
 }
 
-export function exportCsv(filename, columns, rows) {
+export function exportCsv(arg1, arg2, arg3) {
+  let filename = 'export.csv'
+  let columns = []
+  let rows = []
+
+  if (typeof arg1 === 'string' && Array.isArray(arg2) && Array.isArray(arg3)) {
+    // Canonical: exportCsv(filename, columns, rows)
+    filename = arg1
+    columns = arg2
+    rows = arg3
+  } else if (Array.isArray(arg1) && typeof arg2 === 'string') {
+    // Array of objects: exportCsv(rows, filename)
+    rows = arg1
+    filename = arg2
+    if (rows.length > 0) {
+      columns = Object.keys(rows[0]).map((key) => ({ key, label: key }))
+    }
+  } else if (typeof arg1 === 'string' && Array.isArray(arg2)) {
+    // exportCsv(filename, rows)
+    filename = arg1
+    rows = arg2
+    if (rows.length > 0) {
+      columns = Object.keys(rows[0]).map((key) => ({ key, label: key }))
+    }
+  } else if (Array.isArray(arg1) && Array.isArray(arg2) && typeof arg3 === 'string') {
+    // exportCsv(rows, columns, filename)
+    rows = arg1
+    columns = arg2
+    filename = arg3
+  }
+
   const escape = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
-  const header = columns.map((column) => escape(column.label)).join(',')
-  const body = rows.map((row) => columns.map((column) => (
-    escape(column.export ? column.export(row) : row[column.key])
-  )).join(','))
+  const header = columns.map((column) => escape(column.label || column.key)).join(',')
+  const body = rows.map((row) =>
+    columns
+      .map((column) =>
+        escape(column.export ? column.export(row) : (row[column.key] ?? (typeof column === 'string' ? row[column] : '')))
+      )
+      .join(',')
+  )
   const blob = new Blob([`\uFEFF${[header, ...body].join('\n')}`], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = filename
   link.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 1500)
 }
+
+

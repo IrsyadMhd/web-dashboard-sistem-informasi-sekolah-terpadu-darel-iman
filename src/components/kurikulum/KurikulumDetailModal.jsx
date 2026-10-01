@@ -12,6 +12,8 @@ import {
   FileText,
   ShieldAlert,
 } from 'lucide-react'
+import AppModal from '../app/AppModal'
+import { Button } from '@/components/tailgrids/core/button'
 
 export default function KurikulumDetailModal({ isOpen, onClose, data }) {
   if (!isOpen || !data) return null
@@ -19,31 +21,28 @@ export default function KurikulumDetailModal({ isOpen, onClose, data }) {
   const isTerhapus = !!data.deleted_at
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-emerald-100 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
-        {/* Header Modal */}
-        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-700 px-6 py-5 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-white/10 border border-white/20">
-              <BookOpen className="w-6 h-6 text-emerald-300" />
-            </div>
-            <div>
-              <span className="font-mono text-[10px] font-bold text-emerald-200 uppercase bg-emerald-800/80 px-2 py-0.5 rounded-md border border-emerald-600/40">
-                {data.kode_kurikulum}
-              </span>
-              <h2 className="text-lg font-bold mt-1">{data.nama_kurikulum}</h2>
-            </div>
-          </div>
-          <button
+    <AppModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={data.nama_kurikulum}
+      subtitle={`Kode: ${data.kode_kurikulum}`}
+      icon={<BookOpen className="h-5 w-5" />}
+      maxWidth="max-w-2xl"
+      footer={
+        <div className="flex w-full justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            appearance="outline"
+            size="sm"
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
           >
-            <X className="w-5 h-5" />
-          </button>
+            Tutup
+          </Button>
         </div>
-
-        {/* Content Body */}
-        <div className="p-6 space-y-6 text-xs text-slate-700">
+      }
+    >
+      <div className="space-y-6 text-xs text-slate-700 dark:text-slate-200">
           {/* Status Banner */}
           <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200">
             <div className="flex items-center gap-3">
@@ -152,17 +151,6 @@ export default function KurikulumDetailModal({ isOpen, onClose, data }) {
             </div>
           </div>
         </div>
-
-        {/* Modal Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold transition-colors"
-          >
-            Tutup
-          </button>
-        </div>
-      </div>
-    </div>
+    </AppModal>
   )
 }

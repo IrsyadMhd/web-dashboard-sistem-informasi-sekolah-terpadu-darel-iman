@@ -46,6 +46,8 @@ export function clearAuthArtifacts() {
     localStorage.removeItem('school_erp_login_time')
     localStorage.removeItem('school_erp_last_activity')
     localStorage.removeItem('school_erp_superadmin_session')
+    localStorage.removeItem('school_erp_unit')
+    localStorage.removeItem('active_unit')
   } catch {
     // Ignore storage clear errors
   }
@@ -103,7 +105,7 @@ export const useAuthStore = create((set, get) => ({
   user: initialSession.user,
   loginTime: initialSession.loginTime,
   lastActivityTime: initialSession.lastActivityTime,
-  isInitializing: true,
+  isInitializing: !initialSession.token,
   isAuthenticated: !!(initialSession.token && initialSession.user),
 
   initializeAuth: async () => {

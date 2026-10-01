@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, BookOpen, Target, Award, Plus, Search, Edit3, Trash2,
   Copy, CheckCircle2, XCircle, Clock, Sparkles, RefreshCw, X,
@@ -70,12 +70,74 @@ const getJenisBadgeColor = (j) => {
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300'
   }
 }
-// Distribusi default ditangani oleh backend (LmsKisiKisiService::simpan)
+function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+  const cnt = item?.ujian_count || 0
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                Hapus Kisi-kisi?
+              </h3>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus kisi-kisi <strong className="text-slate-900 dark:text-white">"{item.judul_kisi || 'ini'}"</strong>?
+          </p>
+          {cnt > 0 && (
+            <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 dark:border-rose-900/40 dark:bg-rose-950/20 mb-6">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-rose-800 dark:text-rose-300">
+                  Perhatian: Kisi-kisi ini masih dipakai di {cnt} ujian aktif. Menghapus data ini dapat berdampak pada konfigurasi ujian terkait.
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-xs font-extrabold text-white shadow-md shadow-rose-600/30 transition cursor-pointer disabled:opacity-50"
+            >
+              {isSubmitting ? 'Menghapus...' : 'Ya, Hapus'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
 
 export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNavigateToBankSoal }) {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const activeUnit = useUnitStore((s) => s.activeUnit)
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, item: null, isSubmitting: false })
 
   const handleGoToBankSoal = (item) => {
     if (item?.id) {
@@ -87,7 +149,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
       onNavigateToBankSoal(item)
       return
     }
-    navigate(`/dashboard/akademik/perencanaan?tab=bank-soal&kisi_id=${item?.id || ''}`)
+    navigate(`/dashboard/lms/bank-soal?kisi_id=${item?.id || ''}`)
   }
 
   const userUnitId = useMemo(() => {
@@ -98,6 +160,22 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
   const userEmployeeId = useMemo(() => {
     const c = [user?.employee_id, user?.employee?.id, user?.unit?.employee_id].filter(Boolean)
     return c.length > 0 ? String(c[0]) : null
+  }, [user])
+
+  const userRoles = useMemo(() => {
+    const rawRoles = user?.roles || []
+    return rawRoles.map((r) => (typeof r === 'string' ? r : r?.name || '')).filter(Boolean)
+  }, [user])
+
+  const isAdminOrKurikulum = useMemo(() => {
+    const normalized = userRoles.map((r) => r.toLowerCase().replace(/[\s_-]+/g, ''))
+    return normalized.some((r) =>
+      ['superadmin', 'yayasan', 'ketuayayasan', 'pengurusyayasan', 'sekretarisyayasan', 'bendaharayayasan', 'kepalasekolah', 'tatausaha', 'tu', 'divisipendidikan', 'wakakurikulum', 'kurikulum'].includes(r)
+    )
+  }, [userRoles])
+
+  const currentTeacherName = useMemo(() => {
+    return user?.employee?.nama_lengkap || user?.name || user?.username || 'Anda'
   }, [user])
 
   const [dataList, setDataList] = useState([])
@@ -185,23 +263,31 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
       if (activeUnit) params.jenjang = activeUnit
       if (mapelId) params.mata_pelajaran_id = mapelId
       if (cpId) params.cp_id = cpId
-      const [resOpts, resSub] = await Promise.allSettled([lmsKisiKisiService.getOptions(params), subjectService.getDaftar({ ...params, status: 1, per_page: 100 })])
-      const response = resOpts.status === 'fulfilled' ? resOpts.value : {}
-      const resData = response?.data?.data ?? response?.data ?? response ?? {}
-      let dbSubRaw = resSub.status === 'fulfilled' ? resSub.value?.data || resSub.value || [] : []
-      if (Array.isArray(dbSubRaw?.data)) dbSubRaw = dbSubRaw.data
-      let dbSub = Array.isArray(dbSubRaw) ? dbSubRaw.filter((s) => {
+
+      const resOpts = await lmsKisiKisiService.getOptions(params)
+      const resData = resOpts?.data?.data ?? resOpts?.data ?? resOpts ?? {}
+
+      const rawSubjects = resData.subjects ?? resData.mata_pelajaran ?? resData.mata_pelajarans
+      const subjects = normalizeArray(rawSubjects).filter((s) => {
         if (!s) return false
-        const sU = s.unit_pendidikan_id || s.unit_id || s.education_unit_id
+        const sU = s.unit_pendidikan_id || s.unit_id
         if (userUnitId && sU) return String(sU) === String(userUnitId)
         return true
-      }) : []
-      const subjects = dbSub.length > 0 ? dbSub : normalizeArray(resData.subjects ?? resData.mata_pelajaran ?? resData.mata_pelajarans).filter((s) => { const sU = s.unit_pendidikan_id || s.unit_id; if (userUnitId && sU) return String(sU) === String(userUnitId); return true })
+      })
+
+      const rawKelas = resData.kelas
+      const kelas = normalizeArray(rawKelas).filter((k) => {
+        if (!k) return false
+        const kU = k.unit_pendidikan_id || k.unit_id
+        if (userUnitId && kU) return String(kU) === String(userUnitId)
+        return true
+      })
+
       setOptions((prev) => ({
         ...prev,
-        subjects: (dbSub.length > 0 || resData.subjects !== undefined || resData.mata_pelajaran !== undefined) ? subjects : prev.subjects,
+        subjects: rawSubjects !== undefined ? subjects : prev.subjects,
         kurikulum: resData.kurikulum !== undefined ? normalizeArray(resData.kurikulum) : prev.kurikulum,
-        kelas: resData.kelas !== undefined ? normalizeArray(resData.kelas) : prev.kelas,
+        kelas: rawKelas !== undefined ? kelas : prev.kelas,
         semesters: resData.semesters !== undefined ? normalizeArray(resData.semesters) : prev.semesters,
         tahun_ajaran: resData.tahun_ajaran !== undefined ? normalizeArray(resData.tahun_ajaran) : prev.tahun_ajaran,
         guru: resData.guru !== undefined ? normalizeArray(resData.guru) : prev.guru,
@@ -222,7 +308,13 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
   }
 
   const handleCpChange = async (cpId) => {
-    setFormData((p) => ({ ...p, cp_id: cpId, tp_id: '' }))
+    const selectedCp = options.capaian_pembelajaran.find((c) => String(c.id) === String(cpId))
+    setFormData((p) => ({
+      ...p,
+      cp_id: cpId,
+      tp_id: '',
+      kompetensi_dasar: p.kompetensi_dasar || selectedCp?.deskripsi || selectedCp?.nama_cp || p.kompetensi_dasar,
+    }))
     setOptions((p) => ({ ...p, tujuan_pembelajaran: [] }))
     if (!cpId) return
     await fetchOptions(formData.mata_pelajaran_id, cpId)
@@ -272,18 +364,33 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
     const totalBobot = pg + isian + esai
     if (totalBobot > 0 && totalBobot !== 100) { setDistribusiError(`Total bobot harus 100%. Saat ini: ${totalBobot}%`); return }
     try {
-      if (editingItem) { await lmsKisiKisiService.update(editingItem.id, formData); showNotification('Kisi-kisi Ujian berhasil diperbarui.') }
-      else { await lmsKisiKisiService.create(formData); showNotification('Kisi-kisi Ujian berhasil dibuat.') }
+      const payload = {
+        ...formData,
+        guru_id: (!isAdminOrKurikulum && userEmployeeId) ? userEmployeeId : formData.guru_id,
+      }
+      if (editingItem) { await lmsKisiKisiService.update(editingItem.id, payload); showNotification('Kisi-kisi Ujian berhasil diperbarui.') }
+      else { await lmsKisiKisiService.create(payload); showNotification('Kisi-kisi Ujian berhasil dibuat.') }
       setShowModal(false); fetchData(pagination.currentPage); fetchStats()
     } catch (err) { showNotification(err?.response?.data?.message || 'Gagal menyimpan kisi-kisi ujian.', 'error') }
   }
 
-  const handleDelete = async (id, item) => {
-    const cnt = item?.ujian_count || 0
-    if (cnt > 0) { if (!window.confirm(`Kisi-kisi ini dipakai di ${cnt} ujian aktif. Hapus tetap akan dilanjutkan?`)) return }
-    else { if (!window.confirm('Yakin ingin menghapus kisi-kisi ujian ini?')) return }
-    try { await lmsKisiKisiService.delete(id); showNotification('Kisi-kisi Ujian berhasil dihapus.'); fetchData(pagination.currentPage); fetchStats() }
-    catch (err) { showNotification('Gagal menghapus kisi-kisi.', 'error') }
+  const handleDelete = (id, item) => {
+    setDeleteModal({ isOpen: true, id, item, isSubmitting: false })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteModal.id) return
+    setDeleteModal((prev) => ({ ...prev, isSubmitting: true }))
+    try {
+      await lmsKisiKisiService.delete(deleteModal.id)
+      showNotification('Kisi-kisi Ujian berhasil dihapus.')
+      fetchData(pagination.currentPage)
+      fetchStats()
+    } catch (err) {
+      showNotification('Gagal menghapus kisi-kisi.', 'error')
+    } finally {
+      setDeleteModal({ isOpen: false, id: null, item: null, isSubmitting: false })
+    }
   }
 
   const handleDuplicate = async (id) => {
@@ -634,22 +741,35 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                       </select></div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className={labelCls}>Capaian Pembelajaran (CP)</label>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className={labelCls + ' mb-0'}>Capaian Pembelajaran (CP)</label>
+                        <span className="text-[10px] text-slate-400 font-medium">Opsional</span>
+                      </div>
                       <select value={formData.cp_id} disabled={!formData.mata_pelajaran_id} onChange={(e) => handleCpChange(e.target.value)} className={`${inputCls} disabled:opacity-50`}>
                         {!formData.mata_pelajaran_id ? <option value="">Pilih mapel terlebih dahulu</option>
                           : loadingOptions ? <option value="">Memuat CP...</option>
                           : options.capaian_pembelajaran.length > 0
                             ? <>{<option value="">-- Pilih CP (Opsional) --</option>}{options.capaian_pembelajaran.map((cp) => <option key={cp.id} value={cp.id}>{cp.label || (cp.kode_cp ? `[${cp.kode_cp}] ${cp.nama_cp}` : cp.nama_cp)}</option>)}</>
-                            : <option value="">Belum ada CP untuk mapel ini</option>}
-                      </select></div>
-                    <div><label className={labelCls}>Tujuan Pembelajaran (TP)</label>
+                            : <option value="">Belum ada master CP untuk mapel ini</option>}
+                      </select>
+                      {formData.mata_pelajaran_id && options.capaian_pembelajaran.length === 0 && !loadingOptions && (
+                        <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Master CP belum tersedia untuk mapel ini. Anda dapat langsung mengisikan indikator kompetensi pada kolom uraian di bawah.</p>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className={labelCls + ' mb-0'}>Tujuan Pembelajaran (TP)</label>
+                        <span className="text-[10px] text-slate-400 font-medium">Opsional</span>
+                      </div>
                       <select value={formData.tp_id} disabled={!formData.cp_id} onChange={(e) => setFormData({ ...formData, tp_id: e.target.value })} className={`${inputCls} disabled:opacity-50`}>
                         {!formData.cp_id ? <option value="">Pilih CP terlebih dahulu</option>
                           : loadingOptions ? <option value="">Memuat TP...</option>
                           : options.tujuan_pembelajaran.length > 0
                             ? <>{<option value="">-- Pilih TP (Opsional) --</option>}{options.tujuan_pembelajaran.map((tp) => <option key={tp.id} value={tp.id}>{tp.label || (tp.kode_tp ? `[${tp.kode_tp}] ${tp.nama_tp}` : tp.nama_tp)}</option>)}</>
-                            : <option value="">Belum ada TP untuk CP ini</option>}
-                      </select></div>
+                            : <option value="">Belum ada TP untuk CP ini (Opsional)</option>}
+                      </select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div><label className={labelCls}>Kelas</label>
@@ -690,10 +810,17 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                       : (() => { const tot = (formData.distribusi_bobot?.pg || 0) + (formData.distribusi_bobot?.isian || 0) + (formData.distribusi_bobot?.esai || 0); return tot > 0 ? <p className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">✓ Total: {tot}% {tot === 100 ? '— Valid' : ''}</p> : <p className="mt-1 text-[10px] text-slate-400">Kosongkan jika tidak ingin mengatur distribusi bobot</p> })()}
                   </div>
                   <div><label className={labelCls}>Guru Penyusun</label>
-                    <select value={formData.guru_id} onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })} className={inputCls}>
-                      <option value="">-- Pilih Guru --</option>
-                      {options.guru.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap || g.name || g.nama}{String(g.id) === String(userEmployeeId) ? ' (Anda)' : ''}</option>)}
-                    </select></div>
+                    {isAdminOrKurikulum ? (
+                      <select value={formData.guru_id} onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })} className={inputCls}>
+                        <option value="">-- Pilih Guru --</option>
+                        {options.guru.map((g) => <option key={g.id} value={g.id}>{g.nama_lengkap || g.name || g.nama}{String(g.id) === String(userEmployeeId) ? ' (Anda)' : ''}</option>)}
+                      </select>
+                    ) : (
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="truncate">{currentTeacherName} (Akun Anda)</span>
+                      </div>
+                    )}</div>
                   <div><label className={labelCls}>Uraian Indikator / Kompetensi Dasar</label>
                     <textarea rows="3" placeholder="Tuliskan materi pokok atau indikator pencapaian..." value={formData.kompetensi_dasar} onChange={(e) => setFormData({ ...formData, kompetensi_dasar: e.target.value })} className={`${inputCls} resize-none`} /></div>
                   <div className="flex items-center gap-3 pt-1">
@@ -720,6 +847,14 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
             onPrintClean={() => { printCleanTable({ title: 'Laporan Kisi-kisi Ujian', data: dataList, columns: [{ header: 'Judul', accessor: (r) => r.judul_kisi || '-' }, { header: 'Mapel', accessor: (r) => getSubjectLabel(r.mata_pelajaran) }, { header: 'Jenis Ujian', accessor: (r) => r.jenis_ujian || '-' }, { header: 'Target Soal', accessor: (r) => r.jumlah_soal || 0 }, { header: 'Soal Tersedia', accessor: (r) => r.bank_soal_count ?? 0 }, { header: 'Status', accessor: (r) => r.status ? 'Aktif' : 'Nonaktif' }] }); setIsPrintModalOpen(false) }}
             onDownloadPdf={() => { downloadPdfTable({ title: 'Laporan Kisi-kisi Ujian', data: dataList, columns: [{ header: 'Judul', accessor: (r) => r.judul_kisi || '-' }, { header: 'Mapel', accessor: (r) => getSubjectLabel(r.mata_pelajaran) }, { header: 'Jenis Ujian', accessor: (r) => r.jenis_ujian || '-' }, { header: 'Target Soal', accessor: (r) => r.jumlah_soal || 0 }, { header: 'Soal Tersedia', accessor: (r) => r.bank_soal_count ?? 0 }, { header: 'Status', accessor: (r) => r.status ? 'Aktif' : 'Nonaktif' }], filename: `laporan_kisi_kisi_ujian_${new Date().toISOString().slice(0, 10)}.pdf` }); setIsPrintModalOpen(false) }} />
           <CsvImportModal isOpen={importOpen} onClose={() => setImportOpen(false)} title="Import Data Kisi-kisi Ujian" onImport={(file) => showNotification(`File ${file.name} berhasil diproses.`)} templateFields={['judul_kisi', 'mata_pelajaran_id', 'jenis_ujian', 'jumlah_soal', 'alokasi_waktu_menit', 'status']} />
+
+          <HarmonizedDeleteModal
+            isOpen={deleteModal.isOpen}
+            onClose={() => setDeleteModal({ isOpen: false, id: null, item: null, isSubmitting: false })}
+            onConfirm={confirmDelete}
+            item={deleteModal.item}
+            isSubmitting={deleteModal.isSubmitting}
+          />
         </motion.div>
       </div>
     </PageContainer>

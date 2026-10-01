@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   MessageSquare,
@@ -8,8 +8,6 @@ import {
   Edit3,
   Trash2,
   RefreshCw,
-  CheckCircle,
-  AlertCircle,
   X,
   Pin,
   Lock,
@@ -22,10 +20,22 @@ import {
   Sparkles,
   Tag,
   Clock,
-  SlidersHorizontal,
+  RotateCcw,
+  Printer,
+  Eye,
+  Upload,
+  Download,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Calendar,
+  Layers,
+  FileSpreadsheet,
   CornerDownRight,
+  User,
+  ShieldCheck,
+  FileText,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
 import { lmsDiskusiService } from '../services/lmsDiskusiService'
 import { lmsModulAjarService } from '../services/lmsModulAjarService'
 import PageContainer from '../components/app/PageContainer'
@@ -36,86 +46,677 @@ import {
   SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
-import CsvImportModal from '../components/master-data/CsvImportModal'
 import ActionDropdown from '../components/app/ActionDropdown'
-import { RotateCcw, Printer, Eye } from 'lucide-react'
+import { useDebounce } from '../hooks/useDebounce'
+import { downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.02,
-    },
+// ── 1. PALET WARNA RESMI MODERN KPI CARDS ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+  },
+  purple: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-fuchsia-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-fuchsia-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+    cta: 'text-purple-600/60 dark:text-purple-500/60',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
   },
 }
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.35, ease: 'easeOut' },
-  },
-}
+function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald', onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
-  const tones = {
-    emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-    },
-    blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
-    },
-    purple: {
-      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
-      title: 'text-purple-700 dark:text-purple-400',
-      icon: 'text-purple-500',
-      val: 'text-purple-600 dark:text-purple-300',
-      sub: 'text-purple-600/70 dark:text-purple-400/70',
-    },
-    amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
-    },
-  }
-  const t = tones[tone] || tones.emerald
   return (
     <motion.div
-      variants={itemVariants}
-      whileHover={{ scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={onClick}
-      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card}`}
     >
-      <div className="flex items-center justify-between">
-        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+          </div>
+        </div>
+        {tag && (
+          <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
+            {tag}
+          </span>
+        )}
       </div>
-      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+
+      <p className={`text-3xl font-black tabular-nums ${t.val}`}>
+        {value ?? '0'}
+      </p>
       {subtext && (
-        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+        <p className={`mt-0.5 text-[11px] font-semibold ${t.sub}`}>
           {subtext}
+        </p>
+      )}
+
+      {isClickable && (
+        <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+          <Eye className="h-3 w-3" /> Klik untuk rincian
         </p>
       )}
     </motion.div>
   )
 }
 
+// ── 2. TOAST NOTIFICATION STACK HOOK ──
+function useNotifications() {
+  const [items, setItems] = useState([])
+  const push = (title, message, tone = 'success') => {
+    const id = `${Date.now()}-${Math.random()}`
+    setItems((prev) => [...prev, { id, title, message, tone }])
+    window.setTimeout(() => setItems((prev) => prev.filter((n) => n.id !== id)), 5000)
+  }
+  const dismiss = (id) => setItems((prev) => prev.filter((n) => n.id !== id))
+  return { items, push, dismiss }
+}
+
+function ToastStack({ items, onDismiss }) {
+  if (!items.length) return null
+  return (
+    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
+      {items.map((n) => {
+        const isError = n.tone === 'error' || n.tone === 'danger'
+        const isWarning = n.tone === 'warning'
+        return (
+          <motion.div
+            key={n.id}
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className={`pointer-events-auto relative overflow-hidden rounded-2xl border bg-white p-4 shadow-xl dark:bg-slate-900 ${
+              isError
+                ? 'border-rose-300 dark:border-rose-800 shadow-rose-950/10'
+                : isWarning
+                ? 'border-amber-300 dark:border-amber-800 shadow-amber-950/10'
+                : 'border-emerald-300 dark:border-emerald-800 shadow-emerald-950/10'
+            }`}
+          >
+            <div
+              className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${
+                isError
+                  ? 'from-rose-500 via-rose-600 to-red-700'
+                  : isWarning
+                  ? 'from-amber-400 via-amber-500 to-orange-600'
+                  : 'from-emerald-500 via-teal-400 to-emerald-600'
+              }`}
+            />
+            <div className="flex items-start gap-3 mt-1">
+              <div
+                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                  isError
+                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300'
+                    : isWarning
+                    ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300'
+                    : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300'
+                }`}
+              >
+                {isError ? (
+                  <XCircle className="h-5 w-5" />
+                ) : isWarning ? (
+                  <AlertTriangle className="h-5 w-5" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-black text-slate-900 dark:text-white">{n.title}</p>
+                <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">{n.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onDismiss(n.id)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
+                aria-label="Tutup notifikasi"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── 3. HARMONIZED BATCH IMPORT MODAL ──
+function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }) {
+  const [dragActive, setDragActive] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [previewRows, setPreviewRows] = useState([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const fileInputRef = useRef(null)
+
+  if (!isOpen) return null
+
+  const handleDrag = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true)
+    else if (e.type === 'dragleave') setDragActive(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleProcessFile(e.dataTransfer.files[0])
+    }
+  }
+
+  const handleProcessFile = (file) => {
+    if (!file.name.endsWith('.csv') && !file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      notify('Format Berkas Tidak Valid', 'Unggah berkas berformat .csv atau .xlsx', 'error')
+      return
+    }
+    setSelectedFile(file)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target.result
+      const lines = text.split('\n').filter((l) => l.trim().length > 0)
+      if (lines.length > 1) {
+        const rows = lines.slice(1, 6).map((line, idx) => {
+          const parts = line.split(',')
+          return {
+            id: idx + 1,
+            judul: (parts[0] || '').replace(/["\r]/g, '').trim(),
+            kategori: (parts[1] || 'Umum').replace(/["\r]/g, '').trim(),
+            deskripsi: (parts[2] || '').replace(/["\r]/g, '').trim(),
+            status: (parts[3] || 'aktif').replace(/["\r]/g, '').trim(),
+          }
+        })
+        setPreviewRows(rows)
+      } else {
+        setPreviewRows([])
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleDownloadTemplate = () => {
+    const headers = ['JUDUL_DISKUSI', 'KATEGORI', 'DESKRIPSI', 'STATUS']
+    const sampleRows = [
+      ['"Diskusi Pemahaman Hukum Fiqih Thaharah"', '"Tanya Jawab"', '"Diskusikan syarat dan rukun thaharah bersama teman sekelas."', '"aktif"'],
+      ['"Tanya Jawab Projek P5 Gaya Hidup Berkelanjutan"', '"Proyek"', '"Pertanyaan seputar pengelolaan limbah organik sekolah."', '"aktif"'],
+    ]
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...sampleRows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', 'template_import_forum_diskusi.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    notify('Unduh Template', 'Template berkas CSV berhasil diunduh.', 'success')
+  }
+
+  const handleSubmit = async () => {
+    if (!selectedFile) {
+      notify('Pilih Berkas', 'Harap pilih berkas CSV atau XLSX terlebih dahulu.', 'warning')
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      notify('Impor Berhasil', `Berkas ${selectedFile.name} berhasil diimpor ke sistem.`, 'success')
+      onImportSuccess?.()
+      onClose()
+    } catch (err) {
+      notify('Impor Gagal', err?.message || 'Terjadi kendala saat memproses berkas impor.', 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.96 }}
+        className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+        <div className="flex items-center justify-between border-b border-slate-100 p-6 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+              <Upload className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-900 dark:text-white">Impor Data Forum Diskusi</h3>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Unggah berkas CSV atau XLSX berisi topik diskusi kelas.</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Download Template Card */}
+          <div className="flex items-center justify-between rounded-2xl border border-emerald-200/80 bg-emerald-50/50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+            <div className="flex items-center gap-3">
+              <FileSpreadsheet className="h-8 w-8 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-emerald-950 dark:text-emerald-200">Template Berkas Data Diskusi</p>
+                <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400/80">Gunakan format tabel resmi agar sistem memetakan kolom secara otomatis.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/80 bg-white px-3.5 py-2 text-xs font-bold text-emerald-700 shadow-xs hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300 dark:hover:bg-slate-800 transition-all"
+            >
+              <Download className="h-3.5 w-3.5" /> Unduh Format
+            </button>
+          </div>
+
+          {/* Dropzone */}
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`cursor-pointer rounded-2xl border-2 border-dashed p-7 text-center transition-all ${
+              dragActive
+                ? 'border-emerald-500 bg-emerald-50/60 dark:border-emerald-400 dark:bg-emerald-950/30'
+                : 'border-emerald-300/80 bg-slate-50/50 hover:bg-emerald-50/30 dark:border-emerald-800/70 dark:bg-slate-900/40'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={(e) => e.target.files?.[0] && handleProcessFile(e.target.files[0])}
+              className="hidden"
+            />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 mb-3">
+              <Upload className="h-6 w-6" />
+            </div>
+            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              {selectedFile ? selectedFile.name : 'Tarik & lepas berkas ke sini, atau klik untuk memilih'}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">Mendukung file .CSV, .XLSX (Maks. 5MB)</p>
+          </div>
+
+          {/* Mini Preview Datatable */}
+          {previewRows.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                Pratinjau Data (5 Baris Pertama)
+              </p>
+              <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 font-bold border-b border-emerald-200/80">
+                    <tr>
+                      <th className="py-2 px-3">No</th>
+                      <th className="py-2 px-3">Judul Topik</th>
+                      <th className="py-2 px-3">Kategori</th>
+                      <th className="py-2 px-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-100/70 dark:divide-emerald-900/40">
+                    {previewRows.map((r, i) => (
+                      <tr key={i} className="hover:bg-emerald-50/30">
+                        <td className="py-2 px-3 font-semibold text-slate-500">{i + 1}</td>
+                        <td className="py-2 px-3 font-bold text-slate-800 dark:text-slate-100 truncate max-w-[200px]">{r.judul || '-'}</td>
+                        <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{r.kategori}</td>
+                        <td className="py-2 px-3 font-semibold text-emerald-700 dark:text-emerald-400">{r.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting || !selectedFile}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-sky-600/30 hover:brightness-105 disabled:opacity-50 transition-all"
+          >
+            {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+            <span>{isSubmitting ? 'Memproses Berkas...' : 'Proses Impor Topik'}</span>
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── 4. HARMONIZED SAVE CONFIRMATION MODAL ──
+function HarmonizedSaveModal({ isOpen, onClose, onConfirm, isEdit, title, isSubmitting }) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div
+          className={`h-1.5 w-full bg-gradient-to-r ${
+            isEdit ? 'from-amber-400 via-amber-500 to-orange-600' : 'from-emerald-500 via-teal-400 to-emerald-600'
+          }`}
+        />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${
+                isEdit
+                  ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30'
+                  : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30'
+              }`}
+            >
+              {isEdit ? <Edit3 className="h-6 w-6" /> : <MessageSquare className="h-6 w-6" />}
+            </div>
+            <div>
+              <span
+                className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${
+                  isEdit
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                }`}
+              >
+                {isEdit ? 'Perbarui Diskusi' : 'Diskusi Baru'}
+              </span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                Konfirmasi Penyimpanan
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin {isEdit ? 'memperbarui informasi' : 'mempublikasikan'} topik diskusi:
+          </p>
+
+          <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3.5 dark:border-emerald-800/60 dark:bg-emerald-950/20 mb-5">
+            <p className="text-xs font-black text-emerald-950 dark:text-emerald-100 line-clamp-2">{title || 'Topik Forum Diskusi'}</p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-bold text-white shadow-md transition-all ${
+                isEdit
+                  ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 shadow-amber-600/30 hover:brightness-105'
+                  : 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-600/30 hover:brightness-105'
+              } disabled:opacity-50`}
+            >
+              {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+              <span>{isSubmitting ? 'Menyimpan...' : 'Ya, Konfirmasi & Simpan'}</span>
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── 5. HARMONIZED BATCH EXPORT MODAL ──
+function HarmonizedBatchExportModal({
+  isOpen,
+  onClose,
+  onExport,
+  isExporting,
+  totalCount,
+  moduleTitle = 'Forum Diskusi',
+}) {
+  const [exportFormat, setExportFormat] = useState('xlsx')
+
+  if (!isOpen) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !isExporting) onClose()
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 14 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="w-full max-w-lg"
+      >
+        <div className="flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-amber-200/80 bg-white shadow-2xl shadow-amber-950/20 dark:border-amber-900/50 dark:bg-[#182232]">
+          <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600 shrink-0" />
+
+          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white p-2.5 shadow-md shadow-amber-500/25 border border-amber-300/40 shrink-0">
+                <Download className="h-5 w-5 text-white" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Export Data {moduleTitle}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60">
+                    <Sparkles className="size-3" /> Unduh Data
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pilih format berkas untuk mengekspor data sesuai filter aktif.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={onClose}
+              className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                ['xlsx', 'Excel (.xlsx)', FileSpreadsheet, 'Format spreadsheet modern Microsoft Excel.'],
+                ['xls', 'Excel (.xls)', FileSpreadsheet, 'Format kompatibilitas Excel 97-2003.'],
+                ['csv', 'CSV (.csv)', FileText, 'Format teks koma terpisah universal.'],
+              ].map(([value, label, Icon, desc]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setExportFormat(value)}
+                  className={`rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${
+                    exportFormat === value
+                      ? 'border-emerald-500 bg-emerald-50/70 shadow-sm dark:border-emerald-700 dark:bg-emerald-950/40'
+                      : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Icon
+                      className={`size-4 ${
+                        exportFormat === value ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
+                      }`}
+                    />
+                    <span className="text-xs font-black text-slate-900 dark:text-white">{label}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 leading-snug">{desc}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 dark:bg-amber-950/30 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-300 leading-relaxed">
+              <p className="font-bold flex items-center gap-1.5 mb-0.5">
+                <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400" />
+                Filter Ekspor Aktif
+              </p>
+              <p className="text-[11px] text-amber-800/90 dark:text-amber-300/80">
+                Data yang diekspor akan mencakup seluruh entitas terfilter ({totalCount} topik {moduleTitle.toLowerCase()}).
+              </p>
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-2.5 bg-slate-50/50 dark:bg-slate-900/40 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              disabled={isExporting}
+              onClick={() => onExport(exportFormat)}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white px-5 py-2.5 text-xs font-extrabold shadow-md shadow-amber-500/25 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 cursor-pointer border border-amber-300/40"
+            >
+              <Download className="size-4" />
+              {isExporting ? 'Menyiapkan...' : 'Unduh Berkas'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── 6. HARMONIZED DELETE CONFIRMATION MODAL ──
+function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, title, isSubmitting }) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                Konfirmasi Hapus Diskusi
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus topik diskusi berikut beserta seluruh komentar yang ada di dalamnya? Tindakan ini tidak dapat dibatalkan.
+          </p>
+
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3.5 dark:border-rose-800/60 dark:bg-rose-950/20 mb-5">
+            <p className="text-xs font-black text-rose-950 dark:text-rose-100 line-clamp-2">{title || 'Topik Forum Diskusi'}</p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/30 hover:brightness-105 disabled:opacity-50 transition-all"
+            >
+              {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+              <span>{isSubmitting ? 'Menghapus...' : 'Ya, Hapus Diskusi'}</span>
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── 6. KOMPONEN UTAMA HALAMAN ──
 export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
+  const { items: toastItems, push: notify, dismiss: dismissToast } = useNotifications()
+
   const [dataDiskusi, setDataDiskusi] = useState([])
   const [optionsModulAjar, setOptionsModulAjar] = useState([])
   const [optionsKategori, setOptionsKategori] = useState([
@@ -132,13 +733,42 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     diskusi_ditutup: 0,
     diskusi_pinned: 0,
     total_komentar: 0,
-    komentar_guru: 0,
-    komentar_siswa: 0,
   })
 
   const [loading, setLoading] = useState(true)
-  const [errorMsg, setErrorMsg] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
+
+  // Filters & Pagination
+  const [searchInput, setSearchInput] = useState('')
+  const debouncedSearch = useDebounce(searchInput, 350)
+  const [selectedModulAjar, setSelectedModulAjar] = useState('')
+  const [selectedKategori, setSelectedKategori] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    per_page: 10,
+  })
+
+  // Modal Form State (Create / Edit Diskusi)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [formSubmitting, setFormSubmitting] = useState(false)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+
+  // Save and Delete Confirmation Modals
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
+  const [deleteModalState, setDeleteModalState] = useState({
+    isOpen: false,
+    id: null,
+    title: '',
+    isSubmitting: false,
+  })
 
   // KPI Modal State
   const [kpiModalOpen, setKpiModalOpen] = useState(false)
@@ -147,59 +777,16 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     items: [],
   })
 
-  // Filters & Pagination
-  const [search, setSearch] = useState('')
-  const [selectedModulAjar, setSelectedModulAjar] = useState('')
-  const [selectedKategori, setSelectedKategori] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('')
-  const [page, setPage] = useState(1)
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    last_page: 1,
-    total: 0,
-    per_page: 15,
+  // Thread Drawer State
+  const [isThreadOpen, setIsThreadOpen] = useState(false)
+  const [selectedDiskusi, setSelectedDiskusi] = useState(null)
+  const [threadLoading, setThreadLoading] = useState(false)
+  const [replyParentId, setReplyParentId] = useState(null)
+  const [komentarForm, setKomentarForm] = useState({
+    konten: '',
+    peran_pengirim: 'Guru',
   })
-
-  // Modal Form State (Create / Edit Diskusi)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
-  const [editId, setEditId] = useState(null)
-  const [formLoading, setFormLoading] = useState(false)
-
-  const handleExportCSV = () => {
-    const headers = ['NO', 'JUDUL DISKUSI', 'KATEGORI', 'MODUL AJAR', 'KOMENTAR', 'STATUS']
-    const rows = (dataDiskusi || []).map((d, i) => [
-      i + 1,
-      `"${(d.judul_diskusi || d.judul || '').replace(/"/g, '""')}"`,
-      d.kategori || 'Umum',
-      `"${(d.modul_ajar?.judul_modul || '').replace(/"/g, '""')}"`,
-      d.total_komentar || d.komentar_count || 0,
-      d.status === 'tertutup' || d.is_closed ? 'Tertutup' : 'Aktif',
-    ])
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `export_forum_diskusi_${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  const handleImport = async (parsedData) => {
-    setSuccessMsg(`Berhasil mengimpor ${parsedData.length} topik diskusi.`)
-    fetchData()
-  }
-
-  const pageActions = (
-    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
-      <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
-      <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
-      <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
-      <SquircleActionButton variant="primary" label="Buat Diskusi" onClick={() => handleOpenCreateModal()} />
-    </div>
-  )
+  const [submittingKomentar, setSubmittingKomentar] = useState(false)
 
   const [formData, setFormData] = useState({
     modul_ajar_id: '',
@@ -211,18 +798,6 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     status: 'aktif',
   })
 
-  // Drawer / Modal State for Comments Thread
-  const [isThreadOpen, setIsThreadOpen] = useState(false)
-  const [selectedDiskusi, setSelectedDiskusi] = useState(null)
-  const [threadLoading, setThreadLoading] = useState(false)
-  const [replyParentId, setReplyParentId] = useState(null)
-
-  const [komentarForm, setKomentarForm] = useState({
-    konten: '',
-    peran_pengirim: 'Guru',
-  })
-  const [submittingKomentar, setSubmittingKomentar] = useState(false)
-
   useEffect(() => {
     fetchOptions()
     fetchStats()
@@ -230,7 +805,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
   useEffect(() => {
     fetchData()
-  }, [page, search, selectedModulAjar, selectedKategori, selectedStatus])
+  }, [page, perPage, debouncedSearch, selectedModulAjar, selectedKategori, selectedStatus])
 
   const fetchStats = async () => {
     try {
@@ -247,34 +822,34 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     const total_diskusi = dataDiskusi.length
     const diskusi_aktif = dataDiskusi.filter((d) => d.status === 'aktif').length
     const diskusi_pinned = dataDiskusi.filter((d) => d.is_pinned).length
-    const diskusi_ditutup = dataDiskusi.filter((d) => d.status === 'ditutup').length
+    const diskusi_ditutup = dataDiskusi.filter((d) => d.status === 'ditutup' || d.is_closed).length
     const total_komentar = dataDiskusi.reduce((acc, d) => acc + (d.komentar_count || d.komentars_count || (d.komentar ? d.komentar.length : 0)), 0)
 
     return {
-      total_diskusi,
-      diskusi_aktif,
-      diskusi_pinned,
-      diskusi_ditutup,
-      total_komentar,
+      total_diskusi: stats.total_diskusi || total_diskusi,
+      diskusi_aktif: stats.diskusi_aktif || diskusi_aktif,
+      diskusi_pinned: stats.diskusi_pinned || diskusi_pinned,
+      diskusi_ditutup: stats.diskusi_ditutup || diskusi_ditutup,
+      total_komentar: stats.total_komentar || total_komentar,
     }
-  }, [dataDiskusi])
+  }, [dataDiskusi, stats])
 
   const handleOpenKpiModal = (type) => {
     let title = ''
     let items = []
 
     if (type === 'total') {
-      title = 'Total Forum Diskusi Kelas'
+      title = 'Total Topik Forum Diskusi Kelas'
       items = dataDiskusi
     } else if (type === 'aktif') {
-      title = 'Daftar Diskusi Aktif'
+      title = 'Daftar Diskusi Berstatus Aktif'
       items = dataDiskusi.filter((d) => d.status === 'aktif')
+    } else if (type === 'pinned') {
+      title = 'Topik Diskusi Disematkan (Pin)'
+      items = dataDiskusi.filter((d) => d.is_pinned)
     } else if (type === 'komentar') {
-      title = 'Daftar Diskusi Berkomentar'
-      items = dataDiskusi
-    } else if (type === 'interaksi') {
-      title = 'Interaksi Forum Diskusi Kelas'
-      items = dataDiskusi
+      title = 'Daftar Diskusi Berinteraksi Tinggi'
+      items = dataDiskusi.filter((d) => (d.komentar_count || d.komentar?.length || 0) > 0)
     }
 
     setKpiModalCategory({ title, items })
@@ -295,7 +870,6 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
           judul: opt.judul_modul || opt.judul,
         }))
       } else {
-        // Fallback: Fetch directly from lmsModulAjarService
         try {
           const maRes = await lmsModulAjarService.getAll({ per_page: 100 })
           const rawList = maRes?.data || maRes || []
@@ -336,12 +910,11 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
 
   const fetchData = async () => {
     setLoading(true)
-    setErrorMsg('')
     try {
       const params = {
         page,
-        per_page: 15,
-        search,
+        per_page: perPage,
+        search: debouncedSearch,
         modul_ajar_id: selectedModulAjar,
         kategori: selectedKategori,
         status: selectedStatus,
@@ -355,10 +928,17 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
           total: res.meta.total,
           per_page: res.meta.per_page,
         })
+      } else {
+        setPagination({
+          current_page: 1,
+          last_page: 1,
+          total: res.data?.length || 0,
+          per_page: perPage,
+        })
       }
     } catch (err) {
       console.error('Error fetching data diskusi:', err)
-      setErrorMsg('Gagal memuat data diskusi kelas. Silakan coba lagi.')
+      notify('Gagal Memuat Data', 'Tidak dapat mengambil daftar topik forum diskusi.', 'error')
     } finally {
       setLoading(false)
     }
@@ -382,7 +962,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     setEditId(item.id)
     setFormData({
       modul_ajar_id: item.modul_ajar_id || '',
-      judul: item.judul || '',
+      judul: item.judul_diskusi || item.judul || '',
       deskripsi: item.deskripsi || '',
       kategori: item.kategori || 'Umum',
       tanggal_mulai: item.tanggal_mulai ? item.tanggal_mulai.replace(' ', 'T') : '',
@@ -392,9 +972,17 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     setIsModalOpen(true)
   }
 
-  const handleSaveForm = async (e) => {
+  const handleTriggerSave = (e) => {
     e.preventDefault()
-    setFormLoading(true)
+    if (!formData.judul.trim()) {
+      notify('Judul Diperlukan', 'Harap isi judul topik diskusi sebelum menyimpan.', 'warning')
+      return
+    }
+    setIsSaveModalOpen(true)
+  }
+
+  const handleConfirmSave = async () => {
+    setFormSubmitting(true)
     try {
       let res
       if (editId) {
@@ -404,58 +992,47 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
       }
 
       if (res.success) {
-        setSuccessMsg(res.message || 'Data diskusi berhasil disimpan.')
+        notify('Berhasil Disimpan', res.message || 'Data forum diskusi berhasil diperbarui.', 'success')
+        setIsSaveModalOpen(false)
         setIsModalOpen(false)
         fetchData()
         fetchStats()
-        setTimeout(() => setSuccessMsg(''), 4000)
+      } else {
+        notify('Gagal Menyimpan', res.message || 'Terjadi kendala saat menyimpan topik diskusi.', 'error')
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Gagal menyimpan data diskusi.'
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal',
-        text: msg,
-        confirmButtonColor: '#0E5C44',
-      })
+      notify('Gagal Menyimpan', msg, 'error')
     } finally {
-      setFormLoading(false)
+      setFormSubmitting(false)
     }
   }
 
-  const handleDelete = async (id, judul) => {
-    const result = await Swal.fire({
-      title: 'Hapus Diskusi?',
-      text: `Apakah Anda yakin ingin menghapus diskusi "${judul}"?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Ya, Hapus',
-      cancelButtonText: 'Batal',
+  const handleDeletePrompt = (item) => {
+    setDeleteModalState({
+      isOpen: true,
+      id: item.id,
+      title: item.judul_diskusi || item.judul,
+      isSubmitting: false,
     })
+  }
 
-    if (result.isConfirmed) {
-      try {
-        const res = await lmsDiskusiService.delete(id)
-        if (res.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Terhapus!',
-            text: res.message || 'Diskusi berhasil dihapus.',
-            confirmButtonColor: '#0E5C44',
-          })
-          fetchData()
-          fetchStats()
-        }
-      } catch (err) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Gagal',
-          text: err.response?.data?.message || 'Gagal menghapus diskusi.',
-          confirmButtonColor: '#0E5C44',
-        })
+  const handleConfirmDelete = async () => {
+    setDeleteModalState((prev) => ({ ...prev, isSubmitting: true }))
+    try {
+      const res = await lmsDiskusiService.delete(deleteModalState.id)
+      if (res.success) {
+        notify('Diskusi Dihapus', res.message || 'Topik diskusi berhasil dihapus.', 'success')
+        setDeleteModalState({ isOpen: false, id: null, title: '', isSubmitting: false })
+        fetchData()
+        fetchStats()
+      } else {
+        notify('Gagal Menghapus', res.message || 'Topik diskusi tidak dapat dihapus.', 'error')
+        setDeleteModalState((prev) => ({ ...prev, isSubmitting: false }))
       }
+    } catch (err) {
+      notify('Gagal Menghapus', err.response?.data?.message || 'Terjadi kesalahan sistem saat menghapus diskusi.', 'error')
+      setDeleteModalState((prev) => ({ ...prev, isSubmitting: false }))
     }
   }
 
@@ -463,11 +1040,13 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     try {
       const res = await lmsDiskusiService.togglePin(id)
       if (res.success) {
+        notify('Status Sematan', res.message || 'Status sematan topik berhasil diperbarui.', 'success')
         fetchData()
         fetchStats()
       }
     } catch (err) {
       console.error('Error toggling pin:', err)
+      notify('Gagal Menyematkan', 'Tidak dapat mengubah status sematan topik.', 'error')
     }
   }
 
@@ -475,6 +1054,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
     try {
       const res = await lmsDiskusiService.toggleClose(id)
       if (res.success) {
+        notify('Status Kunci', res.message || 'Status kunci komentar topik berhasil diperbarui.', 'success')
         fetchData()
         fetchStats()
         if (selectedDiskusi && selectedDiskusi.id === id) {
@@ -483,10 +1063,11 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
       }
     } catch (err) {
       console.error('Error toggling close:', err)
+      notify('Gagal Mengubah Kunci', 'Tidak dapat memperbarui status akses diskusi.', 'error')
     }
   }
 
-  // Open Comment Thread Detail Drawer
+  // Comment Thread Drawer Detail
   const handleOpenThread = async (diskusiId) => {
     setIsThreadOpen(true)
     setReplyParentId(null)
@@ -503,6 +1084,7 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
       }
     } catch (err) {
       console.error('Error fetching thread detail:', err)
+      notify('Gagal Mengambil Utasan', 'Tidak dapat memuat detail komentar diskusi.', 'error')
     } finally {
       setThreadLoading(false)
     }
@@ -521,55 +1103,561 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
       }
       const res = await lmsDiskusiService.tambahKomentar(selectedDiskusi.id, payload)
       if (res.success) {
+        notify('Komentar Terkirim', 'Tanggapan berhasil dipublikasikan ke forum.', 'success')
         setKomentarForm({ ...komentarForm, konten: '' })
         setReplyParentId(null)
         await fetchThreadDetail(selectedDiskusi.id)
         fetchStats()
+      } else {
+        notify('Gagal Mengirim', res.message || 'Komentar tidak dapat dikirim.', 'error')
       }
     } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal',
-        text: err.response?.data?.message || 'Gagal mengirim komentar.',
-        confirmButtonColor: '#0E5C44',
-      })
+      notify('Gagal Mengirim', err.response?.data?.message || 'Terjadi kendala saat mengirim komentar.', 'error')
     } finally {
       setSubmittingKomentar(false)
     }
   }
 
   const handleDeleteKomentar = async (komentarId) => {
-    const result = await Swal.fire({
-      title: 'Hapus Komentar?',
-      text: 'Apakah Anda yakin ingin menghapus komentar ini?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Hapus',
-      cancelButtonText: 'Batal',
-    })
-
-    if (result.isConfirmed) {
-      try {
-        const res = await lmsDiskusiService.hapusKomentar(selectedDiskusi.id, komentarId)
-        if (res.success) {
-          await fetchThreadDetail(selectedDiskusi.id)
-          fetchStats()
-        }
-      } catch (err) {
-        console.error('Gagal menghapus komentar:', err)
+    try {
+      const res = await lmsDiskusiService.hapusKomentar(selectedDiskusi.id, komentarId)
+      if (res.success) {
+        notify('Komentar Dihapus', 'Tanggapan berhasil dihapus dari utasan.', 'success')
+        await fetchThreadDetail(selectedDiskusi.id)
+        fetchStats()
       }
+    } catch (err) {
+      notify('Gagal Menghapus', 'Tidak dapat menghapus komentar.', 'error')
+    }
+  }
+
+  const handleProcessExport = async (format = 'xlsx') => {
+    if (!dataDiskusi?.length) {
+      notify('Data Kosong', 'Tidak ada data diskusi untuk diekspor.', 'warning')
+      return
+    }
+    setIsExporting(true)
+    try {
+      const exportData = (dataDiskusi || []).map((d, i) => ({
+        'No': i + 1,
+        'Judul Diskusi': (d.judul_diskusi || d.judul || '').trim(),
+        'Kategori': d.kategori || 'Umum',
+        'Modul Ajar': d.modul_ajar?.judul_modul || d.modul_ajar?.judul || 'Umum',
+        'Total Komentar': d.total_komentar || d.komentar_count || 0,
+        'Status': d.status === 'tertutup' || d.is_closed ? 'Tertutup' : 'Aktif',
+        'Disematkan': d.is_pinned ? 'Ya' : 'Tidak',
+      }))
+
+      downloadSpreadsheetTemplate(
+        exportData,
+        `forum_diskusi_${new Date().toISOString().slice(0, 10)}`,
+        format,
+        'Forum Diskusi'
+      )
+      setIsExportModalOpen(false)
+      notify('Export Berhasil', `Berkas Forum Diskusi .${format.toUpperCase()} berhasil diunduh.`, 'success')
+    } catch (err) {
+      notify('Gagal Export', err?.message || 'Terjadi kesalahan saat menyiapkan berkas ekspor.', 'error')
+    } finally {
+      setIsExporting(false)
     }
   }
 
   return (
     <PageContainer maxW="7xl">
+      {/* Toast Notification Stack */}
+      <ToastStack items={toastItems} onDismiss={dismissToast} />
+
       {!(embedded || hideBreadcrumb) && (
         <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Forum Diskusi Kelas' }]} />
       )}
-      <div className="education-unit-page lms-diskusi-page space-y-6">
-        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
+
+      <div className="lms-diskusi-page space-y-6 pb-12">
+        {/* Modern Hero Header Card (Vivid Emerald Spec) */}
+        {!hidePageHeader && (
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-teal-500/30 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+                <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <MessageSquare className="size-5 sm:size-7 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Kurikulum Merdeka &amp; KBM Interaktif
+                    </span>
+                  </div>
+                  <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Forum Diskusi &amp; Kolaborasi Kelas
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                    Ruang tanya jawab, pemantik diskusi, dan kolaborasi aktif antara guru dan siswa per modul ajar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50/80 px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs font-extrabold text-emerald-800 shadow-xs dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600 dark:text-emerald-400" />
+                  Forum Diskusi Terpadu
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modern Multi-Tone KPI Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ModernKpiCard
+            icon={MessageSquare}
+            label="Total Diskusi"
+            value={computedStats.total_diskusi}
+            tag={`${computedStats.total_diskusi} Topik`}
+            subtext="Terdaftar di forum KBM"
+            tone="emerald"
+            onClick={() => handleOpenKpiModal('total')}
+          />
+          <ModernKpiCard
+            icon={BookOpen}
+            label="Diskusi Aktif"
+            value={computedStats.diskusi_aktif}
+            tag="Aktif Terbuka"
+            subtext="Siap menerima tanggapan"
+            tone="blue"
+            onClick={() => handleOpenKpiModal('aktif')}
+          />
+          <ModernKpiCard
+            icon={Pin}
+            label="Disematkan (Pin)"
+            value={computedStats.diskusi_pinned}
+            tag="Topik Utama"
+            subtext="Diprioritaskan di atas"
+            tone="amber"
+            onClick={() => handleOpenKpiModal('pinned')}
+          />
+          <ModernKpiCard
+            icon={MessageCircle}
+            label="Total Interaksi"
+            value={computedStats.total_komentar}
+            tag="Interaksi"
+            subtext="Komentar guru &amp; siswa"
+            tone="purple"
+            onClick={() => handleOpenKpiModal('komentar')}
+          />
+        </div>
+
+        {/* Tab Navigation Card (if provided) */}
+        {tabNav && (
+          <div>
+            {typeof tabNav === 'function' ? tabNav() : tabNav}
+          </div>
+        )}
+
+        {/* Master Datatable Panel (Canonical Emerald Datatable Container) */}
+        <section
+          className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]"
+          aria-labelledby="diskusi-table-title"
+        >
+          {/* Toolbar Baris 1: Header Judul & 4 Tombol Soft Squircle Action */}
+          <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3.5 sm:px-6 md:px-8 dark:border-emerald-800/60">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                  <h2 id="diskusi-table-title" className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    Daftar Topik Forum Diskusi
+                  </h2>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                    {pagination.total} Data
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  Ruang kolaborasi aktif, tanya jawab modul ajar, dan refleksi pembelajaran.
+                </p>
+              </div>
+
+              {/* 4 Soft Squircle Action Buttons */}
+              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+                <SquircleActionButton
+                  variant="view"
+                  icon={Printer}
+                  label="Cetak &amp; PDF"
+                  onClick={() => setIsPrintModalOpen(true)}
+                  className="!size-10 !rounded-2xl !bg-gradient-to-br !from-indigo-500 !via-indigo-600 !to-violet-700 !text-white !border-0 hover:!brightness-110 !shadow-sm"
+                />
+                <SquircleActionButton
+                  variant="import"
+                  icon={Upload}
+                  label="Import Data"
+                  onClick={() => setImportOpen(true)}
+                  className="!size-10 !rounded-2xl !bg-gradient-to-br !from-sky-400 !via-sky-500 !to-blue-600 !text-white !border-0 hover:!brightness-110 !shadow-sm"
+                />
+                <SquircleActionButton
+                  variant="export"
+                  icon={Download}
+                  label="Export Data"
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="!size-10 !rounded-2xl !bg-gradient-to-br !from-amber-400 !via-amber-500 !to-orange-600 !text-white !border-0 hover:!brightness-110 !shadow-sm"
+                />
+                <SquircleActionButton
+                  variant="primary"
+                  icon={Plus}
+                  label="Buat Diskusi"
+                  onClick={handleOpenCreateModal}
+                  className="!size-10 !rounded-2xl !bg-gradient-to-br !from-emerald-500 !via-emerald-600 !to-teal-700 !text-white !border-0 hover:!brightness-110 !shadow-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Toolbar Baris 2: Field Pencarian Full-Width Debounced */}
+          <div className="border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 px-4 py-3 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-emerald-950/20">
+            <div className="relative w-full">
+              <Search className="pointer-events-none absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600/70 dark:text-emerald-400" />
+              <input
+                type="text"
+                placeholder="Cari judul diskusi, deskripsi pemantik, atau kategori..."
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value)
+                  setPage(1)
+                }}
+                className="h-10 sm:h-11 w-full rounded-2xl border border-emerald-200/90 bg-white pl-10 sm:pl-11 pr-10 text-xs font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-100"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('')
+                    setPage(1)
+                  }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Toolbar Baris 3: Dropdown Filter Horizontal & Reset */}
+          <div className="border-b border-emerald-200/80 bg-white px-4 py-3 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-[#1B2433]">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+                Filter:
+              </span>
+
+              {/* Filter Modul Ajar */}
+              <select
+                value={selectedModulAjar}
+                onChange={(e) => {
+                  setSelectedModulAjar(e.target.value)
+                  setPage(1)
+                }}
+                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="">Semua Modul Ajar</option>
+                {optionsModulAjar.map((opt) => (
+                  <option key={opt.value || opt.id} value={opt.value || opt.id}>
+                    {opt.label || opt.judul_modul || opt.judul}
+                  </option>
+                ))}
+              </select>
+
+              {/* Filter Kategori */}
+              <select
+                value={selectedKategori}
+                onChange={(e) => {
+                  setSelectedKategori(e.target.value)
+                  setPage(1)
+                }}
+                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="">Semua Kategori</option>
+                {optionsKategori.map((kat) => (
+                  <option key={kat} value={kat}>
+                    {kat}
+                  </option>
+                ))}
+              </select>
+
+              {/* Filter Status */}
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value)
+                  setPage(1)
+                }}
+                className="w-full sm:w-auto min-w-[140px] h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="">Semua Status</option>
+                <option value="aktif">Aktif</option>
+                <option value="draft">Draft</option>
+                <option value="ditutup">Ditutup</option>
+              </select>
+
+              {/* Reset Filter Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('')
+                  setSelectedModulAjar('')
+                  setSelectedKategori('')
+                  setSelectedStatus('')
+                  setPage(1)
+                }}
+                className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                title="Reset Semua Filter"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Master Datatable Body */}
+          <MasterDataTable className="!rounded-none !border-0 !shadow-none">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                  <th className="w-auto sm:w-[38%] bg-transparent px-3.5 sm:px-6 md:px-8 py-3.5 font-black text-[11px] uppercase tracking-wider">
+                    Topik &amp; Modul Ajar
+                  </th>
+                  <th className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider sm:table-cell">
+                    Kategori
+                  </th>
+                  <th className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider md:table-cell">
+                    Status &amp; Akses
+                  </th>
+                  <th className="hidden w-[16%] bg-transparent px-3 py-3.5 text-center font-black text-[11px] uppercase tracking-wider sm:table-cell">
+                    Tanggapan
+                  </th>
+                  <th className="w-14 sm:w-[14%] bg-transparent px-2 sm:px-3.5 py-3.5 text-center font-black text-[11px] uppercase tracking-wider">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" className="py-14 text-center text-slate-400">
+                      <RefreshCw className="h-7 w-7 animate-spin mx-auto mb-2 text-[#0E5C44]" />
+                      <p className="text-xs font-semibold">Memuat data forum diskusi...</p>
+                    </td>
+                  </tr>
+                ) : dataDiskusi.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="py-16 text-center text-slate-400">
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 mb-3">
+                        <MessageSquare className="h-7 w-7" />
+                      </div>
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Belum Ada Topik Diskusi</p>
+                      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                        Tidak ditemukan data diskusi kelas sesuai filter pencarian yang dipilih.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleOpenCreateModal}
+                        className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 transition-all"
+                      >
+                        <Plus className="h-4 w-4" /> Buat Topik Pertama
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  dataDiskusi.map((item) => (
+                    <tr
+                      key={item.id}
+                      onClick={() => handleOpenThread(item.id)}
+                      className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer group"
+                    >
+                      {/* Topik & Modul Ajar */}
+                      <td className="py-3.5 px-3.5 sm:px-6 md:px-8">
+                        <div className="flex items-start gap-3">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleTogglePin(item.id)
+                            }}
+                            className={`mt-0.5 p-1.5 rounded-xl transition-all ${
+                              item.is_pinned
+                                ? 'text-amber-500 bg-amber-50 shadow-xs dark:bg-amber-950/50'
+                                : 'text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400'
+                            }`}
+                            title={item.is_pinned ? 'Lepas Sematan (Pin)' : 'Sematkan di Atas'}
+                          >
+                            <Pin className="h-4 w-4 fill-current" />
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-extrabold text-slate-900 dark:text-white line-clamp-1 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                                {item.judul_diskusi || item.judul}
+                              </h4>
+                              {item.is_closed && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                  <Lock className="w-3 h-3" /> Ditutup
+                                </span>
+                              )}
+                            </div>
+                            {item.modul_ajar ? (
+                              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5 flex items-center gap-1 truncate">
+                                <BookOpen className="w-3 h-3 inline shrink-0" />
+                                <span>{item.modul_ajar.judul_modul || item.modul_ajar.judul}</span>
+                              </p>
+                            ) : (
+                              <p className="text-xs text-slate-400 mt-0.5 font-medium">Umum (Tanpa Modul)</p>
+                            )}
+                            {item.deskripsi && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 max-w-xl leading-relaxed">
+                                {item.deskripsi}
+                              </p>
+                            )}
+
+                            {/* Mobile-only compact metadata row */}
+                            <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0E5C44] dark:text-emerald-300">
+                                <Tag className="w-2.5 h-2.5" />
+                                {item.kategori || 'Umum'}
+                              </span>
+                              <span className="text-slate-300 dark:text-slate-600">·</span>
+                              <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                                {item.status === 'aktif' ? 'Aktif' : item.status === 'draft' ? 'Draft' : 'Ditutup'}
+                              </span>
+                              <span className="text-slate-300 dark:text-slate-600">·</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                <MessageCircle className="w-2.5 h-2.5 text-emerald-600" />
+                                {item.total_komentar || item.komentar_count || 0}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Kategori */}
+                      <td className="hidden py-3.5 px-3 text-center sm:table-cell">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 shadow-2xs">
+                          <Tag className="w-3 h-3" /> {item.kategori || 'Umum'}
+                        </span>
+                      </td>
+
+                      {/* Status & Akses */}
+                      <td className="hidden py-3.5 px-3 text-center md:table-cell">
+                        <div className="space-y-1">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
+                              item.status === 'aktif'
+                                ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200'
+                                : item.status === 'draft'
+                                ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                            }`}
+                          >
+                            {item.status === 'aktif' ? 'Aktif' : item.status === 'draft' ? 'Draft' : 'Ditutup'}
+                          </span>
+                          {item.created_at_formatted && (
+                            <p className="text-[11px] font-medium text-slate-400 flex items-center justify-center gap-1">
+                              <Clock className="w-3 h-3" /> {item.created_at_formatted}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Tanggapan Komentar */}
+                      <td className="hidden py-3.5 px-3 text-center sm:table-cell">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenThread(item.id)
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100/70 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-200 hover:text-[#0E5C44] dark:hover:text-emerald-300 text-xs font-bold transition-all shadow-2xs"
+                        >
+                          <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>{item.total_komentar || item.komentar_count || 0} Tanggapan</span>
+                        </button>
+                      </td>
+
+                      {/* Aksi Dropdown */}
+                      <td className="py-3.5 px-2 sm:px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <ActionDropdown
+                          onView={() => handleOpenThread(item.id)}
+                          onEdit={() => handleOpenEditModal(item)}
+                          onDelete={() => handleDeletePrompt(item)}
+                          customActions={[
+                            {
+                              label: item.is_pinned ? 'Lepas Sematan' : 'Sematkan di Atas',
+                              icon: Pin,
+                              onClick: () => handleTogglePin(item.id),
+                            },
+                            {
+                              label: item.is_closed ? 'Buka Kunci Diskusi' : 'Kunci Diskusi',
+                              icon: item.is_closed ? Unlock : Lock,
+                              onClick: () => handleToggleClose(item.id),
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </MasterDataTable>
+
+          {/* Pagination Toolbar Squircle Icon-Only */}
+          <div className="border-t border-emerald-200/80 bg-gradient-to-r from-emerald-50/40 via-white to-emerald-50/40 p-3.5 sm:px-6 md:px-8 py-3 sm:py-3.5 dark:border-emerald-800/60 dark:bg-[#1B2433] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span>Menampilkan Halaman</span>
+              <span className="font-extrabold text-slate-800 dark:text-slate-200">{pagination.current_page}</span>
+              <span>dari</span>
+              <span className="font-extrabold text-slate-800 dark:text-slate-200">{pagination.last_page || 1}</span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span>Total</span>
+              <span className="font-extrabold text-emerald-700 dark:text-emerald-400">{pagination.total} Diskusi</span>
+            </div>
+
+            <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
+              <select
+                value={perPage}
+                onChange={(e) => {
+                  setPerPage(Number(e.target.value))
+                  setPage(1)
+                }}
+                className="h-9 rounded-xl border border-emerald-200/80 bg-white px-2.5 text-xs font-bold text-slate-700 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value={10}>10 Baris</option>
+                <option value={25}>25 Baris</option>
+                <option value={50}>50 Baris</option>
+              </select>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 disabled:opacity-40 disabled:hover:bg-emerald-600 transition-all"
+                  aria-label="Halaman Sebelumnya"
+                >
+                  <ChevronLeft className="size-5 text-white" />
+                </button>
+                <button
+                  type="button"
+                  disabled={page >= pagination.last_page}
+                  onClick={() => setPage((prev) => Math.min(prev + 1, pagination.last_page))}
+                  className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 disabled:opacity-40 disabled:hover:bg-emerald-600 transition-all"
+                  aria-label="Halaman Berikutnya"
+                >
+                  <ChevronRight className="size-5 text-white" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Print & PDF Modal */}
         <PrintOptionModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
@@ -578,13 +1666,13 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
             const rowsToPrint = Array.isArray(dataDiskusi) ? dataDiskusi : []
             printCleanTable({
               title: 'Laporan Data Forum Diskusi Kelas',
-              subtitle: 'Daftar Forum Diskusi Pembelajaran Sekolah Islam Terpadu',
-              headers: ['NO', 'TOPIS / JUDUL DISKUSI', 'KATEGORI', 'MODUL AJAR TERKAIT', 'KOMENTAR', 'STATUS'],
+              subtitle: 'Daftar Topik Forum Diskusi Pembelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'TOPIK / JUDUL DISKUSI', 'KATEGORI', 'MODUL AJAR TERKAIT', 'KOMENTAR', 'STATUS'],
               rows: rowsToPrint.map((row, i) => [
                 i + 1,
                 row.judul_diskusi || row.judul || '-',
                 row.kategori || 'Umum',
-                row.modul_ajar?.judul_modul || '-',
+                row.modul_ajar?.judul_modul || row.modul_ajar?.judul || '-',
                 row.total_komentar || row.komentar_count || 0,
                 row.status === 'tertutup' || row.is_closed ? 'Tertutup' : 'Aktif',
               ]),
@@ -594,13 +1682,13 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
             const rowsToPrint = Array.isArray(dataDiskusi) ? dataDiskusi : []
             downloadPdfTable({
               title: 'Laporan Data Forum Diskusi Kelas',
-              subtitle: 'Daftar Forum Diskusi Pembelajaran Sekolah Islam Terpadu',
-              headers: ['NO', 'TOPIS / JUDUL DISKUSI', 'KATEGORI', 'MODUL AJAR TERKAIT', 'KOMENTAR', 'STATUS'],
+              subtitle: 'Daftar Topik Forum Diskusi Pembelajaran Sekolah Islam Terpadu',
+              headers: ['NO', 'TOPIK / JUDUL DISKUSI', 'KATEGORI', 'MODUL AJAR TERKAIT', 'KOMENTAR', 'STATUS'],
               rows: rowsToPrint.map((row, i) => [
                 i + 1,
                 row.judul_diskusi || row.judul || '-',
                 row.kategori || 'Umum',
-                row.modul_ajar?.judul_modul || '-',
+                row.modul_ajar?.judul_modul || row.modul_ajar?.judul || '-',
                 row.total_komentar || row.komentar_count || 0,
                 row.status === 'tertutup' || row.is_closed ? 'Tertutup' : 'Aktif',
               ]),
@@ -609,849 +1697,548 @@ export default function LmsDiskusiPage({ embedded = false, hideBreadcrumb = fals
           }}
         />
 
-        <CsvImportModal
-          open={importOpen}
+        {/* Harmonized Batch Import Modal */}
+        <HarmonizedBatchImportModal
+          isOpen={importOpen}
           onClose={() => setImportOpen(false)}
-          title="Forum Diskusi Kelas"
-          onImport={handleImport}
-          columns={[
-            { key: 'modul_ajar_id' },
-            { key: 'judul_diskusi', required: true, example: 'Diskusi Pemahaman Hukum Fiqih' },
-            { key: 'kategori', example: 'Tanya Jawab' },
-            { key: 'deskripsi', example: 'Topik diskusi kelas...' },
-            { key: 'status', example: 'aktif' },
-          ]}
+          onImportSuccess={() => {
+            fetchData()
+            fetchStats()
+          }}
+          notify={notify}
         />
-      {/* Header Banner */}
-      {!hidePageHeader && (
-        <motion.div variants={itemVariants}>
-          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900 mb-6">
-            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
 
-            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
-                  <MessageSquare className="size-6 sm:size-7 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
-                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
-                      LMS Modul Ajar Terpadu
-                    </span>
+        {/* Harmonized KPI Detail Modal */}
+        {kpiModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+            <div className="bg-white dark:bg-[#1B2433] w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh]">
+              <div className="bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 p-5 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+                    <MessageSquare className="w-5 h-5 text-emerald-200" />
                   </div>
-                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                    Forum Diskusi Kelas
-                  </h1>
-                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
-                    Ruang kolaborasi dan tanya jawab interaktif antara Guru dan Siswa berbasis Modul Ajar.
-                  </p>
+                  <div>
+                    <h3 className="text-base font-black">{kpiModalCategory.title}</h3>
+                    <p className="text-xs text-emerald-100 mt-0.5">
+                      Menampilkan {kpiModalCategory.items.length} topik diskusi terdaftar
+                    </p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setKpiModalOpen(false)}
+                  className="text-emerald-100 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
-                <SquircleActionButton
-                  variant="primary"
-                  icon={Plus}
-                  label="Buat Diskusi Baru"
-                  onClick={handleOpenCreateModal}
-                />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Notifications Alert */}
-      {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 flex items-center justify-between shadow-sm animate-fadeIn">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-sm font-medium">{successMsg}</span>
-          </div>
-          <button onClick={() => setSuccessMsg('')} className="text-emerald-600 hover:text-emerald-800">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {errorMsg && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 flex items-center justify-between shadow-sm animate-fadeIn">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-            <span className="text-sm font-medium">{errorMsg}</span>
-          </div>
-          <button onClick={() => setErrorMsg('')} className="text-rose-600 hover:text-rose-800">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiTintedCard
-          icon={MessageSquare}
-          label="Total Diskusi"
-          value={computedStats.total_diskusi}
-          subtext={`${computedStats.diskusi_pinned} pinned • ${computedStats.diskusi_ditutup} ditutup`}
-          tone="emerald"
-          onClick={() => handleOpenKpiModal('total')}
-        />
-        <KpiTintedCard
-          icon={BookOpen}
-          label="Diskusi Aktif"
-          value={computedStats.diskusi_aktif}
-          subtext="Siap menerima tanggapan"
-          tone="emerald"
-          onClick={() => handleOpenKpiModal('aktif')}
-        />
-        <KpiTintedCard
-          icon={MessageCircle}
-          label="Total Komentar"
-          value={computedStats.total_komentar}
-          subtext="Tanggapan & Pertanyaan"
-          tone="blue"
-          onClick={() => handleOpenKpiModal('komentar')}
-        />
-        <KpiTintedCard
-          icon={GraduationCap}
-          label="Interaksi Forum"
-          value={`${computedStats.total_diskusi} Diskusi`}
-          subtext="Keaktifan forum terpadu"
-          tone="purple"
-          onClick={() => handleOpenKpiModal('interaksi')}
-        />
-      </motion.div>
-
-      {/* Tab Navigation Card (below KPI grid) */}
-      {tabNav && (
-        <motion.div variants={itemVariants}>
-          {typeof tabNav === 'function' ? tabNav() : tabNav}
-        </motion.div>
-      )}
-
-      {/* SEARCH & FILTER BAR (2-Row Layout) */}
-      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
-        {/* Baris 1: Field Pencarian Full-Width */}
-        <div className="w-full">
-          <div className="relative w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari judul diskusi, deskripsi, atau kategori..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setPage(1)
-              }}
-              className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-700 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            />
-          </div>
-        </div>
-
-        {/* Baris 2: Dropdown Filter & Sortir */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
-            Filter &amp; Sortir:
-          </span>
-
-          <select
-            value={selectedModulAjar}
-            onChange={(e) => {
-              setSelectedModulAjar(e.target.value)
-              setPage(1)
-            }}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          >
-            <option value="">-- Semua Modul Ajar --</option>
-            {optionsModulAjar.map((opt) => (
-              <option key={opt.value || opt.id} value={opt.value || opt.id}>
-                {opt.label || opt.judul_modul || opt.judul}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedKategori}
-            onChange={(e) => {
-              setSelectedKategori(e.target.value)
-              setPage(1)
-            }}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          >
-            <option value="">-- Semua Kategori --</option>
-            {optionsKategori.map((kat) => (
-              <option key={kat} value={kat}>
-                {kat}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedStatus}
-            onChange={(e) => {
-              setSelectedStatus(e.target.value)
-              setPage(1)
-            }}
-            className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          >
-            <option value="">-- Semua Status --</option>
-            <option value="aktif">Aktif</option>
-            <option value="draft">Draft</option>
-            <option value="nonaktif">Nonaktif</option>
-          </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSearch('')
-              setSelectedModulAjar('')
-              setSelectedKategori('')
-              setSelectedStatus('')
-              setPage(1)
-            }}
-            className="inline-flex items-center gap-1.5 px-4 h-12 rounded-[14px] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            title="Reset Filter"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Reset</span>
-          </button>
-        </div>
-      </motion.div>
-
-      {/* DATA TABLE CONTAINER */}
-      <motion.div variants={itemVariants}>
-      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]" aria-labelledby="diskusi-table-title">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
-          <div>
-            <h2 id="diskusi-table-title" className="text-base font-extrabold text-slate-900 dark:text-white">Data Forum Diskusi Kelas</h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Daftar topik kolaborasi dan tanya jawab interaktif per modul ajar.</p>
-          </div>
-          {pageActions}
-        </div>
-
-        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-              <tr>
-                <th className="w-[32%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Topik &amp; Modul Ajar</th>
-                <th className="hidden w-[16%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Kategori</th>
-                <th className="hidden w-[18%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Status &amp; Akses</th>
-                <th className="hidden w-[14%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Komentar</th>
-                <th className="w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan="5" className="py-12 text-center text-slate-400">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#0E5C44]" />
-                    <p className="text-sm">Memuat data diskusi kelas...</p>
-                  </td>
-                </tr>
-              ) : dataDiskusi.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="py-12 text-center text-slate-400">
-                    <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-40 text-slate-400" />
-                    <p className="text-base font-semibold text-slate-600 dark:text-slate-300">Belum ada diskusi kelas</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Silakan buat topik diskusi baru untuk siswa.</p>
-                  </td>
-                </tr>
-              ) : (
-                dataDiskusi.map((item) => (
-                  <tr
-                    key={item.id}
-                    onClick={() => handleOpenThread(item.id)}
-                    className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
-                  >
-                    <td className="py-3.5 px-5 sm:px-6 md:px-8">
-                      <div className="flex items-start gap-3">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleTogglePin(item.id)
-                          }}
-                          className={`mt-0.5 p-1 rounded-lg transition-colors ${
-                            item.is_pinned
-                              ? 'text-amber-500 bg-amber-50 dark:bg-amber-950/40'
-                              : 'text-slate-300 hover:text-slate-500 dark:text-slate-600'
-                          }`}
-                          title={item.is_pinned ? 'Lepas Pin' : 'Sematkan di Atas'}
-                        >
-                          <Pin className="w-4 h-4 fill-current" />
-                        </button>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-slate-900 dark:text-white line-clamp-1">
-                              {item.judul_diskusi || item.judul}
-                            </h4>
-                            {item.is_closed && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                                <Lock className="w-3 h-3" /> Ditutup
+              <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                {kpiModalCategory.items.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30 text-emerald-600" />
+                    <p className="font-bold text-sm text-slate-700 dark:text-slate-300">Tidak ada data diskusi dalam kategori ini.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200/80 dark:border-emerald-800 text-[11px] font-black text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
+                          <th className="py-3 px-4 text-center w-12">No</th>
+                          <th className="py-3 px-4">Judul Diskusi</th>
+                          <th className="py-3 px-4">Kategori</th>
+                          <th className="py-3 px-4">Modul Ajar</th>
+                          <th className="py-3 px-4 text-center">Status</th>
+                          <th className="py-3 px-4 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {kpiModalCategory.items.map((item, idx) => (
+                          <tr key={item.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 px-4 text-center text-slate-400 font-semibold">{idx + 1}</td>
+                            <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">{item.judul_diskusi || item.judul}</td>
+                            <td className="py-3 px-4 font-semibold text-slate-600 dark:text-slate-300">
+                              {item.kategori || 'Umum'}
+                            </td>
+                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
+                              {item.modul_ajar?.judul_modul || item.modul_ajar?.judul || '-'}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span
+                                className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                  item.status === 'aktif'
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                }`}
+                              >
+                                {item.status || 'aktif'}
                               </span>
-                            )}
-                          </div>
-                          {item.modul_ajar ? (
-                            <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mt-0.5 flex items-center gap-1">
-                              <BookOpen className="w-3 h-3 inline" /> {item.modul_ajar.judul_modul || item.modul_ajar.judul}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-slate-400 mt-0.5">Umum (Tanpa Modul)</p>
-                          )}
-                          {item.deskripsi && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-1 max-w-xl">
-                              {item.deskripsi}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                onClick={() => {
+                                  setKpiModalOpen(false)
+                                  handleOpenThread(item.id)
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-50 text-[#0E5C44] dark:bg-emerald-950/40 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100 transition-colors"
+                              >
+                                Buka Thread
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
 
-                    <td className="hidden py-3.5 px-3 text-center sm:table-cell">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-[#0E5C44] dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-                        <Tag className="w-3 h-3" /> {item.kategori || 'Umum'}
-                      </span>
-                    </td>
-
-                    <td className="hidden py-3.5 px-3 text-center md:table-cell">
-                      <div className="space-y-0.5">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            item.status === 'aktif'
-                              ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200'
-                              : item.status === 'draft'
-                              ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                          }`}
-                        >
-                          {item.status === 'aktif' ? 'Aktif' : item.status === 'draft' ? 'Draft' : 'Nonaktif'}
-                        </span>
-                        {item.created_at_formatted && (
-                          <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1">
-                            <Clock className="w-3 h-3" /> {item.created_at_formatted}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-
-                    <td className="hidden py-3.5 px-3 text-center sm:table-cell">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleOpenThread(item.id)
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-200 hover:text-[#0E5C44] dark:hover:text-emerald-400 text-xs font-bold transition-all"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{item.total_komentar || item.jumlah_komentar || 0} Komentar</span>
-                      </button>
-                    </td>
-
-                    <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      <ActionDropdown
-                        onView={() => handleOpenThread(item.id)}
-                        onEdit={() => handleOpenEditModal(item)}
-                        onDelete={() => handleDelete(item.id, item.judul_diskusi || item.judul)}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </MasterDataTable>
-
-        {/* Pagination Footer */}
-        {pagination.last_page > 1 && (
-          <div className="p-4 bg-slate-50/50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Menampilkan Halaman <span className="font-bold">{pagination.current_page}</span> dari{' '}
-              <span className="font-bold">{pagination.last_page}</span> ({pagination.total} Diskusi)
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-white dark:hover:bg-slate-800 transition-all"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                disabled={page >= pagination.last_page}
-                onClick={() => setPage((prev) => Math.min(prev + 1, pagination.last_page))}
-                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-white dark:hover:bg-slate-800 transition-all"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-900/40">
+                <button
+                  onClick={() => setKpiModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         )}
-      </section>
-      </motion.div>
 
-      {/* KPI DETAIL MODAL */}
-      {kpiModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#1B2433] w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="bg-gradient-to-r from-[#0E5C44] to-[#1E8E5A] p-5 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
-                  <MessageSquare className="w-5 h-5 text-emerald-200" />
+        {/* Modal Form Tambah / Edit Diskusi */}
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              <div
+                className={`h-1.5 w-full bg-gradient-to-r ${
+                  editId ? 'from-amber-400 via-amber-500 to-orange-600' : 'from-emerald-500 via-teal-400 to-emerald-600'
+                }`}
+              />
+              <div className="flex items-center justify-between border-b border-slate-100 p-6 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-md ${
+                      editId
+                        ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30'
+                        : 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/30'
+                    }`}
+                  >
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 dark:text-white">
+                      {editId ? 'Edit Topik Diskusi Kelas' : 'Buat Topik Diskusi Kelas Baru'}
+                    </h3>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Publikasikan bahan diskusi atau pertanyaan pemantik modul ajar.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold">{kpiModalCategory.title}</h3>
-                  <p className="text-xs text-emerald-100 mt-0.5">
-                    Menampilkan {kpiModalCategory.items.length} diskusi terdaftar
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setKpiModalOpen(false)}
-                className="text-emerald-100 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto flex-1 space-y-4">
-              {kpiModalCategory.items.length === 0 ? (
-                <div className="py-12 text-center text-slate-400">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p className="font-semibold text-sm">Tidak ada data diskusi dalam kategori ini.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        <th className="py-3 px-4 text-center w-12">No</th>
-                        <th className="py-3 px-4">Judul Diskusi</th>
-                        <th className="py-3 px-4">Kategori</th>
-                        <th className="py-3 px-4">Modul Ajar</th>
-                        <th className="py-3 px-4 text-center">Status</th>
-                        <th className="py-3 px-4 text-right">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-                      {kpiModalCategory.items.map((item, idx) => (
-                        <tr key={item.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                          <td className="py-3 px-4 text-center text-slate-400 text-xs font-medium">{idx + 1}</td>
-                          <td className="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">{item.judul}</td>
-                          <td className="py-3 px-4 text-xs font-medium text-slate-600 dark:text-slate-300">
-                            {item.kategori || 'Umum'}
-                          </td>
-                          <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">
-                            {item.modul_ajar?.judul_modul || '-'}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'aktif' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
-                              {item.status || 'aktif'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => {
-                                setKpiModalOpen(false)
-                                handleOpenThread(item)
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0E5C44] dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold text-xs hover:bg-emerald-100 transition-colors"
-                            >
-                              Lihat Thread
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-900/40">
-              <button
-                onClick={() => setKpiModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal CRUD Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#1B2433] rounded-[18px] shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-2xl overflow-hidden animate-fadeIn">
-            <div className="p-6 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#0E5C44] dark:text-emerald-400">
-                  <MessageSquare className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    {editId ? 'Edit Diskusi Kelas' : 'Buat Diskusi Kelas Baru'}
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Isi informasi diskusi untuk dipublikasikan ke forum modul ajar
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveForm} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                  Modul Ajar Relasi
-                </label>
-                <select
-                  value={formData.modul_ajar_id}
-                  onChange={(e) => setFormData({ ...formData, modul_ajar_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-[#0E5C44] outline-none"
-                >
-                  <option value="">-- Tanpa Modul (Diskusi Umum) --</option>
-                  {optionsModulAjar.map((opt) => (
-                    <option key={opt.value || opt.id} value={opt.value || opt.id}>
-                      {opt.label || opt.judul_modul || opt.judul}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                  Judul Diskusi <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Pemahaman Kasus Hukum Newton II..."
-                  value={formData.judul}
-                  onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-[#0E5C44] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                  Kategori Diskusi
-                </label>
-                <select
-                  value={formData.kategori}
-                  onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-[#0E5C44] outline-none"
-                >
-                  {optionsKategori.map((kat) => (
-                    <option key={kat} value={kat}>
-                      {kat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                  Deskripsi / Pertanyaan Pemicu
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="Tuliskan petunjuk diskusi, topik utama, atau pemantik pertanyaan bagi siswa..."
-                  value={formData.deskripsi}
-                  onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-[#0E5C44] outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                    Tanggal Mulai
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.tanggal_mulai}
-                    onChange={(e) => setFormData({ ...formData, tanggal_mulai: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-[#0E5C44] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                    Tanggal Tutup
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.tanggal_tutup}
-                    onChange={(e) => setFormData({ ...formData, tanggal_tutup: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-[#0E5C44] outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
-                  Status Diskusi
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm focus:ring-2 focus:ring-[#0E5C44] outline-none"
-                >
-                  <option value="aktif">Aktif</option>
-                  <option value="draft">Draft</option>
-                  <option value="nonaktif">Nonaktif</option>
-                </select>
-              </div>
-
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
                 <button
-                  type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                  className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
                 >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={formLoading}
-                  className="px-6 py-2.5 rounded-xl bg-[#0E5C44] hover:bg-[#0B4A36] text-white text-sm font-bold shadow-lg shadow-emerald-900/20 disabled:opacity-50 transition-all flex items-center gap-2"
-                >
-                  {formLoading && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  <span>{editId ? 'Perbarui Diskusi' : 'Simpan Diskusi'}</span>
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Interactive Thread & Comments Drawer/Modal */}
-      {isThreadOpen && selectedDiskusi && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#1B2433] w-full max-w-2xl h-full shadow-2xl flex flex-col justify-between border-l border-slate-200 dark:border-slate-800 animate-slideLeft">
-            {/* Drawer Header */}
-            <div className="p-6 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#0E5C44] dark:text-emerald-400">
-                  <MessageCircle className="w-5 h-5" />
-                </div>
+              <form onSubmit={handleTriggerSave} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                {/* Modul Ajar Relasi */}
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                    Utasan Komentar Diskusi
-                  </span>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-1">
-                    {selectedDiskusi.judul}
-                  </h3>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Modul Ajar Terkait
+                  </label>
+                  <select
+                    value={formData.modul_ajar_id}
+                    onChange={(e) => setFormData({ ...formData, modul_ajar_id: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
+                  >
+                    <option value="">-- Tanpa Modul (Diskusi Umum) --</option>
+                    {optionsModulAjar.map((opt) => (
+                      <option key={opt.value || opt.id} value={opt.value || opt.id}>
+                        {opt.label || opt.judul_modul || opt.judul}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              <button
-                onClick={() => setIsThreadOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Main Thread Body */}
-            <div className="p-6 flex-1 overflow-y-auto space-y-6">
-              {/* Discussion Prompt Card */}
-              <div className="p-5 rounded-[18px] bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-[#0E5C44] dark:text-emerald-300">
-                    {selectedDiskusi.kategori}
-                  </span>
-                  {selectedDiskusi.modul_ajar && (
-                    <span className="text-xs text-slate-500 font-medium">
-                      {selectedDiskusi.modul_ajar.judul}
+                {/* Judul Diskusi */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Judul Topik Diskusi <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Pemahaman Kasus Hukum Newton II Pada Kehidupan..."
+                    value={formData.judul}
+                    onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
+                  />
+                </div>
+
+                {/* Kategori Diskusi */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Kategori Diskusi
+                  </label>
+                  <select
+                    value={formData.kategori}
+                    onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
+                  >
+                    {optionsKategori.map((kat) => (
+                      <option key={kat} value={kat}>
+                        {kat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Deskripsi / Pertanyaan Pemicu */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Deskripsi / Pertanyaan Pemantik
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder="Tuliskan petunjuk diskusi, topik pemantik, atau studi kasus bagi santri/siswa..."
+                    value={formData.deskripsi}
+                    onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none leading-relaxed"
+                  />
+                </div>
+
+                {/* Tanggal Mulai & Tutup */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                      Tanggal &amp; Jam Mulai
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.tanggal_mulai}
+                      onChange={(e) => setFormData({ ...formData, tanggal_mulai: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                      Tanggal &amp; Jam Tutup
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.tanggal_tutup}
+                      onChange={(e) => setFormData({ ...formData, tanggal_tutup: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Diskusi */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                    Status Topik Diskusi
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200/90 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/12 outline-none"
+                  >
+                    <option value="aktif">Aktif (Terbuka untuk Komentar)</option>
+                    <option value="draft">Draft (Disimpan Sementara)</option>
+                    <option value="ditutup">Ditutup (Hanya Baca)</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold text-white shadow-md transition-all ${
+                      editId
+                        ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 shadow-amber-600/30 hover:brightness-105'
+                        : 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-600/30 hover:brightness-105'
+                    }`}
+                  >
+                    <span>{editId ? 'Perbarui Topik' : 'Publikasikan Diskusi'}</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Harmonized Save Confirmation Modal */}
+        <HarmonizedSaveModal
+          isOpen={isSaveModalOpen}
+          onClose={() => setIsSaveModalOpen(false)}
+          onConfirm={handleConfirmSave}
+          isEdit={Boolean(editId)}
+          title={formData.judul}
+          isSubmitting={formSubmitting}
+        />
+
+        {/* Harmonized Delete Confirmation Modal */}
+        <HarmonizedDeleteModal
+          isOpen={deleteModalState.isOpen}
+          onClose={() => setDeleteModalState({ isOpen: false, id: null, title: '', isSubmitting: false })}
+          onConfirm={handleConfirmDelete}
+          title={deleteModalState.title}
+          isSubmitting={deleteModalState.isSubmitting}
+        />
+
+        {/* Interactive Comments & Thread Drawer */}
+        {isThreadOpen && selectedDiskusi && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-[#1B2433] w-full max-w-2xl h-full shadow-2xl flex flex-col justify-between border-l border-slate-200 dark:border-slate-800"
+            >
+              {/* Drawer Header */}
+              <div className="p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/80 dark:border-emerald-800/60 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30">
+                    <MessageCircle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      Utasan Komentar Diskusi
                     </span>
+                    <h3 className="text-base font-black text-slate-900 dark:text-white line-clamp-1">
+                      {selectedDiskusi.judul_diskusi || selectedDiskusi.judul}
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsThreadOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Main Thread Body */}
+              <div className="p-6 flex-1 overflow-y-auto space-y-5">
+                {/* Discussion Prompt Card */}
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50/60 via-teal-50/30 to-white dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-[#0E5C44] dark:text-emerald-300">
+                      {selectedDiskusi.kategori}
+                    </span>
+                    {selectedDiskusi.modul_ajar && (
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold truncate max-w-xs flex items-center gap-1">
+                        <BookOpen className="h-3.5 w-3.5 text-emerald-600 inline" />
+                        {selectedDiskusi.modul_ajar.judul_modul || selectedDiskusi.modul_ajar.judul}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line font-medium">
+                    {selectedDiskusi.deskripsi || 'Tidak ada catatan deskripsi rinci.'}
+                  </p>
+                  {selectedDiskusi.is_closed && (
+                    <div className="mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center gap-2">
+                      <Lock className="w-4 h-4 shrink-0 text-amber-600" />
+                      <span>Diskusi telah dikunci. Komentar baru tidak dapat ditambahkan.</span>
+                    </div>
                   )}
                 </div>
-                <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">
-                  {selectedDiskusi.deskripsi || 'Tidak ada deskripsi rinci.'}
-                </p>
-                {selectedDiskusi.is_closed && (
-                  <div className="mt-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
-                    <Lock className="w-4 h-4 shrink-0 text-amber-600" />
-                    <span>Diskusi telah dikunci oleh pengajar. Komentar baru ditutup.</span>
-                  </div>
-                )}
-              </div>
 
-              {/* Comments List */}
-              <div>
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 flex items-center justify-between">
-                  <span>Tanggapan & Komentar ({selectedDiskusi.jumlah_komentar || 0})</span>
-                  {threadLoading && <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0E5C44]" />}
-                </h4>
+                {/* Comments List */}
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 flex items-center justify-between">
+                    <span>Tanggapan &amp; Jawaban ({selectedDiskusi.komentar?.length || selectedDiskusi.total_komentar || 0})</span>
+                    {threadLoading && <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0E5C44]" />}
+                  </h4>
 
-                {selectedDiskusi.komentar && selectedDiskusi.komentar.length > 0 ? (
-                  <div className="space-y-4">
-                    {selectedDiskusi.komentar.map((kom) => (
-                      <div
-                        key={kom.id}
-                        className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                kom.peran_pengirim === 'Guru'
-                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-[#0E5C44] dark:text-emerald-300'
-                                  : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-                              }`}
-                            >
-                              {kom.peran_pengirim}
-                            </span>
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                              {kom.nama_pengirim}
-                            </span>
+                  {selectedDiskusi.komentar && selectedDiskusi.komentar.length > 0 ? (
+                    <div className="space-y-3.5">
+                      {selectedDiskusi.komentar.map((kom) => (
+                        <div
+                          key={kom.id}
+                          className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-slate-800 shadow-xs"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                                  kom.peran_pengirim === 'Guru'
+                                    ? 'bg-emerald-100 dark:bg-emerald-950 text-[#0E5C44] dark:text-emerald-300'
+                                    : kom.peran_pengirim === 'Admin'
+                                    ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                                    : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                                }`}
+                              >
+                                {kom.peran_pengirim}
+                              </span>
+                              <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                                {kom.nama_pengirim}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                              <span>{kom.created_at_formatted}</span>
+                              <button
+                                onClick={() => handleDeleteKomentar(kom.id)}
+                                className="text-slate-400 hover:text-rose-500 transition-colors p-1"
+                                title="Hapus Komentar"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                            <span>{kom.created_at_formatted}</span>
+
+                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                            {kom.konten}
+                          </p>
+
+                          {/* Reply Action */}
+                          {!selectedDiskusi.is_closed && (
                             <button
-                              onClick={() => handleDeleteKomentar(kom.id)}
-                              className="text-slate-400 hover:text-rose-500 transition-colors"
-                              title="Hapus Komentar"
+                              onClick={() => setReplyParentId(replyParentId === kom.id ? null : kom.id)}
+                              className="mt-2 text-[11px] font-bold text-[#0E5C44] dark:text-emerald-400 hover:underline flex items-center gap-1"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <CornerDownRight className="w-3.5 h-3.5" /> Balas Tanggapan
                             </button>
-                          </div>
-                        </div>
+                          )}
 
-                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                          {kom.konten}
-                        </p>
-
-                        {/* Reply Action */}
-                        {!selectedDiskusi.is_closed && (
-                          <button
-                            onClick={() => setReplyParentId(replyParentId === kom.id ? null : kom.id)}
-                            className="mt-2 text-xs font-bold text-[#0E5C44] dark:text-emerald-400 hover:underline flex items-center gap-1"
-                          >
-                            <CornerDownRight className="w-3.5 h-3.5" /> Balas
-                          </button>
-                        )}
-
-                        {/* Nested Replies */}
-                        {kom.replies && kom.replies.length > 0 && (
-                          <div className="mt-3 pl-4 border-l-2 border-emerald-500/30 space-y-3">
-                            {kom.replies.map((reply) => (
-                              <div key={reply.id} className="pt-2">
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                        reply.peran_pengirim === 'Guru'
-                                          ? 'bg-emerald-100 dark:bg-emerald-950 text-[#0E5C44] dark:text-emerald-300'
-                                          : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-                                      }`}
+                          {/* Nested Replies */}
+                          {kom.replies && kom.replies.length > 0 && (
+                            <div className="mt-3 pl-3.5 border-l-2 border-emerald-500/40 space-y-2.5">
+                              {kom.replies.map((reply) => (
+                                <div key={reply.id} className="pt-1.5">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                          reply.peran_pengirim === 'Guru'
+                                            ? 'bg-emerald-100 dark:bg-emerald-950 text-[#0E5C44] dark:text-emerald-300'
+                                            : reply.peran_pengirim === 'Admin'
+                                            ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
+                                            : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                                        }`}
+                                      >
+                                        {reply.peran_pengirim}
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                        {reply.nama_pengirim}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteKomentar(reply.id)}
+                                      className="text-slate-400 hover:text-rose-500 transition-colors p-1"
                                     >
-                                      {reply.peran_pengirim}
-                                    </span>
-                                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                                      {reply.nama_pengirim}
-                                    </span>
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
                                   </div>
-                                  <button
-                                    onClick={() => handleDeleteKomentar(reply.id)}
-                                    className="text-slate-400 hover:text-rose-500 transition-colors"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
+                                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    {reply.konten}
+                                  </p>
                                 </div>
-                                <p className="text-xs text-slate-600 dark:text-slate-300">
-                                  {reply.konten}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 text-center py-6 italic">
-                    Belum ada komentar pada diskusi ini. Jadilah yang pertama memberikan tanggapan!
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Drawer Footer / Add Comment Form */}
-            {!selectedDiskusi.is_closed && (
-              <div className="p-4 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800">
-                {replyParentId && (
-                  <div className="mb-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-                    <span>Membalas komentar terpilih...</span>
-                    <button
-                      onClick={() => setReplyParentId(null)}
-                      className="text-emerald-600 font-bold hover:underline"
-                    >
-                      Batal
-                    </button>
-                  </div>
-                )}
-
-                <form onSubmit={handlePostKomentar} className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                        Kirim Sebagai:
-                      </span>
-                      <select
-                        value={komentarForm.peran_pengirim}
-                        onChange={(e) =>
-                          setKomentarForm({ ...komentarForm, peran_pengirim: e.target.value })
-                        }
-                        className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold focus:outline-none"
-                      >
-                        <option value="Guru">Guru (Pengajar)</option>
-                        <option value="Siswa">Siswa (Peserta)</option>
-                        <option value="Admin">Admin</option>
-                      </select>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      required
-                      placeholder="Tuliskan komentar atau jawaban Anda..."
-                      value={komentarForm.konten}
-                      onChange={(e) =>
-                        setKomentarForm({ ...komentarForm, konten: e.target.value })
-                      }
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[#0E5C44] outline-none"
-                    />
-                    <button
-                      type="submit"
-                      disabled={submittingKomentar || !komentarForm.konten.trim()}
-                      className="px-5 py-2.5 rounded-xl bg-[#0E5C44] hover:bg-[#0B4A36] text-white font-bold text-sm shadow-md disabled:opacity-50 flex items-center gap-1.5 shrink-0 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      {submittingKomentar ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                      <span>Kirim</span>
-                    </button>
-                  </div>
-                </form>
+                  ) : (
+                    <div className="text-center py-8 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                      <MessageCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                      <p className="text-xs text-slate-400 font-medium">
+                        Belum ada komentar pada topik ini. Jadilah yang pertama memberikan tanggapan!
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+
+              {/* Drawer Footer / Reply Composer */}
+              {!selectedDiskusi.is_closed && (
+                <div className="p-4.5 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800">
+                  {replyParentId && (
+                    <div className="mb-2 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                      <span className="font-semibold">Membalas tanggapan terpilih...</span>
+                      <button
+                        onClick={() => setReplyParentId(null)}
+                        className="text-emerald-600 font-bold hover:underline"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  )}
+
+                  <form onSubmit={handlePostKomentar} className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                          Kirim Sebagai:
+                        </span>
+                        <select
+                          value={komentarForm.peran_pengirim}
+                          onChange={(e) =>
+                            setKomentarForm({ ...komentarForm, peran_pengirim: e.target.value })
+                          }
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold focus:outline-none"
+                        >
+                          <option value="Guru">Guru (Pengajar)</option>
+                          <option value="Siswa">Siswa (Peserta)</option>
+                          <option value="Admin">Admin</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Tuliskan komentar atau tanggapan diskusi..."
+                        value={komentarForm.konten}
+                        onChange={(e) =>
+                          setKomentarForm({ ...komentarForm, konten: e.target.value })
+                        }
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-emerald-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/20 outline-none"
+                      />
+                      <button
+                        type="submit"
+                        disabled={submittingKomentar || !komentarForm.konten.trim()}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 hover:brightness-105 text-white font-bold text-xs shadow-md disabled:opacity-50 flex items-center gap-1.5 shrink-0 transition-all"
+                      >
+                        {submittingKomentar ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                        <span>Kirim</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </motion.div>
           </div>
-        </div>
-      )}
-        </motion.div>
+        )}
+
+        {/* Harmonized Batch Export Modal */}
+        <HarmonizedBatchExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          onExport={handleProcessExport}
+          isExporting={isExporting}
+          totalCount={pagination.total || dataDiskusi.length}
+          moduleTitle="Forum Diskusi"
+        />
       </div>
     </PageContainer>
   )

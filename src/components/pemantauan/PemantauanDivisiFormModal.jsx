@@ -22,34 +22,9 @@ import {
   SelectItem,
 } from '@/components/tailgrids/core/select'
 import { Badge } from '@/components/tailgrids/core/badge'
+import { educationUnitService } from '../../services/educationUnitService'
+import { divisionService } from '../../services/divisionService'
 
-const DIVISI_OPTIONS = [
-  { id: 'Divisi Al-Qur\'an / Tahfidz', name: 'Divisi Al-Qur\'an / Tahfidz' },
-  { id: 'Divisi Kesiswaan & BPI', name: 'Divisi Kesiswaan & Bina Pribadi Islami (BPI)' },
-  { id: 'Divisi Kurikulum / Akademik', name: 'Divisi Kurikulum / Akademik' },
-  { id: 'Divisi Sarana & Prasarana', name: 'Divisi Sarana & Prasarana (Sarpras)' },
-  { id: 'Divisi Keasramaan / Musyrif', name: 'Divisi Keasramaan / Musyrif' },
-  { id: 'Divisi Bahasa', name: 'Divisi Bahasa (Arab & Inggris)' },
-  { id: 'Tata Usaha', name: 'Tata Usaha & Administrasi' },
-  { id: 'HRD & Kepegawaian', name: 'HRD & Kepegawaian' },
-  { id: 'Keuangan', name: 'Keuangan & Syariah' },
-]
-
-const KATEGORI_SIT_OPTIONS = [
-  { id: 'Target Program Harian/Mingguan', name: 'Target Program Harian / Mingguan' },
-  { id: 'Pembiasaan Karakter Islami (Amal Yaumi)', name: 'Pembiasaan Karakter Islami (Amal Yaumi)' },
-  { id: 'Integrasi Kurikulum & Rapor Diniyah', name: 'Integrasi Kurikulum & Rapor Diniyah' },
-  { id: 'Pemeliharaan Aset & Logistik Sarpras', name: 'Pemeliharaan Aset & Logistik Sarpras' },
-  { id: 'Kedisiplinan & Ketertiban', name: 'Kedisiplinan & Ketertiban' },
-]
-
-const UNIT_OPTIONS = [
-  { id: 'SD IT', name: 'SD IT' },
-  { id: 'SMP IT', name: 'SMP IT' },
-  { id: 'SMA IT', name: 'SMA IT' },
-  { id: 'Pondok Pesantren', name: 'Pondok Pesantren / Ponpes' },
-  { id: 'TK IT', name: 'TK IT' },
-]
 
 const STATUS_OPTIONS = [
   { id: 'proses', name: 'Dalam Proses' },
@@ -64,15 +39,63 @@ export default function PemantauanDivisiFormModal({
   onSubmit,
   initialData = null,
   isSubmitting = false,
-  currentUserUnit = 'SD IT',
+  currentUserUnit = '',
   isUnitRestricted = false,
+  unitOptions = [],
+  divisionOptions = [],
 }) {
   const isEditMode = Boolean(initialData?.id)
 
+  const [availableUnits, setAvailableUnits] = useState(unitOptions)
+  const [availableDivisions, setAvailableDivisions] = useState(divisionOptions)
+
+  useEffect(() => {
+    if (unitOptions && unitOptions.length > 0) {
+      setAvailableUnits(unitOptions)
+      return
+    }
+    let isCancelled = false
+    educationUnitService.getDaftar({ per_page: 100 })
+      .then((res) => {
+        if (isCancelled) return
+        const list = res?.data?.data || res?.data || (Array.isArray(res) ? res : [])
+        if (Array.isArray(list) && list.length > 0) {
+          setAvailableUnits(list)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      isCancelled = true
+    }
+  }, [unitOptions])
+
+  useEffect(() => {
+    if (divisionOptions && divisionOptions.length > 0) {
+      setAvailableDivisions(divisionOptions)
+      return
+    }
+    let isCancelled = false
+    divisionService.getDropdown()
+      .then((data) => {
+        if (isCancelled) return
+        const list = Array.isArray(data) ? data : []
+        if (list.length > 0) {
+          setAvailableDivisions(list)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      isCancelled = true
+    }
+  }, [divisionOptions])
+
+  const defaultUnit = currentUserUnit || availableUnits[0]?.name || availableUnits[0]?.code || ''
+  const defaultDivisi = availableDivisions[0]?.name || ''
+
   const [formData, setFormData] = useState({
-    unit_pendidikan: currentUserUnit,
-    nama_divisi: 'Divisi Al-Qur\'an / Tahfidz',
-    kategori_laporan: 'Target Program Harian/Mingguan',
+    unit_pendidikan: defaultUnit,
+    nama_divisi: defaultDivisi,
+    kategori_laporan: '',
     aspek_pemantauan: '',
     persentase_capaian: 80,
     status_pemantauan: 'proses',
@@ -86,9 +109,9 @@ export default function PemantauanDivisiFormModal({
   useEffect(() => {
     if (initialData) {
       setFormData({
-        unit_pendidikan: initialData.unit_pendidikan || currentUserUnit,
-        nama_divisi: initialData.nama_divisi || 'Divisi Al-Qur\'an / Tahfidz',
-        kategori_laporan: initialData.kategori_laporan || 'Target Program Harian/Mingguan',
+        unit_pendidikan: initialData.unit_pendidikan || defaultUnit,
+        nama_divisi: initialData.nama_divisi || defaultDivisi,
+        kategori_laporan: initialData.kategori_laporan || '',
         aspek_pemantauan: initialData.aspek_pemantauan || '',
         persentase_capaian: initialData.persentase_capaian !== undefined ? Number(initialData.persentase_capaian) : 80,
         status_pemantauan: initialData.status_pemantauan || 'proses',
@@ -100,9 +123,9 @@ export default function PemantauanDivisiFormModal({
       })
     } else {
       setFormData({
-        unit_pendidikan: isUnitRestricted ? currentUserUnit : 'SD IT',
-        nama_divisi: 'Divisi Al-Qur\'an / Tahfidz',
-        kategori_laporan: 'Target Program Harian/Mingguan',
+        unit_pendidikan: isUnitRestricted ? currentUserUnit : defaultUnit,
+        nama_divisi: defaultDivisi,
+        kategori_laporan: '',
         aspek_pemantauan: '',
         persentase_capaian: 80,
         status_pemantauan: 'proses',
@@ -112,7 +135,7 @@ export default function PemantauanDivisiFormModal({
       })
     }
     setErrors({})
-  }, [initialData, isOpen, currentUserUnit, isUnitRestricted])
+  }, [initialData, isOpen, currentUserUnit, isUnitRestricted, defaultUnit, defaultDivisi])
 
   const validate = () => {
     const errs = {}
@@ -199,9 +222,9 @@ export default function PemantauanDivisiFormModal({
                         <SelectValue placeholder="Pilih Unit..." />
                       </SelectTrigger>
                       <SelectContent className="z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl">
-                        {UNIT_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.id} id={opt.id} className="text-xs font-semibold py-2">
-                            {opt.name}
+                        {availableUnits.map((opt) => (
+                          <SelectItem key={opt.id} id={opt.name || opt.code || opt.id} className="text-xs font-semibold py-2">
+                            {opt.name || opt.code}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -240,8 +263,8 @@ export default function PemantauanDivisiFormModal({
                       <SelectValue placeholder="Pilih Divisi..." />
                     </SelectTrigger>
                     <SelectContent className="z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl">
-                      {DIVISI_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.id} id={opt.id} className="text-xs font-semibold py-2">
+                      {availableDivisions.map((opt) => (
+                        <SelectItem key={opt.id || opt.name} id={opt.name} className="text-xs font-semibold py-2">
                           {opt.name}
                         </SelectItem>
                       ))}
@@ -252,23 +275,16 @@ export default function PemantauanDivisiFormModal({
 
                 <div className="space-y-1.5">
                   <FieldLabel htmlFor="kategori_laporan" className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                    Kategori Program SIT
+                    Kategori / Bidang Supervisi
                   </FieldLabel>
-                  <Select
+                  <Input
+                    id="kategori_laporan"
+                    type="text"
                     value={formData.kategori_laporan}
-                    onChange={(val) => setFormData({ ...formData, kategori_laporan: String(val) })}
-                  >
-                    <SelectTrigger className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-200">
-                      <SelectValue placeholder="Pilih Kategori..." />
-                    </SelectTrigger>
-                    <SelectContent className="z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl">
-                      {KATEGORI_SIT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.id} id={opt.id} className="text-xs font-semibold py-2">
-                          {opt.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => setFormData({ ...formData, kategori_laporan: e.target.value })}
+                    placeholder="Contoh: Program Harian, Amal Yaumi, Kurikulum, Sarpras"
+                    className="h-10 rounded-xl text-xs font-medium"
+                  />
                 </div>
               </div>
 

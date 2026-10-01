@@ -111,7 +111,7 @@ export default function GuruBkDashboardPage() {
         ]}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <AppButton variant="accent" size="sm" icon={Plus} onClick={() => navigate('/dashboard/guru/student-notes')}>
+            <AppButton variant="accent" size="sm" icon={Plus} onClick={() => navigate('/portal-guru/workspace')}>
               Catatan Baru
             </AppButton>
             <AppButton variant="outline" size="sm" icon={RefreshCw} onClick={fetchDashboard} className="border-white/30 text-white hover:bg-white/10">
@@ -181,10 +181,10 @@ export default function GuruBkDashboardPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400">Pintas penambahan dan penelusuran catatan konseling siswa</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <AppButton variant="secondary" size="sm" icon={Plus} onClick={() => navigate('/dashboard/guru/student-notes')}>
+            <AppButton variant="secondary" size="sm" icon={Plus} onClick={() => navigate('/portal-guru/workspace')}>
               Tambah Catatan BK
             </AppButton>
-            <AppButton variant="primary" size="sm" icon={FileText} onClick={() => navigate('/dashboard/guru/student-notes')}>
+            <AppButton variant="primary" size="sm" icon={FileText} onClick={() => navigate('/portal-guru/workspace')}>
               Lihat Catatan Siswa
             </AppButton>
           </div>

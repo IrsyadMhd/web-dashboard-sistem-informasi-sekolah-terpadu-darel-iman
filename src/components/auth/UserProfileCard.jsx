@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { FiCamera, FiCheck } from 'react-icons/fi'
-import Swal from 'sweetalert2'
+import { FiCamera, FiCheck, FiAlertTriangle, FiXCircle } from 'react-icons/fi'
 import PersonAvatar from '../ui/PersonAvatar'
 import { useAuthStore } from '../../stores/authStore'
 import { authService } from '../../services/authService'
@@ -15,6 +14,7 @@ export default function UserProfileCard() {
   const fileInputRef = useRef(null)
   const [unitOptions, setUnitOptions] = useState([])
   const [saving, setSaving] = useState(false)
+  const [alertState, setAlertState] = useState(null)
   const userRoles = Array.isArray(user?.roles) ? user.roles : [user?.role || user?.roles].filter(Boolean)
   const ALLOWED_ADMIN_ROLES = [
     'super admin', 'superadmin', 'super_admin',
@@ -109,7 +109,7 @@ export default function UserProfileCard() {
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      Swal.fire('Ukuran File Terlalu Besar', 'Ukuran foto maksimal adalah 2MB.', 'warning')
+      setAlertState({ status: 'warning', message: 'Ukuran foto terlalu besar. Maksimal adalah 2MB.' })
       e.target.value = ''
       return
     }
@@ -133,17 +133,15 @@ export default function UserProfileCard() {
           },
         })
       }
-      Swal.fire({
-        icon: 'success',
-        title: 'Foto Profil Diperbarui',
-        text: 'Foto profil Anda telah disimpan ke server database.',
-        timer: 1500,
-        showConfirmButton: false,
+      setAlertState({
+        status: 'success',
+        message: 'Foto profil Anda telah disimpan ke server database.',
       })
+      setTimeout(() => setAlertState(null), 4000)
     } catch (error) {
       console.error('Gagal upload avatar:', error)
       const msg = error?.response?.data?.message || 'Gagal mengunggah foto profil ke server.'
-      Swal.fire('Gagal Upload', msg, 'error')
+      setAlertState({ status: 'error', message: msg })
     } finally {
       if (e.target) e.target.value = ''
     }
@@ -153,40 +151,47 @@ export default function UserProfileCard() {
     setProfile({
       fullName: user?.name || user?.fullName || '',
       nip: user?.nip || user?.employee?.niy || user?.employee?.nik || '',
+      phone: user?.phone || user?.no_hp || '',
       email: user?.email || '',
-      phone: user?.phone || user?.employee?.no_hp || '',
-      role: user?.role || user?.roles?.[0] || '',
-      unit: user?.unit || user?.employee?.unit?.name || '',
-      avatar: user?.avatar || user?.foto || user?.employee?.foto || null,
+      role: user?.role || (Array.isArray(user?.roles) ? user.roles[0] : ''),
+      unit: user?.unit || user?.education_unit?.name || '',
+      avatar: user?.foto || user?.avatar || '',
     })
+    setAlertState(null)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
+    setAlertState(null)
 
     try {
       let uploadedAvatar = profile.avatar
-      if (profile.avatar && typeof profile.avatar === 'string' && profile.avatar.startsWith('data:')) {
-        const avatarBase64 = profile.avatar.split(',')[1]
-        const blob = await fetch(`data:image/png;base64,${avatarBase64}`).then(res => res.blob())
+      if (fileInputRef.current && fileInputRef.current.files[0]) {
         const formData = new FormData()
-        formData.append('foto', blob, 'avatar.jpg')
-
-        const avatarRes = await authService.uploadAvatar(formData)
-        uploadedAvatar = avatarRes?.data?.foto || avatarRes?.data?.avatar || avatarRes?.foto || uploadedAvatar
-        setProfile((prev) => ({ ...prev, avatar: uploadedAvatar }))
+        formData.append('foto', fileInputRef.current.files[0])
+        formData.append('avatar', fileInputRef.current.files[0])
+        const uploadRes = await authService.uploadAvatar(formData)
+        uploadedAvatar = uploadRes?.data?.foto || uploadRes?.data?.avatar || uploadRes?.foto || uploadRes?.avatar || uploadedAvatar
       }
 
-      const updatePayload = {
+      const payload = {
         name: profile.fullName,
-        fullName: profile.fullName,
         email: profile.email,
         phone: profile.phone,
-        unit: profile.unit,
+        foto: uploadedAvatar,
       }
 
-      const response = await authService.updateProfile(updatePayload)
+      if (canEditUnitAndRole) {
+        if (!shouldHideRoleField && profile.role) {
+          payload.role = profile.role
+        }
+        if (profile.unit) {
+          payload.unit = profile.unit
+        }
+      }
+
+      const response = await authService.updateProfile(payload)
       const updatedData = response?.data || response
 
       const updatedUser = {
@@ -203,18 +208,18 @@ export default function UserProfileCard() {
       setSession({ token, user: updatedUser })
 
       setSaved(true)
-      Swal.fire({
-        icon: 'success',
-        title: 'Profil Berhasil Diperbarui',
-        text: 'Data profil dan informasi akun Anda telah disimpan permanen di database.',
-        timer: 2000,
-        showConfirmButton: false,
+      setAlertState({
+        status: 'success',
+        message: 'Data profil dan informasi akun Anda telah disimpan permanen di database.',
       })
-      setTimeout(() => setSaved(false), 2500)
+      setTimeout(() => {
+        setSaved(false)
+        setAlertState(null)
+      }, 4000)
     } catch (error) {
       console.error('Update profile error:', error)
       const msg = error.response?.data?.message || 'Gagal menyimpan perubahan profil ke server.'
-      Swal.fire('Gagal Menyimpan', msg, 'error')
+      setAlertState({ status: 'error', message: msg })
     } finally {
       setSaving(false)
     }
@@ -238,13 +243,19 @@ export default function UserProfileCard() {
         <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Profil</span>
       </div>
 
-      {saved && (
-        <Alert status="success" className="mb-6 rounded-xl">
+      {alertState && (
+        <Alert status={alertState.status} className="mb-6 rounded-xl">
           <AlertIndicator>
-            <FiCheck className="w-4 h-4" />
+            {alertState.status === 'success' ? (
+              <FiCheck className="w-4 h-4" />
+            ) : alertState.status === 'warning' ? (
+              <FiAlertTriangle className="w-4 h-4" />
+            ) : (
+              <FiXCircle className="w-4 h-4" />
+            )}
           </AlertIndicator>
           <AlertContent>
-            <AlertDescription>Perubahan profil berhasil disimpan!</AlertDescription>
+            <AlertDescription>{alertState.message}</AlertDescription>
           </AlertContent>
         </Alert>
       )}
@@ -431,7 +442,7 @@ export default function UserProfileCard() {
             </div>
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button
                 type="button"
                 variant="ghost"

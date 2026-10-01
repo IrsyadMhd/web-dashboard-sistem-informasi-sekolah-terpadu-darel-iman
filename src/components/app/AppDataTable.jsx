@@ -2,7 +2,9 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../tailgrids/core/table'
 import { Pagination } from '../tailgrids/core/pagination'
+import { Checkbox } from '../tailgrids/core/checkbox'
 import { cn } from '../../lib/utils'
+import { Layers } from 'lucide-react'
 import AppSearch from './AppSearch'
 import AppPagination from './AppPagination'
 import AppEmptyState from './AppEmptyState'
@@ -45,6 +47,8 @@ export default function AppDataTable({
   searchPlaceholder = 'Cari data...',
   filters,
   actions,
+  icon: CustomIcon,
+  iconClassName,
   title,
   countLabel,
   description,
@@ -76,10 +80,12 @@ export default function AppDataTable({
   onEdit,
   onDelete,
   onHistory,
+  canEdit,
+  canDelete,
   extraActions,
   actionColumnLabel = 'AKSI',
   embedded = false,
-  fullBleed = false,
+  fullBleed = true,
   showToolbar = true,
   showPagination = true,
   toolbarClassName = '',
@@ -167,33 +173,48 @@ export default function AppDataTable({
         'app-data-table min-w-0',
         embedded
           ? 'app-data-table--embedded'
-          : 'relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]',
+          : 'relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]',
         className
       )}
     >
       {/* Toolbar: search + filter + action */}
       {showToolbar && (onSearchChange || search !== undefined || hasFilters || actions || title) && (
-        <div className={cn('flex flex-col gap-3.5 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent print:hidden', toolbarClassName)}>
+        <div className={cn('flex flex-col gap-3.5 border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent print:hidden', toolbarClassName)}>
           {/* Row 1: Title / Description on Left, Action Buttons (Import, Export, Tambah Unit) on Right */}
           {(title || description || actions) && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100/80 pb-3 dark:border-slate-800/60">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-100 dark:border-emerald-900/50 pb-3">
               {(title || description) && (
-                <div className="min-w-0">
-                  {title && (
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h3>
-                      {countLabel && (
-                        <span className="inline-flex items-center rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-                          {countLabel}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {description && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{description}</p>}
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {/* Squircle Header Icon Container */}
+                  <div className={cn(
+                    "flex size-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-md",
+                    iconClassName || "bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 shadow-emerald-600/30 border border-emerald-300/30"
+                  )}>
+                    {React.isValidElement(CustomIcon) ? (
+                      CustomIcon
+                    ) : CustomIcon ? (
+                      <CustomIcon className="size-5.5 text-white" strokeWidth={2.2} />
+                    ) : (
+                      <Layers className="size-5.5 text-white" strokeWidth={2.2} />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    {title && (
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h3>
+                        {countLabel && (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                            {countLabel}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {description && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{description}</p>}
+                  </div>
                 </div>
               )}
               {actions && (
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
                   {actions}
                 </div>
               )}
@@ -214,7 +235,7 @@ export default function AppDataTable({
 
           {/* Row 3: Filter Controls */}
           {hasFilters && (
-            <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap overflow-x-auto no-scrollbar min-w-0 w-full pt-0.5">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full pt-0.5">
               {filters}
             </div>
           )}
@@ -317,19 +338,19 @@ export default function AppDataTable({
           </div>
 
           {/* Desktop Table View (Hidden on mobile < md screens) */}
-          <div className={cn('hidden md:block app-data-table__viewport min-w-0 w-full overflow-x-auto px-4 sm:px-6 md:px-8 print:block print:px-0 print:m-0 print:p-0', tableContainerClassName)}>
+          <div className={cn('hidden md:block app-data-table__viewport min-w-0 w-full overflow-x-auto print:block print:px-0 print:m-0 print:p-0', fullBleed ? 'px-0' : 'px-4 sm:px-6 md:px-8', tableContainerClassName)}>
             {printableHeader && (
               <div className="hidden print:block mb-1 mt-0 p-0 border-b border-slate-400 pb-1 text-slate-900">
                 {printableHeader}
               </div>
             )}
-            <TableRoot fullBleed={false} className="w-full min-w-[850px] border-collapse print:min-w-0 print:m-0">
-              <TableHeader className="bg-[#F8FAFB] dark:bg-[#202B3A]">
-                <TableRow className="hover:bg-transparent border-b border-[#EDF0F4] dark:border-[#354153] bg-[#F8FAFB] dark:bg-[#202B3A]">
+            <TableRoot fullBleed={fullBleed} className={cn('w-full border-collapse print:min-w-0 print:m-0', fullBleed ? 'min-w-full rounded-none border-x-0 border-y border-emerald-200/90 dark:border-emerald-800/80' : 'min-w-[850px]')}>
+              <TableHeader className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <TableRow className="hover:bg-transparent border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent">
                   {onToggleSelect && (
-                    <TableHead className="w-10 px-4 print:hidden bg-[#F8FAFB] dark:bg-[#202B3A]">
-                      <input
-                        type="checkbox"
+                    <TableHead className={cn('w-10 px-4 print:hidden bg-transparent', fullBleed && 'pl-5 sm:pl-6 md:pl-8')}>
+                      <Checkbox
+                        size="sm"
                         aria-label="Pilih semua"
                         checked={selectedKeys.length > 0 && selectedKeys.length === visibleData.length}
                         onChange={(e) => {
@@ -339,36 +360,41 @@ export default function AppDataTable({
                             onToggleSelect?.([])
                           }
                         }}
-                        className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-[#0E5C44] dark:border-slate-700"
                       />
                     </TableHead>
                   )}
-                  {columns.map((col) => (
-                    <TableHead
-                      key={col.key || col.label}
-                      className={cn(
-                        'whitespace-nowrap text-[11px] font-extrabold uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4',
-                        col.hideOnMobile && 'hidden lg:table-cell print:table-cell',
-                        col.className,
-                        col.headerProps?.className
-                      )}
-                    >
-                      {col.sortable ? (
-                        <button
-                          type="button"
-                          onClick={() => handleSort(col.key)}
-                          className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white text-[11px] font-extrabold"
-                        >
-                          <span>{col.label}</span>
-                          <ArrowBothDirectionHorizontal2 className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200 print:hidden', sortKey === col.key ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400 dark:text-slate-500')} />
-                        </button>
-                      ) : (
-                        col.label
-                      )}
-                    </TableHead>
-                  ))}
+                  {columns.map((col, colIdx) => {
+                    const isFirst = colIdx === 0 && !onToggleSelect
+                    const isLast = colIdx === columns.length - 1 && !hasActionColumn
+                    return (
+                      <TableHead
+                        key={col.key || col.label}
+                        className={cn(
+                          'whitespace-nowrap text-[11px] font-extrabold uppercase tracking-wider text-emerald-950 dark:text-emerald-200 bg-transparent py-3.5 px-4',
+                          fullBleed && isFirst && 'pl-5 sm:pl-6 md:pl-8',
+                          fullBleed && isLast && 'pr-5 sm:pr-6 md:pr-8',
+                          col.hideOnMobile && 'hidden lg:table-cell print:table-cell',
+                          col.className,
+                          col.headerProps?.className
+                        )}
+                      >
+                        {col.sortable ? (
+                          <button
+                            type="button"
+                            onClick={() => handleSort(col.key)}
+                            className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white text-[11px] font-extrabold"
+                          >
+                            <span>{col.label}</span>
+                            <ArrowBothDirectionHorizontal2 className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200 print:hidden', sortKey === col.key ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400 dark:text-slate-500')} />
+                          </button>
+                        ) : (
+                          col.label
+                        )}
+                      </TableHead>
+                    )
+                  })}
                   {hasActionColumn && (
-                    <TableHead className="w-[88px] min-w-[88px] text-center font-extrabold text-[11px] uppercase tracking-wider text-[#58677B] dark:text-[#DCE5F1] bg-[#F8FAFB] dark:bg-[#202B3A] py-3.5 px-4 print:hidden">
+                    <TableHead className={cn('w-[88px] min-w-[88px] text-center font-extrabold text-[11px] uppercase tracking-wider text-emerald-950 dark:text-emerald-200 bg-transparent py-3.5 px-4 print:hidden', fullBleed && 'pr-5 sm:pr-6 md:pr-8')}>
                       {actionColumnLabel}
                     </TableHead>
                   )}
@@ -384,15 +410,15 @@ export default function AppDataTable({
                       data-state={selected ? 'selected' : undefined}
                       onClick={onRowClick ? () => onRowClick(row) : undefined}
                       className={cn(
-                        'transition-all duration-200 hover:bg-slate-50/90 dark:hover:bg-slate-800/50 hover:shadow-xs',
-                        selected && 'bg-emerald-50/30 dark:bg-emerald-950/20',
+                        'border-b border-emerald-100/90 dark:border-emerald-900/40 transition-all duration-200 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 hover:shadow-xs',
+                        selected && 'bg-emerald-50/50 dark:bg-emerald-950/30',
                         onRowClick && 'cursor-pointer'
                       )}
                     >
                       {onToggleSelect && (
-                        <TableCell className="px-4 py-3.5 print:hidden" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
+                        <TableCell className={cn('px-4 py-3.5 print:hidden', fullBleed && 'pl-5 sm:pl-6 md:pl-8')} onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            size="sm"
                             aria-label={`Pilih ${rowKey}`}
                             checked={selected}
                             onChange={(e) => {
@@ -401,27 +427,38 @@ export default function AppDataTable({
                                 : selectedKeys.filter((k) => k !== rowKey)
                               onToggleSelect?.(next)
                             }}
-                            className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-[#0E5C44] dark:border-slate-700"
                           />
                         </TableCell>
                       )}
-                      {columns.map((col) => (
-                        <TableCell
-                          key={col.key || col.label}
-                          className={cn(rowPadding, 'text-xs text-slate-700 dark:text-slate-200 align-top', col.hideOnMobile && 'hidden lg:table-cell print:table-cell', col.className, col.cellProps?.className)}
-                        >
-                          {col.render ? col.render(row, rowIdx) : row?.[col.key] ?? '—'}
-                        </TableCell>
-                      ))}
+                      {columns.map((col, colIdx) => {
+                        const isFirst = colIdx === 0 && !onToggleSelect
+                        const isLast = colIdx === columns.length - 1 && !hasActionColumn
+                        return (
+                          <TableCell
+                            key={col.key || col.label}
+                            className={cn(
+                              rowPadding,
+                              fullBleed && isFirst && 'pl-5 sm:pl-6 md:pl-8',
+                              fullBleed && isLast && 'pr-5 sm:pr-6 md:pr-8',
+                              'text-xs text-slate-700 dark:text-slate-200 align-top',
+                              col.hideOnMobile && 'hidden lg:table-cell print:table-cell',
+                              col.className,
+                              col.cellProps?.className
+                            )}
+                          >
+                            {col.render ? col.render(row, rowIdx) : row?.[col.key] ?? '—'}
+                          </TableCell>
+                        )
+                      })}
                       {hasActionColumn && (
-                        <TableCell className={cn('w-[88px] min-w-[88px] text-center print:hidden', rowPadding)} onClick={(e) => e.stopPropagation()}>
+                        <TableCell className={cn('w-[88px] min-w-[88px] text-center print:hidden', rowPadding, fullBleed && 'pr-5 sm:pr-6 md:pr-8')} onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1.5">
                             {extraActions?.({ row, rowIdx })}
                             {hasActionColumn && (
                               <ActionDropdown
                                 onView={onView ? () => onView(row) : undefined}
-                                onEdit={onEdit ? () => onEdit(row) : undefined}
-                                onDelete={onDelete ? () => onDelete(row) : undefined}
+                                onEdit={onEdit && (typeof canEdit === 'function' ? canEdit(row) : true) ? () => onEdit(row) : undefined}
+                                onDelete={onDelete && (typeof canDelete === 'function' ? canDelete(row) : true) ? () => onDelete(row) : undefined}
                                 onHistory={onHistory ? () => onHistory(row) : undefined}
                               />
                             )}
@@ -439,7 +476,7 @@ export default function AppDataTable({
 
       {/* Pagination */}
       {showPagination && !isLoading && !isError && !resolvedIsEmpty && (
-        <div className="w-full border-t border-slate-100 px-4 py-3.5 sm:px-6 md:px-8 dark:border-slate-800 print:hidden">
+        <div className="w-full border-t border-emerald-200/90 px-4 py-3.5 sm:px-6 md:px-8 dark:border-emerald-800/70 print:hidden">
           <Pagination
             currentPage={clientPagination ? resolvedClientPage : page}
             totalPages={clientPagination ? clientTotalPages : totalPages}

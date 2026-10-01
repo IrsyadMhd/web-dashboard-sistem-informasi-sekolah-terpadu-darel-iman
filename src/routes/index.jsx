@@ -36,6 +36,7 @@ const MasterModulSemesterPage = lazy(() => import('../pages/MasterModulSemesterP
 const MasterKurikulumPage = lazy(() => import('../pages/MasterKurikulumPage'))
 const MasterSubjectPage = lazy(() => import('../pages/MasterSubjectPage'))
 const MasterSchedulePage = lazy(() => import('../pages/MasterSchedulePage'))
+const AcademicCalendarPage = lazy(() => import('../pages/AcademicCalendarPage'))
 const MasterCapaianPembelajaranPage = lazy(() => import('../pages/MasterCapaianPembelajaranPage'))
 const MasterTujuanPembelajaranPage = lazy(() => import('../pages/MasterTujuanPembelajaranPage'))
 const LmsModulAjarPage = lazy(() => import('../pages/LmsModulAjarPage'))
@@ -134,6 +135,29 @@ import { ROLES, hasAnyRole, resolveDefaultPortal } from '../auth/portalResolver'
 
 const portalDestination = (roles) => resolveDefaultPortal({ roles })
 
+function PortalRootRedirect() {
+  const user = useAuthStore((state) => state.user)
+  const roles = user?.roles || []
+  const isSuperAdminOrStaff = hasAnyRole(roles, [
+    ...ROLES.SUPER_ADMIN,
+    ...ROLES.ADMIN,
+    ...ROLES.YAYASAN,
+    ...ROLES.DIVISI,
+    ...ROLES.KEPALA_SEKOLAH,
+    ...ROLES.WAKA,
+    ...ROLES.TATA_USAHA,
+    ...ROLES.GURU,
+  ])
+
+  if (hasAnyRole(roles, ROLES.SISWA) && !isSuperAdminOrStaff) {
+    return <Navigate to="/portal-siswa" replace />
+  }
+  if (hasAnyRole(roles, ROLES.ALUMNI) && !isSuperAdminOrStaff) {
+    return <Navigate to="/portal-alumni" replace />
+  }
+  return <Navigate to="/portal-orangtua" replace />
+}
+
 function BungkusLazy({ children }) {
   return <Suspense fallback={<section className="panel">Memuat halaman...</section>}>{children}</Suspense>
 }
@@ -166,9 +190,18 @@ function RouteTerlindungi() {
 function RouteRole({ allow, deny = [], children }) {
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || []
+  const permissions = user?.permissions || []
   const isSuperAdmin = hasAnyRole(roles, ['Super Admin', 'SuperAdmin', 'super_admin'])
   const hasDeniedRole = deny.length > 0 && hasAnyRole(roles, deny)
-  if (!isSuperAdmin && (hasDeniedRole || (allow && !hasAnyRole(roles, allow)))) {
+  const hasAccess = isSuperAdmin || (!hasDeniedRole && (
+    !allow ||
+    allow.length === 0 ||
+    hasAnyRole(roles, allow) ||
+    permissions.length > 0 ||
+    roles.length > 0
+  ))
+
+  if (!hasAccess) {
     const dest = portalDestination(roles)
     const currentPath = window.location.pathname
     if (dest === currentPath || currentPath.startsWith(dest)) {
@@ -182,8 +215,10 @@ function RouteRole({ allow, deny = [], children }) {
 function RoleElement({ allow, children }) {
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || []
+  const permissions = user?.permissions || []
   const isSuperAdmin = hasAnyRole(roles, ['Super Admin', 'SuperAdmin', 'super_admin'])
-  if (!isSuperAdmin && !hasAnyRole(roles, allow)) {
+  const hasAccess = isSuperAdmin || hasAnyRole(roles, allow) || permissions.length > 0
+  if (!hasAccess) {
     const dest = portalDestination(roles)
     const currentPath = window.location.pathname
     if (dest === currentPath || currentPath.startsWith(dest)) {
@@ -199,11 +234,12 @@ function PermissionElement({ any = [], roles: allowedRoles = [], deniedRoles = [
   const roles = user?.roles || []
   const permissions = user?.permissions || []
   const isSuperAdmin = hasAnyRole(roles, ['Super Admin', 'SuperAdmin', 'super_admin'])
-  const hasDeniedRole = deniedRoles.length > 0 && hasAnyRole(roles, deniedRoles)
-  const hasRoleMatch = allowedRoles.length > 0 && hasAnyRole(roles, allowedRoles)
   const hasPermission = any.length === 0 || any.some((permission) => permissions.includes(permission))
+  const hasRoleMatch = allowedRoles.length > 0 && hasAnyRole(roles, allowedRoles)
+  const hasDeniedRole = deniedRoles.length > 0 && hasAnyRole(roles, deniedRoles)
 
-  const isAllowed = isSuperAdmin || (!hasDeniedRole && (hasRoleMatch || (allowedRoles.length === 0 && hasPermission)))
+  // DB-Driven: Granted database permissions take precedence
+  const isAllowed = isSuperAdmin || (hasPermission && !hasDeniedRole) || hasRoleMatch
 
   if (!isAllowed) {
     const dest = portalDestination(roles)
@@ -251,6 +287,10 @@ export const router = createBrowserRouter([
     element: <Navigate to="/masuk" replace />,
   },
   {
+    path: '/login',
+    element: <Navigate to="/masuk" replace />,
+  },
+  {
     path: '/auth',
     element: (
       <BungkusLazy>
@@ -270,6 +310,78 @@ export const router = createBrowserRouter([
     element: <RouteTerlindungi />,
     errorElement: <RouteErrorElement />,
     children: [
+      {
+        path: '/mutabaah',
+        element: <Navigate to="/dashboard/mutabaah" replace />,
+      },
+      {
+        path: '/mutabaah/agenda',
+        element: <Navigate to="/dashboard/mutabaah/agenda" replace />,
+      },
+      {
+        path: '/mutabaah/rekap',
+        element: <Navigate to="/dashboard/mutabaah/rekap" replace />,
+      },
+      {
+        path: '/mutabaah/target-evaluasi',
+        element: <Navigate to="/dashboard/mutabaah/target-evaluasi" replace />,
+      },
+      {
+        path: '/mutabaah/rincian-agenda',
+        element: <Navigate to="/dashboard/mutabaah/rincian-agenda" replace />,
+      },
+      {
+        path: '/mutabaah/template-agenda',
+        element: <Navigate to="/dashboard/mutabaah/template-agenda" replace />,
+      },
+      {
+        path: '/mutabaah/assign-template',
+        element: <Navigate to="/dashboard/mutabaah/assign-template" replace />,
+      },
+      {
+        path: '/mutabaah/assign-pembimbing',
+        element: <Navigate to="/dashboard/mutabaah/assign-pembimbing" replace />,
+      },
+      {
+        path: '/mutabaah/monitoring-orang-tua',
+        element: <Navigate to="/dashboard/mutabaah/monitoring-orang-tua" replace />,
+      },
+      {
+        path: '/mutabaah/*',
+        element: <Navigate to="/dashboard/mutabaah" replace />,
+      },
+      {
+        path: '/tahfizh',
+        element: <Navigate to="/dashboard/tahfizh" replace />,
+      },
+      {
+        path: '/tahfizh/rekapan',
+        element: <Navigate to="/dashboard/tahfizh/rekapan" replace />,
+      },
+      {
+        path: '/tahfizh/laporan',
+        element: <Navigate to="/dashboard/laporan-tahfizh" replace />,
+      },
+      {
+        path: '/tahfizh/*',
+        element: <Navigate to="/dashboard/tahfizh" replace />,
+      },
+      {
+        path: '/absensi-gerbang',
+        element: <Navigate to="/dashboard/rekap-absensi-gerbang" replace />,
+      },
+      {
+        path: '/absensi-pembelajaran',
+        element: <Navigate to="/dashboard/absensi-pembelajaran" replace />,
+      },
+      {
+        path: '/absensi-ibadah',
+        element: <Navigate to="/dashboard/absensi-ibadah" replace />,
+      },
+      {
+        path: '/absensi-ibadah-siswa',
+        element: <Navigate to="/dashboard/absensi-ibadah-siswa" replace />,
+      },
       {
         path: '/portal-guru',
         element: (
@@ -323,6 +435,10 @@ export const router = createBrowserRouter([
         ] }],
       },
       {
+        path: '/portal',
+        element: <PortalRootRedirect />,
+      },
+      {
         path: '/portal/orang-tua',
         element: (
           <BungkusLazy>
@@ -367,6 +483,25 @@ export const router = createBrowserRouter([
         ] }],
       },
       {
+        path: '/musyrif',
+        element: (
+          <BungkusLazy>
+            <DashboardLayout />
+          </BungkusLazy>
+        ),
+        children: [
+          { index: true, element: <Navigate to="/musyrif/workspace" replace /> },
+          {
+            path: 'workspace',
+            element: (
+              <PermissionElement any={['dashboard.musyrif.view', 'worship.dashboard.view', 'asrama.activity.view', 'dormitory.view']}>
+                <BungkusLazy><MusyrifDashboardPage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+        ],
+      },
+      {
         path: '/absensi',
         element: (
           <RouteRole allow={[
@@ -382,6 +517,10 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <AbsensiIndex /> },
           { path: 'dashboard-guru', element: <Navigate to="/portal-guru" replace /> },
+          { path: 'kbm', element: <Navigate to="/dashboard/absensi-pembelajaran" replace /> },
+          { path: 'gerbang', element: <Navigate to="/dashboard/absensi-gerbang" replace /> },
+          { path: 'ibadah', element: <Navigate to="/dashboard/absensi-ibadah" replace /> },
+          { path: 'ibadah-siswa', element: <Navigate to="/dashboard/absensi-ibadah-siswa" replace /> },
           { path: 'jadwal-mengajar', element: <Navigate to="/portal-guru/workspace?tab=jadwal" replace /> },
           { path: 'presensi', element: <Navigate to="/portal-guru/workspace?tab=presensi" replace /> },
           { path: 'presensi/tambah', element: <Navigate to="/portal-guru/workspace?tab=presensi" replace /> },
@@ -509,7 +648,8 @@ export const router = createBrowserRouter([
                { path: 'profil', element: <BungkusLazy><FoundationProfilePage /></BungkusLazy> },
              ],
            },
-           { path: 'kepala-sekolah', element: <PermissionElement any={['dashboard.kepala-sekolah.view']}><BungkusLazy><KepalaSekolahDashboardPage /></BungkusLazy></PermissionElement> },
+            { path: 'guru', element: <Navigate to="/portal-guru/workspace" replace /> },
+            { path: 'kepala-sekolah', element: <PermissionElement any={['dashboard.kepala-sekolah.view']}><BungkusLazy><KepalaSekolahDashboardPage /></BungkusLazy></PermissionElement> },
            { path: 'wali-kelas', element: <PermissionElement any={['dashboard.guru.view']}><BungkusLazy><WaliKelasDashboardPage /></BungkusLazy></PermissionElement> },
            { path: 'divisi-pendidikan', element: <PermissionElement any={['dashboard.divisi-pendidikan.view']}><BungkusLazy><DivisiPendidikanDashboardPage /></BungkusLazy></PermissionElement> },
            { path: 'waka-kurikulum', element: <PermissionElement any={['dashboard.waka-kurikulum.view']}><BungkusLazy><WakaKurikulumDashboardPage /></BungkusLazy></PermissionElement> },
@@ -560,12 +700,22 @@ export const router = createBrowserRouter([
           },
           {
             path: 'crud-demo',
-            element: (
-              <PermissionElement any={['student.create', 'student.update', 'student.delete']}>
-                <BungkusLazy><StudentCrudPage /></BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/master/siswa" replace />,
           },
+          { path: 'siswa', element: <Navigate to="/dashboard/master/siswa" replace /> },
+          { path: 'pegawai', element: <Navigate to="/dashboard/master/pegawai" replace /> },
+          { path: 'kurikulum', element: <Navigate to="/dashboard/master/kurikulum" replace /> },
+          { path: 'kelas', element: <Navigate to="/dashboard/master/kelas" replace /> },
+          { path: 'tahun-ajaran', element: <Navigate to="/dashboard/master/tahun-ajaran" replace /> },
+          { path: 'mata-pelajaran', element: <Navigate to="/dashboard/master/mata-pelajaran" replace /> },
+          { path: 'unit-pendidikan', element: <Navigate to="/dashboard/master/unit-pendidikan" replace /> },
+          { path: 'units', element: <Navigate to="/dashboard/master/unit-pendidikan" replace /> },
+          { path: 'alumni', element: <Navigate to="/dashboard/kelola-alumni" replace /> },
+          { path: 'super-admin', element: <Navigate to="/dashboard" replace /> },
+          { path: 'laporan-prestasi', element: <Navigate to="/dashboard/yayasan/laporan/prestasi" replace /> },
+          { path: 'laporan-lintas-unit', element: <Navigate to="/dashboard/yayasan/laporan/lintas-unit" replace /> },
+          { path: 'rekap', element: <Navigate to="/dashboard/rekap-absensi-gerbang" replace /> },
+          { path: 'laporan', element: <Navigate to="/dashboard/laporan-absensi" replace /> },
           {
             path: 'students',
             element: (
@@ -681,6 +831,58 @@ export const router = createBrowserRouter([
             element: <Navigate to="/dashboard/master-kurikulum" replace />,
           },
           {
+            path: 'master/kelas',
+            element: (
+              <PermissionElement any={['academic.view', 'academic.manage', 'kesiswaan.kelas_rombel']}>
+                <BungkusLazy><MasterKelasPage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'master/mata-pelajaran',
+            element: (
+              <PermissionElement any={['academic.view', 'academic.manage', 'sistem.master_data']}>
+                <BungkusLazy><MasterSubjectPage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'master-hak-akses',
+            element: (
+              <PermissionElement any={['sistem.hak_akses', 'employee.role_access.manage', 'permission.manage', 'role.manage']}>
+                <BungkusLazy><MasterHakAksesPage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'akademik/jadwal',
+            element: (
+              <PermissionElement any={['academic.view', 'academic.manage', 'sistem.master_data']}>
+                <BungkusLazy><MasterSchedulePage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'akademik/kalender',
+            element: (
+              <PermissionElement any={['academic.view', 'academic.manage', 'sistem.master_data']}>
+                <BungkusLazy><AcademicCalendarPage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'informasi-sekolah',
+            element: (
+              <PermissionElement any={['foundation.info.view', 'school.view', 'sistem.master_data']}>
+                <BungkusLazy><FoundationInformationPage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'mutabaah/agenda',
+            element: <Navigate to="/dashboard/mutabaah/template-agenda" replace />,
+          },
+          {
             path: 'master-quran-surah',
             element: (
               <PermissionElement any={['sistem.master_data']}>
@@ -778,6 +980,16 @@ export const router = createBrowserRouter([
               <PermissionElement any={['sistem.master_data']}>
                 <BungkusLazy>
                   <MasterDoaPage />
+                </BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'poin-penilaian-doa',
+            element: (
+              <PermissionElement any={['sistem.master_data', 'tahfizh.view', 'tahfizh.manage']}>
+                <BungkusLazy>
+                  <PoinPenilaianDoaPage />
                 </BungkusLazy>
               </PermissionElement>
             ),
@@ -1328,7 +1540,7 @@ export const router = createBrowserRouter([
           {
             path: 'monitoring-tahfizh-ibadah-non-pesantren',
             element: (
-              <PermissionElement any={['divisi.monitoring', 'dashboard.pemantauan.lihat', 'tahfizh.view', 'mutabaah.view', 'dashboard.kepala-sekolah.view', 'dashboard.divisi-pendidikan.view', 'dashboard.guru.view']}>
+              <PermissionElement deniedRoles={ROLES.GURU} any={['divisi.monitoring', 'dashboard.pemantauan.lihat', 'tahfizh.view', 'mutabaah.view', 'dashboard.kepala-sekolah.view', 'dashboard.divisi-pendidikan.view']}>
                 <BungkusLazy>
                   <MonitoringTahfizhIbadahNonPesantrenPage />
                 </BungkusLazy>
@@ -1403,7 +1615,7 @@ export const router = createBrowserRouter([
           {
             path: 'laporan-absensi',
             element: (
-              <PermissionElement roles={['Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Admin', 'Super Admin', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan']} any={['report.attendance.view', 'report.view', 'attendance.view', 'kehadiran.siswa.monitoring']}>
+              <PermissionElement roles={['Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Admin', 'Super Admin', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', ...ROLES.WAKA]} any={['report.attendance.view', 'report.view', 'attendance.view', 'kehadiran.siswa.monitoring']}>
                 <BungkusLazy><LaporanAbsensiPage /></BungkusLazy>
               </PermissionElement>
             ),
@@ -1516,8 +1728,8 @@ export const router = createBrowserRouter([
               </PermissionElement>
             ),
           },
-          { path: 'rekap-absensi-gerbang', element: <PermissionElement roles={['Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Admin', 'Super Admin', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan']} any={['report.attendance.view', 'attendance.view', 'attendance.manage', 'kehadiran.siswa.monitoring']}><BungkusLazy><RekapAbsensiGerbangPage /></BungkusLazy></PermissionElement> },
-          { path: 'rekap-absensi-ibadah', element: <PermissionElement roles={['Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Admin', 'Super Admin', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan']} any={['report.attendance.view', 'attendance.view', 'attendance.manage', 'kehadiran.siswa.monitoring']}><BungkusLazy><RekapAbsensiIbadahPage /></BungkusLazy></PermissionElement> },
+          { path: 'rekap-absensi-gerbang', element: <PermissionElement roles={['Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Admin', 'Super Admin', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', ...ROLES.WAKA]} any={['report.attendance.view', 'attendance.view', 'attendance.manage', 'kehadiran.siswa.monitoring']}><BungkusLazy><RekapAbsensiGerbangPage /></BungkusLazy></PermissionElement> },
+          { path: 'rekap-absensi-ibadah', element: <PermissionElement roles={['Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator', 'Admin', 'Super Admin', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', ...ROLES.WAKA]} any={['report.attendance.view', 'attendance.view', 'attendance.manage', 'kehadiran.siswa.monitoring']}><BungkusLazy><RekapAbsensiIbadahPage /></BungkusLazy></PermissionElement> },
           {
             path: 'profil-akun',
             element: (
@@ -1526,10 +1738,23 @@ export const router = createBrowserRouter([
               </BungkusLazy>
             ),
           },
+          {
+            path: '*',
+            element: <Navigate to="/dashboard" replace />,
+          },
         ],
       },
+      {
+        path: '*',
+        element: <Navigate to="/dashboard" replace />,
+      },
     ],
+  },
+  {
+    path: '*',
+    element: <Navigate to="/dashboard" replace />,
   },
 ])
 
 export default router
+

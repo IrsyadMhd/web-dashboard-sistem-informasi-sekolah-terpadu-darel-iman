@@ -7,7 +7,6 @@ import {
   BarChart2,
   UserCheck,
   Activity,
-  Layers,
 } from 'lucide-react'
 
 import { useAuthStore } from '../../stores/authStore'
@@ -23,6 +22,7 @@ export function TahfizhSubNav() {
   const isParent = isParentRole(roles)
   const isStudent = isStudentRole(roles)
 
+  // Satu bahasa gradient vivid (§H.6) — aktif hanya ber-ring + aria-current.
   const navItems = [
     {
       id: '/dashboard/tahfizh',
@@ -30,16 +30,14 @@ export function TahfizhSubNav() {
       label: 'Setoran Tahfizh',
       icon: BookOpen,
       end: true,
-      activeColor: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30',
-      inactiveColor: 'bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white hover:shadow-md hover:shadow-emerald-600/30',
+      classes: 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40',
     },
     {
       id: '/dashboard/tahfizh/rekapan',
       path: '/dashboard/tahfizh/rekapan',
       label: 'Laporan Rekapan',
       icon: FileSpreadsheet,
-      activeColor: 'bg-sky-600 text-white shadow-md shadow-sky-600/30',
-      inactiveColor: 'bg-sky-100/90 text-sky-700 hover:bg-sky-600 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white hover:shadow-md hover:shadow-sky-600/30',
+      classes: 'bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40',
     },
     ...(!isTeacher ? [
       {
@@ -47,8 +45,7 @@ export function TahfizhSubNav() {
         path: '/dashboard/laporan-tahfizh',
         label: 'Laporan Tahfizh',
         icon: BarChart2,
-        activeColor: 'bg-violet-600 text-white shadow-md shadow-violet-600/30',
-        inactiveColor: 'bg-violet-100/90 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-950/60 dark:text-violet-300 dark:hover:bg-violet-600 dark:hover:text-white hover:shadow-md hover:shadow-violet-600/30',
+        classes: 'bg-gradient-to-br from-violet-500 via-violet-600 to-purple-700 text-white border border-violet-300/40',
       },
     ] : []),
     {
@@ -56,8 +53,7 @@ export function TahfizhSubNav() {
       path: '/dashboard/guru-tahfizh',
       label: 'Dashboard Guru',
       icon: UserCheck,
-      activeColor: 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30',
-      inactiveColor: 'bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white hover:shadow-md hover:shadow-indigo-600/30',
+      classes: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40',
     },
     ...(!(isParent || isStudent) ? [
       {
@@ -65,14 +61,13 @@ export function TahfizhSubNav() {
         path: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren',
         label: 'Monitor Non-Ponpes',
         icon: Activity,
-        activeColor: 'bg-amber-500 text-white shadow-md shadow-amber-500/30',
-        inactiveColor: 'bg-amber-100/90 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white hover:shadow-md hover:shadow-amber-500/30',
+        classes: 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40',
       },
     ] : []),
   ]
 
   return (
-    <nav className="mb-5 rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
+    <nav className="mb-5 rounded-[22px] border-2 border-emerald-300 bg-white p-3.5 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]" aria-label="Navigasi Kontekstual Tahfizh">
       <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
         {navItems.map((item) => {
           const Icon = item.icon
@@ -87,8 +82,10 @@ export function TahfizhSubNav() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate(item.path)}
-              className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all duration-200 cursor-pointer ${
-                isActive ? item.activeColor : item.inactiveColor
+              aria-label={item.label}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-bold transition-all duration-200 cursor-pointer hover:scale-[1.03] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${item.classes} ${
+                isActive ? 'ring-2 ring-offset-2 ring-slate-400/70 dark:ring-slate-500 dark:ring-offset-slate-900' : ''
               }`}
             >
               <Icon className="size-4 shrink-0" />

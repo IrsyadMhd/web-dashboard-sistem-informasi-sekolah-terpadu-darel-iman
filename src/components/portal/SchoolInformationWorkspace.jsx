@@ -63,73 +63,6 @@ const isMatchChildUnit = (itemUnit, childUnitName, childUnitCode) => {
   return false
 }
 
-const defaultSchoolAnnouncements = [
-  {
-    id: 'demo-announcement-1',
-    type: 'announcement',
-    category: 'Pengumuman Pesantren',
-    priority: 'penting',
-    title: 'Edaran Alur Kunjungan Wali Santri & Kepulangan Berkala Semester Ganjil',
-    summary: 'Wali santri diharapkan memperhatikan jadwal kepulangan berkala serta prosedur perizinan melalui portal orang tua dan persetujuan Musyrif Asrama.',
-    content: 'Jadwal perizinan kunjungan wali santri dibuka setiap akhir pekan ke-2 dan ke-4 setiap bulannya. Harap mengkonfirmasi keberangkatan ke Musyrif Asrama terlebih dahulu melalui fitur perizinan portal orang tua.',
-    published_at: '2026-08-22T08:00:00Z',
-    education_unit: 'SMA IT / Pondok Pesantren Darel Iman',
-    audience: 'Santri & Orang Tua',
-    publisher: 'Pengasuhan Pesantren',
-    attachments: [],
-    is_read: false,
-    is_bookmarked: false,
-  },
-  {
-    id: 'demo-announcement-2',
-    type: 'event',
-    category: 'Agenda Tahfizh',
-    priority: 'akademik',
-    title: 'Ujian Munaqasyah & Tahfizh Camp Santri Asrama',
-    summary: 'Pelaksanaan kegiatan Tahfizh Camp dan Munaqasyah setoran juz hafalan santri semester ganjil.',
-    content: 'Kegiatan Munaqasyah Tahfizh akan diselenggarakan pada tanggal 10-15 September 2026 di Masjid Utama Pesantren. Santri diharapkan telah menyelesaikan target hafalan minimal.',
-    published_at: '2026-08-20T08:00:00Z',
-    education_unit: 'SMA IT / Pondok Pesantren Darel Iman',
-    audience: 'Santri Asrama',
-    publisher: 'Koordinator Tahfizh',
-    attachments: [],
-    is_read: true,
-    is_bookmarked: true,
-  },
-  {
-    id: 'demo-announcement-3',
-    type: 'circular',
-    category: 'Surat Edaran',
-    priority: 'umum',
-    title: 'Kalender Kegiatan Akademik & Administrasi Terpadu Yayasan Darel Iman',
-    summary: 'Pengumuman resmi terkait kalender akademik, jadwal libur semester, dan pelayanan administrasi tata usaha yayasan.',
-    content: 'Seluruh unit pendidikan di bawah naungan Yayasan Darel Iman mematuhi kalender akademik terpadu tahun ajaran 2026/2027.',
-    published_at: '2026-08-15T08:00:00Z',
-    education_unit: 'Seluruh Yayasan',
-    audience: 'Seluruh Orang Tua Murid',
-    publisher: 'Divisi Pendidikan Yayasan',
-    attachments: [],
-    is_read: true,
-    is_bookmarked: false,
-  },
-  {
-    id: 'demo-announcement-4',
-    type: 'news',
-    category: 'Berita Sekolah',
-    priority: 'umum',
-    title: 'Prestasi Santri Pesantren Darel Iman dalam Musabaqah Hifzhil Quran',
-    summary: 'Santri SMA IT Pondok Pesantren Darel Iman berhasil meraih predikat Juara Umum dalam Musabaqah Hifzhil Quran tingkat provinsi.',
-    content: 'Alhamdulillah, santri Pondok Pesantren Darel Iman berhasil meraih penghargaan tertinggi pada ajang MHQ 2026.',
-    published_at: '2026-08-18T08:00:00Z',
-    education_unit: 'SMA IT / Pondok Pesantren Darel Iman',
-    audience: 'Publik & Orang Tua',
-    publisher: 'Humas Yayasan Darel Iman',
-    attachments: [],
-    is_read: true,
-    is_bookmarked: false,
-  },
-]
-
 export default function SchoolInformationWorkspace({ studentId, student, embedded = false }) {
   const user = useAuthStore((state) => state.user)
   const userRoles = Array.isArray(user?.roles) ? user.roles.map(r => typeof r === 'string' ? r : r.name) : [user?.role || '']
@@ -152,8 +85,7 @@ export default function SchoolInformationWorkspace({ studentId, student, embedde
   const summary = useQuery({ queryKey: ['portal-school-information-summary', studentId || 'self', student?.education_unit_id, student?.unit_name, student?.unit_code], queryFn: () => schoolInformationService.summary(studentId, { unit_name: student?.unit_name, unit_code: student?.unit_code, education_unit_id: student?.education_unit_id }) })
   const listing = useQuery({ queryKey: key, queryFn: () => schoolInformationService.list(studentId, { ...filters, type: tab, bookmarked: savedOnly ? 1 : undefined, has_attachment: filters.has_attachment || undefined, page, per_page: 12, unit_name: student?.unit_name, unit_code: student?.unit_code, education_unit_id: student?.education_unit_id }) })
   const data = unwrap(listing.data), summaryData = unwrap(summary.data)
-  const fetchedRawItems = data?.data || []
-  const rawItems = fetchedRawItems.length > 0 ? fetchedRawItems : defaultSchoolAnnouncements
+  const rawItems = data?.data || []
 
   const items = useMemo(() => {
     return rawItems.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
@@ -161,26 +93,22 @@ export default function SchoolInformationWorkspace({ studentId, student, embedde
 
   const calendarItems = useMemo(() => {
     const list = summaryData?.calendar || []
-    const source = list.length > 0 ? list : defaultSchoolAnnouncements.filter((i) => i.type === 'calendar')
-    return source.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    return list.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [summaryData?.calendar, student?.unit_name, student?.unit_code])
 
   const events = useMemo(() => {
     const list = summaryData?.upcoming_events || []
-    const source = list.length > 0 ? list : defaultSchoolAnnouncements.filter((i) => i.type === 'event')
-    return source.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    return list.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [summaryData?.upcoming_events, student?.unit_name, student?.unit_code])
 
   const news = useMemo(() => {
     const list = summaryData?.latest_news || []
-    const source = list.length > 0 ? list : defaultSchoolAnnouncements.filter((i) => i.type === 'news')
-    return source.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    return list.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [summaryData?.latest_news, student?.unit_name, student?.unit_code])
 
   const circulars = useMemo(() => {
     const list = summaryData?.latest_circulars || []
-    const source = list.length > 0 ? list : defaultSchoolAnnouncements.filter((i) => i.type === 'circular')
-    return source.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
+    return list.filter((item) => isMatchChildUnit(item.education_unit || item.unit_name || item.unit, student?.unit_name, student?.unit_code))
   }, [summaryData?.latest_circulars, student?.unit_name, student?.unit_code])
 
   const galleries = useMemo(() => {

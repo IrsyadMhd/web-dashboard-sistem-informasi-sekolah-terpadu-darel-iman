@@ -54,7 +54,6 @@ import {
   School,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import Swal from 'sweetalert2'
 import { worshipAttendanceService } from '../services/worshipAttendanceService'
 import { useAuthStore } from '../stores/authStore'
 import {
@@ -605,7 +604,7 @@ export default function WorshipAttendancePage() {
             </div>
 
             {/* Live Clock & Date Controls */}
-            <div className="flex flex-wrap items-center gap-2.5 z-10">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap z-10">
               <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-white/80 px-3 py-1.5 dark:border-emerald-600/40 dark:bg-slate-900/80 backdrop-blur-sm">
                 <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
                 <div className="text-right">
@@ -1067,7 +1066,7 @@ export default function WorshipAttendancePage() {
                   </div>
 
                   {/* ── FILTER ROW ─────────────────────────────────────── */}
-                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full pt-2">
                     <div className="relative flex-1 min-w-[140px]">
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <input
@@ -1082,7 +1081,7 @@ export default function WorshipAttendancePage() {
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      className="h-9 w-full sm:w-auto min-w-[130px] rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
                       <option value="">Semua Status</option>
                       <option value="hadir_berjamaah">Berjamaah</option>
@@ -1095,7 +1094,7 @@ export default function WorshipAttendancePage() {
                     <select
                       value={filterKamar}
                       onChange={(e) => setFilterKamar(e.target.value)}
-                      className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      className="h-9 w-full sm:w-auto min-w-[130px] rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
                       <option value="">Semua Kamar</option>
                       <option value="Kamar 01">Kamar 01</option>
@@ -1106,7 +1105,7 @@ export default function WorshipAttendancePage() {
                     <select
                       value={filterKelompok}
                       onChange={(e) => setFilterKelompok(e.target.value)}
-                      className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                      className="h-9 w-full sm:w-auto min-w-[130px] rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                     >
                       <option value="">Semua Kelompok</option>
                       <option value="Kelompok A">Kelompok A</option>
@@ -1114,7 +1113,7 @@ export default function WorshipAttendancePage() {
                       <option value="Kelompok C">Kelompok C</option>
                     </select>
 
-                    <button className="flex h-9 items-center gap-1 rounded-xl bg-emerald-700 px-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-800">
+                    <button className="flex h-9 w-full sm:w-auto items-center justify-center gap-1 rounded-xl bg-emerald-700 px-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 cursor-pointer">
                       <Filter className="h-3.5 w-3.5" /> Filter
                     </button>
                   </div>
@@ -1128,9 +1127,9 @@ export default function WorshipAttendancePage() {
                             <input type="checkbox" className="rounded border-slate-300" />
                           </th>
                           <th className="px-3 py-3">Santri</th>
-                          <th className="px-3 py-3">Kamar / Kelompok</th>
+                          <th className="hidden sm:table-cell px-3 py-3">Kamar / Kelompok</th>
                           <th className="px-3 py-3">Status Presensi</th>
-                          <th className="px-3 py-3">Waktu</th>
+                          <th className="hidden md:table-cell px-3 py-3">Waktu</th>
                           <th className="px-3 py-3 text-center">Aksi</th>
                         </tr>
                       </thead>
@@ -1154,15 +1153,27 @@ export default function WorshipAttendancePage() {
                                   <p className="text-[10px] text-slate-400">{d.student?.nisn}</p>
                                 </div>
                               </button>
+                              {/* Compact Mobile Metadata Row */}
+                              <div className="sm:hidden mt-1.5 flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+                                <span className="font-semibold text-slate-600 dark:text-slate-300">{d.room || 'Kamar 01'}</span>
+                                <span className="text-slate-400">•</span>
+                                <span className="text-slate-500">{d.group || 'Kelompok A'}</span>
+                                {d.check_in_time && (
+                                  <>
+                                    <span className="text-slate-400">•</span>
+                                    <span className="text-slate-500">{d.check_in_time}</span>
+                                  </>
+                                )}
+                              </div>
                             </td>
-                            <td className="px-3 py-3">
+                            <td className="hidden sm:table-cell px-3 py-3">
                               <p className="font-semibold text-slate-700 dark:text-slate-300">{d.room || 'Kamar 01'}</p>
                               <p className="text-[10px] text-slate-400">{d.group || 'Kelompok A'}</p>
                             </td>
                             <td className="px-3 py-3">
                               {getAttendancePill(d.attendance_status)}
                             </td>
-                            <td className="px-3 py-3 font-semibold text-slate-600 dark:text-slate-300">
+                            <td className="hidden md:table-cell px-3 py-3 font-semibold text-slate-600 dark:text-slate-300">
                               {d.check_in_time || '04:50 WIB'}
                             </td>
                             <td className="px-3 py-3">

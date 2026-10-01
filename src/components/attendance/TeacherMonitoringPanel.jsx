@@ -13,7 +13,7 @@ import {
   Users,
   Layers,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { AppDataTable } from '../app'
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent } from '@/components/tailgrids/core/card'
 import { Badge } from '@/components/tailgrids/core/badge'
@@ -22,7 +22,6 @@ import { Alert, AlertIndicator, AlertContent, AlertTitle, AlertDescription } fro
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/tailgrids/core/dialog'
 import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
 import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/tailgrids/core/hover-card'
 import { SquircleActionButton, PrintOptionModal } from '../master-data'
 import CsvImportModal from '../master-data/CsvImportModal'
 import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
@@ -215,7 +214,9 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
         teacherMap.set(teacherId, {
           id: r.id,
           teacher: r.teacher,
+          teacherName: r.teacher?.name || '',
           unit: r.unit,
+          unitName: r.unit?.name || '',
           online_status: r.online_status,
           last_seen_at: r.last_seen_at,
           last_activity_at: r.last_activity_at,
@@ -370,6 +371,104 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
     { key: 'jam_selesai', label: 'Jam Selesai', example: '08:40' },
     { key: 'status_presensi', label: 'Status Presensi', example: 'Hadir' },
   ]
+
+  const tableColumns = useMemo(() => [
+    {
+      key: 'teacher',
+      label: 'Guru & Unit Pendidikan',
+      render: (row) => (
+        <div
+          onClick={(e) => {
+            e.stopPropagation()
+            setSelectedTeacherRow(row)
+          }}
+          className="flex items-center gap-3 cursor-pointer group/teacher"
+          title="Klik untuk melihat detail lengkap"
+        >
+          <Avatar size="sm">
+            <AvatarFallback className="bg-emerald-100 text-emerald-800 font-extrabold text-xs dark:bg-emerald-950 dark:text-emerald-300">
+              {(row.teacher?.name || '?').slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-bold text-slate-800 dark:text-slate-100 group-hover/teacher:text-emerald-600 transition-colors border-b border-dashed border-slate-300 dark:border-slate-700">
+              {row.teacher?.name || '-'}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <Badge color="sky" size="xs">
+                {row.schedules.length} Mapel / Jadwal
+              </Badge>
+              {row.unit?.name && (
+                <span className="text-[10px] font-semibold text-slate-500">{row.unit.name}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'schedules_summary',
+      label: 'Mata Pelajaran yang Diajar',
+      render: (row) => (
+        <div className="space-y-1 cursor-pointer" onClick={() => setSelectedTeacherRow(row)}>
+          {row.schedules.slice(0, 2).map((sch, idx) => (
+            <div key={idx} className="flex items-center gap-1.5">
+              <Badge color="cyan" size="xs">
+                {sch.subject}
+              </Badge>
+              <span className="text-[11px] font-medium text-slate-500">
+                ({sch.class})
+              </span>
+            </div>
+          ))}
+          {row.schedules.length > 2 && (
+            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+              +{row.schedules.length - 2} mapel lainnya...
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'online_status',
+      label: 'Online',
+      render: (row) => renderOnlineBadge(row.online_status),
+    },
+    {
+      key: 'attendance_status',
+      label: 'Status Presensi',
+      render: (row) => renderAttendanceBadge(row.attendance_status),
+    },
+    ...(activePeriod !== 'harian'
+      ? [
+          {
+            key: 'period_stats',
+            label: 'Rekap Periode',
+            render: (row) => (
+              <div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Hadir: {row.period_stats?.total_hadir ?? 0} / Total: {row.period_stats?.total_records ?? 0}
+                </p>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  Ketercapaian: {row.period_stats?.ketercapaian_persen ?? 0}%
+                </span>
+              </div>
+            ),
+          },
+        ]
+      : [
+          {
+            key: 'last_activity_at',
+            label: 'Aktivitas Terakhir',
+            hideOnMobile: true,
+            render: (row) => (
+              <span className="text-xs font-semibold text-slate-500">
+                {formatDateTime(row.last_activity_at)}
+              </span>
+            ),
+          },
+        ]),
+  ], [activePeriod])
 
   return (
     <>
@@ -586,7 +685,7 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
                   return (
                     <div
                       key={key}
-                      className={`group relative overflow-hidden rounded-[18px] border-2 p-3.5 sm:p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md text-left ${t.card}`}
+                      className={`group relative overflow-hidden rounded-[18px] border-2 p-3.5 sm:p-4 shadow-xs transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-md text-left ${t.card}`}
                     >
                       <div className={`pointer-events-none absolute -top-6 -right-6 h-20 w-20 rounded-full blur-xl transition-all ${t.glow}`} />
                       <div className="flex items-center justify-between mb-2">
@@ -650,144 +749,11 @@ export default function TeacherMonitoringPanel({ data, loading, error, filters =
                     ? `Rentang Tanggal: ${formatDateOnly(data.range.start_date)} s/d ${formatDateOnly(data.range.end_date)} (Klik baris untuk melihat detail absensi per mapel & kelas)`
                     : `Threshold online ${data?.presence_threshold_seconds || 90} detik; polling harian otomatis setiap 20 detik.`
                 }
-                columns={[
-                  {
-                    key: 'teacher',
-                    label: 'Guru & Unit Pendidikan',
-                    render: (row) => (
-                      <HoverCard side="top" align="start">
-                        <HoverCardTrigger asChild>
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedTeacherRow(row)
-                            }}
-                            className="flex items-center gap-3 cursor-pointer group/teacher"
-                          >
-                            <Avatar size="sm">
-                              <AvatarFallback className="bg-emerald-100 text-emerald-800 font-extrabold text-xs dark:bg-emerald-950 dark:text-emerald-300">
-                                {(row.teacher?.name || '?').slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-bold text-slate-800 dark:text-slate-100 group-hover/teacher:text-emerald-600 transition-colors border-b border-dashed border-slate-300 dark:border-slate-700">
-                                {row.teacher?.name || '-'}
-                              </p>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <Badge color="sky" size="xs">
-                                  {row.schedules.length} Mapel / Jadwal
-                                </Badge>
-                                {row.unit?.name && (
-                                  <span className="text-[10px] font-semibold text-slate-500">{row.unit.name}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </HoverCardTrigger>
-
-                        <HoverCardContent className="w-80 p-3.5 border border-slate-200/90 bg-white shadow-xl dark:border-slate-800 dark:bg-[#1B2433] rounded-2xl z-50">
-                          <div className="space-y-2.5">
-                            <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-2">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                                <BookOpen className="h-4 w-4" />
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
-                                  {row.teacher?.name}
-                                </h4>
-                                <p className="text-[10px] font-medium text-slate-500">
-                                  Daftar Mapel Mengajar ({row.schedules.length} Jadwal)
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                              {row.schedules.map((sch, idx) => (
-                                <div
-                                  key={idx}
-                                  className="rounded-xl bg-slate-50 p-2 text-xs dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex justify-between items-center"
-                                >
-                                  <div>
-                                    <p className="font-bold text-slate-800 dark:text-slate-200">
-                                      {sch.subject || '-'}
-                                    </p>
-                                    <span className="text-[10px] text-slate-500">
-                                      {sch.class} · {sch.nama_hari} ({sch.time_start?.slice(0, 5)}–{sch.time_end?.slice(0, 5)})
-                                    </span>
-                                  </div>
-                                  {renderAttendanceBadge(sch.attendance_status)}
-                                </div>
-                              ))}
-                            </div>
-                            <p className="text-[10px] text-center text-slate-400 italic pt-1 border-t border-slate-100 dark:border-slate-800">
-                              Klik baris untuk laporan absensi lengkap
-                            </p>
-                          </div>
-                        </HoverCardContent>
-                      </HoverCard>
-                    ),
-                  },
-                  {
-                    key: 'schedules_summary',
-                    label: 'Mata Pelajaran yang Diajar',
-                    render: (row) => (
-                      <div className="space-y-1 cursor-pointer" onClick={() => setSelectedTeacherRow(row)}>
-                        {row.schedules.slice(0, 2).map((sch, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5">
-                            <Badge color="cyan" size="xs">
-                              {sch.subject}
-                            </Badge>
-                            <span className="text-[11px] font-medium text-slate-500">
-                              ({sch.class})
-                            </span>
-                          </div>
-                        ))}
-                        {row.schedules.length > 2 && (
-                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                            +{row.schedules.length - 2} mapel lainnya...
-                          </span>
-                        )}
-                      </div>
-                    ),
-                  },
-                  {
-                    key: 'online_status',
-                    label: 'Online',
-                    render: (row) => renderOnlineBadge(row.online_status),
-                  },
-                  {
-                    key: 'attendance_status',
-                    label: 'Status Presensi',
-                    render: (row) => renderAttendanceBadge(row.attendance_status),
-                  },
-                  activePeriod !== 'harian'
-                    ? {
-                      key: 'period_stats',
-                      label: 'Rekap Periode',
-                      render: (row) => (
-                        <div>
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Hadir: {row.period_stats?.total_hadir ?? 0} / Total: {row.period_stats?.total_records ?? 0}
-                          </p>
-                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                            Ketercapaian: {row.period_stats?.ketercapaian_persen ?? 0}%
-                          </span>
-                        </div>
-                      ),
-                    }
-                    : {
-                      key: 'last_activity_at',
-                      label: 'Aktivitas Terakhir',
-                      hideOnMobile: true,
-                      render: (row) => (
-                        <span className="text-xs font-semibold text-slate-500">
-                          {formatDateTime(row.last_activity_at)}
-                        </span>
-                      ),
-                    },
-                ]}
+                columns={tableColumns}
                 data={groupedTeacherRows}
-                searchableKeys={['teacher', 'unit', 'online_status', 'attendance_status']}
+                searchableKeys={['teacherName', 'unitName', 'online_status', 'attendance_status']}
+                clientPagination={true}
+                clientPageSize={15}
                 isLoading={loading}
                 isError={false}
                 onRowClick={(row) => setSelectedTeacherRow(row)}

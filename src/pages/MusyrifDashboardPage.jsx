@@ -42,7 +42,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 
 import {
   PageContainer,
@@ -1899,7 +1899,7 @@ export default function MusyrifDashboardPage() {
 
       {/* 🟢 MODAL POP-UP DIALOG (TAHFIZH PAGE STYLE BENCHMARK) */}
       <AnimatePresence>
-        {quickActionModal && (
+        {quickActionModal && quickActionModal !== 'perizinan_baru' && (
           <Backdrop isOpen={Boolean(quickActionModal)} onOpenChange={() => setQuickActionModal(null)} className="z-50 flex items-center justify-center p-3 sm:p-5">
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 20 }}

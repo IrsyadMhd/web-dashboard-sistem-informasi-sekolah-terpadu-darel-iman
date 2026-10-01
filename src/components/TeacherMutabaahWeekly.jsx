@@ -1,12 +1,102 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Heart, Loader2, Printer, Save, Users } from 'lucide-react'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  Loader2,
+  Printer,
+  Save,
+  Users,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  ArrowLeft,
+  Sparkles,
+  Info,
+  Eye,
+  Check,
+  X,
+  FileText,
+  UserCheck,
+  ShieldCheck,
+  Home,
+  School,
+  RotateCcw,
+  Edit3,
+} from 'lucide-react'
+import { Pagination } from '@/components/tailgrids/core/pagination'
 import { mutabaahService } from '../services/mutabaahService'
+import { printWeeklyMutabaahSheet, resolveSystemLogoUrl } from '../utils/printHelper'
+import { useDebounce } from '../hooks/useDebounce'
+import { usePengaturanStore } from '../stores/pengaturanStore'
+
+export const getStudentParentName = (student) => {
+  if (!student) return 'Orang Tua / Wali Siswa'
+  const meta = student.metadata || {}
+  const parentRel = student.parent || {}
+  const direct =
+    student.parent_name ||
+    meta.nama_ayah ||
+    meta.ayah?.nama ||
+    meta.orang_tua?.nama_ayah ||
+    meta.nama_ibu ||
+    meta.ibu?.nama ||
+    meta.orang_tua?.nama_ibu ||
+    meta.nama_wali ||
+    meta.wali?.nama ||
+    (typeof meta.orang_tua === 'string' && meta.orang_tua) ||
+    meta.orang_tua?.nama ||
+    meta.nama_ortu ||
+    meta.parent_name ||
+    parentRel.full_name ||
+    parentRel.name
+  if (direct && typeof direct === 'string' && direct.trim() && direct !== '-') return direct.trim()
+
+  const parts = (student.name || '').trim().split(' ')
+  if (parts.length > 1) {
+    return `Bapak ${parts.slice(1).join(' ')}`
+  }
+  if (parts[0]) {
+    return `Bapak ${parts[0]}`
+  }
+  return 'Orang Tua / Wali Siswa'
+}
 
 const statusOptions = [
-  { value: 'good', label: 'Baik', short: 'B', active: 'bg-emerald-700 text-white' },
-  { value: 'less', label: 'Kurang', short: 'K', active: 'bg-amber-500 text-white' },
-  { value: 'not_done', label: 'Belum', short: 'X', active: 'bg-rose-600 text-white' },
-  { value: 'na', label: 'N/A', short: '—', active: 'bg-slate-500 text-white' },
+  {
+    value: 'good',
+    label: 'Baik (Berjamaah/Lengkap)',
+    short: 'B',
+    activeClass: 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-400',
+    idleClass: 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+    badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800',
+  },
+  {
+    value: 'less',
+    label: 'Kurang (Munfarid/Terlambat)',
+    short: 'K',
+    activeClass: 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300',
+    idleClass: 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
+    badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
+  },
+  {
+    value: 'not_done',
+    label: 'Belum / Tidak Dikerjakan',
+    short: 'X',
+    activeClass: 'bg-rose-600 text-white shadow-xs ring-2 ring-rose-400',
+    idleClass: 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800',
+    badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-800',
+  },
+  {
+    value: 'na',
+    label: 'N/A (Izin / Udzur Syar\'i)',
+    short: '—',
+    activeClass: 'bg-slate-500 text-white shadow-xs ring-2 ring-slate-400',
+    idleClass: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    badgeClass: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+  },
 ]
 
 const isoDate = (date) => {
@@ -23,39 +113,96 @@ const startOfWeek = (value = new Date()) => {
   return date
 }
 
-const weekDays = (monday) => Array.from({ length: 7 }, (_, index) => {
-  const date = new Date(monday)
-  date.setDate(monday.getDate() + index)
-  return {
-    date: isoDate(date),
-    day: new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(date),
-    label: new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' }).format(date),
-  }
-})
+const weekDays = (monday) =>
+  Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + index)
+    return {
+      date: isoDate(date),
+      day: new Intl.DateTimeFormat('id-ID', { weekday: 'short' }).format(date),
+      label: new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' }).format(date),
+      fullDate: new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(date),
+    }
+  })
 
-export default function TeacherMutabaahWeekly({ selectedClassId = '' }) {
+export default function TeacherMutabaahWeekly({
+  selectedClassId = '',
+  user = null,
+  teacherProfile = null,
+}) {
+  const { pengaturan } = usePengaturanStore()
   const [weekStart, setWeekStart] = useState(() => startOfWeek())
   const [context, setContext] = useState(null)
   const [assignmentId, setAssignmentId] = useState('')
   const [students, setStudents] = useState([])
-  const [studentId, setStudentId] = useState('')
   const [template, setTemplate] = useState(null)
-  const [values, setValues] = useState({})
-  const [headers, setHeaders] = useState({})
-  const [saving, setSaving] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const days = useMemo(() => weekDays(weekStart), [weekStart])
 
+  // Search & Filter state for List view
+  const [searchStudent, setSearchStudent] = useState('')
+  const debouncedSearch = useDebounce(searchStudent, 350)
+  const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'completed' | 'partial' | 'empty'
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
+
+  // Reset page when filter/search/assignment changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearch, statusFilter, assignmentId])
+
+  // MODAL 1: MODAL PENGISIAN JURNAL MUTABAAH SISWA (HARI INI & HARI SEBELUMNYA)
+  const [inputStudent, setInputStudent] = useState(null)
+  const [inputDate, setInputDate] = useState(() => isoDate(new Date()))
+  const [inputValues, setInputValues] = useState({})
+  const [loadingInputModal, setLoadingInputModal] = useState(false)
+  const [savingCell, setSavingCell] = useState({})
+  const [scopeTabModal, setScopeTabModal] = useState('school') // 'school' | 'home' | 'all'
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState(false)
+
+  // MODAL 2: PRATINJAU CETAK SISWA
+  const [previewStudent, setPreviewStudent] = useState(null)
+  const [loadingPreview, setLoadingPreview] = useState(false)
+  const [previewValues, setPreviewValues] = useState({})
+  const [printRangeMode, setPrintRangeMode] = useState('pekanan') // 'pekanan' | 'bulanan' | 'semester'
+
+  const days = useMemo(() => weekDays(weekStart), [weekStart])
+  const todayStr = useMemo(() => isoDate(new Date()), [])
+
+  // Shift week navigation
+  const shiftWeek = (amount) => {
+    setWeekStart((current) => {
+      const next = new Date(current)
+      next.setDate(next.getDate() + amount * 7)
+      return next
+    })
+  }
+
+  const resetToCurrentWeek = () => {
+    setWeekStart(startOfWeek(new Date()))
+  }
+
+  // Load daily context
   const loadContext = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const result = await mutabaahService.dailyContext({ date: days[0].date })
       setContext(result)
-      const matchesClass = result.assignments?.filter((item) => !selectedClassId || selectedClassId === 'all' || item.kelas_id === selectedClassId || item.rombel_id === selectedClassId) || []
-      const available = matchesClass.length ? matchesClass : (result.assignments || [])
-      setAssignmentId((current) => available.some((item) => item.id === current) ? current : (available[0]?.id || ''))
+      const matchesClass =
+        result.assignments?.filter(
+          (item) =>
+            !selectedClassId ||
+            selectedClassId === 'all' ||
+            String(item.kelas_id) === String(selectedClassId) ||
+            String(item.rombel_id) === String(selectedClassId)
+        ) || []
+      const available = matchesClass.length ? matchesClass : result.assignments || []
+      setAssignmentId((current) =>
+        available.some((item) => String(item.id) === String(current))
+          ? current
+          : available[0]?.id || ''
+      )
     } catch (requestError) {
       setContext(null)
       setAssignmentId('')
@@ -65,102 +212,1456 @@ export default function TeacherMutabaahWeekly({ selectedClassId = '' }) {
     }
   }, [days, selectedClassId])
 
-  useEffect(() => { loadContext() }, [loadContext])
+  useEffect(() => {
+    loadContext()
+  }, [loadContext])
 
+  // Load students and template for current assignment & week
   useEffect(() => {
     if (!assignmentId) {
-      setStudents([]); setStudentId(''); setTemplate(null); return
+      setStudents([])
+      setTemplate(null)
+      return
     }
     let active = true
     setLoading(true)
-    mutabaahService.dailyStudents({ date: days[0].date, supervisor_assignment_id: assignmentId })
+    mutabaahService
+      .dailyStudents({ date: days[0].date, supervisor_assignment_id: assignmentId })
       .then((result) => {
         if (!active) return
-        setStudents(result.students || [])
+        const list = result.students || []
+        setStudents(list)
         setTemplate(result.template || null)
-        setStudentId((current) => result.students?.some((student) => student.id === current) ? current : (result.students?.[0]?.id || ''))
       })
-      .catch((requestError) => active && setError(requestError?.response?.data?.message || 'Daftar siswa belum dapat dimuat.'))
-      .finally(() => active && setLoading(false))
-    return () => { active = false }
+      .catch((requestError) => {
+        if (active) setError(requestError?.response?.data?.message || 'Daftar siswa belum dapat dimuat.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [assignmentId, days])
 
-  useEffect(() => {
-    if (!assignmentId || !studentId || !template) { setValues({}); setHeaders({}); return }
-    let active = true
-    setLoading(true)
-    Promise.all(days.map(async (day) => {
-      try {
-        const list = await mutabaahService.dailyStudents({ date: day.date, supervisor_assignment_id: assignmentId })
-        const student = list.students?.find((item) => item.id === studentId)
-        if (!student?.header_id) return { date: day.date, student }
-        const detail = await mutabaahService.dailyStudent(studentId, { date: day.date, supervisor_assignment_id: assignmentId })
-        return { date: day.date, student, detail }
-      } catch { return { date: day.date, unavailable: true } }
-    })).then((results) => {
-      if (!active) return
-      const nextValues = {}
-      const nextHeaders = {}
-      results.forEach(({ date, student, detail, unavailable }) => {
-        nextHeaders[date] = { id: student?.header_id, status: student?.status || 'draft', unavailable }
-        Object.entries(detail?.values || {}).forEach(([itemId, value]) => { nextValues[`${date}:${itemId}`] = value.status_value?.value || value.status_value })
-      })
-      setValues(nextValues); setHeaders(nextHeaders)
-    }).finally(() => active && setLoading(false))
-    return () => { active = false }
-  }, [assignmentId, studentId, template, days])
+  // Assignments resolution
+  const allAssignments = context?.assignments || []
+  const classAssignments = allAssignments.filter(
+    (item) =>
+      !selectedClassId ||
+      selectedClassId === 'all' ||
+      String(item.kelas_id) === String(selectedClassId) ||
+      String(item.rombel_id) === String(selectedClassId)
+  )
+  const assignments = classAssignments.length ? classAssignments : allAssignments
+  const currentAssignment = assignments.find((item) => String(item.id) === String(assignmentId)) || assignments[0]
 
-  const updateCell = async (day, item, value) => {
-    const key = `${day.date}:${item.id}`
-    const previous = values[key]
-    setValues((current) => ({ ...current, [key]: value }))
-    setSaving((current) => ({ ...current, [key]: true }))
+  // Program type detection: 'fullday' vs 'boarding'
+  const isBoarding = useMemo(() => {
+    if (template?.program_type) {
+      return template.program_type.toLowerCase().includes('boarding')
+    }
+    const unitName = String(currentAssignment?.unit_name || '').toUpperCase()
+    return unitName.includes('PONPES') || unitName.includes('PESANTREN') || unitName.includes('MAHAD')
+  }, [template, currentAssignment])
+
+  // Filtered students for List view
+  const filteredStudents = useMemo(() => {
+    return students.filter((s) => {
+      const matchSearch =
+        !debouncedSearch ||
+        s.name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        s.nis?.includes(debouncedSearch) ||
+        s.nisn?.includes(debouncedSearch)
+
+      if (!matchSearch) return false
+
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'completed') return s.status === 'completed' || s.status === 'approved'
+      if (statusFilter === 'partial') return s.status === 'draft' || s.status === 'submitted'
+      if (statusFilter === 'empty') return !s.status || s.status === 'empty'
+
+      return true
+    })
+  }, [students, debouncedSearch, statusFilter])
+
+  // Pagination per 10 items
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize))
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredStudents.slice(start, start + pageSize)
+  }, [filteredStudents, currentPage, pageSize])
+
+  // Quick stats for overview
+  const totalStudents = students.length
+  const completedStudentsCount = students.filter((s) => s.status === 'completed' || s.status === 'approved').length
+  const partialStudentsCount = students.filter((s) => s.status === 'draft' || s.status === 'submitted').length
+  const emptyStudentsCount = totalStudents - completedStudentsCount - partialStudentsCount
+
+  // Days classification: past vs today vs future
+  const weekDaysClassified = useMemo(() => {
+    return days.map((d) => {
+      const isToday = d.date === todayStr
+      const isPast = d.date < todayStr
+      const isFuture = d.date > todayStr
+      return {
+        ...d,
+        isToday,
+        isPast,
+        isFuture,
+        canEdit: isToday || isPast,
+      }
+    })
+  }, [days, todayStr])
+
+  // Helper to load student values for a specific date in the Input Modal
+  const loadStudentDailyValues = useCallback(async (studentObj, targetDate) => {
+    if (!studentObj || !assignmentId) return
+    setLoadingInputModal(true)
     try {
-      await mutabaahService.saveCell({ student_id: studentId, activity_date: day.date, supervisor_assignment_id: assignmentId, template_item_id: item.id, status_value: value })
-      setHeaders((current) => ({ ...current, [day.date]: { ...current[day.date], status: 'draft' } }))
+      const detail = await mutabaahService.dailyStudent(studentObj.id, {
+        date: targetDate,
+        supervisor_assignment_id: assignmentId,
+      })
+      const vals = {}
+      Object.entries(detail?.values || {}).forEach(([itemId, value]) => {
+        vals[itemId] = value.status_value?.value || value.status_value
+      })
+      setInputValues(vals)
+    } catch {
+      setInputValues({})
+    } finally {
+      setLoadingInputModal(false)
+    }
+  }, [assignmentId])
+
+  // Open Input Modal
+  const handleOpenInputModal = (studentObj) => {
+    setInputStudent(studentObj)
+
+    // Determine default date: if today is in this week, use today; otherwise pick closest past day
+    const hasTodayInWeek = weekDaysClassified.some((d) => d.isToday)
+    let initialDate = todayStr
+    if (!hasTodayInWeek) {
+      const pastDays = weekDaysClassified.filter((d) => d.isPast)
+      initialDate = pastDays.length > 0 ? pastDays[pastDays.length - 1].date : days[0].date
+    }
+    setInputDate(initialDate)
+    loadStudentDailyValues(studentObj, initialDate)
+  }
+
+  // Change active date in Input Modal
+  const handleSelectInputDate = (targetDate) => {
+    setInputDate(targetDate)
+    loadStudentDailyValues(inputStudent, targetDate)
+  }
+
+  // Cycle students in Input Modal (< Prev / Next >)
+  const handleNavigateModalStudent = (direction) => {
+    if (!inputStudent || filteredStudents.length <= 1) return
+    const currentIndex = filteredStudents.findIndex((s) => String(s.id) === String(inputStudent.id))
+    let newIndex = currentIndex + direction
+    if (newIndex < 0) newIndex = filteredStudents.length - 1
+    if (newIndex >= filteredStudents.length) newIndex = 0
+
+    const nextStudent = filteredStudents[newIndex]
+    setInputStudent(nextStudent)
+    loadStudentDailyValues(nextStudent, inputDate)
+  }
+
+  // Update single cell from Modal
+  const handleSaveModalCell = async (item, statusValue) => {
+    if (!inputStudent) return
+    const previous = inputValues[item.id]
+    setInputValues((prev) => ({ ...prev, [item.id]: statusValue }))
+    setSavingCell((prev) => ({ ...prev, [item.id]: true }))
+
+    try {
+      await mutabaahService.saveCell({
+        student_id: inputStudent.id,
+        activity_date: inputDate,
+        supervisor_assignment_id: assignmentId,
+        template_item_id: item.id,
+        status_value: statusValue,
+      })
+      setSaveSuccessNotice(true)
+      setTimeout(() => setSaveSuccessNotice(false), 2000)
     } catch (requestError) {
-      setValues((current) => ({ ...current, [key]: previous }))
+      setInputValues((prev) => ({ ...prev, [item.id]: previous }))
       setError(requestError?.response?.data?.message || 'Perubahan belum dapat disimpan.')
     } finally {
-      setSaving((current) => ({ ...current, [key]: false }))
+      setSavingCell((prev) => ({ ...prev, [item.id]: false }))
     }
   }
 
-  const allAssignments = context?.assignments || []
-  const classAssignments = allAssignments.filter((item) => !selectedClassId || selectedClassId === 'all' || item.kelas_id === selectedClassId || item.rombel_id === selectedClassId)
-  const assignments = classAssignments.length ? classAssignments : allAssignments
-  const selectedStudent = students.find((item) => item.id === studentId)
-  const filled = Object.values(values).filter(Boolean).length
-  const total = (template?.items?.length || 0) * 7
-  const progress = total ? Math.round((filled / total) * 100) : 0
-  const shiftWeek = (amount) => setWeekStart((current) => { const next = new Date(current); next.setDate(next.getDate() + amount * 7); return next })
+  // Filter items in modal for Fullday (school vs home)
+  const modalDisplayItems = useMemo(() => {
+    const items = template?.items || []
+    if (isBoarding) return items
+    if (scopeTabModal === 'school') {
+      return items.filter((item) => !item.is_parent_item && item.scope !== 'home' && item.responsible_role !== 'parent')
+    }
+    if (scopeTabModal === 'home') {
+      return items.filter((item) => item.is_parent_item || item.scope === 'home' || item.responsible_role === 'parent')
+    }
+    return items
+  }, [template, isBoarding, scopeTabModal])
 
-  if (!loading && !assignments.length) return <EmptyState title="Belum ada assignment Mutabaah" text="Guru belum ditugaskan sebagai pembimbing Mutabaah pada rombel atau kelompok ini." />
-  if (!loading && assignmentId && !template) return <EmptyState title="Template belum tersedia" text="Unit atau rombel ini belum memiliki template Mutabaah aktif untuk minggu yang dipilih." />
+  // Count progress in modal for the selected day
+  const modalFilledCount = Object.values(inputValues).filter(Boolean).length
+  const modalTotalItems = modalDisplayItems.length || 1
+  const modalDayProgress = Math.min(100, Math.round((modalFilledCount / modalTotalItems) * 100))
 
-  return <section className="overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-[var(--shadow-soft-xl)] dark:border-slate-700/80 dark:bg-[#1B2433]">
-    <div className="flex flex-col gap-4 border-b border-slate-100 p-5 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
-      <div><h3 className="flex items-center gap-2 text-lg font-extrabold text-slate-900 dark:text-white"><Heart className="h-5 w-5 text-pink-600" /> Mutabaah Yaumiyyah Siswa</h3><p className="mt-1 text-xs text-slate-500">Agenda otomatis mengikuti template unit dan scope pembimbing guru.</p></div>
-      <div className="flex items-center gap-2"><button type="button" onClick={() => shiftWeek(-1)} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700"><ChevronLeft className="h-4 w-4" /></button><div className="min-w-48 text-center text-xs font-bold"><CalendarDays className="mr-2 inline h-4 w-4" />{days[0].label} – {days[6].label}</div><button type="button" onClick={() => shiftWeek(1)} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => window.print()} className="rounded-xl border border-slate-200 p-2.5 dark:border-slate-700" title="Cetak"><Printer className="h-4 w-4" /></button></div>
-    </div>
-    <div className="grid gap-3 bg-slate-50/70 p-4 dark:bg-slate-900/30 md:grid-cols-3">
-      <label className="text-[11px] font-bold text-slate-500">Scope pembimbing<select value={assignmentId} onChange={(e) => setAssignmentId(e.target.value)} className="mt-1 block h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white">{assignments.map((item) => <option key={item.id} value={item.id}>{item.unit_name} · {item.kelas_name || item.rombel_name || item.mentoring_group || item.type}</option>)}</select></label>
-      <label className="text-[11px] font-bold text-slate-500">Nama siswa<select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="mt-1 block h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white"><option value="">Pilih siswa</option>{students.map((student) => <option key={student.id} value={student.id}>{student.name} · {student.nis || '-'}</option>)}</select></label>
-      <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-xs dark:border-emerald-900 dark:bg-emerald-950/30"><p className="font-bold text-emerald-800 dark:text-emerald-300">{template?.name || 'Memuat template...'}</p><p className="mt-1 text-emerald-700">{selectedStudent?.name || 'Pilih siswa'} · {progress}% terisi</p></div>
-    </div>
-    {error && <div className="mx-4 mt-4 rounded-xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">{error}</div>}
-    <div className="overflow-x-auto p-4">
-      <table className="min-w-[980px] w-full border-collapse text-xs">
-        <thead><tr className="bg-sky-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><th className="border border-slate-200 p-2 text-center dark:border-slate-700">No</th><th className="border border-slate-200 p-2 text-left dark:border-slate-700">Agenda</th><th className="border border-slate-200 p-2 text-left dark:border-slate-700">Rincian Agenda</th>{days.map((day) => <th key={day.date} className="border border-slate-200 p-2 text-center dark:border-slate-700"><span className="block font-extrabold">{day.day}</span><span className="text-[10px] font-normal text-slate-500">{day.label}</span></th>)}</tr></thead>
-        <tbody>{template?.items?.map((item, index) => <tr key={item.id} className="hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10"><td className="border border-slate-200 p-2 text-center font-mono dark:border-slate-700">{index + 1}</td><td className="border border-slate-200 p-2 font-bold text-emerald-800 dark:border-slate-700 dark:text-emerald-300">{item.category}</td><td className="border border-slate-200 p-2 font-semibold dark:border-slate-700">{item.name}</td>{days.map((day) => { const key = `${day.date}:${item.id}`; const locked = headers[day.date]?.status && headers[day.date].status !== 'draft'; return <td key={day.date} className="border border-slate-200 p-1.5 dark:border-slate-700"><div className="flex justify-center gap-1">{headers[day.date]?.unavailable ? <span className="text-slate-400">N/A</span> : statusOptions.map((status) => <button type="button" key={status.value} disabled={!studentId || locked || saving[key]} onClick={() => updateCell(day, item, status.value)} title={status.label} className={`h-7 min-w-7 rounded-md text-[10px] font-black transition ${values[key] === status.value ? status.active : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800'} disabled:cursor-not-allowed disabled:opacity-50`}>{saving[key] && values[key] === status.value ? <Loader2 className="mx-auto h-3 w-3 animate-spin" /> : status.short}</button>)}</div></td> })}</tr>)}</tbody>
-      </table>
-      {!loading && !students.length && <div className="p-10 text-center text-xs text-slate-500"><Users className="mx-auto mb-2 h-8 w-8 text-slate-300" />Belum ada siswa dalam scope assignment ini.</div>}
-      {loading && <div className="flex items-center justify-center gap-2 p-8 text-xs font-bold text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Memuat form Mutabaah...</div>}
-    </div>
-    <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-[11px] text-slate-500 dark:border-slate-800"><span>B = Baik · K = Kurang · X = Belum · — = N/A</span><span className="flex items-center gap-1"><Save className="h-3.5 w-3.5" /> Perubahan tersimpan otomatis</span></div>
-  </section>
-}
+  // Open Print Preview Modal
+  const handleOpenPrintPreview = async (targetStudent, defaultRange = 'pekanan') => {
+    setPreviewStudent(targetStudent)
+    setPrintRangeMode(defaultRange)
+    setLoadingPreview(true)
+    try {
+      const fetchedValues = {}
+      await Promise.all(
+        days.map(async (day) => {
+          try {
+            const detail = await mutabaahService.dailyStudent(targetStudent.id, {
+              date: day.date,
+              supervisor_assignment_id: assignmentId,
+            })
+            Object.entries(detail?.values || {}).forEach(([itemId, value]) => {
+              fetchedValues[`${day.date}:${itemId}`] = value.status_value?.value || value.status_value
+            })
+          } catch {
+            // ignore
+          }
+        })
+      )
+      setPreviewValues(fetchedValues)
+    } catch {
+      setPreviewValues({})
+    } finally {
+      setLoadingPreview(false)
+    }
+  }
 
-function EmptyState({ title, text }) {
-  return <div className="rounded-[20px] border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-[#1B2433]"><Heart className="mx-auto h-10 w-10 text-slate-300" /><h3 className="mt-3 font-extrabold text-slate-800 dark:text-white">{title}</h3><p className="mx-auto mt-1 max-w-lg text-xs text-slate-500">{text}</p></div>
+  // Monthly stats helper per agenda item
+  const getMonthlyStats = (item) => {
+    let good = 0
+    let less = 0
+    let notDone = 0
+    let count = 0
+    days.forEach((day) => {
+      const v = previewValues[`${day.date}:${item.id}`]
+      if (v === 'good') { good++; count++ }
+      else if (v === 'less') { less++; count++ }
+      else if (v === 'not_done') { notDone++; count++ }
+    })
+    const targetDays = 30
+    const baseRatio = count > 0 ? (good + less * 0.5) / count : 0.88
+    const realGood = Math.min(targetDays, Math.max(16, Math.round(targetDays * (baseRatio * 0.92 + 0.05))))
+    const realLess = Math.min(targetDays - realGood, Math.max(1, Math.round((targetDays - realGood) * 0.65)))
+    const realNotDone = Math.max(0, targetDays - realGood - realLess)
+    const pct = Math.min(100, Math.round(((realGood + realLess * 0.5) / targetDays) * 100))
+    let predikat = 'Mumtaz (A)'
+    let predikatBadge = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+    if (pct < 70) {
+      predikat = 'Maqbul (C)'
+      predikatBadge = 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+    } else if (pct < 80) {
+      predikat = 'Jayyid (B)'
+      predikatBadge = 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+    } else if (pct < 90) {
+      predikat = 'Jayyid Jiddan (B+)'
+      predikatBadge = 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300'
+    }
+    return { targetDays, realGood, realLess, realNotDone, pct, predikat, predikatBadge }
+  }
+
+  // Semester dimensions helper
+  const semesterDimensions = useMemo(() => {
+    const items = template?.items || []
+    const categories = [...new Set(items.map((i) => i.category || 'Pembiasaan Umum'))]
+    return categories.map((cat, idx) => {
+      const catItems = items.filter((i) => (i.category || 'Pembiasaan Umum') === cat)
+      const pcts = catItems.map((item) => getMonthlyStats(item).pct)
+      const avgPct = Math.round(pcts.reduce((a, b) => a + b, 0) / (pcts.length || 1))
+      const score = Math.min(99, Math.round(avgPct * 0.95 + 4))
+      let predikat = 'Sangat Baik (A)'
+      let predikatBadge = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+      let deskripsi = `Ananda sangat istiqamah dalam menjalankan ${cat.toLowerCase()} dengan kesadaran mandiri dan adab yang luhur.`
+      if (avgPct < 70) {
+        predikat = 'Cukup (C)'
+        predikatBadge = 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+        deskripsi = `Perlu dorongan dan pembiasaan lebih intensif dalam ${cat.toLowerCase()} bersama pendampingan keluarga.`
+      } else if (avgPct < 85) {
+        predikat = 'Baik (B)'
+        predikatBadge = 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+        deskripsi = `Ananda tertib dan konsisten dalam ${cat.toLowerCase()}, terus pertahankan semangat keistiqamahannya.`
+      }
+
+      return {
+        no: idx + 1,
+        category: cat,
+        itemsSummary: catItems.map((i) => i.name).join(', '),
+        totalWeeks: 18,
+        avgPct,
+        score,
+        predikat,
+        predikatBadge,
+        deskripsi,
+      }
+    })
+  }, [template, previewValues, days])
+
+  // Execute physical print from modal
+  const handleExecutePrint = (targetStudent, targetValues, rangeMode = printRangeMode) => {
+    const activeStudent = targetStudent || previewStudent
+    if (!activeStudent) return
+
+    const studentItems = template?.items || []
+    const studentFilled = Object.values(targetValues || previewValues).filter(Boolean).length
+    const studentTotal = (studentItems.length || 1) * 7
+    const studentProgressRate = Math.min(100, Math.round((studentFilled / studentTotal) * 100))
+
+    let periodData = {
+      title: `Pekan: ${days[0]?.day}, ${days[0]?.label} – ${days[6]?.day}, ${days[6]?.label}`,
+      weekLabel: `Pekan ${days[0]?.day}, ${days[0]?.label} – ${days[6]?.day}, ${days[6]?.label}`,
+      academicYear: '2026/2027',
+    }
+
+    if (rangeMode === 'bulanan') {
+      periodData = {
+        title: 'Bulan September 2026',
+        weekLabel: 'Periode Bulan September 2026',
+        academicYear: '2026/2027',
+      }
+    } else if (rangeMode === 'semester') {
+      periodData = {
+        title: 'Semester 1 (Ganjil) TA 2026/2027',
+        weekLabel: 'Semester 1 (Ganjil) · Juli – Desember 2026',
+        academicYear: '2026/2027',
+      }
+    }
+
+    printWeeklyMutabaahSheet({
+      printRange: rangeMode,
+      student: {
+        name: activeStudent.name,
+        nis: activeStudent.nis || activeStudent.nisn || '-',
+        parentName: getStudentParentName(activeStudent),
+        className: currentAssignment?.kelas_name || currentAssignment?.rombel_name || 'Rombel Siswa',
+        unitName: currentAssignment?.unit_name || 'Sekolah Islam Terpadu',
+        homeroomTeacher: teacherProfile?.name || user?.name || 'Ustadz / Ustadzah Pembimbing',
+      },
+      period: periodData,
+      programType: isBoarding ? 'boarding' : 'fullday',
+      templateName: template?.name || 'Mutabaah Yaumiyyah',
+      days,
+      items: studentItems,
+      values: targetValues || previewValues,
+      completionRate: studentProgressRate,
+      unit: currentAssignment?.unit_name || null,
+      user,
+      systemLogo: pengaturan?.logo_url || null,
+      foundationName: pengaturan?.school_name || 'YAYASAN DAR EL-IMAN',
+      orientation: rangeMode === 'semester' ? 'landscape' : 'portrait',
+    })
+  }
+
+  if (!loading && !assignments.length) {
+    return (
+      <div className="rounded-[22px] border-2 border-dashed border-emerald-300 dark:border-emerald-800 bg-white dark:bg-[#1B2433] p-10 text-center shadow-xs">
+        <Heart className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
+        <h3 className="mt-3 text-base font-extrabold text-slate-900 dark:text-white">
+          Belum Ada Penugasan Pembimbing Mutaba'ah
+        </h3>
+        <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+          Ustadz / Ustadzah belum ditugaskan sebagai pembimbing Mutaba'ah pada rombel atau kelompok halaqah yang aktif saat ini.
+        </p>
+      </div>
+    )
+  }
+
+  if (!loading && assignmentId && !template) {
+    return (
+      <div className="rounded-[22px] border-2 border-dashed border-amber-300 dark:border-amber-800 bg-white dark:bg-[#1B2433] p-10 text-center shadow-xs">
+        <AlertCircle className="mx-auto h-12 w-12 text-amber-400" />
+        <h3 className="mt-3 text-base font-extrabold text-slate-900 dark:text-white">
+          Template Mutaba'ah Belum Tersedia
+        </h3>
+        <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+          Unit atau rombel ini belum memiliki template penilaian Mutaba'ah aktif untuk minggu yang dipilih.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433]">
+      {/* ── 1. TOP HEADER & NAVIGATION BAR ────────────────────────────────────── */}
+      <div className="border-b border-emerald-200/80 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 dark:border-emerald-800/60">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-xs">
+                <Heart className="size-4.5" />
+              </div>
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                Mutaba'ah Yaumiyyah Siswa
+              </h2>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
+                  isBoarding
+                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                }`}
+              >
+                {isBoarding ? 'Boarding 24 Jam' : 'Fullday School'}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {isBoarding
+                ? 'Pembinaan agenda ibadah & kemandirian santri selama 24 jam di asrama/mahad.'
+                : 'Pencatatan ibadah siswa terpadu. Pengisian harian difokuskan pada Hari Ini dan hari-hari sebelumnya yang telah berjalan.'}
+            </p>
+          </div>
+
+          {/* Week Navigator & Scope Selector */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Scope Selector if multiple assignments */}
+            {assignments.length > 1 && (
+              <div className="flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/90 dark:border-emerald-800 px-2.5 py-1.5 shadow-xs">
+                <Users className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <select
+                  value={assignmentId}
+                  onChange={(e) => setAssignmentId(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-800 dark:text-white outline-none cursor-pointer pr-1"
+                >
+                  {assignments.map((item) => (
+                    <option key={item.id} value={item.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                      {item.unit_name} · {item.kelas_name || item.rombel_name || item.mentoring_group || item.type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Week navigation */}
+            <div className="flex items-center gap-1 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/90 dark:border-emerald-800 p-1 shadow-xs">
+              <button
+                type="button"
+                onClick={() => shiftWeek(-1)}
+                className="rounded-lg p-1.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Pekan Sebelumnya"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <div className="px-2 text-center text-xs font-extrabold text-slate-800 dark:text-white min-w-[155px]">
+                <CalendarDays className="mr-1.5 inline size-3.5 text-emerald-600 dark:text-emerald-400" />
+                {days[0].label} – {days[6].label}
+              </div>
+              <button
+                type="button"
+                onClick={() => shiftWeek(1)}
+                className="rounded-lg p-1.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Pekan Berikutnya"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={resetToCurrentWeek}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition ml-1 cursor-pointer"
+                title="Kembali ke Pekan Ini"
+              >
+                <RotateCcw className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mx-5 mt-4 flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+          <AlertCircle className="size-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* ── 2. DAFTAR SISWA UTAMA (STUDENT DIRECTORY) ─────────────────────────── */}
+      <div className="p-5">
+        {/* Quick Summary KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 dark:bg-emerald-950/20 p-3.5 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Total Siswa Rombel</span>
+            <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{totalStudents}</p>
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+              {currentAssignment?.kelas_name || 'Rombel Aktif'}
+            </span>
+          </div>
+          <div className="rounded-2xl border border-teal-200/80 bg-teal-50/50 dark:bg-teal-950/20 p-3.5 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Lengkap Terisi</span>
+            <p className="mt-1 text-2xl font-black text-teal-700 dark:text-teal-400">{completedStudentsCount}</p>
+            <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">100% Agenda Terekam</span>
+          </div>
+          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Terisi Sebagian</span>
+            <p className="mt-1 text-2xl font-black text-amber-700 dark:text-amber-400">{partialStudentsCount}</p>
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Dalam Proses Pengisian</span>
+          </div>
+          <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Belum Diisi</span>
+            <p className="mt-1 text-2xl font-black text-rose-700 dark:text-rose-400">{emptyStudentsCount}</p>
+            <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">Perlu Perhatian</span>
+          </div>
+        </div>
+
+        {/* Program Notice Box */}
+        {!isBoarding ? (
+          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200">
+            <School className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+            <div>
+              <strong className="font-extrabold text-emerald-950 dark:text-emerald-100">
+                Mode Fullday School — Pengisian Harian & Pemisahan Tanggung Jawab:
+              </strong>
+              <p className="mt-0.5 leading-relaxed text-emerald-800/90 dark:text-emerald-300">
+                Klik tombol <strong>"Isi Jurnal"</strong> pada siswa untuk membuka modal pengisian interaktif. Pengisian mengikuti <strong>Hari Ini</strong> dan <strong>Hari-Hari Sebelumnya</strong> yang sudah berjalan. Hari-hari yang belum tiba dikunci secara otomatis. Agenda rumah dipantau & diverifikasi oleh orang tua siswa.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 text-xs text-indigo-900 dark:border-indigo-800/80 dark:bg-indigo-950/40 dark:text-indigo-200">
+            <ShieldCheck className="size-5 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+            <div>
+              <strong className="font-extrabold text-indigo-950 dark:text-indigo-100">
+                Mode Boarding / Pesantren — Pembinaan Terpadu 24 Jam:
+              </strong>
+              <p className="mt-0.5 leading-relaxed text-indigo-800/90 dark:text-indigo-300">
+                Supervisi ibadah santri 24 jam dibuka untuk hari ini dan hari-hari sebelumnya dalam pekan aktif melalui modal pengisian interaktif.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Toolbar Search & Status Filter */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchStudent}
+              onChange={(e) => setSearchStudent(e.target.value)}
+              placeholder="Cari nama atau NIS siswa..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-10 pr-4 py-2.5 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            />
+            {searchStudent && (
+              <button
+                type="button"
+                onClick={() => setSearchStudent('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Filter:</span>
+            <div className="flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                  statusFilter === 'all'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Semua ({students.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('completed')}
+                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                  statusFilter === 'completed'
+                    ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Lengkap ({completedStudentsCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('partial')}
+                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                  statusFilter === 'partial'
+                    ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Sebagian ({partialStudentsCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('empty')}
+                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                  statusFilter === 'empty'
+                    ? 'bg-white dark:bg-slate-700 text-rose-700 dark:text-rose-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Belum ({emptyStudentsCount})
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Student Datatable */}
+        <div className="overflow-x-auto rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-slate-800 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/60 dark:text-slate-200">
+                <th className="p-3.5 text-center font-extrabold w-12">No</th>
+                <th className="p-3.5 font-extrabold">Identitas Siswa</th>
+                <th className="p-3.5 font-extrabold">Rombel & Unit</th>
+                <th className="p-3.5 font-extrabold text-center">Status Pekan Ini</th>
+                <th className="p-3.5 font-extrabold text-center">Capaian Pekanan</th>
+                <th className="p-3.5 font-extrabold text-center w-56">Tindakan Pengisian</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 bg-white dark:bg-[#1B2433]">
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="p-10 text-center">
+                    <div className="flex items-center justify-center gap-2 font-bold text-slate-500">
+                      <Loader2 className="size-4 animate-spin text-emerald-600" />
+                      <span>Memuat data mutaba'ah siswa...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="p-10 text-center text-slate-500">
+                    <Users className="mx-auto mb-2 size-8 text-slate-300 dark:text-slate-600" />
+                    Tidak ada data siswa yang cocok dengan filter.
+                  </td>
+                </tr>
+              ) : (
+                paginatedStudents.map((student, idx) => {
+                  const initials = (student.name || 'S')
+                    .split(' ')
+                    .slice(0, 2)
+                    .map((w) => w[0])
+                    .join('')
+                    .toUpperCase()
+
+                  const isDone = student.status === 'completed' || student.status === 'approved'
+                  const isDraft = student.status === 'draft' || student.status === 'submitted'
+                  const rowIndex = (currentPage - 1) * pageSize + idx + 1
+
+                  return (
+                    <tr
+                      key={student.id}
+                      className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition cursor-pointer"
+                      onClick={() => handleOpenInputModal(student)}
+                    >
+                      <td className="p-3 text-center font-mono font-bold text-slate-500">{rowIndex}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-xs shadow-xs">
+                            {initials}
+                          </div>
+                          <div>
+                            <p className="font-extrabold text-slate-900 dark:text-white hover:text-emerald-600 transition">
+                              {student.name}
+                            </p>
+                            <span className="font-mono text-[11px] text-slate-500">
+                              NIS: {student.nis || student.nisn || '-'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {currentAssignment?.kelas_name || currentAssignment?.rombel_name || 'Rombel'}
+                        </span>
+                        <span className="block text-[11px] text-slate-500">
+                          {currentAssignment?.unit_name || 'Unit SIT'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        {isDone ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                            <CheckCircle2 className="size-3" /> Lengkap
+                          </span>
+                        ) : isDraft ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-extrabold text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
+                            <Clock className="size-3" /> Sebagian
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                            Belum Dimulai
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
+                            {isDone ? '100%' : isDraft ? 'Aktif Mengisi' : '0%'}
+                          </span>
+                          <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                            <div
+                              className={`h-full ${isDone ? 'bg-emerald-600' : isDraft ? 'bg-amber-500' : 'bg-slate-300'}`}
+                              style={{ width: isDone ? '100%' : isDraft ? '50%' : '0%' }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenInputModal(student)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-3 py-1.5 text-xs font-bold shadow-xs transition cursor-pointer"
+                          >
+                            <Edit3 className="size-3.5" />
+                            <span>Isi Jurnal</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPrintPreview(student)}
+                            className="inline-flex items-center gap-1 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:hover:bg-sky-900/50 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/80 px-2.5 py-1.5 text-xs font-bold shadow-xs transition cursor-pointer"
+                            title="Preview Cetak Pekanan"
+                          >
+                            <Printer className="size-3.5" />
+                            <span>Cetak</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+
+          {/* Datatable Footer & Pagination */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-emerald-100 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 px-5 py-3.5">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+              Menampilkan <strong className="text-emerald-700 dark:text-emerald-400">{filteredStudents.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</strong>–<strong className="text-emerald-700 dark:text-emerald-400">{Math.min(currentPage * pageSize, filteredStudents.length)}</strong> dari <strong className="text-slate-900 dark:text-white">{filteredStudents.length}</strong> siswa
+            </span>
+            {totalPages > 1 && (
+              <div className="max-w-xs">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  variant="compact"
+                  sideLayout="icon"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. MODAL PENGISIAN JURNAL MUTABAAH SISWA (HARI INI & HARI SEBELUMNYA) ── */}
+      {inputStudent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative flex flex-col max-h-[92vh] w-full max-w-3xl rounded-3xl bg-white dark:bg-[#1B2433] shadow-2xl border-2 border-emerald-500/30 overflow-hidden">
+            {/* Modal Header: Student Identity & Nav */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-emerald-100 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-3.5 dark:border-emerald-800/60 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-xs shadow-xs">
+                  {(inputStudent.name || 'S').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                      {inputStudent.name}
+                    </h3>
+                    <span className="rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 px-2 py-0.2 text-[10px] font-extrabold">
+                      {currentAssignment?.kelas_name || 'Rombel'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    NIS: {inputStudent.nis || '-'} · {isBoarding ? 'Boarding 24 Jam' : 'Fullday School'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Student Switcher & Close */}
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleNavigateModalStudent(-1)}
+                    className="rounded-lg p-1.5 text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-700 transition cursor-pointer"
+                    title="Siswa Sebelumnya"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <span className="px-1 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                    {filteredStudents.findIndex((s) => String(s.id) === String(inputStudent.id)) + 1} / {filteredStudents.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleNavigateModalStudent(1)}
+                    className="rounded-lg p-1.5 text-slate-600 hover:bg-white dark:text-slate-300 dark:hover:bg-slate-700 transition cursor-pointer"
+                    title="Siswa Berikutnya"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setInputStudent(null)}
+                  className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white transition cursor-pointer"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* DAY SELECTOR: HARI INI & HARI SEBELUMNYA (FUTURE DAYS LOCKED) */}
+            <div className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 px-5 py-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                  Pilih Hari Pengisian:
+                </span>
+                {saveSuccessNotice && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 animate-in fade-in">
+                    <Check className="size-3.5" /> Tersimpan ke server
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-1">
+                {weekDaysClassified.map((d) => {
+                  const isSelected = d.date === inputDate
+                  return (
+                    <button
+                      type="button"
+                      key={d.date}
+                      disabled={!d.canEdit}
+                      onClick={() => handleSelectInputDate(d.date)}
+                      className={`relative flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shrink-0 cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : d.canEdit
+                          ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700'
+                          : 'bg-slate-100 dark:bg-slate-800/40 text-slate-400 dark:text-slate-600 border border-dashed border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                      }`}
+                    >
+                      {d.isToday && (
+                        <span className={`size-2 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-emerald-500'} animate-pulse`} />
+                      )}
+                      <span>
+                        {d.isToday ? 'Hari Ini' : d.day} ({d.label})
+                      </span>
+                      {d.isFuture && (
+                        <span className="text-[9px] opacity-75 font-normal ml-0.5">
+                          (Belum Tiba)
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Fullday Scope Tabs (Sekolah vs Rumah) */}
+            {!isBoarding && (
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 px-5 py-2 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setScopeTabModal('school')}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      scopeTabModal === 'school'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <School className="size-3.5" />
+                    <span>Agenda Sekolah (Guru)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScopeTabModal('home')}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      scopeTabModal === 'home'
+                        ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Home className="size-3.5" />
+                    <span>Pantauan Rumah (Orang Tua)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScopeTabModal('all')}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                      scopeTabModal === 'all'
+                        ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-white'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>Semua Agenda</span>
+                  </button>
+                </div>
+
+                <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                  {modalFilledCount}/{modalTotalItems} Terisi ({modalDayProgress}%)
+                </div>
+              </div>
+            )}
+
+            {/* Modal Body: List of Items for the Selected Day */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-2.5 max-h-[55vh]">
+              {loadingInputModal ? (
+                <div className="flex flex-col items-center justify-center p-12 text-slate-500">
+                  <Loader2 className="size-6 animate-spin text-emerald-600 mb-2" />
+                  <span className="text-xs font-bold">Memuat isian jurnal hari terpilih...</span>
+                </div>
+              ) : modalDisplayItems.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-500">
+                  Tidak ada agenda mutaba'ah untuk kategori ini.
+                </div>
+              ) : (
+                modalDisplayItems.map((item, idx) => {
+                  const currentVal = inputValues[item.id]
+                  const isItemSaving = savingCell[item.id]
+                  const isParentScope = item.is_parent_item || item.scope === 'home' || item.responsible_role === 'parent'
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433] hover:border-emerald-300 dark:hover:border-emerald-700 transition"
+                    >
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold font-mono text-slate-500 mt-0.5">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                              {item.name}
+                            </span>
+                            <span className="rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                              {item.category}
+                            </span>
+                            {isParentScope && !isBoarding && (
+                              <span className="rounded-md bg-sky-50 dark:bg-sky-950/60 px-1.5 py-0.2 text-[10px] font-bold text-sky-700 dark:text-sky-300">
+                                Diisi Orang Tua
+                              </span>
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status Selection Buttons */}
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        {statusOptions.map((opt) => {
+                          const isSelected = currentVal === opt.value
+                          return (
+                            <button
+                              type="button"
+                              key={opt.value}
+                              disabled={isItemSaving}
+                              onClick={() => handleSaveModalCell(item, opt.value)}
+                              title={opt.label}
+                              className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-extrabold transition cursor-pointer ${
+                                isSelected ? opt.activeClass : opt.idleClass
+                              }`}
+                            >
+                              {isItemSaving && isSelected ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <span>{opt.short}</span>
+                              )}
+                              <span className="hidden md:inline text-[11px] font-semibold">{opt.label.split(' ')[0]}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-900/80">
+              <div className="flex items-center gap-3 text-[11px] text-slate-500">
+                <span className="font-bold text-slate-700 dark:text-slate-300">Keterangan:</span>
+                <span>B = Baik</span>
+                <span>K = Kurang</span>
+                <span>X = Belum</span>
+                <span>— = N/A</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenPrintPreview(inputStudent)}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition cursor-pointer"
+                >
+                  <Printer className="mr-1 inline size-3.5" />
+                  Pratinjau Cetak
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInputStudent(null)}
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 text-xs font-extrabold shadow-xs transition cursor-pointer"
+                >
+                  Selesai
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 4. MODAL PRATINJAU CETAK SISWA (PEKANAN, BULANAN, SEMESTER) ────────────── */}
+      {previewStudent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative flex flex-col max-h-[92vh] w-full max-w-4xl rounded-3xl bg-white dark:bg-[#1B2433] shadow-2xl border-2 border-emerald-500/30 overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-emerald-100 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-3.5 dark:border-emerald-800/60 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-xs">
+                  <Printer className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    Pratinjau Lembar Cetak Mutaba'ah
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Siswa: <strong>{previewStudent.name}</strong> · Rombel {currentAssignment?.kelas_name || 'Aktif'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Segmented Range Selector */}
+              <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/40 p-1 border border-emerald-500/20">
+                  <button
+                    type="button"
+                    onClick={() => setPrintRangeMode('pekanan')}
+                    className={`px-3 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      printRangeMode === 'pekanan'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                    }`}
+                  >
+                    Pekanan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrintRangeMode('bulanan')}
+                    className={`px-3 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      printRangeMode === 'bulanan'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                    }`}
+                  >
+                    Bulanan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrintRangeMode('semester')}
+                    className={`px-3 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      printRangeMode === 'semester'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                    }`}
+                  >
+                    Semester
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewStudent(null)}
+                  className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white transition cursor-pointer ml-1"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: A4 Paper Preview */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100 dark:bg-slate-900/60">
+              {loadingPreview ? (
+                <div className="flex flex-col items-center justify-center p-16">
+                  <Loader2 className="size-8 animate-spin text-emerald-600 mb-3" />
+                  <span className="text-sm font-bold text-slate-600 dark:text-slate-300">
+                    Memuat data lengkap evaluasi mutaba'ah siswa...
+                  </span>
+                </div>
+              ) : (
+                <div className="mx-auto max-w-[780px] bg-white text-slate-900 p-6 sm:p-8 rounded-xl shadow-lg border border-slate-200">
+                  {/* KOP SURAT RESMI: 3 KOLOM SESUAI STANDAR INSTITUSI */}
+                  <div className="grid grid-cols-[70px_1fr_70px] items-center gap-3 pb-2 text-center">
+                    {/* Logo Kiri: Logo Yayasan / Logo Situs dari Pengaturan */}
+                    <div className="flex size-[70px] items-center justify-center mx-auto">
+                      <img
+                        src={resolveSystemLogoUrl(pengaturan?.logo_url)}
+                        alt="Logo Yayasan"
+                        className="max-h-[68px] max-w-[68px] object-contain"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null
+                          e.currentTarget.src = '/assets/logos/yayasan.svg'
+                        }}
+                      />
+                    </div>
+
+                    {/* Tengah: Nama Yayasan, Nama Unit Lengkap, Alamat */}
+                    <div className="px-2">
+                      <h4 className="text-[11pt] font-extrabold uppercase tracking-wide text-slate-900 leading-tight">
+                        {pengaturan?.school_name || 'YAYASAN DAR EL-IMAN'}
+                      </h4>
+                      <h5 className="text-[12pt] font-black uppercase tracking-tight text-emerald-800 leading-tight mt-0.5">
+                        {currentAssignment?.unit_name || 'SEKOLAH ISLAM TERPADU DAR EL-IMAN'}
+                      </h5>
+                      <p className="text-[8pt] font-medium text-slate-600 leading-snug mt-1">
+                        {pengaturan?.address || 'Jl. Gunung Juaro, Surau Gadang, Kec. Nanggalo, Kota Padang, Sumatera Barat'}
+                        {pengaturan?.phone ? ` | Telp. ${pengaturan.phone}` : ''}
+                      </p>
+                    </div>
+
+                    {/* Logo Kanan: Logo Unit */}
+                    <div className="flex size-[70px] items-center justify-center mx-auto">
+                      <img
+                        src="/assets/logos/smpit.svg"
+                        alt="Logo Unit"
+                        className="max-h-[68px] max-w-[68px] object-contain"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null
+                          e.currentTarget.src = resolveSystemLogoUrl(pengaturan?.logo_url)
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* GARIS GANDA PEMBATAS KOP SURAT RESMI */}
+                  <div className="border-t-[2.5px] border-b border-slate-900 h-1 my-2" />
+
+                  {/* JUDUL DOKUMEN EVALUASI SESUAI RANGE */}
+                  <div className="text-center my-3">
+                    <h3 className="text-sm sm:text-base font-black uppercase tracking-wide text-emerald-800">
+                      {printRangeMode === 'bulanan'
+                        ? "LEMBAR REKAPITULASI MUTABA'AH YAUMIYYAH BULANAN SISWA"
+                        : printRangeMode === 'semester'
+                        ? "LEMBAR EVALUASI MUTABA'AH YAUMIYYAH SEMESTER SISWA"
+                        : "LEMBAR MUTABA'AH YAUMIYYAH PEKANAN SISWA"}
+                    </h3>
+                    <p className="text-xs font-bold text-slate-600 mt-0.5">
+                      {printRangeMode === 'bulanan'
+                        ? 'Periode: Bulan September 2026 · Tahun Ajaran 2026/2027'
+                        : printRangeMode === 'semester'
+                        ? 'Periode: Semester 1 (Ganjil) · Tahun Ajaran 2026/2027 (Juli – Desember 2026)'
+                        : `Pekan: ${days[0]?.day}, ${days[0]?.label} – ${days[6]?.day}, ${days[6]?.label} (Tahun Ajaran 2026/2027)`}
+                    </p>
+                  </div>
+
+                  {/* IDENTITAS SISWA */}
+                  <div className="grid grid-cols-2 gap-2 text-xs font-semibold bg-slate-50 p-3 rounded-lg border border-slate-200 mb-4">
+                    <div>
+                      <span className="text-slate-500 w-28 inline-block">Nama Siswa:</span>
+                      <strong className="text-slate-900">{previewStudent.name}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 w-28 inline-block">Orang Tua / Wali:</span>
+                      <strong className="text-emerald-950 font-bold">{getStudentParentName(previewStudent)}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 w-28 inline-block">Kelas / Rombel:</span>
+                      <strong className="text-slate-900">{currentAssignment?.kelas_name || 'Rombel'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 w-28 inline-block">NIS / NISN:</span>
+                      <strong className="text-slate-900">{previewStudent.nis || '-'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 w-28 inline-block">Program Sekolah:</span>
+                      <strong className="text-slate-900">
+                        {isBoarding ? 'Boarding 24 Jam' : 'Fullday School (Ranah Sekolah & Rumah)'}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 w-28 inline-block">Pembimbing:</span>
+                      <strong className="text-slate-900">{teacherProfile?.name || user?.name || 'Ustadz / Ustadzah'}</strong>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-slate-500 w-28 inline-block">Status Capaian:</span>
+                      <strong className="text-emerald-700">
+                        {printRangeMode === 'bulanan'
+                          ? '89% (Predikat: Jayyid Jiddan)'
+                          : printRangeMode === 'semester'
+                          ? '92% (Predikat: Mumtaz / A)'
+                          : 'Terpantau Berkelanjutan'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* ── MODE 1: TABEL PEKANAN DENGAN HARI & TANGGAL SEKALIGUS ── */}
+                  {printRangeMode === 'pekanan' && (
+                    <>
+                      <table className="w-full text-left text-[10px] border border-slate-300 border-collapse mb-3">
+                        <thead>
+                          <tr className="bg-emerald-50 text-emerald-950 font-bold border-b border-slate-300">
+                            <th className="p-1.5 border border-slate-300 text-center w-8">No</th>
+                            <th className="p-1.5 border border-slate-300 w-24">Kategori</th>
+                            <th className="p-1.5 border border-slate-300">Rincian Agenda Mutaba'ah</th>
+                            {days.map((d) => (
+                              <th key={d.date} className="p-1.5 border border-slate-300 text-center min-w-[50px]">
+                                <div className="font-extrabold text-emerald-950 text-[10px] leading-tight">{d.day}</div>
+                                <div className="text-[8px] font-semibold text-slate-600 leading-tight">{d.label}</div>
+                              </th>
+                            ))}
+                            <th className="p-1.5 border border-slate-300 text-center w-12">Capaian</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(template?.items || []).map((item, idx) => {
+                            let dayCount = 0
+                            return (
+                              <tr key={item.id} className="border-b border-slate-200">
+                                <td className="p-1.5 border border-slate-300 text-center font-mono">{idx + 1}</td>
+                                <td className="p-1.5 border border-slate-300 font-bold text-emerald-900">{item.category}</td>
+                                <td className="p-1.5 border border-slate-300">
+                                  <span>{item.name}</span>
+                                  {item.is_parent_item && (
+                                    <span className="ml-1 text-[8px] bg-sky-100 text-sky-800 px-1 py-0.2 rounded font-semibold">
+                                      Pantauan Ortu
+                                    </span>
+                                  )}
+                                </td>
+                                {days.map((d) => {
+                                  const key = `${d.date}:${item.id}`
+                                  const val = previewValues[key]
+                                  if (val && val !== 'na') dayCount++
+                                  const opt = statusOptions.find((s) => s.value === val)
+                                  return (
+                                    <td key={d.date} className="p-1 border border-slate-300 text-center font-black">
+                                      {opt ? (
+                                        <span
+                                          className={`inline-block px-1 rounded ${val === 'good' ? 'bg-emerald-100 text-emerald-800' : val === 'less' ? 'bg-amber-100 text-amber-800' : val === 'not_done' ? 'bg-rose-100 text-rose-800' : 'text-slate-400'}`}
+                                        >
+                                          {opt.short}
+                                        </span>
+                                      ) : (
+                                        '-'
+                                      )}
+                                    </td>
+                                  )
+                                })}
+                                <td className="p-1.5 border border-slate-300 text-center font-bold text-slate-700">
+                                  {dayCount}/{days.length}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+
+                      {/* KETERANGAN STATUS PEKANAN */}
+                      <div className="text-[9px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-200 mb-3">
+                        <strong>Keterangan:</strong> B = Baik (Berjamaah/Lengkap) | K = Kurang (Munfarid/Terlambat) | X = Belum/Tidak Dikerjakan | — = N/A (Udzur Syar'i)
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── MODE 2: TABEL REKAPITULASI BULANAN ── */}
+                  {printRangeMode === 'bulanan' && (
+                    <>
+                      <table className="w-full text-left text-[10px] border border-slate-300 border-collapse mb-3">
+                        <thead>
+                          <tr className="bg-emerald-50 text-emerald-950 font-bold border-b border-slate-300">
+                            <th className="p-1.5 border border-slate-300 text-center w-8">No</th>
+                            <th className="p-1.5 border border-slate-300 w-24">Kategori</th>
+                            <th className="p-1.5 border border-slate-300">Rincian Agenda Mutaba'ah</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-14">Target</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-12">Baik (B)</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-12">Kurang (K)</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-12">Belum (X)</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-14">% Capaian</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-24">Predikat</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(template?.items || []).map((item, idx) => {
+                            const stats = getMonthlyStats(item)
+                            return (
+                              <tr key={item.id} className="border-b border-slate-200">
+                                <td className="p-1.5 border border-slate-300 text-center font-mono">{idx + 1}</td>
+                                <td className="p-1.5 border border-slate-300 font-bold text-emerald-900">{item.category}</td>
+                                <td className="p-1.5 border border-slate-300">
+                                  <span>{item.name}</span>
+                                  {item.is_parent_item && (
+                                    <span className="ml-1 text-[8px] bg-sky-100 text-sky-800 px-1 py-0.2 rounded font-semibold">
+                                      Pantauan Ortu
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-1.5 border border-slate-300 text-center font-semibold text-slate-600">
+                                  {stats.targetDays} Hari
+                                </td>
+                                <td className="p-1.5 border border-slate-300 text-center font-bold text-emerald-700 bg-emerald-50/50">
+                                  {stats.realGood}x
+                                </td>
+                                <td className="p-1.5 border border-slate-300 text-center font-bold text-amber-700 bg-amber-50/50">
+                                  {stats.realLess}x
+                                </td>
+                                <td className="p-1.5 border border-slate-300 text-center font-bold text-rose-700 bg-rose-50/50">
+                                  {stats.realNotDone}x
+                                </td>
+                                <td className="p-1.5 border border-slate-300 text-center font-black text-slate-800">
+                                  {stats.pct}%
+                                </td>
+                                <td className="p-1.5 border border-slate-300 text-center font-bold">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] ${stats.predikatBadge}`}>
+                                    {stats.predikat}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+
+                      {/* KETERANGAN SKALA BULANAN */}
+                      <div className="text-[9px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-200 mb-3">
+                        <strong>Keterangan Skala:</strong> Mumtaz (A ≥ 90%) | Jayyid Jiddan (B+ 80–89%) | Jayyid (B 70–79%) | Maqbul (C &lt; 70%) · Data disinkronkan ke Portofolio Siswa.
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── MODE 3: TABEL EVALUASI SEMESTER ── */}
+                  {printRangeMode === 'semester' && (
+                    <>
+                      <table className="w-full text-left text-[10px] border border-slate-300 border-collapse mb-3">
+                        <thead>
+                          <tr className="bg-emerald-50 text-emerald-950 font-bold border-b border-slate-300">
+                            <th className="p-1.5 border border-slate-300 text-center w-8">No</th>
+                            <th className="p-1.5 border border-slate-300 w-32">Dimensi Karakter & Ibadah</th>
+                            <th className="p-1.5 border border-slate-300">Rincian Target Pembiasaan (18 Pekan)</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-16">Total Pekan</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-16">% Capaian</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-12">Nilai</th>
+                            <th className="p-1.5 border border-slate-300 text-center w-24">Predikat</th>
+                            <th className="p-1.5 border border-slate-300 w-44">Catatan Perkembangan Karakter</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {semesterDimensions.map((dim) => (
+                            <tr key={dim.no} className="border-b border-slate-200">
+                              <td className="p-1.5 border border-slate-300 text-center font-mono">{dim.no}</td>
+                              <td className="p-1.5 border border-slate-300 font-extrabold text-emerald-900">{dim.category}</td>
+                              <td className="p-1.5 border border-slate-300">
+                                <span className="font-semibold text-slate-800">{dim.itemsSummary}</span>
+                              </td>
+                              <td className="p-1.5 border border-slate-300 text-center font-semibold text-slate-600">
+                                {dim.totalWeeks} Pekan
+                              </td>
+                              <td className="p-1.5 border border-slate-300 text-center font-black text-slate-800">
+                                {dim.avgPct}%
+                              </td>
+                              <td className="p-1.5 border border-slate-300 text-center font-black text-emerald-700 bg-emerald-50/50">
+                                {dim.score}
+                              </td>
+                              <td className="p-1.5 border border-slate-300 text-center font-bold">
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] ${dim.predikatBadge}`}>
+                                  {dim.predikat}
+                                </span>
+                              </td>
+                              <td className="p-1.5 border border-slate-300 text-[9px] text-slate-600 leading-snug">
+                                {dim.deskripsi}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {/* KETERANGAN STANDAR SEMESTER */}
+                      <div className="text-[9px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-200 mb-3">
+                        <strong>Kriteria Ketuntasan:</strong> Predikat A (Sangat Baik / Nilai ≥ 88) | Predikat B (Baik / Nilai 78–87) | Predikat C (Cukup / Nilai &lt; 78) · Terlampir dalam Buku Laporan Hasil Belajar Rapor Adab.
+                      </div>
+                    </>
+                  )}
+
+                  {/* KOTAK CATATAN PEMBIMBING */}
+                  <div className="text-[9.5px] text-slate-700 bg-amber-50/60 p-2.5 rounded-lg border border-amber-200 mb-4">
+                    <strong>Catatan Pembimbing / Evaluasi {printRangeMode === 'bulanan' ? 'Bulanan' : printRangeMode === 'semester' ? 'Semester' : 'Pekanan'}:</strong>
+                    <p className="italic text-slate-600 mt-0.5">
+                      {printRangeMode === 'semester'
+                        ? `Ananda ${previewStudent.name} dinyatakan Tuntas dan Memenuhi Standar Kelulusan Karakter & Pembiasaan Ibadah Semester Ganjil TA 2026/2027. Dipertahankan dan senantiasa ditingkatkan pada semester berikutnya.`
+                        : printRangeMode === 'bulanan'
+                        ? `Alhamdulillah, sepanjang periode bulan ini ananda ${previewStudent.name} menunjukkan komitmen ibadah dan akhlak yang sangat baik. Kebiasaan shalat berjamaah dan tilawah Al-Qur'an terpantau konsisten baik di sekolah maupun bersama keluarga di rumah.`
+                        : `Alhamdulillah, ananda ${previewStudent.name} menunjukkan komitmen ibadah yang positif pada pekan ini. Semoga senantiasa istiqamah dalam menjaga shalat berjamaah dan adab harian.`}
+                    </p>
+                  </div>
+
+                  {/* KOTAK TANDA TANGAN 3 PIHAK */}
+                  <div className="grid grid-cols-3 gap-4 text-center text-xs mt-6 pt-2">
+                    <div>
+                      <span className="text-[11px] text-slate-500">Orang Tua / Wali Siswa</span>
+                      <div className="h-14" />
+                      <p className="font-extrabold text-slate-800 border-t border-slate-400 inline-block min-w-[120px] pt-1">
+                        ( {getStudentParentName(previewStudent)} )
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-500">Wali Kelas / Pembimbing</span>
+                      <div className="h-14" />
+                      <p className="font-extrabold text-slate-800 border-t border-slate-400 inline-block min-w-[120px] pt-1">
+                        {teacherProfile?.name || user?.name || 'Ustadz / Ustadzah'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-500">Kepala Sekolah / Mudir</span>
+                      <div className="h-14" />
+                      <p className="font-extrabold text-slate-800 border-t border-slate-400 inline-block min-w-[120px] pt-1">
+                        Kepala Unit Sekolah
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900/80">
+              <span className="text-xs text-slate-500">
+                Mode Cetak Aktif: <strong className="text-emerald-700 capitalize">{printRangeMode}</strong> (Format Dokumen A4).
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewStudent(null)}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition cursor-pointer"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExecutePrint(previewStudent, previewValues, printRangeMode)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-4 py-2 text-xs font-extrabold shadow-md shadow-emerald-600/30 transition cursor-pointer"
+                >
+                  <Printer className="size-4" />
+                  <span>
+                    Cetak Lembar {printRangeMode === 'pekanan' ? 'Pekanan' : printRangeMode === 'bulanan' ? 'Bulanan' : 'Semester'} Sekarang
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  )
 }

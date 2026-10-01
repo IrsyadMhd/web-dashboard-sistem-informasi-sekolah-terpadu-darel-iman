@@ -178,8 +178,8 @@ export default function LaporanPegawaiPage() {
 
   const hasilFilter = useMemo(() => {
     const filtered = rows.filter((r) => {
-      const nama = r.full_name || r.nama || ''
-      const nip = r.nip || ''
+      const nama = r.nama_lengkap || r.full_name || r.nama || r.user?.name || ''
+      const nip = r.niy || r.nip || ''
       const unitName = r.education_unit?.name || r.unit?.name || r.unit || ''
       const jabatanName = r.position?.name || r.jabatan?.name || r.jabatan || ''
       const cocokCari = `${nama} ${nip} ${unitName} ${jabatanName}`
@@ -192,11 +192,11 @@ export default function LaporanPegawaiPage() {
         (jenisKelamin === 'L' && (jkVal.startsWith('L') || jkVal.includes('LAKI'))) ||
         (jenisKelamin === 'P' && (jkVal.startsWith('P') || jkVal.includes('PEREMPUAN')))
 
-      const statusRaw = String(r.status_pegawai || r.status || 'aktif').toLowerCase()
+      const statusRaw = String(r.status || r.status_pegawai || 'aktif').toLowerCase()
       const cocokStatus =
         status === 'semua' ||
-        (status === 'aktif' && (statusRaw.includes('aktif') || statusRaw === 'active')) ||
-        (status === 'nonaktif' && (statusRaw.includes('non') || statusRaw === 'inactive'))
+        (status === 'aktif' && (statusRaw.includes('aktif') || statusRaw === 'active' || statusRaw === 'tetap' || statusRaw === 'kontrak')) ||
+        (status === 'nonaktif' && (statusRaw.includes('non') || statusRaw === 'inactive' || statusRaw.includes('cuti') || statusRaw.includes('keluar')))
 
       const cocokUnit = unit === 'semua' || unitName === unit
       const cocokJabatan = jabatan === 'semua' || jabatanName === jabatan
@@ -211,8 +211,8 @@ export default function LaporanPegawaiPage() {
 
     if (sortKey) {
       filtered.sort((a, b) => {
-        let valA = a[sortKey] || a.full_name || a.nama || ''
-        let valB = b[sortKey] || b.full_name || b.nama || ''
+        let valA = a[sortKey] || a.nama_lengkap || a.full_name || a.nama || ''
+        let valB = b[sortKey] || b.nama_lengkap || b.full_name || b.nama || ''
         if (typeof valA === 'string') valA = valA.toLowerCase()
         if (typeof valB === 'string') valB = valB.toLowerCase()
         if (valA < valB) return sortOrder === 'asc' ? -1 : 1
@@ -232,7 +232,15 @@ export default function LaporanPegawaiPage() {
 
   // KPIs
   const totalPegawai = Number(dashboard.total || dashboard.total_pegawai || rows.length)
-  const pegawaiAktif = Number(dashboard.aktif || dashboard.pegawai_aktif || rows.filter((r) => ['aktif', 'ACTIVE'].includes(String(r.status_pegawai || r.status))).length)
+  const pegawaiAktif = Number(
+    dashboard.aktif ||
+    dashboard.pegawai_aktif ||
+    (dashboard.status ? (dashboard.status.tetap || 0) + (dashboard.status.kontrak || 0) + (dashboard.status.aktif || 0) : 0) ||
+    rows.filter((r) => {
+      const s = String(r.status_pegawai || r.status || '').toLowerCase()
+      return s.includes('aktif') || s === 'tetap' || s === 'kontrak'
+    }).length
+  )
   const guru = Number(dashboard.guru || dashboard.total_guru || rows.filter((r) => String(r.position?.name || r.jabatan).toLowerCase().includes('guru')).length)
   const tendik = Number(dashboard.tendik || dashboard.total_tendik || Math.max(totalPegawai - guru, 0))
   const nonaktif = Math.max(totalPegawai - pegawaiAktif, 0)
@@ -271,27 +279,27 @@ export default function LaporanPegawaiPage() {
   }
 
   const kolomCsv = [
-    { key: 'nip', label: 'NIP' },
-    { key: 'full_name', label: 'Nama Pegawai', export: (r) => r.full_name || r.nama },
-    { key: 'gender', label: 'Jenis Kelamin', export: (r) => r.gender || r.jenis_kelamin },
-    { key: 'unit', label: 'Unit', export: (r) => r.education_unit?.name || r.unit?.name || r.unit },
-    { key: 'position', label: 'Jabatan', export: (r) => r.position?.name || r.jabatan?.name || r.jabatan },
-    { key: 'status', label: 'Status', export: (r) => r.status_pegawai || r.status },
+    { key: 'nip', label: 'NIP', export: (r) => r.niy || r.nip || '-' },
+    { key: 'full_name', label: 'Nama Pegawai', export: (r) => r.nama_lengkap || r.full_name || r.nama || r.user?.name || '-' },
+    { key: 'gender', label: 'Jenis Kelamin', export: (r) => r.gender || r.jenis_kelamin || '-' },
+    { key: 'unit', label: 'Unit', export: (r) => r.education_unit?.name || r.unit?.name || r.unit || '-' },
+    { key: 'position', label: 'Jabatan', export: (r) => r.position?.name || r.jabatan?.name || r.jabatan || '-' },
+    { key: 'status', label: 'Status', export: (r) => r.status_pegawai || r.status || '-' },
   ]
 
   const handlePrintClean = () => {
     const listToPrint = printTargetRow ? [printTargetRow] : hasilFilter
-    const title = printTargetRow ? `Laporan Pegawai: ${printTargetRow.full_name || printTargetRow.nama}` : 'Rekap Laporan Data Pegawai & Guru'
+    const title = printTargetRow ? `Laporan Pegawai: ${printTargetRow.nama_lengkap || printTargetRow.full_name || printTargetRow.nama}` : 'Rekap Laporan Data Pegawai & Guru'
     const subtitle = `Total: ${listToPrint.length} Pegawai`
 
     printCleanTable({
       title,
       subtitle,
-      headers: ['NO', 'NIP', 'NAMA PEGAWAI', 'UNIT', 'JABATAN', 'JK', 'STATUS'],
+      headers: ['NO', 'NIP/NIY', 'NAMA PEGAWAI', 'UNIT', 'JABATAN', 'JK', 'STATUS'],
       rows: listToPrint.map((r, i) => [
         i + 1,
-        r.nip || '-',
-        r.full_name || r.nama || '-',
+        r.niy || r.nip || '-',
+        r.nama_lengkap || r.full_name || r.nama || '-',
         r.education_unit?.name || r.unit?.name || r.unit || '-',
         r.position?.name || r.jabatan?.name || r.jabatan || '-',
         r.gender || r.jenis_kelamin || '-',
@@ -384,7 +392,7 @@ export default function LaporanPegawaiPage() {
                 variant="primary"
                 appearance="fill"
                 size="sm"
-                onClick={muatData}
+                onClick={loadData}
                 disabled={loading}
                 prefixIcon={<RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />}
                 className="!bg-gradient-to-r !from-emerald-600 !to-teal-600 !text-white font-bold shadow-md shadow-emerald-600/25 cursor-pointer"
@@ -400,9 +408,8 @@ export default function LaporanPegawaiPage() {
       <PrintOptionModal
         isOpen={isPrintModalOpen}
         onClose={() => { setIsPrintModalOpen(false); setPrintTargetRow(null); }}
-        title={printTargetRow ? `Cetak Laporan: ${printTargetRow.full_name || printTargetRow.nama}` : 'Laporan Data Pegawai & Guru'}
+        title={printTargetRow ? `Cetak Laporan: ${printTargetRow.nama_lengkap || printTargetRow.full_name || printTargetRow.nama}` : 'Laporan Data Pegawai & Guru'}
         onPrint={handlePrintClean}
-        onDownloadPdf={handleDownloadPdf}
       />
 
       {/* Detail Dialog Modal */}
@@ -761,10 +768,11 @@ export default function LaporanPegawaiPage() {
               </TableHeader>
               <TableBody>
                 {baris.map((item, index) => {
-                  const nameStr = item.full_name || item.nama || '-'
-                  const nipStr = item.nip || '-'
+                  const nameStr = item.nama_lengkap || item.full_name || item.nama || item.user?.name || '-'
+                  const nipStr = item.niy || item.nip || '-'
                   const unitStr = item.education_unit?.name || item.unit?.name || item.unit || '-'
                   const jabatanStr = item.position?.name || item.jabatan?.name || item.jabatan || '-'
+                  const isActive = item.status === 'Aktif' || item.status_pegawai === 'Tetap' || item.status_pegawai === 'Kontrak' || item.status === true || (typeof item.status === 'string' && item.status.toLowerCase() === 'aktif')
 
                   return (
                     <TableRow key={item.id || item.nip || index} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors">
@@ -820,7 +828,7 @@ export default function LaporanPegawaiPage() {
                       <TableCell className="text-center font-semibold text-slate-800 dark:text-slate-200">{jabatanStr}</TableCell>
                       <TableCell className="text-center text-xs font-semibold text-slate-600 dark:text-slate-400">{item.gender || item.jenis_kelamin || '-'}</TableCell>
                       <TableCell className="text-right">
-                        <MasterStatusBadge status={item.status_pegawai || item.status || 'aktif'} className="cursor-pointer" onClick={() => setSelectedRowModal(item)} />
+                        <MasterStatusBadge active={isActive} activeLabel={item.status_pegawai || 'Aktif'} inactiveLabel={item.status_pegawai || 'Tidak Aktif'} />
                       </TableCell>
                     </TableRow>
                   )

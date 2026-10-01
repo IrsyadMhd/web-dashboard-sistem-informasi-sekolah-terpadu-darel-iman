@@ -50,14 +50,17 @@ import {
   Wallet,
   Fingerprint,
   RefreshCw,
+  AlertTriangle,
+  Check,
+  X,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import { motion, AnimatePresence } from 'framer-motion'
 import StatCard from '../components/StatCard'
 import KpiQuickViewModal from '../components/KpiQuickViewModal'
 import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
-import { Badge } from '../components/ui/badge'
-import { Button } from '../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Button } from '@/components/tailgrids/core/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/tailgrids/core/card'
 import { Modal } from '../components/ui/modal'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -94,6 +97,16 @@ export default function DashboardPage() {
   const [selectedTahfizUnitFilter, setSelectedTahfizUnitFilter] = useState('Semua Unit')
   const [loading, setLoading] = useState(true)
   const [apiData, setApiData] = useState(null)
+
+  // Toast notifications state
+  const [toasts, setToasts] = useState([])
+  const pushToast = (type, title, message = '') => {
+    const id = Date.now() + Math.random()
+    setToasts((prev) => [...prev, { id, type, title, message }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 4000)
+  }
 
   // Fetch real data from backend API
   const fetchDashboardData = async () => {
@@ -188,23 +201,13 @@ export default function DashboardPage() {
   const dataKehadiranBulanan = apiData?.charts?.attendance_trend || []
 
   const handleExportData = () => {
-    Swal.fire({
-      icon: 'success',
-      title: 'Mengeksport Excel',
-      text: 'Rekap data eksekutif yayasan sedang diunduh.',
-      confirmButtonColor: '#0E5C44',
-    })
+    pushToast('success', 'Mengekspor Excel', 'Rekap data eksekutif yayasan sedang diunduh.')
   }
 
   const handleImportSubmit = (e) => {
     e.preventDefault()
     setIsImportModalOpen(false)
-    Swal.fire({
-      icon: 'success',
-      title: 'Import Berhasil',
-      text: 'Data master telah diperbarui.',
-      confirmButtonColor: '#0E5C44',
-    })
+    pushToast('success', 'Import Berhasil', 'Data master telah diperbarui.')
   }
 
   return (
@@ -246,7 +249,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
             <button
               onClick={handleExportData}
               className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md text-xs font-bold text-white border border-white/20 transition flex items-center gap-2 shadow-xs"
@@ -766,73 +769,81 @@ export default function DashboardPage() {
               {/* Absensi */}
               <button
                 onClick={() => navigate('/dashboard/attendance')}
-                className="group flex flex-col items-center justify-center p-2 rounded-xl bg-[#E6F4EA] dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 transition-all duration-200 border border-emerald-200/60 dark:border-emerald-800/60 hover:-translate-y-0.5 hover:shadow-xs min-h-[66px]"
+                aria-label="Akses cepat Absensi"
+                className="group flex flex-col items-center justify-center gap-1 p-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer min-h-[66px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
               >
-                <Fingerprint className="h-5 w-5 text-[#0E5C44] dark:text-emerald-400 group-hover:scale-110 transition-transform stroke-[2]" />
-                <span className="mt-1 text-[10px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight block truncate w-full">Absensi</span>
+                <Fingerprint className="h-5 w-5 text-white group-hover:scale-110 transition-transform stroke-[2]" />
+                <span className="text-[10px] font-extrabold text-white leading-tight block truncate w-full">Absensi</span>
               </button>
 
               {/* Tahfiz */}
               <button
                 onClick={() => navigate('/dashboard/tahfizh')}
-                className="group flex flex-col items-center justify-center p-2 rounded-xl bg-[#F3E8FF] dark:bg-purple-950/60 hover:bg-purple-100 text-purple-800 dark:text-purple-200 transition-all duration-200 border border-purple-200/60 dark:border-purple-800/60 hover:-translate-y-0.5 hover:shadow-xs min-h-[66px]"
+                aria-label="Akses cepat Tahfiz"
+                className="group flex flex-col items-center justify-center gap-1 p-2 rounded-2xl bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 text-white border border-purple-300/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer min-h-[66px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40"
               >
-                <BookOpen className="h-5 w-5 text-purple-700 dark:text-purple-400 group-hover:scale-110 transition-transform stroke-[2]" />
-                <span className="mt-1 text-[10px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight block truncate w-full">Tahfiz</span>
+                <BookOpen className="h-5 w-5 text-white group-hover:scale-110 transition-transform stroke-[2]" />
+                <span className="text-[10px] font-extrabold text-white leading-tight block truncate w-full">Tahfiz</span>
               </button>
 
               {/* Akademik */}
               <button
                 onClick={() => navigate('/dashboard/akademik/dashboard')}
-                className="group flex flex-col items-center justify-center p-2 rounded-xl bg-[#E0F2FE] dark:bg-sky-950/60 hover:bg-sky-100 text-sky-800 dark:text-sky-200 transition-all duration-200 border border-sky-200/60 dark:border-sky-800/60 hover:-translate-y-0.5 hover:shadow-xs min-h-[66px]"
+                aria-label="Akses cepat Akademik"
+                className="group flex flex-col items-center justify-center gap-1 p-2 rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer min-h-[66px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
               >
-                <Calendar className="h-5 w-5 text-sky-700 dark:text-sky-400 group-hover:scale-110 transition-transform stroke-[2]" />
-                <span className="mt-1 text-[10px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight block truncate w-full">Akademik</span>
+                <Calendar className="h-5 w-5 text-white group-hover:scale-110 transition-transform stroke-[2]" />
+                <span className="text-[10px] font-extrabold text-white leading-tight block truncate w-full">Akademik</span>
               </button>
 
               {/* Nilai */}
               <button
                 onClick={() => navigate('/dashboard/laporan-akademik')}
-                className="group flex flex-col items-center justify-center p-2 rounded-xl bg-[#FEF3C7] dark:bg-amber-950/60 hover:bg-amber-100 text-amber-800 dark:text-amber-200 transition-all duration-200 border border-amber-200/60 dark:border-amber-800/60 hover:-translate-y-0.5 hover:shadow-xs min-h-[66px]"
+                aria-label="Akses cepat Nilai"
+                className="group flex flex-col items-center justify-center gap-1 p-2 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer min-h-[66px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
               >
-                <Award className="h-5 w-5 text-amber-700 dark:text-amber-400 group-hover:scale-110 transition-transform stroke-[2]" />
-                <span className="mt-1 text-[10px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight block truncate w-full">Nilai</span>
+                <Award className="h-5 w-5 text-white group-hover:scale-110 transition-transform stroke-[2]" />
+                <span className="text-[10px] font-extrabold text-white leading-tight block truncate w-full">Nilai</span>
               </button>
 
               {/* Keuangan */}
               <button
                 onClick={() => navigate('/dashboard/pengaturan')}
-                className="group flex flex-col items-center justify-center p-2 rounded-xl bg-[#CCFBF1] dark:bg-teal-950/60 hover:bg-teal-100 text-teal-800 dark:text-teal-200 transition-all duration-200 border border-teal-200/60 dark:border-teal-800/60 hover:-translate-y-0.5 hover:shadow-xs min-h-[66px]"
+                aria-label="Akses cepat Keuangan"
+                className="group flex flex-col items-center justify-center gap-1 p-2 rounded-2xl bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 text-white border border-teal-300/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer min-h-[66px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40"
               >
-                <Wallet className="h-5 w-5 text-teal-700 dark:text-teal-400 group-hover:scale-110 transition-transform stroke-[2]" />
-                <span className="mt-1 text-[10px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight block truncate w-full">Keuangan</span>
+                <Wallet className="h-5 w-5 text-white group-hover:scale-110 transition-transform stroke-[2]" />
+                <span className="text-[10px] font-extrabold text-white leading-tight block truncate w-full">Keuangan</span>
               </button>
 
               {/* Laporan */}
               <button
                 onClick={() => navigate('/dashboard/yayasan/laporan')}
-                className="group flex flex-col items-center justify-center p-2 rounded-xl bg-[#D1FAE5] dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 transition-all duration-200 border border-emerald-200/60 dark:border-emerald-800/60 hover:-translate-y-0.5 hover:shadow-xs min-h-[66px]"
+                aria-label="Akses cepat Laporan"
+                className="group flex flex-col items-center justify-center gap-1 p-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer min-h-[66px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
               >
-                <FileSpreadsheet className="h-5 w-5 text-emerald-700 dark:text-emerald-400 group-hover:scale-110 transition-transform stroke-[2]" />
-                <span className="mt-1 text-[10px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight block truncate w-full">Laporan</span>
+                <FileSpreadsheet className="h-5 w-5 text-white group-hover:scale-110 transition-transform stroke-[2]" />
+                <span className="text-[10px] font-extrabold text-white leading-tight block truncate w-full">Laporan</span>
               </button>
 
               {/* Pengumuman */}
               <button
                 onClick={() => navigate('/dashboard/yayasan/informasi-sekolah')}
-                className="group flex flex-col items-center justify-center p-2 rounded-xl bg-[#FFE4E6] dark:bg-rose-950/60 hover:bg-rose-100 text-rose-800 dark:text-rose-200 transition-all duration-200 border border-rose-200/60 dark:border-rose-800/60 hover:-translate-y-0.5 hover:shadow-xs min-h-[66px]"
+                aria-label="Akses cepat Pengumuman"
+                className="group flex flex-col items-center justify-center gap-1 p-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer min-h-[66px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
               >
-                <Megaphone className="h-5 w-5 text-rose-700 dark:text-rose-400 group-hover:scale-110 transition-transform stroke-[2]" />
-                <span className="mt-1 text-[9.5px] sm:text-[10px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight block truncate w-full">Pengumuman</span>
+                <Megaphone className="h-5 w-5 text-white group-hover:scale-110 transition-transform stroke-[2]" />
+                <span className="text-[10px] font-extrabold text-white leading-tight block truncate w-full">Pengumuman</span>
               </button>
 
               {/* Pengaturan */}
               <button
                 onClick={() => navigate('/dashboard/pengaturan')}
-                className="group flex flex-col items-center justify-center p-2 rounded-xl bg-[#F1F5F9] dark:bg-slate-800/80 hover:bg-slate-200 text-slate-800 dark:text-slate-200 transition-all duration-200 border border-slate-200 dark:border-slate-700 hover:-translate-y-0.5 hover:shadow-xs min-h-[66px]"
+                aria-label="Akses cepat Pengaturan"
+                className="group flex flex-col items-center justify-center gap-1 p-2 rounded-2xl bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700 text-white border border-slate-300/40 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer min-h-[66px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40"
               >
-                <Settings className="h-5 w-5 text-slate-700 dark:text-slate-300 group-hover:scale-110 transition-transform stroke-[2]" />
-                <span className="mt-1 text-[10px] font-extrabold text-slate-800 dark:text-slate-100 leading-tight block truncate w-full">Pengaturan</span>
+                <Settings className="h-5 w-5 text-white group-hover:scale-110 transition-transform stroke-[2]" />
+                <span className="text-[10px] font-extrabold text-white leading-tight block truncate w-full">Pengaturan</span>
               </button>
             </div>
           </CardContent>
@@ -936,6 +947,58 @@ export default function DashboardPage() {
           onClose={() => setActiveKpiModal(null)}
         />
       </ModalErrorBoundary>
+
+      {/* Toast Notification Stack */}
+      <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+              className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
+                toast.type === 'error'
+                  ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
+                  : toast.type === 'warning'
+                  ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
+                  : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
+              }`}
+            >
+              <div
+                className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
+                  toast.type === 'error'
+                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                    : toast.type === 'warning'
+                    ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
+                    : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+                }`}
+              >
+                {toast.type === 'error' ? (
+                  <AlertTriangle className="size-4.5" />
+                ) : toast.type === 'warning' ? (
+                  <AlertTriangle className="size-4.5" />
+                ) : (
+                  <Check className="size-4.5" />
+                )}
+              </div>
+              <div className="flex-1 pt-0.5">
+                <p className="text-xs font-bold leading-tight">{toast.title}</p>
+                {toast.message && (
+                  <p className="mt-0.5 text-[11px] opacity-80 leading-normal">{toast.message}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="size-3.5" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
     </PageContainer>
   )

@@ -30,7 +30,7 @@ import {
   Check,
   Ban,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { lmsReferensiService } from '../services/lmsReferensiService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -734,15 +734,15 @@ export default function LmsReferensiPage({ embedded = false, hideBreadcrumb = fa
 
         <MasterDataTable className="!rounded-none !border-0 !shadow-none">
           <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-              <tr>
-                <th className="w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
-                <th className="w-[28%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Judul Referensi</th>
-                <th className="hidden w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Penulis &amp; Penerbit</th>
-                <th className="hidden w-[8%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Tahun</th>
-                <th className="hidden w-[20%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Modul Ajar Terkait</th>
-                <th className="hidden w-[8%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
-                <th className="w-[10%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
+            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                <th className="w-[6%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</th>
+                <th className="w-[28%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Judul Referensi</th>
+                <th className="hidden w-[20%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Penulis &amp; Penerbit</th>
+                <th className="hidden w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Tahun</th>
+                <th className="hidden w-[20%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Modul Ajar Terkait</th>
+                <th className="hidden w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Status</th>
+                <th className="w-[10%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">

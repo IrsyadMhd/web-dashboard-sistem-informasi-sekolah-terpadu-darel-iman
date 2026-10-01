@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import Swal from 'sweetalert2'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen,
@@ -24,6 +24,7 @@ import {
   BookOpenCheck,
   Building2,
   Printer,
+  RefreshCw,
 } from 'lucide-react'
 import { modulSemesterService } from '../services/modulSemesterService'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
@@ -138,6 +139,191 @@ function initialFormState() {
   }
 }
 
+function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                Hapus Modul Semester?
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus modul ini? Data akan dipindahkan ke arsip.
+          </p>
+
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3.5 dark:border-rose-800/60 dark:bg-rose-950/20 mb-5">
+            <p className="text-xs font-black text-rose-950 dark:text-rose-100">
+              [{item?.kode_modul}] {item?.nama_modul}
+            </p>
+            <p className="text-[11px] text-rose-800/80 dark:text-rose-300/80 mt-0.5">
+              Kelas: {item?.kelas?.nama_kelas || '-'} • Mapel: {item?.mata_pelajaran?.name || item?.mata_pelajaran?.nama_mapel || '-'}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+              Hapus Modul
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function HarmonizedDuplicateModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 text-white shadow-md shadow-emerald-500/30">
+              <Copy className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                Salin Modul
+              </span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                Duplikasi Modul Semester?
+              </h3>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Sistem akan membuat salinan baru dari modul ini dengan kode modul baru dan seluruh rincian mingguannya.
+          </p>
+
+          <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-3.5 dark:border-emerald-800/60 dark:bg-emerald-950/20 mb-5">
+            <p className="text-xs font-black text-emerald-950 dark:text-emerald-100">
+              [{item?.kode_modul}] {item?.nama_modul}
+            </p>
+            <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 mt-0.5">
+              Kelas: {item?.kelas?.nama_kelas || '-'} • Mapel: {item?.mata_pelajaran?.name || item?.mata_pelajaran?.nama_mapel || '-'}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+            >
+              {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}
+              Ya, Duplikasi
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function ToastStack({ toasts, onDismiss }) {
+  return (
+    <aside
+      aria-label="Notifikasi sistem"
+      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0"
+    >
+      <AnimatePresence>
+        {toasts.map((toast) => (
+          <motion.div
+            key={toast.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
+              toast.type === 'error'
+                ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
+                : toast.type === 'warning'
+                ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
+                : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
+            }`}
+          >
+            <div
+              className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
+                toast.type === 'error'
+                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                  : toast.type === 'warning'
+                  ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
+                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+              }`}
+            >
+              {toast.type === 'error' ? (
+                <AlertTriangle className="size-4.5" />
+              ) : toast.type === 'warning' ? (
+                <AlertTriangle className="size-4.5" />
+              ) : (
+                <Check className="size-4.5" />
+              )}
+            </div>
+            <div className="flex-1 pt-0.5">
+              <p className="text-xs font-bold leading-relaxed">{toast.message}</p>
+            </div>
+            <button
+              onClick={() => onDismiss(toast.id)}
+              className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+            >
+              <X className="size-4" />
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </aside>
+  )
+}
+
 export default function MasterModulSemesterPage({ embedded = false, hidePageHeader = false, hideBreadcrumb = false }) {
   const queryClient = useQueryClient()
 
@@ -160,6 +346,25 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
   const [activeTab, setActiveTab] = useState('umum') // 'umum' | 'pembelajaran' | 'target' | 'materi' | 'bobot'
   const [formData, setFormData] = useState(initialFormState())
   const [formErrors, setFormErrors] = useState({})
+
+  // Harmonized Modals & Toasts
+  const [toasts, setToasts] = useState([])
+  const [deleteItem, setDeleteItem] = useState(null)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [duplicateItem, setDuplicateItem] = useState(null)
+  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
+
+  const pushToast = (message, type = 'success') => {
+    const id = Date.now() + Math.random().toString(36).slice(2, 6)
+    setToasts((prev) => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 4000)
+  }
+
+  const dismissToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
 
   // Drawer Detail
   const [detailModul, setDetailModul] = useState(null)
@@ -477,20 +682,14 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
       queryClient.invalidateQueries(['modul-semester'])
       queryClient.invalidateQueries(['modul-semester-stats'])
       setIsModalOpen(false)
-      Swal.fire({
-        icon: 'success',
-        title: 'Berhasil Disimpan!',
-        text: res.message || 'Master Modul Semester berhasil disimpan.',
-        timer: 2000,
-        showConfirmButton: false,
-      })
+      pushToast(res.message || 'Master Modul Semester berhasil disimpan.', 'success')
     },
     onError: (err) => {
       const respData = err.response?.data
       if (respData?.errors) {
         setFormErrors(respData.errors)
       } else {
-        Swal.fire('Error', respData?.message || 'Terjadi kesalahan saat menyimpan data modul semester.', 'error')
+        pushToast(respData?.message || 'Terjadi kesalahan saat menyimpan data modul semester.', 'error')
       }
     },
   })
@@ -500,16 +699,12 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
     onSuccess: () => {
       queryClient.invalidateQueries(['modul-semester'])
       queryClient.invalidateQueries(['modul-semester-stats'])
-      Swal.fire({
-        icon: 'success',
-        title: 'Terhapus!',
-        text: 'Data Modul Semester berhasil dihapus.',
-        timer: 2000,
-        showConfirmButton: false,
-      })
+      setIsDeleteOpen(false)
+      setDeleteItem(null)
+      pushToast('Data Modul Semester berhasil dihapus.', 'success')
     },
     onError: (err) => {
-      Swal.fire('Error', err.response?.data?.message || 'Gagal menghapus data modul semester.', 'error')
+      pushToast(err.response?.data?.message || 'Gagal menghapus data modul semester.', 'error')
     },
   })
 
@@ -518,16 +713,12 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
     onSuccess: (res) => {
       queryClient.invalidateQueries(['modul-semester'])
       queryClient.invalidateQueries(['modul-semester-stats'])
-      Swal.fire({
-        icon: 'success',
-        title: 'Berhasil Diduplikasi!',
-        text: res.message || 'Modul Semester berhasil diduplikasi.',
-        timer: 2000,
-        showConfirmButton: false,
-      })
+      setIsDuplicateOpen(false)
+      setDuplicateItem(null)
+      pushToast(res.message || 'Modul Semester berhasil diduplikasi.', 'success')
     },
     onError: (err) => {
-      Swal.fire('Error', err.response?.data?.message || 'Gagal menduplikasi modul semester.', 'error')
+      pushToast(err.response?.data?.message || 'Gagal menduplikasi modul semester.', 'error')
     },
   })
 
@@ -652,12 +843,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors)
-      Swal.fire({
-        icon: 'warning',
-        title: 'Form Belum Lengkap / Bobot Tidak 100%',
-        text: errors.bobot ? errors.bobot[0] : 'Harap lengkapi semua kolom wajib di formulir.',
-        confirmButtonColor: '#0E5C44',
-      })
+      pushToast(errors.bobot ? errors.bobot[0] : 'Harap lengkapi semua kolom wajib di formulir.', 'warning')
       return
     }
 
@@ -665,42 +851,18 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
   }
 
   const handleConfirmHapus = (item) => {
-    Swal.fire({
-      title: 'Apakah Anda yakin ingin menghapus data ini?',
-      html: `Apakah Anda yakin ingin menghapus <b>${item.nama_modul}</b>?<br><small className="text-slate-400">Data akan masuk ke soft delete (arsip).</small>`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e11d48',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Hapus Data',
-      cancelButtonText: 'Batal',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        hapusMutation.mutate(item.id)
-      }
-    })
+    setDeleteItem(item)
+    setIsDeleteOpen(true)
   }
 
   const handleConfirmDuplikasi = (item) => {
-    Swal.fire({
-      title: 'Duplikasi Modul Semester?',
-      html: `Sistem akan membuat salinan baru dari <b>${item.nama_modul}</b> dengan kode modul baru.`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#0E5C44',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Duplikasi',
-      cancelButtonText: 'Batal',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        duplikasiMutation.mutate(item.id)
-      }
-    })
+    setDuplicateItem(item)
+    setIsDuplicateOpen(true)
   }
 
   const handleExportCSV = () => {
     if (!modulList || modulList.length === 0) {
-      Swal.fire('Info', 'Tidak ada data untuk diekspor.', 'info')
+      pushToast('Tidak ada data untuk diekspor.', 'warning')
       return
     }
 
@@ -724,26 +886,26 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
     modulList.forEach((m, idx) => {
       const row = [
         idx + 1,
-        `"${m.kode_modul}"`,
-        `"${m.nama_modul}"`,
-        `"${m.tahun_ajaran?.name || '-'}"`,
-        `"${m.semester?.name || '-'}"`,
-        `"${m.unit_pendidikan?.name || '-'}"`,
-        `"${m.kelas?.nama_kelas || '-'}"`,
-        `"${m.mata_pelajaran?.name || '-'}"`,
-        `"${m.guru?.nama_lengkap || '-'}"`,
+        `"${m.kode_modul || ''}"`,
+        `"${m.nama_modul || ''}"`,
+        `"${m.tahun_ajaran?.name || ''}"`,
+        `"${m.semester?.name || ''}"`,
+        `"${m.unit_pendidikan?.name || m.jenjang || ''}"`,
+        `"${m.kelas?.nama_kelas || ''}"`,
+        `"${m.mata_pelajaran?.name || ''}"`,
+        `"${m.guru?.nama_lengkap || ''}"`,
         m.jumlah_pertemuan || 0,
         m.alokasi_jam || 0,
-        `"${m.status}"`,
-      ].join(',')
-      csvStr += row + '\n'
+        `"${m.status || 'Aktif'}"`,
+      ]
+      csvStr += row.join(',') + '\n'
     })
 
     const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `export_master_modul_semester_${new Date().toISOString().slice(0, 10)}.csv`)
+    link.href = url
+    link.setAttribute('download', `Master_Modul_Semester_${new Date().toISOString().slice(0, 10)}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -764,7 +926,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
       } catch (error) { failures.push(`baris ${index + 2}: ${error.response?.data?.message || 'gagal'}`) }
     }
     queryClient.invalidateQueries({ queryKey: ['modul-semester'] })
-    await Swal.fire({ icon: failures.length ? 'warning' : 'success', title: 'Import selesai', text: `${success} modul berhasil, ${failures.length} gagal.${failures.length ? ` ${failures.slice(0, 3).join('; ')}` : ''}`, confirmColor: '#0E5C44' })
+    pushToast(`${success} modul berhasil, ${failures.length} gagal.${failures.length ? ` ${failures.slice(0, 3).join('; ')}` : ''}`, failures.length ? 'warning' : 'success')
   }
 
   const resetFilters = () => {
@@ -780,7 +942,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
   }
 
   const pageActions = (
-    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
+    <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
       <SquircleActionButton variant="import" label="Import Data" onClick={() => setImportOpen(true)} />
       <SquircleActionButton variant="export" label="Export Data" onClick={handleExportCSV} />
       <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setIsPrintModalOpen(true)} />
@@ -956,16 +1118,16 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
         ariaLabel="Data modul semester"
       >
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#F7F4EB] dark:bg-slate-900/80 text-gray-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider border-b border-gray-200 dark:border-slate-800">
-                <th className="py-4 px-4 text-center w-12">NO</th>
-                <th className="py-4 px-4 w-14 text-center">LOGO</th>
-                <th className="py-4 px-4">NAMA MODUL SEMESTER</th>
-                <th className="py-4 px-4">UNIT / KELAS</th>
-                <th className="py-4 px-4">MAPEL & GURU</th>
-                <th className="py-4 px-4 text-center">PERTEMUAN / JP</th>
-                <th className="py-4 px-4 text-center">STATUS</th>
-                <th className="py-4 px-4 text-center w-36">AKSI</th>
+            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200 font-bold text-xs uppercase tracking-wider">
+                <th className="py-4 px-4 text-center w-12 hidden sm:table-cell bg-transparent">NO</th>
+                <th className="py-4 px-4 w-14 text-center hidden md:table-cell bg-transparent">LOGO</th>
+                <th className="py-4 px-4 bg-transparent">NAMA MODUL SEMESTER</th>
+                <th className="py-4 px-4 hidden lg:table-cell bg-transparent">UNIT / KELAS</th>
+                <th className="py-4 px-4 hidden md:table-cell bg-transparent">MAPEL & GURU</th>
+                <th className="py-4 px-4 text-center hidden xl:table-cell bg-transparent">PERTEMUAN / JP</th>
+                <th className="py-4 px-4 text-center hidden sm:table-cell bg-transparent">STATUS</th>
+                <th className="py-4 px-4 text-center w-16 sm:w-28 bg-transparent">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-sm">
@@ -979,12 +1141,12 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                       className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors"
                     >
                       {/* NO */}
-                      <td className="py-4 px-4 text-center font-bold text-gray-500 dark:text-slate-400 text-xs">
+                      <td className="py-4 px-4 text-center font-bold text-gray-500 dark:text-slate-400 text-xs hidden sm:table-cell">
                         {recordNo}
                       </td>
 
                       {/* LOGO BADGE */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-4 px-4 text-center hidden md:table-cell">
                         <div
                           className={`w-9 h-9 rounded-full ${badgeStyle.bg} ${badgeStyle.text} font-black text-xs flex items-center justify-center shadow-xs mx-auto border ${badgeStyle.border}`}
                         >
@@ -1000,10 +1162,31 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                         <div className="text-xs text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
                           {item.kode_modul} &bull; <span className="text-gray-500 dark:text-slate-400">{item.kurikulum}</span>
                         </div>
+                        {/* Compact Mobile Metadata Row */}
+                        <div className="md:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
+                          <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {item.unit_pendidikan?.name || item.jenjang || '-'} • Kelas {item.kelas?.nama_kelas || '-'}
+                          </span>
+                          <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                            {item.mata_pelajaran?.name || item.mata_pelajaran?.nama_mapel || '-'}
+                          </span>
+                          <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                            {item.jumlah_pertemuan || 0} Pertemuan • {item.alokasi_jam || 0} JP
+                          </span>
+                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                            item.status === 'Aktif'
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              : item.status === 'Arsip'
+                              ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                              : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                          }`}>
+                            {item.status || 'Nonaktif'}
+                          </span>
+                        </div>
                       </td>
 
                       {/* UNIT / KELAS */}
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 hidden lg:table-cell">
                         <div className="font-semibold text-gray-800 dark:text-slate-200">
                           {item.unit_pendidikan?.name || item.jenjang || 'Semua Unit'}
                         </div>
@@ -1013,7 +1196,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                       </td>
 
                       {/* MAPEL & GURU */}
-                      <td className="py-4 px-4">
+                      <td className="py-4 px-4 hidden md:table-cell">
                         <PersonIdentityCell
                           src={item.guru?.photo_url || item.guru?.avatar_url || item.guru?.foto}
                           name={item.guru?.nama_lengkap || '-'}
@@ -1022,7 +1205,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                       </td>
 
                       {/* PERTEMUAN / JP */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-4 px-4 text-center hidden xl:table-cell">
                         <span className="font-bold text-gray-900 dark:text-white">
                           {item.jumlah_pertemuan || 0} Pertemuan
                         </span>
@@ -1031,7 +1214,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                         </div>
                       </td>
 
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-4 px-4 text-center hidden sm:table-cell">
                         <AppBadge variant={item.status === 'Aktif' ? 'success' : item.status === 'Arsip' ? 'warning' : 'neutral'} dot>
                           {item.status || 'Nonaktif'}
                         </AppBadge>
@@ -2338,6 +2521,30 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
           </div>
         </div>
       </AppModal>
+
+      <HarmonizedDeleteModal
+        isOpen={isDeleteOpen}
+        onClose={() => {
+          setIsDeleteOpen(false)
+          setDeleteItem(null)
+        }}
+        onConfirm={() => deleteItem && hapusMutation.mutate(deleteItem.id)}
+        item={deleteItem}
+        isSubmitting={hapusMutation.isLoading}
+      />
+
+      <HarmonizedDuplicateModal
+        isOpen={isDuplicateOpen}
+        onClose={() => {
+          setIsDuplicateOpen(false)
+          setDuplicateItem(null)
+        }}
+        onConfirm={() => duplicateItem && duplikasiMutation.mutate(duplicateItem.id)}
+        item={duplicateItem}
+        isSubmitting={duplikasiMutation.isLoading}
+      />
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </MasterDataPage>
     </PageContainer>
   )

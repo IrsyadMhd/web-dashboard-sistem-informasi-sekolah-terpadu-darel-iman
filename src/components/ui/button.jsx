@@ -1,46 +1,58 @@
 import * as React from 'react'
 import PropTypes from 'prop-types'
-import { cn } from '../../lib/utils'
+import { Button as TailGridsButton } from '../tailgrids/core/button'
 
-const buttonVariants = {
-  primary: 'btn btn-primary bg-[#0E5C44] hover:bg-[#1E8E5A] text-white border-none shadow-md transition-all active:scale-[0.97]',
-  default: 'btn',
-  secondary: 'btn btn-secondary',
-  accent: 'btn btn-accent',
-  info: 'btn btn-info',
-  success: 'btn btn-success',
-  warning: 'btn btn-warning',
-  destructive: 'btn btn-error',
-  error: 'btn btn-error',
-  outline: 'btn btn-outline',
-  ghost: 'btn btn-text',
-  icon: 'btn btn-square',
-  link: 'btn btn-link',
+const mapVariant = (variant) => {
+  switch (variant) {
+    case 'primary':
+      return { variant: 'primary', appearance: 'fill' }
+    case 'destructive':
+    case 'danger':
+    case 'error':
+      return { variant: 'danger', appearance: 'fill' }
+    case 'success':
+      return { variant: 'success', appearance: 'fill' }
+    case 'ghost':
+    case 'link':
+      return { variant: 'ghost', appearance: 'outline' }
+    case 'outline':
+    case 'secondary':
+    case 'default':
+    default:
+      return { variant: 'primary', appearance: 'outline' }
+  }
 }
 
-const buttonSizes = {
-  default: '',
-  sm: 'btn-sm',
-  lg: 'btn-lg',
-  icon: 'btn-square btn-sm',
+const mapSize = (size) => {
+  switch (size) {
+    case 'xs':
+      return { size: 'xs', iconOnly: false }
+    case 'sm':
+      return { size: 'sm', iconOnly: false }
+    case 'lg':
+      return { size: 'lg', iconOnly: false }
+    case 'icon':
+      return { size: 'sm', iconOnly: true }
+    default:
+      return { size: 'sm', iconOnly: false }
+  }
 }
 
 export const Button = React.forwardRef(
-  ({ className, variant = 'primary', size = 'default', disabled, children, ...props }, ref) => {
+  ({ className, variant = 'primary', size = 'default', disabled, iconOnly, ...props }, ref) => {
+    const v = mapVariant(variant)
+    const s = mapSize(size)
     return (
-      <button
+      <TailGridsButton
         ref={ref}
+        variant={v.variant}
+        appearance={v.appearance}
+        size={s.size}
+        iconOnly={iconOnly || s.iconOnly}
         disabled={disabled}
-        className={cn(
-          'inline-flex items-center justify-center gap-2 font-bold transition-all duration-200 focus:outline-none focus-visible:ring-3 focus-visible:ring-[#0E5C44]/30 disabled:opacity-50 disabled:pointer-events-none cursor-pointer',
-          buttonVariants[variant] || buttonVariants.primary,
-          buttonSizes[size] || buttonSizes.default,
-          className
-        )}
+        className={className}
         {...props}
-      >
-        {children}
-      </button>
+      />
     )
   }
 )
@@ -49,8 +61,10 @@ Button.displayName = 'Button'
 
 Button.propTypes = {
   className: PropTypes.string,
-  variant: PropTypes.oneOf(['primary', 'default', 'secondary', 'warning', 'destructive', 'outline', 'ghost', 'icon', 'link']),
-  size: PropTypes.oneOf(['default', 'sm', 'lg', 'icon']),
+  variant: PropTypes.oneOf(['primary', 'default', 'secondary', 'warning', 'destructive', 'danger', 'error', 'outline', 'ghost', 'icon', 'link', 'success']),
+  size: PropTypes.oneOf(['default', 'xs', 'sm', 'lg', 'icon', 'md']),
   disabled: PropTypes.bool,
   children: PropTypes.node,
 }
+
+export default Button

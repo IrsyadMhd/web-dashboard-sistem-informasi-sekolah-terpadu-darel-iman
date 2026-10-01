@@ -1,43 +1,65 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react'
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { useDebounce } from '../hooks/useDebounce'
 import { motion, AnimatePresence } from 'framer-motion'
 import { printEmployeeIdCard, downloadEmployeeIdCard } from '../services/idCardPrintService.jsx'
+import { downloadFileFromApi } from '../utils/exportUtils'
+import { cn } from '../lib/utils'
 import EmployeeIdCard from '../components/card-print/EmployeeIdCard'
 import ActionDropdown from '../components/app/ActionDropdown'
 import AppBadge from '../components/app/AppBadge'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
 import {
+  Activity,
+  ArrowLeft,
+  ArrowRight,
   Award,
   BadgeCheck,
+  BookOpen,
   BriefcaseBusiness,
+  Building,
   Building2,
   Calendar,
+  CalendarCheck,
   CheckCircle2,
+  Clock,
+  Database,
   Download,
   Eye,
-  Info,
+  FileSpreadsheet,
+  FileText,
+  Globe,
+  GraduationCap,
+  Hash,
   IdCard,
+  Info,
   Mail,
+  MapPin,
+  Medal,
   Pencil,
   Phone,
   Plus,
+  Printer,
   RefreshCcw,
+  Save,
   Search,
+  ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Trash2,
   TrendingUp,
+  Trophy,
+  Upload,
+  User,
   UserCheck,
   UserPlus,
+  Users,
   UsersRound,
-  Printer,
-  FileSpreadsheet,
-  FileText,
+  UserX,
   X,
-  ShieldCheck,
-  Sparkles,
+  XCircle,
 } from 'lucide-react'
 import {
   FaArrowLeft,
@@ -291,60 +313,108 @@ function makePayload(form, assignmentOnly = false) {
   }
 }
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
-  const tones = {
-    emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-    },
-    blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
-    },
-    purple: {
-      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
-      title: 'text-purple-700 dark:text-purple-400',
-      icon: 'text-purple-500',
-      val: 'text-purple-600 dark:text-purple-300',
-      sub: 'text-purple-600/70 dark:text-purple-400/70',
-    },
-    amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
-    },
-  }
+// ── DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS SPEC) ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+  },
+  purple: {
+    card: 'border-purple-300/70 bg-gradient-to-br from-purple-50 via-violet-50/60 to-white hover:border-purple-400 dark:border-purple-700/50 dark:from-purple-950/40 dark:via-violet-950/20 dark:to-slate-900',
+    glow: 'bg-purple-400/20 group-hover:bg-purple-400/30',
+    iconBox: 'bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-purple-500/30',
+    tag: 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300',
+    title: 'text-purple-700 dark:text-purple-400',
+    val: 'text-purple-700 dark:text-purple-300',
+    sub: 'text-purple-600/80 dark:text-purple-400/80',
+    cta: 'text-purple-600/60 dark:text-purple-500/60',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
+  },
+}
 
-  const t = tones[tone] || tones.emerald
+function KpiTintedCard({ icon: Icon, label, subtext, value, tag, ctaText = 'Rincian Data', tone = 'emerald', onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
 
   return (
-    <motion.button
-      type="button"
-      whileHover={{ scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.96 }}
+    <motion.article
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={onClick}
-      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md cursor-pointer group`}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left flex flex-col justify-between h-full ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card}`}
     >
-      <div className="flex items-center justify-between">
-        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
-      </div>
-      <p className={`mt-2 text-3xl font-extrabold ${t.val}`}>{value ?? 0}</p>
-      {subtext && (
-        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5`}>
-          {subtext}
+      {/* Ambient Glow */}
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+
+      {/* Header dengan Icon Box & Tag */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+              <Icon className="h-5 w-5" />
+            </div>
+            <div>
+              <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+            </div>
+          </div>
+          {tag && (
+            <span className={`rounded-lg px-2.5 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
+              {tag}
+            </span>
+          )}
+        </div>
+
+        {/* Nilai Utama */}
+        <p className={`text-3xl sm:text-4xl font-black tabular-nums tracking-tight ${t.val}`}>
+          {value ?? 0}
         </p>
+        {subtext && (
+          <p className={`mt-1 text-[11px] font-semibold ${t.sub}`}>
+            {subtext}
+          </p>
+        )}
+      </div>
+
+      {/* Click Affordance Footer */}
+      {isClickable && (
+        <div className={`mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] font-bold ${t.cta}`}>
+          <span>{ctaText}</span>
+          <span className="inline-flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+            Detail &rarr;
+          </span>
+        </div>
       )}
-    </motion.button>
+    </motion.article>
   )
 }
 
@@ -430,7 +500,20 @@ export default function EmployeesPage() {
   // Import Data States
   const [importFile, setImportFile] = useState(null)
   const [importPreviewData, setImportPreviewData] = useState([])
-  const isImporting = false
+  const [isImporting, setIsImporting] = useState(false)
+  const importFileInputRef = useRef(null)
+
+  const handleClearImportFile = (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    setImportFile(null)
+    setImportPreviewData([])
+    if (importFileInputRef.current) {
+      importFileInputRef.current.value = ''
+    }
+  }
 
   // Detail Modal State
   const [detailEmployee, setDetailEmployee] = useState(null)
@@ -555,45 +638,14 @@ export default function EmployeesPage() {
     setIdCardPrintSides('both')
   }
 
-  const rawList = useMemo(() => data?.data || [], [data?.data])
+  const rawList = useMemo(() => {
+    const list = data?.data || []
+    return Array.isArray(list) ? list : []
+  }, [data?.data])
 
   const items = useMemo(() => {
-    const apiItems = rawList.map(parseFromApi)
-    let list = apiItems.length > 0 ? apiItems : []
-
-    if (search) {
-      const q = search.toLowerCase()
-      list = list.filter(
-        (i) =>
-          i.nama_lengkap.toLowerCase().includes(q) ||
-          i.niy.toLowerCase().includes(q) ||
-          i.nik.toLowerCase().includes(q) ||
-          i.no_hp.toLowerCase().includes(q)
-      )
-    }
-
-    if (selectedUnitFilter) {
-      list = list.filter((i) => i.unit_id === selectedUnitFilter || i.unit_name.toLowerCase().includes(selectedUnitFilter.toLowerCase()))
-    }
-
-    if (selectedJabatanFilter) {
-      list = list.filter((i) => i.jabatan_id === selectedJabatanFilter || i.jabatan_name.toLowerCase().includes(selectedJabatanFilter.toLowerCase()))
-    }
-
-    if (selectedStatusPegawaiFilter) {
-      list = list.filter((i) => i.status_pegawai === selectedStatusPegawaiFilter)
-    }
-
-    if (selectedStatusFilter) {
-      list = list.filter((i) => i.status === selectedStatusFilter)
-    }
-
-    if (selectedGenderFilter) {
-      list = list.filter((i) => i.jenis_kelamin === selectedGenderFilter)
-    }
-
-    return list
-  }, [rawList, search, selectedUnitFilter, selectedJabatanFilter, selectedStatusPegawaiFilter, selectedStatusFilter, selectedGenderFilter])
+    return rawList.map(parseFromApi)
+  }, [rawList])
 
   const filteredItems = items
 
@@ -631,72 +683,31 @@ export default function EmployeesPage() {
   }, [academicYearsData])
 
   const kpiChartData = useMemo(() => {
-    if (selectedAcademicYear === '2024/2025') {
-      return [
-        { month: 'Juli', kpiSdm: 92.4, kehadiranGuru: 94.8, status: 'Baik' },
-        { month: 'Agustus', kpiSdm: 93.1, kehadiranGuru: 95.2, status: 'Sangat Baik' },
-        { month: 'September', kpiSdm: 93.8, kehadiranGuru: 95.6, status: 'Sangat Baik' },
-        { month: 'Oktober', kpiSdm: 92.9, kehadiranGuru: 94.9, status: 'Baik' },
-        { month: 'November', kpiSdm: 94.2, kehadiranGuru: 96.1, status: 'Sangat Baik' },
-        { month: 'Desember', kpiSdm: 93.5, kehadiranGuru: 95.8, status: 'Sangat Baik' },
-        { month: 'Januari', kpiSdm: 94.0, kehadiranGuru: 96.0, status: 'Sangat Baik' },
-        { month: 'Februari', kpiSdm: 94.5, kehadiranGuru: 96.3, status: 'Sangat Baik' },
-        { month: 'Maret', kpiSdm: 93.9, kehadiranGuru: 95.9, status: 'Sangat Baik' },
-        { month: 'April', kpiSdm: 94.1, kehadiranGuru: 96.0, status: 'Sangat Baik' },
-        { month: 'Mei', kpiSdm: 94.6, kehadiranGuru: 96.4, status: 'Sangat Baik' },
-        { month: 'Juni', kpiSdm: 94.3, kehadiranGuru: 96.2, status: 'Sangat Baik' },
-      ]
-    }
-    if (selectedAcademicYear === '2023/2024') {
-      return [
-        { month: 'Juli', kpiSdm: 90.8, kehadiranGuru: 93.2, status: 'Baik' },
-        { month: 'Agustus', kpiSdm: 91.5, kehadiranGuru: 93.8, status: 'Baik' },
-        { month: 'September', kpiSdm: 92.0, kehadiranGuru: 94.1, status: 'Baik' },
-        { month: 'Oktober', kpiSdm: 91.8, kehadiranGuru: 94.0, status: 'Baik' },
-        { month: 'November', kpiSdm: 92.6, kehadiranGuru: 94.7, status: 'Baik' },
-        { month: 'Desember', kpiSdm: 92.2, kehadiranGuru: 94.3, status: 'Baik' },
-        { month: 'Januari', kpiSdm: 92.9, kehadiranGuru: 95.0, status: 'Sangat Baik' },
-        { month: 'Februari', kpiSdm: 93.2, kehadiranGuru: 95.3, status: 'Sangat Baik' },
-        { month: 'Maret', kpiSdm: 93.0, kehadiranGuru: 95.1, status: 'Sangat Baik' },
-        { month: 'April', kpiSdm: 93.5, kehadiranGuru: 95.4, status: 'Sangat Baik' },
-        { month: 'Mei', kpiSdm: 93.8, kehadiranGuru: 95.7, status: 'Sangat Baik' },
-        { month: 'Juni', kpiSdm: 93.6, kehadiranGuru: 95.5, status: 'Sangat Baik' },
-      ]
-    }
-    return [
-      { month: 'Juli', kpiSdm: 93.5, kehadiranGuru: 95.4, status: 'Sangat Baik' },
-      { month: 'Agustus', kpiSdm: 94.2, kehadiranGuru: 96.0, status: 'Sangat Baik' },
-      { month: 'September', kpiSdm: 94.8, kehadiranGuru: 96.5, status: 'Sangat Baik' },
-      { month: 'Oktober', kpiSdm: 95.1, kehadiranGuru: 96.8, status: 'Unggul' },
-      { month: 'November', kpiSdm: 95.4, kehadiranGuru: 97.0, status: 'Unggul' },
-      { month: 'Desember', kpiSdm: 94.9, kehadiranGuru: 96.6, status: 'Sangat Baik' },
-      { month: 'Januari', kpiSdm: 95.6, kehadiranGuru: 97.2, status: 'Unggul' },
-      { month: 'Februari', kpiSdm: 96.0, kehadiranGuru: 97.5, status: 'Unggul' },
-    ]
+    return []
   }, [selectedAcademicYear])
 
   const kpiProfilesList = useMemo(() => {
     if (!items || items.length === 0) return []
-    const sampleScores = [98.5, 96.8, 95.2, 94.0, 92.8, 91.5]
-    const sampleStatus = ['Sangat Baik', 'Unggul', 'Sangat Baik', 'Baik', 'Baik', 'Baik']
-
-    return items.slice(0, 6).map((emp, idx) => {
-      const score = sampleScores[idx % sampleScores.length]
-      const label = sampleStatus[idx % sampleStatus.length]
-      return {
-        ...emp,
-        kpiScore: score,
-        kpiLabel: label,
-        presenceRate: Math.min(100, Math.round(score + 1.2)),
-      }
-    })
+    return items
+      .filter((emp) => emp.kpi_score !== undefined || emp.kpiScore !== undefined || emp.skor_kinerja !== undefined)
+      .map((emp) => {
+        const score = Number(emp.kpi_score || emp.kpiScore || emp.skor_kinerja || 0)
+        return {
+          ...emp,
+          kpiScore: score,
+          kpiLabel: emp.kpi_label || emp.kpiLabel || (score >= 90 ? 'Sangat Baik' : score >= 75 ? 'Baik' : 'Cukup'),
+          presenceRate: Number(emp.presence_rate || emp.presenceRate || 0),
+        }
+      })
   }, [items])
 
   const paginationInfo = {
-    total: data?.total || items.length,
-    from: data?.from || (items.length > 0 ? 1 : 0),
-    to: data?.to || items.length,
+    total: data?.total ?? (data?.data ? data.data.length : items.length),
+    from: data?.from ?? (items.length > 0 ? (page - 1) * perPage + 1 : 0),
+    to: data?.to ?? (items.length > 0 ? (page - 1) * perPage + items.length : 0),
     last_page: data?.last_page || 1,
+    current_page: data?.current_page || page,
+    per_page: data?.per_page || perPage,
   }
 
   const handleFotoUpload = (e) => {
@@ -710,29 +721,145 @@ export default function EmployeesPage() {
   }
 
   // --- Handlers Import ---
-  const handleDownloadTemplatePegawai = () => {
-    const headers = ['NIY', 'NIK', 'Nama Lengkap', 'Jenis Kelamin (L/P)', 'Jabatan', 'Status Pegawai', 'No HP', 'Email']
-    const sampleRow = ['NIY-2026001', '1371012345670001', 'Ustadz Ahmad Farhan, S.Pd', 'L', 'Guru Kelas', 'Tetap', '08123456789', 'ahmad@dareliman.sch.id']
-    const csvContent = [headers.join(','), sampleRow.join(',')].join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'Template_Import_Pegawai.csv'
-    link.click()
-    URL.revokeObjectURL(url)
-  }
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setImportFile(file)
     setImportPreviewData([])
+
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (ext === 'xlsx' || ext === 'xls') {
+      // Berkas biner Excel: tidak dibaca via readAsText agar biner ZIP/OLE tidak rusak.
+      // Berkas dikirim via FormData dan diparsing native oleh PhpOffice\PhpSpreadsheet di backend.
+      setImportPreviewData([
+        {
+          niy: '(Sistem)',
+          nama: file.name,
+          jabatan: `Format ${ext.toUpperCase()}`,
+          unit: `${(file.size / 1024).toFixed(1)} KB`,
+          status: 'Siap Impor',
+        },
+      ])
+      return
+    }
+
+    // Parsing aman untuk berkas CSV dan TXT
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const content = String(reader.result || '').replace(/^\uFEFF/, '')
+        const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0)
+        if (lines.length <= 1) {
+          setImportPreviewData([])
+          return
+        }
+
+        const delimiter = lines[0].includes(';') && !lines[0].includes(',') ? ';' : (lines[0].includes('\t') ? '\t' : ',')
+        const parseCsvLine = (line) => {
+          const values = []
+          let value = ''
+          let quoted = false
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i]
+            if (char === '"' && line[i + 1] === '"' && quoted) {
+              value += '"'
+              i++
+            } else if (char === '"') {
+              quoted = !quoted
+            } else if (char === delimiter && !quoted) {
+              values.push(value.trim())
+              value = ''
+            } else {
+              value += char
+            }
+          }
+          values.push(value.trim())
+          return values
+        }
+
+        const headerRow = parseCsvLine(lines[0]).map((h) => h.toLowerCase().replace(/[\s_\-.:/]/g, ''))
+        const findCol = (keys) => headerRow.findIndex((h) => keys.includes(h))
+
+        const idxNiy = findCol(['niy', 'nip', 'nomorindukyayasan'])
+        const idxNama = findCol(['namalengkap', 'nama', 'fullname', 'name'])
+        const idxJabatan = findCol(['jabatan', 'position', 'posisi'])
+        const idxUnit = findCol(['unitkerja', 'unit', 'unitpendidikan', 'educationunit'])
+
+        const dataLines = lines.slice(1, 11) // pratinjau maks 10 baris
+        const rows = dataLines.map((line, idx) => {
+          const cols = parseCsvLine(line)
+          const niy = idxNiy !== -1 ? (cols[idxNiy] || '') : (cols[0] || '')
+          const nama = idxNama !== -1 ? (cols[idxNama] || '') : (cols[2] || cols[1] || '')
+          const jabatan = idxJabatan !== -1 ? (cols[idxJabatan] || '') : (cols[5] || cols[3] || '-')
+          const unit = idxUnit !== -1 ? (cols[idxUnit] || '') : (cols[6] || cols[4] || '-')
+
+          return {
+            niy: niy || '-',
+            nama: nama || `Baris ${idx + 2}`,
+            jabatan: jabatan || '-',
+            unit: unit || '-',
+            status: nama ? 'Siap Impor' : 'Nama kosong',
+          }
+        })
+
+        setImportPreviewData(rows.filter((r) => r.nama || r.niy !== '-'))
+      } catch (err) {
+        console.error('Preview error', err)
+        setImportPreviewData([])
+      }
+    }
+    reader.readAsText(file)
   }
 
-  const handleProcessImport = () => {
+  const handleProcessImport = async () => {
     if (!importFile) return
-    pushNotification('Import Belum Tersedia', 'Endpoint pegawai belum memproses isi file. Tidak ada data yang diubah.', 'warning')
+    setIsImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+
+      const res = await employeeService.importData(formData)
+      const resData = res?.data || res || {}
+
+      setIsImporting(false)
+      setShowImportModal(false)
+      setImportFile(null)
+      setImportPreviewData([])
+      setPage(1)
+
+      const totalBerhasil = resData.berhasil || 0
+      const totalGagal = resData.gagal || 0
+
+      let notifType = 'success'
+      let notifTitle = 'Impor Berhasil'
+      if (totalGagal > 0 && totalBerhasil === 0) {
+        notifType = 'error'
+        notifTitle = 'Impor Gagal'
+      } else if (totalGagal > 0 && totalBerhasil > 0) {
+        notifType = 'warning'
+        notifTitle = 'Impor Selesai Sebagian'
+      }
+
+      let notifMsg = res.message || `Berhasil: ${totalBerhasil} data pegawai.`
+      if (resData.errors && resData.errors.length > 0) {
+        notifMsg += ` Catatan: ${resData.errors[0]}`
+      }
+
+      pushNotification(notifTitle, notifMsg, notifType)
+
+      queryClient.invalidateQueries({ queryKey: ['employees-list'] })
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-dashboard'] })
+      if (typeof refetch === 'function') {
+        refetch()
+      }
+    } catch (err) {
+      setIsImporting(false)
+      const details = err?.response?.data?.errors ? Object.values(err.response.data.errors).flat().join(', ') : ''
+      const msg = details ? `${err?.response?.data?.message || 'Gagal'}: ${details}` : (err?.response?.data?.message || err.message || 'Gagal memproses impor data pegawai.')
+      pushNotification('Impor Gagal', msg, 'error')
+    }
   }
 
   // Mutations
@@ -776,6 +903,8 @@ export default function EmployeesPage() {
       pushNotification('Gagal Dihapus', err?.response?.data?.message || 'Terjadi kesalahan saat menghapus data pegawai.', 'error')
     },
   })
+
+  const isMutating = createMutation.isPending || updateMutation.isPending
 
   // Modal Handlers
   const openAddModal = () => {
@@ -889,33 +1018,21 @@ export default function EmployeesPage() {
     URL.revokeObjectURL(url)
   }
 
-  // Multi-format Export Handler (.csv, .xls, .xlsx)
-  const handleExportDataFormat = (format = 'xlsx') => {
+  // Multi-format Server-Side Export Handler (.csv, .xls, .xlsx)
+  const handleExportDataFormat = async (format = 'xlsx') => {
     if (!canExportEmployee) return
-    const filename = `pegawai-export-${new Date().toISOString().slice(0, 10)}.${format}`
-    const headers = ['NIY', 'NIK', 'Nama Lengkap', 'Gelar Depan', 'Gelar Belakang', 'Jabatan', 'Unit Kerja', 'Status Pegawai', 'Status Keaktifan', 'No HP', 'Email', 'Alamat']
-    const rows = filteredItems.map((item) => [
-      item.niy || '',
-      item.nik || '',
-      item.nama_lengkap || '',
-      item.gelar_depan || '',
-      item.gelar_belakang || '',
-      item.jabatan_name || '',
-      item.unit_name || '',
-      item.status_pegawai || '',
-      item.status || '',
-      item.no_hp || '',
-      item.email || '',
-      item.alamat || '',
-    ])
-
-    if (format === 'csv') {
-      downloadCsvFile(filename, headers, rows)
-    } else {
-      downloadXmlSpreadsheet(filename, headers, rows)
-    }
     setShowExportModal(false)
-    pushNotification('Export Berhasil', `${filteredItems.length} data pegawai berhasil diekspor (format .${format.toUpperCase()}).`, 'info')
+
+    const params = {}
+    if (debouncedSearch) params.search = debouncedSearch
+    if (selectedUnitFilter) params.unit_id = selectedUnitFilter
+    if (selectedJabatanFilter) params.jabatan_id = selectedJabatanFilter
+    if (selectedStatusPegawaiFilter) params.status_pegawai = selectedStatusPegawaiFilter
+    if (selectedStatusFilter) params.status = selectedStatusFilter
+    if (selectedGenderFilter) params.jenis_kelamin = selectedGenderFilter
+
+    await downloadFileFromApi('/employees/export', params, format, `pegawai-export-${new Date().toISOString().slice(0, 10)}`)
+    pushNotification('Export Berhasil', `Data pegawai berhasil diexport ke berkas .${format.toUpperCase()}.`, 'success')
   }
 
   // Download Import/Export Template Handler (.csv, .xls, .xlsx)
@@ -1001,130 +1118,6 @@ export default function EmployeesPage() {
     setPage(1)
   }
 
-  // Column definitions following TAILGRIDS_TABLE_COMPONENT benchmark
-  const employeeColumns = [
-    {
-      key: 'nama_lengkap',
-      label: 'Nama Pegawai',
-      render: (row) => {
-        const fullName = `${row.gelar_depan ? `${row.gelar_depan} ` : ''}${row.nama_lengkap}${row.gelar_belakang ? `, ${row.gelar_belakang}` : ''}`
-        return (
-          <div className="flex min-w-0 items-center gap-3">
-            <PersonAvatar
-              src={getEmployeePhotoUrl(row)}
-              name={fullName}
-              size="md"
-            />
-            <span className="min-w-0 flex-1">
-              <HoverCard>
-                <HoverCardTrigger
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setDetailEmployee(row)
-                    setActiveDetailTab('Identitas')
-                  }}
-                  className="inline-block max-w-full truncate text-[13px] font-extrabold leading-5 text-slate-900 dark:text-white border-b border-dashed border-slate-400/60 hover:border-[#0E5C44] transition-colors cursor-pointer"
-                  title={fullName}
-                >
-                  {fullName}
-                </HoverCardTrigger>
-                <HoverCardContent className="w-64 p-3.5 border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#1B2433] shadow-xl rounded-xl">
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <PersonAvatar
-                      src={getEmployeePhotoUrl(row)}
-                      name={fullName}
-                      size="sm"
-                    />
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{fullName}</h4>
-                      <p className="text-[10px] text-slate-500 font-mono">{row.niy ? `NIY ${row.niy}` : 'NIY —'}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
-                    <p><strong className="text-slate-400 font-normal">Jabatan:</strong> {row.jabatan_name || '-'}</p>
-                    <p><strong className="text-slate-400 font-normal">Unit Kerja:</strong> {row.unit_name || '-'}</p>
-                    <p><strong className="text-slate-400 font-normal">No HP:</strong> {row.no_hp || '-'}</p>
-                    <p><strong className="text-slate-400 font-normal">Email:</strong> {row.email || '-'}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setDetailEmployee(row); setActiveDetailTab('Identitas') }}
-                    className="w-full py-1.5 bg-[#0E5C44] text-white text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors hover:bg-[#1E8E5A] mt-2.5 cursor-pointer"
-                  >
-                    Lihat Profil Pegawai
-                  </button>
-                </HoverCardContent>
-              </HoverCard>
-              <small className="block truncate font-mono text-[10px] text-slate-400">
-                {row.niy ? `NIY ${row.niy}` : 'NIY belum tersedia'}
-              </small>
-            </span>
-          </div>
-        )
-      },
-    },
-    {
-      key: 'jabatan_name',
-      label: 'Jabatan & Unit Kerja',
-      className: 'hidden md:table-cell',
-      render: (row) => (
-        <div>
-          <p className="truncate font-bold text-xs text-slate-900 dark:text-slate-100">{row.jabatan_name || '—'}</p>
-          <p className="truncate text-xs text-emerald-700 dark:text-emerald-400 font-semibold">{row.unit_name || 'Belum ditentukan'}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'kontak',
-      label: 'Kontak',
-      className: 'hidden lg:table-cell',
-      render: (row) => (
-        <div className="space-y-0.5 text-xs">
-          <p className="flex items-center gap-1.5 truncate text-slate-700 dark:text-slate-300 font-medium">
-            <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-            {row.no_hp || '—'}
-          </p>
-          <p className="flex items-center gap-1.5 truncate text-slate-500">
-            <Mail className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-            {row.email || '—'}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      className: 'hidden sm:table-cell text-center',
-      render: (row) => (
-        <div className="flex justify-center">
-          {isGlobalPersonnelManager ? (
-            <button type="button" onClick={() => toggleEmployeeStatus(row)} title="Ubah status pegawai" className="cursor-pointer">
-              <AppBadge variant={row.status === 'Aktif' ? 'success' : row.status === 'Cuti' ? 'warning' : 'danger'} dot>
-                {row.status || 'Belum ditetapkan'}
-              </AppBadge>
-            </button>
-          ) : (
-            <AppBadge variant={row.status === 'Aktif' ? 'success' : row.status === 'Cuti' ? 'warning' : 'danger'} dot>
-              {row.status || 'Belum ditetapkan'}
-            </AppBadge>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'tanggal_masuk',
-      label: 'Tgl Bergabung',
-      className: 'hidden xl:table-cell text-center',
-      render: (row) => (
-        <span className="whitespace-nowrap font-medium text-xs text-slate-700 dark:text-slate-300">
-          {row.tanggal_masuk
-            ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(row.tanggal_masuk))
-            : '—'}
-        </span>
-      ),
-    },
-  ]
 
   const renderMobileCard = ({ row }) => {
     const fullName = `${row.gelar_depan ? `${row.gelar_depan} ` : ''}${row.nama_lengkap}${row.gelar_belakang ? `, ${row.gelar_belakang}` : ''}`
@@ -1324,7 +1317,7 @@ export default function EmployeesPage() {
 
   // Soft Pastel Squircle Action Buttons (Toolbar Row 1 Header)
   const renderActionButtons = (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
       {/* Impor CSV/Excel Data Button - Soft Pastel Sky Blue */}
       <div className="group relative inline-flex">
         <button
@@ -1332,9 +1325,9 @@ export default function EmployeesPage() {
           title="Impor Data Pegawai (.csv, .xls, .xlsx)"
           aria-label="Impor Data Pegawai"
           onClick={() => setShowImportModal(true)}
-          className="flex size-10 items-center justify-center rounded-2xl bg-[#E0F2FE] text-[#0284C7] hover:bg-[#BAE6FD] dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
         >
-          <Upload1 className="size-5" />
+          <Upload className="size-5 text-white" strokeWidth={2.2} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1343,21 +1336,23 @@ export default function EmployeesPage() {
       </div>
 
       {/* Ekspor CSV/Excel Data Button - Soft Pastel Amber/Orange */}
-      <div className="group relative inline-flex">
-        <button
-          type="button"
-          title="Ekspor Data Pegawai (.csv, .xls, .xlsx)"
-          aria-label="Ekspor Data Pegawai"
-          onClick={() => setShowExportModal(true)}
-          className="flex size-10 items-center justify-center rounded-2xl bg-[#FEF3C7] text-[#D97706] hover:bg-[#FDE68A] dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
-        >
-          <Download1 className="size-5" />
-        </button>
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Ekspor Data (.csv, .xls, .xlsx)
+      {canExportEmployee && (
+        <div className="group relative inline-flex">
+          <button
+            type="button"
+            title="Ekspor Data Pegawai (.csv, .xls, .xlsx)"
+            aria-label="Ekspor Data Pegawai"
+            onClick={() => setShowExportModal(true)}
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+          >
+            <Download className="size-5 text-white" strokeWidth={2.2} />
+          </button>
+          <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+            <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+            Ekspor Data (.csv, .xls, .xlsx)
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Unduh Template Impor/Ekspor Button - Soft Pastel Violet/Purple */}
       <div className="group relative inline-flex">
@@ -1366,9 +1361,9 @@ export default function EmployeesPage() {
           title="Unduh Format Template (.csv, .xls, .xlsx)"
           aria-label="Unduh Format Template"
           onClick={() => setShowTemplateModal(true)}
-          className="flex size-10 items-center justify-center rounded-2xl bg-[#EDE9FE] text-[#7C3AED] hover:bg-[#DDD6FE] dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 via-purple-600 to-violet-700 text-white border border-purple-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
         >
-          <FileSpreadsheet className="size-5" />
+          <FileSpreadsheet className="size-5 text-white" strokeWidth={2.2} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1383,9 +1378,9 @@ export default function EmployeesPage() {
           title="Segarkan Data Real-Time"
           aria-label="Segarkan Data Real-Time"
           onClick={() => queryClient.invalidateQueries({ queryKey: ['employees'] })}
-          className="flex size-10 items-center justify-center rounded-2xl bg-[#E0F2FE] text-[#0284C7] hover:bg-[#BAE6FD] dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 via-cyan-500 to-teal-600 text-white border border-cyan-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
         >
-          <RefreshCcw className="size-5" />
+          <RefreshCcw className="size-5 text-white" strokeWidth={2.2} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1400,9 +1395,9 @@ export default function EmployeesPage() {
           title="Cetak Data Laporan (Print)"
           aria-label="Cetak Data Laporan"
           onClick={handlePrintMainTable}
-          className="flex size-10 items-center justify-center rounded-2xl bg-[#E0E7FF] text-[#4338CA] hover:bg-[#C7D2FE] dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
         >
-          <Printer className="size-5" />
+          <Printer className="size-5 text-white" strokeWidth={2.2} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1418,9 +1413,9 @@ export default function EmployeesPage() {
             title="Tambah Pegawai Baru"
             aria-label="Tambah Pegawai Baru"
             onClick={openAddModal}
-            className="flex size-10 items-center justify-center rounded-2xl bg-[#D1FAE5] text-[#059669] hover:bg-[#A7F3D0] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+            className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
           >
-            <Plus className="size-5" />
+            <Plus className="size-5 text-white" strokeWidth={2.5} />
           </button>
           <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
             <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1670,6 +1665,7 @@ export default function EmployeesPage() {
     {
       key: 'nama_lengkap',
       label: 'NIY & NAMA PEGAWAI',
+      sortable: true,
       className: 'w-64 sm:w-72',
       render: (row) => {
         const namaFull = `${row.gelar_depan ? row.gelar_depan + ' ' : ''}${row.nama_lengkap}${row.gelar_belakang ? ', ' + row.gelar_belakang : ''}`
@@ -1712,6 +1708,7 @@ export default function EmployeesPage() {
     {
       key: 'jabatan_name',
       label: 'JABATAN',
+      sortable: true,
       className: 'w-48',
       render: (row) => (
         <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
@@ -1722,6 +1719,7 @@ export default function EmployeesPage() {
     {
       key: 'unit_name',
       label: 'UNIT KERJA',
+      sortable: true,
       className: 'w-36',
       render: (row) => (
         <span className="inline-block text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-900/40">
@@ -1732,6 +1730,7 @@ export default function EmployeesPage() {
     {
       key: 'status_pegawai',
       label: 'STATUS PEGAWAI',
+      sortable: true,
       className: 'w-32',
       render: (row) => renderStatusPegawaiBadge(row.status_pegawai),
     },
@@ -1749,6 +1748,7 @@ export default function EmployeesPage() {
     {
       key: 'status',
       label: 'STATUS',
+      sortable: true,
       className: 'w-28',
       render: (row) => (
         <Badge color={row.status === 'Aktif' ? 'success' : row.status === 'Cuti' ? 'warning' : 'gray'} size="sm">
@@ -1844,7 +1844,7 @@ export default function EmployeesPage() {
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 print:space-y-1 pb-12 print:pb-0">
         {/* 1. Breadcrumb Navigation */}
         <div className="print:hidden">
-          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Data Pegawai' }]} />
+          <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard/master/pegawai' }, { label: 'Direktori Pegawai' }]} />
         </div>
 
         {/* Header Halaman Modern Hero Card */}
@@ -1855,7 +1855,7 @@ export default function EmployeesPage() {
 
           <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4 min-w-0">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
                 <UserCheck className="h-6 w-6" />
               </div>
               <div className="min-w-0">
@@ -1883,7 +1883,7 @@ export default function EmployeesPage() {
           </div>
         </motion.div>
 
-        {/* 2. Summary Stats Cards */}
+        {/* 2. Summary Stats Cards (ModernKpiCard Spec) */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <KpiTintedCard
             label="Total Pegawai ERP"
@@ -1891,6 +1891,8 @@ export default function EmployeesPage() {
             subtext="Seluruh direktori pegawai"
             icon={UsersRound}
             tone="emerald"
+            tag={`${items.length} Pegawai`}
+            ctaText="Rincian Pegawai"
             onClick={() => setStatCardModal({ isOpen: true, type: 'total', title: 'Detail Data: Total Pegawai ERP', badge: 'SDM' })}
           />
           <KpiTintedCard
@@ -1899,6 +1901,8 @@ export default function EmployeesPage() {
             subtext="Guru & Pengajar aktif"
             icon={Award}
             tone="blue"
+            tag={`${items.filter((i) => i.jabatan_name?.toLowerCase().includes('guru') || i.jabatan_name?.toLowerCase().includes('kepala')).length} Guru`}
+            ctaText="Komposisi Guru"
             onClick={() => setStatCardModal({ isOpen: true, type: 'pendidik', title: 'Detail Data: Tenaga Pendidik / Guru', badge: 'Pendidik' })}
           />
           <KpiTintedCard
@@ -1907,6 +1911,8 @@ export default function EmployeesPage() {
             subtext="Administrasi & Teknis"
             icon={Building2}
             tone="purple"
+            tag={`${items.filter((i) => !i.jabatan_name?.toLowerCase().includes('guru')).length} Tendik`}
+            ctaText="Staf & Tendik"
             onClick={() => setStatCardModal({ isOpen: true, type: 'tendik', title: 'Detail Data: Staf TU & Operator', badge: 'Tendik' })}
           />
           <KpiTintedCard
@@ -1915,6 +1921,8 @@ export default function EmployeesPage() {
             subtext="Aktif Bekerja"
             icon={CheckCircle2}
             tone="amber"
+            tag={`${items.filter((i) => i.status === 'Aktif').length} Aktif`}
+            ctaText="Status Operasional"
             onClick={() => setStatCardModal({ isOpen: true, type: 'aktif', title: 'Detail Data: Pegawai Status Aktif', badge: 'Aktif' })}
           />
         </div>
@@ -1922,12 +1930,12 @@ export default function EmployeesPage() {
         {/* 3. SECTION CARD KPI PEGAWAI & GURU (REAL DATABASE DATA) */}
         <div className="print:hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Card KPI Kehadiran Pegawai */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white p-5 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] space-y-4">
+            <div className="flex items-center justify-between border-b border-emerald-200/90 dark:border-emerald-800/60 pb-3.5">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
-                  <CheckCircle2 className="h-5 w-5" />
-                </span>
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
+                  <CalendarCheck className="size-5" />
+                </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                     KPI Kehadiran & Presensi Pegawai
@@ -1937,25 +1945,34 @@ export default function EmployeesPage() {
                   </p>
                 </div>
               </div>
-              <Badge color="success" size="sm">
+              <Badge color="success" size="sm" prefixIcon={<Database className="size-3" />}>
                 Real DB Presensi
               </Badge>
             </div>
 
             {/* Metrics Breakdown */}
             <div className="grid grid-cols-3 gap-2.5">
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-center dark:border-emerald-900/40 dark:bg-emerald-950/30">
-                <span className="block text-[10px] font-bold text-emerald-800 dark:text-emerald-300">Kehadiran</span>
+              <div className="rounded-xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/80 to-emerald-50/30 p-3 text-center dark:border-emerald-800/60 dark:from-emerald-950/40 dark:to-emerald-950/20">
+                <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 mb-0.5">
+                  <UserCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Kehadiran</span>
+                </div>
                 <strong className="block text-lg font-black text-emerald-700 dark:text-emerald-400">{presensiHadirPct}%</strong>
                 <span className="block text-[10px] text-emerald-600 dark:text-emerald-500 font-semibold">{presensiHadirCount} Log</span>
               </div>
-              <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 text-center dark:border-amber-900/40 dark:bg-amber-950/30">
-                <span className="block text-[10px] font-bold text-amber-800 dark:text-amber-300">Keterlambatan</span>
+              <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/80 to-amber-50/30 p-3 text-center dark:border-amber-800/60 dark:from-amber-950/40 dark:to-amber-950/20">
+                <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 mb-0.5">
+                  <Clock className="size-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Keterlambatan</span>
+                </div>
                 <strong className="block text-lg font-black text-amber-700 dark:text-amber-400">{presensiTerlambatPct}%</strong>
                 <span className="block text-[10px] text-amber-600 dark:text-amber-500 font-semibold">{presensiTerlambatCount} Log</span>
               </div>
-              <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3 text-center dark:border-rose-900/40 dark:bg-rose-950/30">
-                <span className="block text-[10px] font-bold text-rose-800 dark:text-rose-300">Izin / Sakit / Alpa</span>
+              <div className="rounded-xl border border-rose-200/80 bg-gradient-to-b from-rose-50/80 to-rose-50/30 p-3 text-center dark:border-rose-800/60 dark:from-rose-950/40 dark:to-rose-950/20">
+                <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-rose-800 dark:text-rose-300 mb-0.5">
+                  <UserX className="size-3.5 text-rose-600 dark:text-rose-400" />
+                  <span>Izin / Sakit / Alpa</span>
+                </div>
                 <strong className="block text-lg font-black text-rose-700 dark:text-rose-400">{presensiTidakMasukPct}%</strong>
                 <span className="block text-[10px] text-rose-600 dark:text-rose-500 font-semibold">{presensiTidakMasukCount} Log</span>
               </div>
@@ -1963,9 +1980,12 @@ export default function EmployeesPage() {
 
             {/* Segmented Progress Bar */}
             <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                <span>Rasio Distribusi Presensi Pegawai</span>
-                <span className="text-emerald-600 dark:text-emerald-400">{presensiHadirPct}% Hadir Tepat Waktu</span>
+              <div className="flex justify-between items-center text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                <span className="flex items-center gap-1.5">
+                  <Activity className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Rasio Distribusi Presensi Pegawai</span>
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{presensiHadirPct}% Hadir Tepat Waktu</span>
               </div>
               <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 flex">
                 <div style={{ width: `${Math.max(presensiHadirPct, 5)}%` }} className="bg-emerald-500 h-full transition-all duration-500" title="Kehadiran Tepat Waktu" />
@@ -1976,12 +1996,12 @@ export default function EmployeesPage() {
           </div>
 
           {/* Card KPI Jam Mengajar Guru */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white p-5 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] space-y-4">
+            <div className="flex items-center justify-between border-b border-emerald-200/90 dark:border-emerald-800/60 pb-3.5">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
-                  <Award className="h-5 w-5" />
-                </span>
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white shadow-sm border border-sky-300/40">
+                  <BookOpen className="size-5" />
+                </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                     KPI Jam Pelajaran & Beban Mengajar Guru
@@ -1991,32 +2011,43 @@ export default function EmployeesPage() {
                   </p>
                 </div>
               </div>
-              <Badge color="cyan" size="sm">
+              <Badge color="cyan" size="sm" prefixIcon={<Database className="size-3" />}>
                 Real DB Kurikulum
               </Badge>
             </div>
 
             {/* Metrics Breakdown */}
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3 dark:border-sky-900/40 dark:bg-sky-950/30">
-                <span className="block text-[10px] font-bold text-sky-800 dark:text-sky-300">Mapel Jam Terbanyak</span>
+              <div className="rounded-xl border border-sky-200/80 bg-gradient-to-b from-sky-50/80 to-sky-50/30 p-3 dark:border-sky-800/60 dark:from-sky-950/40 dark:to-sky-950/20">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-sky-800 dark:text-sky-300 mb-0.5">
+                  <BookOpen className="size-3.5 text-sky-600 dark:text-sky-400" />
+                  <span>Mapel Jam Terbanyak</span>
+                </div>
                 <strong className="block text-sm font-extrabold text-sky-900 dark:text-sky-100 truncate" title={topMapelName}>{topMapelName}</strong>
                 <span className="block text-[11px] text-sky-600 dark:text-sky-400 font-bold mt-0.5">{topMapelHours} Jam / Sesi Pelajaran</span>
               </div>
-              <div className="rounded-xl border border-purple-100 bg-purple-50/60 p-3 dark:border-purple-900/40 dark:bg-purple-950/30">
-                <span className="block text-[10px] font-bold text-purple-800 dark:text-purple-300">Guru Alokasi Jam Terbanyak</span>
+              <div className="rounded-xl border border-purple-200/80 bg-gradient-to-b from-purple-50/80 to-purple-50/30 p-3 dark:border-purple-800/60 dark:from-purple-950/40 dark:to-purple-950/20">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-purple-800 dark:text-purple-300 mb-0.5">
+                  <GraduationCap className="size-3.5 text-purple-600 dark:text-purple-400" />
+                  <span>Guru Alokasi Jam Terbanyak</span>
+                </div>
                 <strong className="block text-sm font-extrabold text-purple-900 dark:text-purple-100 truncate" title={topGuruName}>{topGuruName}</strong>
                 <span className="block text-[11px] text-purple-600 dark:text-purple-400 font-bold mt-0.5">{topGuruHours} Jam / Minggu</span>
               </div>
             </div>
 
             {/* Total Jam & Summary Footer */}
-            <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/60 flex items-center justify-between border border-slate-100 dark:border-slate-800">
-              <div>
-                <span className="block text-[11px] font-extrabold text-slate-700 dark:text-slate-300">Total Alokasi Jam Mengajar Unit</span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">Rata-rata {kpiGuru.rata_jam_per_guru ?? 0} JP per Pendidik</span>
+            <div className="rounded-xl bg-gradient-to-r from-emerald-50/60 via-teal-50/40 to-sky-50/40 p-3 dark:from-slate-900/80 dark:to-slate-900/60 flex items-center justify-between border border-emerald-200/70 dark:border-emerald-800/50">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                  <Clock className="size-4" />
+                </div>
+                <div>
+                  <span className="block text-[11px] font-extrabold text-slate-800 dark:text-slate-200">Total Alokasi Jam Mengajar Unit</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Rata-rata {kpiGuru.rata_jam_per_guru ?? 0} JP per Pendidik</span>
+                </div>
               </div>
-              <span className="rounded-lg bg-sky-100 px-3 py-1.5 text-xs font-black text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+              <span className="rounded-xl bg-sky-100/90 border border-sky-200 px-3 py-1.5 text-xs font-black text-sky-800 dark:bg-sky-950 dark:border-sky-800 dark:text-sky-200">
                 {totalJamPelajaran} JP
               </span>
             </div>
@@ -2026,12 +2057,12 @@ export default function EmployeesPage() {
         {/* 3.1 SECTION 3 PEGAWAI TERBAIK & 3 GURU TERBAIK */}
         <div className="print:hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Card Top 3 Pegawai Terbaik */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-3.5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white p-5 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] space-y-3.5">
+            <div className="flex items-center justify-between border-b border-emerald-200/90 dark:border-emerald-800/60 pb-3.5">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
-                </span>
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white shadow-sm border border-amber-300/40">
+                  <Trophy className="size-5" />
+                </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                     Top 3 Pegawai Terbaik Bulan Ini
@@ -2041,7 +2072,7 @@ export default function EmployeesPage() {
                   </p>
                 </div>
               </div>
-              <Badge color="warning" size="sm">
+              <Badge color="warning" size="sm" prefixIcon={<Award className="size-3" />}>
                 Pegawai Teladan
               </Badge>
             </div>
@@ -2049,12 +2080,12 @@ export default function EmployeesPage() {
             <div className="space-y-2.5">
               {top3Pegawai.map((emp, index) => {
                 const fullName = `${emp.gelar_depan ? emp.gelar_depan + ' ' : ''}${emp.nama_lengkap}${emp.gelar_belakang ? ', ' + emp.gelar_belakang : ''}`
-                const rankColor = index === 0 ? 'bg-amber-500 text-white' : index === 1 ? 'bg-slate-400 text-white' : 'bg-amber-700 text-white'
+                const rankColor = index === 0 ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' : index === 1 ? 'bg-gradient-to-br from-slate-400 to-slate-500 text-white' : 'bg-gradient-to-br from-amber-700 to-amber-800 text-white'
                 const rankLabel = index === 0 ? '#1 Pegawai' : index === 1 ? '#2 Pegawai' : '#3 Pegawai'
                 return (
                   <EmployeeHoverCard key={emp.id || emp.niy || index} employee={emp}>
                     <div
-                      className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40 hover:border-amber-300 dark:hover:border-amber-700 transition cursor-pointer"
+                      className="flex items-center justify-between p-3 rounded-xl border border-emerald-100 bg-slate-50/70 dark:border-emerald-900/40 dark:bg-slate-900/40 hover:border-amber-300 dark:hover:border-amber-700 transition cursor-pointer"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black shadow-2xs ${rankColor}`}>
@@ -2065,13 +2096,17 @@ export default function EmployeesPage() {
                           <p className="truncate text-xs font-extrabold text-slate-900 dark:text-white" title={fullName}>
                             {fullName}
                           </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                            {emp.jabatan_name || 'Staf'} • <span className="text-emerald-700 font-semibold">{emp.unit_name || 'SIT'}</span>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                            <BriefcaseBusiness className="size-3 text-slate-400" />
+                            <span>{emp.jabatan_name || 'Staf'}</span>
+                            <span>•</span>
+                            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{emp.unit_name || 'SIT'}</span>
                           </p>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="inline-block rounded-md bg-amber-100/90 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-amber-100/90 px-2 py-0.5 text-[10px] font-extrabold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                          <Medal className="size-2.5 text-amber-600 dark:text-amber-400" />
                           {rankLabel}
                         </span>
                       </div>
@@ -2083,12 +2118,12 @@ export default function EmployeesPage() {
           </div>
 
           {/* Card Top 3 Guru Terbaik */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] space-y-3.5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white p-5 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] space-y-3.5">
+            <div className="flex items-center justify-between border-b border-emerald-200/90 dark:border-emerald-800/60 pb-3.5">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400">
-                  <Award className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                </span>
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 text-white shadow-sm border border-purple-300/40">
+                  <Award className="size-5" />
+                </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                     Top 3 Guru & Pendidik Terbaik Bulan Ini
@@ -2098,7 +2133,7 @@ export default function EmployeesPage() {
                   </p>
                 </div>
               </div>
-              <Badge color="purple" size="sm">
+              <Badge color="purple" size="sm" prefixIcon={<GraduationCap className="size-3" />}>
                 Guru Teladan
               </Badge>
             </div>
@@ -2106,12 +2141,12 @@ export default function EmployeesPage() {
             <div className="space-y-2.5">
               {top3Guru.map((emp, index) => {
                 const fullName = `${emp.gelar_depan ? emp.gelar_depan + ' ' : ''}${emp.nama_lengkap}${emp.gelar_belakang ? ', ' + emp.gelar_belakang : ''}`
-                const rankColor = index === 0 ? 'bg-purple-600 text-white' : index === 1 ? 'bg-indigo-500 text-white' : 'bg-sky-600 text-white'
+                const rankColor = index === 0 ? 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white' : index === 1 ? 'bg-gradient-to-br from-indigo-400 to-indigo-500 text-white' : 'bg-gradient-to-br from-sky-500 to-blue-600 text-white'
                 const rankLabel = index === 0 ? '#1 Guru' : index === 1 ? '#2 Guru' : '#3 Guru'
                 return (
                   <EmployeeHoverCard key={emp.id || emp.niy || index} employee={emp}>
                     <div
-                      className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40 hover:border-purple-300 dark:hover:border-purple-700 transition cursor-pointer"
+                      className="flex items-center justify-between p-3 rounded-xl border border-emerald-100 bg-slate-50/70 dark:border-emerald-900/40 dark:bg-slate-900/40 hover:border-purple-300 dark:hover:border-purple-700 transition cursor-pointer"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black shadow-2xs ${rankColor}`}>
@@ -2122,13 +2157,17 @@ export default function EmployeesPage() {
                           <p className="truncate text-xs font-extrabold text-slate-900 dark:text-white" title={fullName}>
                             {fullName}
                           </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                            {emp.jabatan_name || 'Guru'} • <span className="text-emerald-700 font-semibold">{emp.unit_name || 'SIT'}</span>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1 mt-0.5">
+                            <BookOpen className="size-3 text-slate-400" />
+                            <span>{emp.jabatan_name || 'Guru'}</span>
+                            <span>•</span>
+                            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{emp.unit_name || 'SIT'}</span>
                           </p>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="inline-block rounded-md bg-purple-100/90 px-2 py-0.5 text-[10px] font-extrabold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-purple-100/90 px-2 py-0.5 text-[10px] font-extrabold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                          <Medal className="size-2.5 text-purple-600 dark:text-purple-400" />
                           {rankLabel}
                         </span>
                       </div>
@@ -2155,20 +2194,45 @@ export default function EmployeesPage() {
               </div>
               <div className="text-right text-[9px] text-slate-600 font-medium leading-tight space-y-0.5">
                 <p>Tanggal Cetak: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                <p>Total Data: {filteredItems.length} Pegawai</p>
+                <p>Total Data: {paginationInfo.total} Pegawai</p>
               </div>
             </div>
           }
           title="Daftar Master Data Pegawai & Tendik"
           description="Tabel direktori pegawai, satuan kerja, status keaktifan, dan manajemen profil SDM."
+          countLabel={`${Number(paginationInfo.total).toLocaleString('id-ID')} pegawai`}
           actionColumnLabel=""
           columns={columns}
           data={filteredItems}
           isLoading={isLoading}
           isError={isError}
+          errorTitle="Data pegawai gagal dimuat"
+          errorMessage="Periksa koneksi server atau muat ulang halaman."
+          onRetry={() => queryClient.invalidateQueries({ queryKey: ['employees-list'] })}
+          isEmpty={!isLoading && !isError && filteredItems.length === 0}
+          emptyTitle="Pegawai tidak ditemukan"
+          emptyDescription="Tidak ada data pegawai yang cocok dengan kriteria pencarian atau filter."
+          serverControlled={true}
+          showPagination={true}
+          page={page}
+          totalPages={paginationInfo.last_page}
+          totalItems={paginationInfo.total}
+          itemsPerPage={perPage}
+          onPageChange={(p) => setPage(p)}
+          meta={paginationInfo}
+          renderMobileCard={renderMobileCard}
           search={search}
           onSearchChange={(val) => { setSearch(val); setPage(1) }}
           searchPlaceholder="Cari Nama, NIY, NIK, No HP, atau Email..."
+          hasActiveFilters={Boolean(search || selectedUnitFilter || selectedJabatanFilter || selectedStatusPegawaiFilter || selectedStatusFilter)}
+          onResetFilters={() => {
+            setSearch('')
+            setSelectedUnitFilter('')
+            setSelectedJabatanFilter('')
+            setSelectedStatusPegawaiFilter('')
+            setSelectedStatusFilter('')
+            setPage(1)
+          }}
           actions={renderActionButtons}
           filters={
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -2241,7 +2305,7 @@ export default function EmployeesPage() {
                     setSelectedStatusFilter('')
                     setPage(1)
                   }}
-                  className="size-10 rounded-2xl bg-[#FFE4E6] text-[#E11D48] hover:bg-[#FECDD3] dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-900/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                  className="size-10 flex items-center justify-center rounded-2xl bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900/60 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
                   title="Reset Filter"
                 >
                   <RefreshCcw className="size-4" />
@@ -2253,129 +2317,228 @@ export default function EmployeesPage() {
       </motion.div>
 
       {/* EXPORT DATA MODAL (.csv, .xls, .xlsx) */}
-      {showExportModal && (
-        <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="modal-dialog w-full max-w-md bg-white dark:bg-[#1B2433] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b pb-3 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="size-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-                  <Download1 className="size-5" />
+      <AnimatePresence>
+        {showExportModal && (
+          <div
+            className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-export-title"
+            tabIndex={-1}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowExportModal(false) }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="modal-dialog font-sans my-auto w-full max-w-md"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+                {/* Header */}
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 p-2.5 text-amber-700 dark:from-amber-950/60 dark:to-orange-950/40 dark:border-amber-800/60 dark:text-amber-400">
+                      <Download1 className="size-5" />
+                    </div>
+                    <div>
+                      <h3 id="employee-export-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Ekspor Data Pegawai</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60">
+                          <Sparkles className="size-3" />
+                          Batch Export
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pilih format berkas ekspor direktori pegawai</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowExportModal(false)}
+                    aria-label="Tutup form ekspor"
+                    className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    <X className="size-4" strokeWidth={2.25} />
+                  </button>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Ekspor Data Pegawai</h3>
-                  <p className="text-xs text-slate-500">Pilih format berkas ekspor laporan</p>
+
+                {/* Body */}
+                <div className="modal-body min-h-0 flex-1 space-y-3 p-6 text-sm text-slate-700 dark:text-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => handleExportDataFormat('xlsx')}
+                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-100/70 dark:bg-emerald-950/30 dark:border-emerald-800 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                        <FileSpreadsheet className="size-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <strong className="block text-xs text-slate-900 dark:text-white font-bold">Microsoft Excel (.xlsx)</strong>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">Format spreadsheet modern (.xlsx)</span>
+                      </div>
+                    </div>
+                    <Badge color="success" size="sm">Rekomendasi</Badge>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportDataFormat('xls')}
+                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:border-slate-700 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                        <FileSpreadsheet className="size-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <strong className="block text-xs text-slate-900 dark:text-white font-bold">Excel Standar (.xls)</strong>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">Format spreadsheet MS Excel legacy (.xls)</span>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportDataFormat('csv')}
+                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:border-slate-700 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-xl bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+                        <FileText className="size-5 text-sky-600" />
+                      </div>
+                      <div>
+                        <strong className="block text-xs text-slate-900 dark:text-white font-bold">Comma Separated (.csv)</strong>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">Format teks berpisah koma (UTF-8 BOM)</span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Footer */}
+                <div className="modal-footer flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30">
+                  <button
+                    type="button"
+                    onClick={() => setShowExportModal(false)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+                  >
+                    <div className="flex size-4.5 items-center justify-center rounded-lg bg-white/20 text-white">
+                      <X className="size-3 text-white" strokeWidth={2.2} />
+                    </div>
+                    <span>Tutup</span>
+                  </button>
                 </div>
               </div>
-              <button type="button" onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleExportDataFormat('xlsx')}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/70 dark:bg-emerald-950/30 dark:border-emerald-800 text-left transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="size-6 text-emerald-600" />
-                  <div>
-                    <strong className="block text-xs text-slate-900 dark:text-white font-bold">Microsoft Excel (.xlsx)</strong>
-                    <span className="text-[11px] text-slate-500">Format spreadsheet Excel modern (.xlsx)</span>
-                  </div>
-                </div>
-                <Badge color="success" size="sm">Rekomendasi</Badge>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleExportDataFormat('xls')}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:border-slate-700 text-left transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="size-6 text-amber-600" />
-                  <div>
-                    <strong className="block text-xs text-slate-900 dark:text-white font-bold">Excel Standar (.xls)</strong>
-                    <span className="text-[11px] text-slate-500">Format spreadsheet MS Excel legacy (.xls)</span>
-                  </div>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleExportDataFormat('csv')}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:border-slate-700 text-left transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <FileText className="size-6 text-sky-600" />
-                  <div>
-                    <strong className="block text-xs text-slate-900 dark:text-white font-bold">Comma Separated (.csv)</strong>
-                    <span className="text-[11px] text-slate-500">Format teks berpisah koma (UTF-8 BOM)</span>
-                  </div>
-                </div>
-              </button>
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button variant="ghost" appearance="outline" size="sm" onClick={() => setShowExportModal(false)}>
-                Batal
-              </Button>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* DOWNLOAD TEMPLATE MODAL (.csv, .xls, .xlsx) */}
-      {showTemplateModal && (
-        <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="modal-dialog w-full max-w-md bg-white dark:bg-[#1B2433] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b pb-3 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="size-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
-                  <FileSpreadsheet className="size-5" />
+      <AnimatePresence>
+        {showTemplateModal && (
+          <div
+            className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-template-title"
+            tabIndex={-1}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowTemplateModal(false) }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="modal-dialog font-sans my-auto w-full max-w-md"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-purple-500 via-violet-400 to-indigo-600 shrink-0" />
+
+                {/* Header */}
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200/60 p-2.5 text-purple-700 dark:from-purple-950/60 dark:to-violet-950/40 dark:border-purple-800/60 dark:text-purple-400">
+                      <FileSpreadsheet className="size-5" />
+                    </div>
+                    <div>
+                      <h3 id="employee-template-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Unduh Template Impor</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700 border border-purple-200/80 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800/60">
+                          <Sparkles className="size-3" />
+                          Template SDM
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pilih format berkas template pengisian data</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplateModal(false)}
+                    aria-label="Tutup form template"
+                    className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                  >
+                    <X className="size-4" strokeWidth={2.25} />
+                  </button>
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Unduh Template Impor</h3>
-                  <p className="text-xs text-slate-500">Pilih format berkas template pengisian data</p>
+
+                {/* Body */}
+                <div className="modal-body min-h-0 flex-1 space-y-3 p-6 text-sm text-slate-700 dark:text-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadTemplatePegawaiFormat('xlsx')}
+                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-purple-200/80 bg-purple-50/50 hover:bg-purple-100/70 dark:bg-purple-950/30 dark:border-purple-800 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0">
+                        <FileSpreadsheet className="size-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <strong className="block text-xs text-slate-900 dark:text-white font-bold">Template Excel (.xlsx)</strong>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">Format spreadsheet Excel (.xlsx) dengan contoh baris</span>
+                      </div>
+                    </div>
+                    <Badge color="purple" size="sm">Rekomendasi</Badge>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadTemplatePegawaiFormat('csv')}
+                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:border-slate-700 text-left transition-all duration-200 hover:scale-[1.01] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-xl bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+                        <FileText className="size-5 text-sky-600" />
+                      </div>
+                      <div>
+                        <strong className="block text-xs text-slate-900 dark:text-white font-bold">Template CSV (.csv)</strong>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">Format dokumen teks (.csv) dengan header kolom lengkap</span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Footer */}
+                <div className="modal-footer flex items-center justify-end border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30">
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplateModal(false)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+                  >
+                    <div className="flex size-4.5 items-center justify-center rounded-lg bg-white/20 text-white">
+                      <X className="size-3 text-white" strokeWidth={2.2} />
+                    </div>
+                    <span>Tutup</span>
+                  </button>
                 </div>
               </div>
-              <button type="button" onClick={() => setShowTemplateModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleDownloadTemplatePegawaiFormat('xlsx')}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100/70 dark:bg-purple-950/30 dark:border-purple-800 text-left transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className="size-6 text-purple-600" />
-                  <div>
-                    <strong className="block text-xs text-slate-900 dark:text-white font-bold">Template Excel (.xlsx)</strong>
-                    <span className="text-[11px] text-slate-500">Format spreadsheet Excel (.xlsx) berseta contoh baris</span>
-                  </div>
-                </div>
-                <Badge color="purple" size="sm">Rekomendasi</Badge>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDownloadTemplatePegawaiFormat('csv')}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 dark:bg-slate-800/40 dark:border-slate-700 text-left transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <FileText className="size-6 text-sky-600" />
-                  <div>
-                    <strong className="block text-xs text-slate-900 dark:text-white font-bold">Template CSV (.csv)</strong>
-                    <span className="text-[11px] text-slate-500">Format dokumen teks (.csv) dengan header kolom</span>
-                  </div>
-                </div>
-              </button>
-            </div>
-            <div className="flex justify-end pt-2">
-              <Button variant="ghost" appearance="outline" size="sm" onClick={() => setShowTemplateModal(false)}>
-                Batal
-              </Button>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* 5. MODAL WIZARD: TAMBAH / EDIT PEGAWAI */}
       {isFormModalOpen && (
@@ -2414,7 +2577,7 @@ export default function EmployeesPage() {
                   <button
                     type="button"
                     onClick={closeFormModal}
-                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                    className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     aria-label="Tutup"
                   >
                     <X className="size-4" strokeWidth={2.25} />
@@ -2422,53 +2585,89 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
-              {/* Main Body Grid */}
-              <div className="modal-body min-h-0 flex-1 overflow-hidden p-0 text-sm text-slate-700 dark:text-slate-200">
-                <div className="employee-form-layout grid grid-cols-1 lg:grid-cols-4 min-h-[480px]">
-                  {/* Stepper Sidebar */}
-                  <div className="employee-form-stepper border-r border-slate-100 bg-slate-50/50 p-6 space-y-6">
-                    {[
-                      { step: 1, label: 'Identitas & Foto' },
-                      { step: 2, label: 'Kepegawaian' },
-                      { step: 3, label: 'Kontak & Alamat' },
-                      { step: 4, label: 'Konfirmasi' },
-                    ].map((s) => (
-                      <div
+              {/* Step Wizard Indicator (Standardized Horizontal Bar) */}
+              <div className="border-b border-slate-100 bg-slate-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-900/50">
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                  {[
+                    { step: 1, label: 'Identitas & Foto', icon: UserCheck },
+                    { step: 2, label: 'Kepegawaian', icon: BriefcaseBusiness },
+                    { step: 3, label: 'Kontak & Alamat', icon: Phone },
+                    { step: 4, label: 'Konfirmasi', icon: CheckCircle2 },
+                  ].map((s) => {
+                    const isActive = currentStep === s.step
+                    const isDone = currentStep > s.step
+                    return (
+                      <button
                         key={s.step}
+                        type="button"
                         onClick={() => setCurrentStep(s.step)}
-                        className="flex items-center gap-3 cursor-pointer group"
+                        className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 text-[11px] font-extrabold transition-all duration-200 cursor-pointer ${
+                          isActive
+                            ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600'
+                            : isDone
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100/80 border border-emerald-200/50 dark:border-emerald-800/40'
+                            : 'bg-white text-slate-400 border border-slate-200/80 hover:bg-slate-100 dark:bg-slate-800/60 dark:border-slate-700/60 dark:text-slate-500'
+                        }`}
                       >
-                        <div
-                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${currentStep === s.step
-                            ? 'bg-emerald-800 text-white ring-4 ring-emerald-100'
-                            : currentStep > s.step
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-200 text-slate-600 group-hover:bg-slate-300'
-                            }`}
-                        >
-                          {s.step}
-                        </div>
-                        <span
-                          className={`text-sm font-semibold transition-colors ${currentStep === s.step ? 'text-emerald-900' : 'text-slate-500 group-hover:text-slate-800'
-                            }`}
-                        >
-                          {s.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                        <s.icon className={`size-3.5 shrink-0 ${isActive ? 'text-white' : isDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                        <span className="truncate">{s.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-                  {/* Form Content */}
-                  <div className="employee-form-content lg:col-span-3 p-6 overflow-y-auto max-h-[540px]">
+              {/* Form Content Body */}
+              <div className="modal-body min-h-0 flex-1 overflow-y-auto p-6 space-y-4 text-sm text-slate-700 dark:text-slate-200 max-h-[560px]">
+                {/* Banner Status in Edit Mode */}
+                {isEditMode && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-emerald-50/80 p-4 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:to-teal-950/20">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-xs">
+                        {formData.niy ? formData.niy.slice(-3) : 'NIY'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-slate-900 dark:text-white">{formData.nama_lengkap}</span>
+                          <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-extrabold dark:bg-emerald-900/60 dark:text-emerald-300">{formData.status}</span>
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-500">{formData.niy} · {formData.status_pegawai}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isGlobalPersonnelManager && (
+                        <button
+                          type="button"
+                          onClick={() => toggleEmployeeStatus(formData)}
+                          className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
+                        >
+                          {formData.status === 'Aktif' ? 'Nonaktifkan Pegawai' : 'Aktifkan Pegawai'}
+                        </button>
+                      )}
+                      {canDeleteEmployee && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteTarget(formData)
+                            closeFormModal()
+                          }}
+                          className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
+                        >
+                          Hapus Pegawai
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
                     {/* STEP 1: Identitas & Foto */}
                     {currentStep === 1 && (
                       <div className="space-y-4">
-                        <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2">Identitas Pegawai</h3>
+                        <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Identitas Pegawai</h3>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Foto Pegawai</label>
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Foto Pegawai</label>
                           {formData.foto ? (
-                            <div className="flex items-center gap-4 p-3 rounded-2xl border border-emerald-200/90 bg-emerald-50/60 dark:bg-emerald-950/40 dark:border-emerald-800">
+                            <div className="flex items-center gap-4 p-3.5 rounded-2xl border border-emerald-200/90 bg-emerald-50/60 dark:bg-emerald-950/40 dark:border-emerald-800">
                               <PersonAvatar
                                 src={formData.foto}
                                 name={formData.nama_lengkap}
@@ -2476,21 +2675,23 @@ export default function EmployeesPage() {
                                 className="h-16 w-16 shrink-0 border-2 border-emerald-600 shadow-sm"
                               />
                               <div>
-                                <p className="text-xs font-bold text-slate-800">Foto Berhasil Diunggah</p>
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Foto Berhasil Diunggah</p>
                                 <button
                                   type="button"
                                   onClick={() => setFormData((p) => ({ ...p, foto: '' }))}
-                                  className="text-xs font-bold text-rose-600 hover:underline mt-1 inline-block"
+                                  className="text-xs font-bold text-rose-600 hover:underline mt-1 inline-block cursor-pointer"
                                 >
                                   Hapus Foto & Upload Ulang
                                 </button>
                               </div>
                             </div>
                           ) : (
-                            <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-4 text-center hover:bg-emerald-50/30 hover:border-emerald-400 cursor-pointer transition-colors">
-                              <FaUpload className="text-emerald-700 text-xl mb-1" />
-                              <span className="text-xs font-bold text-slate-700">Upload Foto Profil</span>
-                              <span className="text-[10px] text-slate-400">PNG, JPG Maksimal 2MB</span>
+                            <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-300/80 bg-emerald-50/20 p-5 text-center hover:bg-emerald-50/35 hover:border-emerald-500 cursor-pointer transition-all dark:border-emerald-800/60 dark:bg-slate-900/30">
+                              <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                                <Upload className="size-5" strokeWidth={2.2} />
+                              </div>
+                              <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Upload Foto Profil</span>
+                              <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG Maksimal 2MB</span>
                               <input type="file" accept="image/*" onChange={handleFotoUpload} className="hidden" />
                             </label>
                           )}
@@ -2498,107 +2699,152 @@ export default function EmployeesPage() {
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              NIY (Nomor Induk Yayasan) <span className="text-red-500">*</span>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                              NIY (Nomor Induk Yayasan) <span className="text-rose-500">*</span>
                             </label>
-                            <input
-                              type="text"
-                              placeholder="NIY-2026xxxx"
-                              value={formData.niy}
-                              onChange={(e) => setFormData((p) => ({ ...p, niy: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Hash className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="NIY-2026xxxx"
+                                value={formData.niy}
+                                onChange={(e) => setFormData((p) => ({ ...p, niy: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">NIK (Nomor Induk Kependudukan)</label>
-                            <input
-                              type="text"
-                              placeholder="1371xxxxxxxxxxxx"
-                              value={formData.nik}
-                              onChange={(e) => setFormData((p) => ({ ...p, nik: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">NIK (Nomor Induk Kependudukan)</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <IdCard className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="1371xxxxxxxxxxxx"
+                                value={formData.nik}
+                                onChange={(e) => setFormData((p) => ({ ...p, nik: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Gelar Depan</label>
-                            <input
-                              type="text"
-                              placeholder="Ust. / Dr."
-                              value={formData.gelar_depan}
-                              onChange={(e) => setFormData((p) => ({ ...p, gelar_depan: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Gelar Depan</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <GraduationCap className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Ust. / Dr."
+                                value={formData.gelar_depan}
+                                onChange={(e) => setFormData((p) => ({ ...p, gelar_depan: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                           <div className="col-span-2">
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">
-                              Nama Lengkap <span className="text-red-500">*</span>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                              Nama Lengkap <span className="text-rose-500">*</span>
                             </label>
-                            <input
-                              type="text"
-                              placeholder="Ahmad Farhan"
-                              value={formData.nama_lengkap}
-                              onChange={(e) => setFormData((p) => ({ ...p, nama_lengkap: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <User className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Ahmad Farhan"
+                                value={formData.nama_lengkap}
+                                onChange={(e) => setFormData((p) => ({ ...p, nama_lengkap: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Gelar Belakang</label>
-                            <input
-                              type="text"
-                              placeholder="S.Pd / M.Pd"
-                              value={formData.gelar_belakang}
-                              onChange={(e) => setFormData((p) => ({ ...p, gelar_belakang: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Gelar Belakang</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Award className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="S.Pd / M.Pd"
+                                value={formData.gelar_belakang}
+                                onChange={(e) => setFormData((p) => ({ ...p, gelar_belakang: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Panggilan</label>
-                            <input
-                              type="text"
-                              placeholder="Farhan"
-                              value={formData.nama_panggilan}
-                              onChange={(e) => setFormData((p) => ({ ...p, nama_panggilan: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Nama Panggilan</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <UserCheck className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Farhan"
+                                value={formData.nama_panggilan}
+                                onChange={(e) => setFormData((p) => ({ ...p, nama_panggilan: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Jenis Kelamin</label>
-                            <select
-                              value={formData.jenis_kelamin}
-                              onChange={(e) => setFormData((p) => ({ ...p, jenis_kelamin: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            >
-                              <option value="L">Laki-laki</option>
-                              <option value="P">Perempuan</option>
-                            </select>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Jenis Kelamin</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Users className="size-4" />
+                              </div>
+                              <select
+                                value={formData.jenis_kelamin}
+                                onChange={(e) => setFormData((p) => ({ ...p, jenis_kelamin: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                              >
+                                <option value="L">Laki-laki</option>
+                                <option value="P">Perempuan</option>
+                              </select>
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tempat Lahir</label>
-                            <input
-                              type="text"
-                              placeholder="Padang"
-                              value={formData.tempat_lahir}
-                              onChange={(e) => setFormData((p) => ({ ...p, tempat_lahir: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tempat Lahir</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <MapPin className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Padang"
+                                value={formData.tempat_lahir}
+                                onChange={(e) => setFormData((p) => ({ ...p, tempat_lahir: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tanggal Lahir</label>
-                            <input
-                              type="date"
-                              value={formData.tanggal_lahir}
-                              onChange={(e) => setFormData((p) => ({ ...p, tanggal_lahir: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Lahir</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Calendar className="size-4" />
+                              </div>
+                              <input
+                                type="date"
+                                value={formData.tanggal_lahir}
+                                onChange={(e) => setFormData((p) => ({ ...p, tanggal_lahir: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2607,83 +2853,113 @@ export default function EmployeesPage() {
                     {/* STEP 2: Kepegawaian */}
                     {currentStep === 2 && (
                       <div className="space-y-4">
-                        <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2">Status & Penempatan Kepegawaian</h3>
+                        <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Status & Penempatan Kepegawaian</h3>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Unit Kerja / Sekolah</label>
-                            <select
-                               value={formData.unit_id}
-                               onChange={(e) => setFormData((p) => ({ ...p, unit_id: e.target.value }))}
-                               disabled={isUnitPersonnelManager}
-                               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
-                            >
-                              <option value="">Pilih Unit Pendidikan</option>
-                              {unitsList.map((u) => (
-                                <option key={u.id} value={u.id}>{u.name}</option>
-                              ))}
-                            </select>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Unit Kerja / Sekolah</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Building2 className="size-4" />
+                              </div>
+                              <select
+                                 value={formData.unit_id}
+                                 onChange={(e) => setFormData((p) => ({ ...p, unit_id: e.target.value }))}
+                                 disabled={isUnitPersonnelManager}
+                                 className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 disabled:bg-slate-100/80 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <option value="">Pilih Unit Pendidikan</option>
+                                {unitsList.map((u) => (
+                                  <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Jabatan Master</label>
-                            <select
-                              value={formData.jabatan_id}
-                              onChange={(e) => setFormData((p) => ({ ...p, jabatan_id: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            >
-                              <option value="">Pilih Jabatan</option>
-                              {positionsList.map((p) => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className={`grid grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Status Pegawai</label>
-                            <select
-                              value={formData.status_pegawai}
-                              onChange={(e) => setFormData((p) => ({ ...p, status_pegawai: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            >
-                              {STATUS_PEGAWAI_OPTIONS.map((st) => (
-                                <option key={st} value={st}>{st}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Status Keaktifan</label>
-                            <select
-                              value={formData.status}
-                              onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            >
-                              {STATUS_OPTIONS.map((st) => (
-                                <option key={st} value={st}>{st}</option>
-                              ))}
-                            </select>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Jabatan Master</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <BriefcaseBusiness className="size-4" />
+                              </div>
+                              <select
+                                value={formData.jabatan_id}
+                                onChange={(e) => setFormData((p) => ({ ...p, jabatan_id: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                              >
+                                <option value="">Pilih Jabatan</option>
+                                {positionsList.map((p) => (
+                                  <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
                         </div>
 
                         <div className={`grid grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tanggal Masuk</label>
-                            <input
-                              type="date"
-                              value={formData.tanggal_masuk}
-                              onChange={(e) => setFormData((p) => ({ ...p, tanggal_masuk: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Pegawai</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <BadgeCheck className="size-4" />
+                              </div>
+                              <select
+                                value={formData.status_pegawai}
+                                onChange={(e) => setFormData((p) => ({ ...p, status_pegawai: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                              >
+                                {STATUS_PEGAWAI_OPTIONS.map((st) => (
+                                  <option key={st} value={st}>{st}</option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Tanggal Keluar (Jika Ada)</label>
-                            <input
-                              type="date"
-                              value={formData.tanggal_keluar}
-                              onChange={(e) => setFormData((p) => ({ ...p, tanggal_keluar: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Keaktifan</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Activity className="size-4" />
+                              </div>
+                              <select
+                                value={formData.status}
+                                onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                              >
+                                {STATUS_OPTIONS.map((st) => (
+                                  <option key={st} value={st}>{st}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={`grid grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Masuk</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Calendar className="size-4" />
+                              </div>
+                              <input
+                                type="date"
+                                value={formData.tanggal_masuk}
+                                onChange={(e) => setFormData((p) => ({ ...p, tanggal_masuk: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Keluar (Jika Ada)</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Calendar className="size-4" />
+                              </div>
+                              <input
+                                type="date"
+                                value={formData.tanggal_keluar}
+                                onChange={(e) => setFormData((p) => ({ ...p, tanggal_keluar: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2692,60 +2968,87 @@ export default function EmployeesPage() {
                     {/* STEP 3: Kontak & Alamat */}
                     {currentStep === 3 && (
                       <div className="space-y-4">
-                        <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2">Kontak & Alamat</h3>
+                        <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Kontak & Alamat</h3>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">No. WhatsApp / HP</label>
-                            <input
-                              type="text"
-                              placeholder="0812-3456-7890"
-                              value={formData.no_hp}
-                              onChange={(e) => setFormData((p) => ({ ...p, no_hp: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">No. WhatsApp / HP</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Phone className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="0812-3456-7890"
+                                value={formData.no_hp}
+                                onChange={(e) => setFormData((p) => ({ ...p, no_hp: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Email Pegawai</label>
-                            <input
-                              type="email"
-                              placeholder="pegawai@dareliman.sch.id"
-                              value={formData.email}
-                              onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Email Pegawai</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Mail className="size-4" />
+                              </div>
+                              <input
+                                type="email"
+                                placeholder="pegawai@dareliman.sch.id"
+                                value={formData.email}
+                                onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Alamat Tempat Tinggal</label>
-                          <textarea
-                            rows={3}
-                            placeholder="Jl. Khatib Sulaiman No. 20..."
-                            value={formData.alamat}
-                            onChange={(e) => setFormData((p) => ({ ...p, alamat: e.target.value }))}
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                          />
+                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Alamat Tempat Tinggal</label>
+                          <div className="relative">
+                            <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+                              <MapPin className="size-4" />
+                            </div>
+                            <textarea
+                              rows={3}
+                              placeholder="Jl. Khatib Sulaiman No. 20..."
+                              value={formData.alamat}
+                              onChange={(e) => setFormData((p) => ({ ...p, alamat: e.target.value }))}
+                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
+                            />
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Kota / Kabupaten</label>
-                            <input
-                              type="text"
-                              value={formData.kota}
-                              onChange={(e) => setFormData((p) => ({ ...p, kota: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Kota / Kabupaten</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Building className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Padang"
+                                value={formData.kota}
+                                onChange={(e) => setFormData((p) => ({ ...p, kota: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Provinsi</label>
-                            <input
-                              type="text"
-                              value={formData.provinsi}
-                              onChange={(e) => setFormData((p) => ({ ...p, provinsi: e.target.value }))}
-                              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none"
-                            />
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Provinsi</label>
+                            <div className="relative flex items-center">
+                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                                <Globe className="size-4" />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Sumatera Barat"
+                                value={formData.provinsi}
+                                onChange={(e) => setFormData((p) => ({ ...p, provinsi: e.target.value }))}
+                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2780,46 +3083,6 @@ export default function EmployeesPage() {
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  {/* Side Card in Edit Mode */}
-                  {isEditMode && (
-                    <div className="border-l border-slate-100 bg-slate-50/30 p-6 space-y-4">
-                      <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-emerald-700 to-teal-800 p-4 text-white shadow-sm">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider">{formData.niy}</span>
-                          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">{formData.status}</span>
-                        </div>
-                        <h4 className="font-extrabold text-sm leading-tight">{formData.nama_lengkap}</h4>
-                      </div>
-
-                      <div className="space-y-2 pt-2">
-                        {isGlobalPersonnelManager && (
-                          <button
-                            type="button"
-                            onClick={() => toggleEmployeeStatus(formData)}
-                            className="w-full rounded-lg border border-amber-300 bg-amber-50 py-2 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors"
-                          >
-                            {formData.status === 'Aktif' ? 'Nonaktifkan Pegawai' : 'Aktifkan Pegawai'}
-                          </button>
-                        )}
-                        {canDeleteEmployee && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeleteTarget(formData)
-                              closeFormModal()
-                            }}
-                            className="w-full rounded-lg border border-red-200 bg-red-50 py-2 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors"
-                          >
-                            Hapus Pegawai
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
               </div>
 
               {/* Bottom Footer Actions */}
@@ -2827,37 +3090,54 @@ export default function EmployeesPage() {
                 <button
                   type="button"
                   onClick={closeFormModal}
-                  className="btn btn-soft btn-secondary"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                 >
-                  Batal
+                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                    <X className="size-3.5 text-white" strokeWidth={2.2} />
+                  </div>
+                  <span>Batal</span>
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   {currentStep > 1 && !isUnitPersonnelManager && (
                     <button
                       type="button"
                       onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
-                      className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white px-4 py-2.5 text-xs font-extrabold border border-blue-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                     >
-                      ← Kembali
+                      <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                        <ArrowLeft className="size-3.5 text-white" strokeWidth={2.2} />
+                      </div>
+                      <span>Kembali</span>
                     </button>
                   )}
                   {currentStep < 4 && !isUnitPersonnelManager && (
                     <button
                       type="button"
                       onClick={() => setCurrentStep((s) => Math.min(4, s + 1))}
-                      className="rounded-xl border border-slate-300 bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer"
                     >
-                      Selanjutnya →
+                      <span>Selanjutnya</span>
+                      <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                        <ArrowRight className="size-3.5 text-white" strokeWidth={2.2} />
+                      </div>
                     </button>
                   )}
                   {(currentStep === 4 || isEditMode || isUnitPersonnelManager) && (
                     <button
                       type="button"
                       onClick={handleFormSubmit}
-                      className="flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+                      disabled={isMutating}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
-                      {isEditMode ? 'Simpan Perubahan' : 'Simpan Pegawai'}
+                      {isMutating ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      ) : (
+                        <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                          <Save className="size-3.5 text-white" strokeWidth={2.2} />
+                        </div>
+                      )}
+                      <span>{isEditMode ? 'Simpan Perubahan' : 'Simpan Pegawai'}</span>
                     </button>
                   )}
                 </div>
@@ -2877,7 +3157,7 @@ export default function EmployeesPage() {
                 <button
                   type="button"
                   onClick={() => setDetailEmployee(null)}
-                  className="flex items-center gap-2 rounded-2xl bg-slate-100/90 px-3.5 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                  className="flex items-center gap-2 rounded-2xl bg-slate-100/90 px-3.5 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer border border-slate-200 dark:border-slate-700"
                 >
                   <FaArrowLeft className="size-3.5 text-slate-500 dark:text-slate-400" />
                   <span>Kembali</span>
@@ -2886,7 +3166,7 @@ export default function EmployeesPage() {
                   <button
                     type="button"
                     onClick={() => setShowIdCardModal(detailEmployee)}
-                    className="flex items-center gap-2 rounded-2xl bg-purple-100/90 px-3.5 py-2 text-xs font-extrabold text-purple-700 hover:bg-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                    className="flex items-center gap-2 rounded-2xl bg-purple-100/90 px-3.5 py-2 text-xs font-extrabold text-purple-700 hover:bg-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer border border-purple-200 dark:border-purple-800"
                   >
                     <FaIdCard className="size-4 text-purple-600 dark:text-purple-400" />
                     <span>ID Card</span>
@@ -2901,7 +3181,7 @@ export default function EmployeesPage() {
                           openEditModal(target)
                         }, 50)
                       }}
-                      className="flex items-center gap-2 rounded-2xl bg-emerald-100/90 px-3.5 py-2 text-xs font-extrabold text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                      className="flex items-center gap-2 rounded-2xl bg-emerald-100/90 px-3.5 py-2 text-xs font-extrabold text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer border border-emerald-200 dark:border-emerald-800"
                     >
                       <FaEdit className="size-4 text-emerald-600 dark:text-emerald-400" />
                       <span>Edit</span>
@@ -2910,10 +3190,10 @@ export default function EmployeesPage() {
                   <button
                     type="button"
                     onClick={() => setDetailEmployee(null)}
-                    className="btn btn-text btn-circle btn-sm absolute end-3 top-3 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                    aria-label="Tutup"
+                    className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                    aria-label="Tutup detail"
                   >
-                    <FaTimes className="size-4" />
+                    <X className="size-4" strokeWidth={2.25} />
                   </button>
                 </div>
               </div>
@@ -2945,15 +3225,16 @@ export default function EmployeesPage() {
                 </div>
 
                 {/* Tabs Navigation */}
-                <div className="flex border-b border-slate-200 gap-4 text-xs font-bold text-slate-500 overflow-x-auto pb-1 scrollbar-hide">
+                <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-emerald-200/70 bg-emerald-50/40 p-1.5 dark:border-emerald-900/50 dark:bg-slate-900/40 scrollbar-hide">
                   {['Identitas', 'Kepegawaian', 'Penugasan Mengajar', 'Riwayat Jabatan', 'Sertifikasi', 'Dokumen', 'Absensi'].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveDetailTab(tab)}
-                      className={`pb-3 transition-colors border-b-2 whitespace-nowrap ${activeDetailTab === tab
-                        ? 'border-emerald-800 text-emerald-900'
-                        : 'border-transparent hover:text-slate-800'
-                        }`}
+                      className={`flex-1 rounded-xl px-3.5 py-2 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                        activeDetailTab === tab
+                          ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-none border border-emerald-300/40'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 dark:text-slate-400 dark:hover:text-slate-200'
+                      }`}
                     >
                       {tab}
                     </button>
@@ -3276,7 +3557,7 @@ export default function EmployeesPage() {
                 <button
                   type="button"
                   onClick={() => setShowIdCardModal(null)}
-                  className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                   aria-label="Tutup ID Card"
                 >
                   <X className="size-4" strokeWidth={2.25} />
@@ -3726,7 +4007,7 @@ export default function EmployeesPage() {
                   <button
                     type="button"
                     onClick={() => setShowIdCardModal(null)}
-                    className="flex items-center gap-2 rounded-2xl bg-slate-100/90 px-4 py-2 text-xs font-extrabold text-slate-700 hover:bg-slate-200 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                   >
                     Tutup
                   </button>
@@ -3765,7 +4046,7 @@ export default function EmployeesPage() {
                         backShowQr: idCardBackShowQr,
                       })
                     }}
-                    className="flex items-center gap-2 rounded-2xl bg-amber-100/90 px-4 py-2 text-xs font-extrabold text-amber-900 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                    className="flex items-center gap-2 rounded-2xl bg-amber-100/90 px-4 py-2 text-xs font-extrabold text-amber-900 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
                   >
                     <FaDownload className="size-3.5 text-amber-600 dark:text-amber-400" /> Unduh ID Card
                   </button>
@@ -3793,7 +4074,7 @@ export default function EmployeesPage() {
                         backShowQr: idCardBackShowQr,
                       })
                     }}
-                    className="flex items-center gap-2 rounded-2xl bg-emerald-100/90 px-4 py-2 text-xs font-extrabold text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                    className="flex items-center gap-2 rounded-2xl bg-emerald-100/90 px-4 py-2 text-xs font-extrabold text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/70 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
                   >
                     <FaPrint className="text-emerald-600 dark:text-emerald-400" /> Cetak ID Card
                   </button>
@@ -3804,192 +4085,379 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* 8. MODAL KONFIRMASI HAPUS PEGAWAI */}
-      {canDeleteEmployee && deleteTarget && (
-        <div className="overlay modal overlay-open:opacity-100 overlay-open:duration-300 fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden" role="dialog" aria-modal="true" aria-label="Hapus Pegawai" tabIndex={-1}>
-          <div className="modal-dialog font-sans w-full max-w-lg">
-            <div className="modal-content flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
-              <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 text-xl">
-                    <FaExclamationTriangle />
-                  </div>
-                  <div>
-                    <h3 className="modal-title text-base font-bold text-slate-900 dark:text-white">Hapus Data Pegawai</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Apakah Anda yakin ingin menghapus pegawai berikut secara permanen?</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(null)}
-                  className="btn btn-text btn-circle btn-sm absolute end-3 top-3 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                  aria-label="Tutup"
-                >
-                  <FaTimes className="size-4" />
-                </button>
-              </div>
+      {/* 8. MODAL KONFIRMASI HAPUS PEGAWAI — Harmonized TailGrids Modal */}
+      <AnimatePresence>
+        {canDeleteEmployee && deleteTarget && (
+          <div
+            className="overlay modal fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md print:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="emp-delete-confirm-title"
+            tabIndex={-1}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget && !deleteMutation.isPending) setDeleteTarget(null)
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="modal-dialog font-sans my-auto w-full max-w-md"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-rose-200/60 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/50 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 shrink-0" />
 
-              <div className="modal-body space-y-4 p-5 text-sm text-slate-700 dark:text-slate-200">
-                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800/40">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-800 font-black text-white text-xs">
-                    {deleteTarget.nama_lengkap.substring(0, 2).toUpperCase()}
-                  </div>
-                  <div className="text-xs space-y-0.5">
-                    <h4 className="font-extrabold text-slate-900 dark:text-white">{deleteTarget.nama_lengkap}</h4>
-                    <p className="text-slate-500">NIY: <span className="font-medium text-slate-700 dark:text-slate-300">{deleteTarget.niy}</span></p>
-                    <p className="text-slate-500">Jabatan: <span className="font-medium text-slate-700 dark:text-slate-300">{deleteTarget.jabatan_name}</span></p>
-                  </div>
-                </div>
-
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={hasConfirmedDeleteCheck}
-                    onChange={(e) => setHasConfirmedDeleteCheck(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-emerald-800 focus:ring-emerald-600"
-                  />
-                  Saya memahami bahwa data pegawai tidak dapat dikembalikan.
-                </label>
-              </div>
-
-              <div className="modal-footer flex items-center justify-end gap-3 border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(null)}
-                  className="btn btn-soft btn-secondary"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={!hasConfirmedDeleteCheck || deleteMutation.isPending}
-                  onClick={() => deleteMutation.mutate(deleteTarget.id)}
-                  className="btn btn-error text-white disabled:opacity-50"
-                >
-                  {deleteMutation.isPending ? 'Menghapus...' : 'Hapus Permanen'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 9. MODAL DASHBOARD IMPORT PEGAWAI */}
-      {showImportModal && (
-        <div className="overlay modal overlay-open:opacity-100 overlay-open:duration-300 fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs print:hidden" role="dialog" aria-modal="true" aria-label="Import Data Pegawai" tabIndex={-1}>
-          <div className="modal-dialog font-sans w-full max-w-2xl">
-            <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#1B2433]">
-              <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                    <FaFileImport className="text-base" />
-                  </div>
-                  <div>
-                    <h3 className="modal-title text-base font-bold text-slate-900 dark:text-white">Import Data Pegawai</h3>
-                    <p className="text-xs text-slate-500">Unggah file CSV/Excel untuk impor data pegawai secara massal</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setShowImportModal(false); setImportFile(null); setImportPreviewData([]) }}
-                  className="btn btn-text btn-circle btn-sm absolute end-3 top-3 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                  aria-label="Tutup"
-                >
-                  <FaTimes className="size-4" />
-                </button>
-              </div>
-
-              <div className="modal-body min-h-0 flex-1 space-y-5 overflow-y-auto p-5 text-sm text-slate-700 dark:text-slate-200">
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 dark:bg-slate-800/50 dark:border-slate-700">
+                {/* Header */}
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-center gap-3">
-                    <FaFileExcel className="text-2xl text-emerald-600 shrink-0" />
+                    <div className="rounded-2xl text-white p-2.5 shadow-md shrink-0 border bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/30 border-rose-300/30">
+                      <Trash2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                    </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Unduh Format Template Import Pegawai</h4>
-                      <p className="text-[11px] text-slate-500">Format disesuaikan dengan skema master pegawai ERP.</p>
+                      <h3
+                        id="emp-delete-confirm-title"
+                        className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
+                      >
+                        <span>Hapus Data Pegawai</span>
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60">
+                          <AlertTriangle className="size-3" />
+                          Hapus Permanen
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Tindakan ini permanen dan tidak dapat dibatalkan.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => setDeleteTarget(null)}
+                    aria-label="Tutup dialog konfirmasi"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
+                  >
+                    <X className="size-4 text-white" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
+                  {/* Target Info Summary Card */}
+                  <div className="rounded-2xl border border-rose-100/90 bg-rose-50/40 p-3.5 dark:border-rose-900/40 dark:bg-rose-950/20 space-y-2.5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 font-black text-white text-xs shadow-sm">
+                        {deleteTarget.nama_lengkap.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-extrabold text-slate-900 dark:text-white text-sm truncate">
+                          {deleteTarget.nama_lengkap}
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          NIY: <span className="font-bold text-slate-700 dark:text-slate-300">{deleteTarget.niy || '-'}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-rose-100 dark:border-rose-900/40 pt-2 text-xs">
+                      <span className="font-semibold text-slate-500 dark:text-slate-400">Jabatan & Unit</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
+                        {deleteTarget.jabatan_name || '-'} · {deleteTarget.unit_kerja_name || '-'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Danger Notice Box */}
+                  <div className="rounded-2xl border border-rose-200/80 bg-rose-50/70 p-3.5 text-xs font-semibold text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300 leading-relaxed flex items-start gap-2.5">
+                    <div className="flex size-5 shrink-0 items-center justify-center rounded-lg text-white bg-gradient-to-br from-rose-500 to-red-600 mt-0.5">
+                      <AlertTriangle className="size-3 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      Data pegawai <strong>"{deleteTarget.nama_lengkap}"</strong> akan dihapus secara permanen dari server. Riwayat tugas, presensi, dan jadwal terkait akan terpengaruh.
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300 pt-1 select-none">
+                    <input
+                      type="checkbox"
+                      checked={hasConfirmedDeleteCheck}
+                      onChange={(e) => setHasConfirmedDeleteCheck(e.target.checked)}
+                      className="size-4 rounded-md border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                    />
+                    <span>Saya memahami konsekuensi penghapusan permanen ini.</span>
+                  </label>
+                </div>
+
+                {/* Footer */}
+                <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                  <button
+                    type="button"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => setDeleteTarget(null)}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 px-4 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    <div className="flex size-4 items-center justify-center rounded-md bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                      <X className="size-3" strokeWidth={2.2} />
+                    </div>
+                    <span>Batal</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!hasConfirmedDeleteCheck || deleteMutation.isPending}
+                    onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-5 py-2.5 text-xs font-extrabold border border-rose-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-rose-500/25"
+                  >
+                    {deleteMutation.isPending ? (
+                      <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                        <Trash2 className="size-3 text-white" strokeWidth={2.2} />
+                      </div>
+                    )}
+                    <span>{deleteMutation.isPending ? 'Menghapus...' : 'Hapus Permanen'}</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 9. MODAL DASHBOARD IMPORT PEGAWAI — Harmonized Batch Modal UI/UX */}
+      <AnimatePresence>
+        {showImportModal && (
+          <div
+            className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md print:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-import-title"
+            tabIndex={-1}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowImportModal(false)
+                setImportFile(null)
+                setImportPreviewData([])
+              }
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="modal-dialog font-sans my-auto w-full max-w-xl"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                {/* Top Accent Gradient Bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+                {/* Header */}
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                      <Upload className="h-5 w-5" strokeWidth={2.25} />
+                    </div>
+                    <div>
+                      <h3 id="employee-import-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Import Data Pegawai & Tendik</span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                          <Sparkles className="size-3" />
+                          Batch Import
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Unggah berkas spreadsheet (.xlsx, .xls, atau .csv) untuk impor direktori pegawai massal
+                      </p>
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={handleDownloadTemplatePegawai}
-                    className="btn btn-primary btn-sm flex items-center gap-1.5 whitespace-nowrap"
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setImportFile(null)
+                      setImportPreviewData([])
+                    }}
+                    aria-label="Tutup form import"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition-colors cursor-pointer"
                   >
-                    <FaDownload /> Unduh Template
+                    <X className="size-4" strokeWidth={2.25} />
                   </button>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-2">Unggah File (Excel / CSV)</label>
-                  <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/50 p-6 text-center hover:bg-slate-50 cursor-pointer transition dark:border-slate-600 dark:bg-slate-800/40">
-                    <FaUpload className="text-3xl text-emerald-700 dark:text-emerald-400 mb-2" />
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      {importFile ? importFile.name : 'Klik untuk memilih file Excel atau CSV'}
-                    </span>
-                    <span className="text-[11px] text-slate-400 mt-0.5">
-                      {importFile ? `${(importFile.size / 1024).toFixed(1)} KB` : 'Format disukai: .csv, .xlsx (Maks. 5MB)'}
-                    </span>
+                {/* Modal Body */}
+                <div className="modal-body min-h-0 flex-1 space-y-4.5 overflow-y-auto p-6 text-sm text-slate-700 dark:text-slate-200">
+                  {/* Unduh Template Card */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald-200/70 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-white p-4 dark:border-emerald-800/50 dark:bg-slate-900/40">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-100/70 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-[#3FBF75] shrink-0">
+                        <Download className="size-4.5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Unduh Format Berkas</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Gunakan berkas template resmi agar kolom master terpetakan otomatis</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadTemplatePegawaiFormat('xlsx')}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/80 bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 shadow-2xs hover:bg-emerald-50 transition-all dark:border-emerald-700 dark:bg-slate-800 dark:text-emerald-300 dark:hover:bg-slate-700 cursor-pointer"
+                      >
+                        <Download className="size-3.5" />
+                        <span>Excel (.xlsx)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadTemplatePegawaiFormat('csv')}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                      >
+                        <Download className="size-3.5" />
+                        <span>CSV</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dropzone Upload */}
+                  <label className="group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-300/80 bg-gradient-to-b from-emerald-50/25 to-slate-50/50 p-6 text-center transition-all duration-200 hover:border-emerald-500 hover:bg-emerald-50/40 hover:shadow-xs dark:border-emerald-800/60 dark:bg-slate-900/30 dark:hover:border-emerald-600 dark:hover:bg-emerald-950/20">
+                    <div className="mb-2.5 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 text-[#0E5C44] transition-transform duration-200 group-hover:scale-110 dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
+                      <FileSpreadsheet className="size-6" strokeWidth={2.2} />
+                    </div>
+                    <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+                      {importFile ? importFile.name : 'Pilih atau Tarik Berkas Spreadsheet ke Sini'}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-400">
+                      Mendukung format Microsoft Excel (.xlsx, .xls) & CSV (Maks. 5MB)
+                    </p>
+                    {importFile && (
+                      <div
+                        className="mt-3 flex items-center justify-center gap-2 flex-wrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/80 px-3 py-1 text-[11px] font-bold text-[#0E5C44] border border-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800/80">
+                          <CheckCircle2 className="size-3.5" />
+                          <span>{(importFile.size / 1024).toFixed(1)} KB · Berkas Siap Diunggah</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleClearImportFile}
+                          className="inline-flex items-center gap-1 rounded-full bg-rose-100/90 hover:bg-rose-200 px-3 py-1 text-[11px] font-bold text-rose-700 border border-rose-300 dark:bg-rose-950/80 dark:hover:bg-rose-900/80 dark:text-rose-300 dark:border-rose-800/80 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          title="Hapus / Clear berkas pilihan"
+                        >
+                          <Trash2 className="size-3.5 text-rose-600 dark:text-rose-400" />
+                          <span>Clear Berkas</span>
+                        </button>
+                      </div>
+                    )}
                     <input
+                      ref={importFileInputRef}
                       type="file"
                       accept=".csv, .xlsx, .xls"
                       onChange={handleFileSelect}
                       className="hidden"
                     />
                   </label>
+
+                  {/* Table Preview */}
+                  {importPreviewData.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <span>Preview Data Berkas</span>
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {importPreviewData.length} baris
+                          </span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleClearImportFile}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:underline cursor-pointer"
+                          title="Hapus / Clear berkas pilihan"
+                        >
+                          <Trash2 className="size-3" />
+                          <span>Clear Berkas</span>
+                        </button>
+                      </div>
+                      <div className="max-h-44 overflow-auto rounded-2xl border border-emerald-200/80 bg-white shadow-2xs dark:border-emerald-900/50 dark:bg-[#182232]">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 dark:border-emerald-900/50 font-bold text-slate-700 dark:text-slate-200">
+                            <tr>
+                              <th className="px-3 py-2.5">NIY</th>
+                              <th className="px-3 py-2.5">Nama Pegawai</th>
+                              <th className="px-3 py-2.5">Jabatan</th>
+                              <th className="px-3 py-2.5">Unit Kerja</th>
+                              <th className="px-3 py-2.5 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                            {importPreviewData.map((r, i) => (
+                              <tr key={i} className="hover:bg-emerald-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                                <td className="px-3 py-2 font-mono font-semibold text-slate-700 dark:text-slate-300">{r.niy}</td>
+                                <td className="px-3 py-2 font-medium text-slate-900 dark:text-white">{r.nama}</td>
+                                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.jabatan}</td>
+                                <td className="px-3 py-2 text-slate-600 dark:text-slate-300">{r.unit || '-'}</td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={cn(
+                                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold",
+                                    r.status === 'Valid' || r.status === 'Siap Impor'
+                                      ? "bg-emerald-50 text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60"
+                                      : "bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60"
+                                  )}>
+                                    {r.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Guidance Banner */}
+                  <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 dark:border-emerald-800/50 dark:bg-emerald-950/30 flex items-start gap-2.5">
+                    <ShieldCheck className="size-4.5 text-[#0E5C44] dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                      Sistem akan otomatis memvalidasi keunikan nomor NIY/NIK dan menyinkronkan profil pegawai tanpa menimpa riwayat penugasan atau sertifikasi yang sudah ada.
+                    </p>
+                  </div>
                 </div>
 
-                {importPreviewData.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Preview Data ({importPreviewData.length} baris)</h4>
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                      <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-                        <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase dark:bg-slate-800">
-                          <tr>
-                            <th className="py-2 px-3">NIY</th>
-                            <th className="py-2 px-3">Nama Pegawai</th>
-                            <th className="py-2 px-3">Jabatan</th>
-                            <th className="py-2 px-3 text-center">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                          {importPreviewData.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                              <td className="py-2 px-3 font-mono">{row.niy}</td>
-                              <td className="py-2 px-3 font-bold text-slate-800 dark:text-slate-100">{row.nama}</td>
-                              <td className="py-2 px-3">{row.jabatan}</td>
-                              <td className="py-2 px-3 text-center">
-                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                                  {row.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+                {/* Footer */}
+                <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setImportFile(null)
+                      setImportPreviewData([])
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 transition cursor-pointer"
+                  >
+                    <X className="size-3.5 text-slate-500 dark:text-slate-400" strokeWidth={2.2} />
+                    <span>Batal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleProcessImport}
+                    disabled={!importFile || isImporting}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white px-5 py-2.5 text-xs font-extrabold border border-sky-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                  >
+                    {isImporting ? (
+                      <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <Upload className="size-4" strokeWidth={2.25} />
+                    )}
+                    <span>{isImporting ? 'Memproses Impor...' : 'Mulai Impor Data'}</span>
+                  </button>
+                </div>
               </div>
-
-              <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-                <button
-                  type="button"
-                  onClick={() => { setShowImportModal(false); setImportFile(null); setImportPreviewData([]) }}
-                  className="btn btn-soft btn-secondary"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  disabled={!importFile || isImporting}
-                  onClick={handleProcessImport}
-                  className="btn btn-primary flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isImporting ? 'Memproses Import...' : 'Proses Import Data'}
-                </button>
-              </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* 6. STAT CARD SUMMARY DETAIL MODAL */}
       {statCardModal.isOpen && (
@@ -4026,23 +4494,28 @@ export default function EmployeesPage() {
                 <button
                   type="button"
                   onClick={() => { setStatCardModal({ isOpen: false, type: '', title: '', badge: '' }); setStatCardSearch('') }}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                   aria-label="Tutup Modal"
                 >
-                  <X className="size-5" />
+                  <X className="size-4" strokeWidth={2.25} />
                 </button>
               </div>
             </div>
 
             {/* Local Search Input */}
             <div className="shrink-0 print:hidden">
-              <input
-                type="text"
-                value={statCardSearch}
-                onChange={(e) => setStatCardSearch(e.target.value)}
-                placeholder="Cari nama, NIY, NIK pegawai..."
-                className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              />
+              <div className="relative flex items-center">
+                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                  <Search className="size-4" />
+                </div>
+                <input
+                  type="text"
+                  value={statCardSearch}
+                  onChange={(e) => setStatCardSearch(e.target.value)}
+                  placeholder="Cari nama, NIY, NIK pegawai..."
+                  className="w-full h-10 pl-10 pr-4 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
             </div>
 
             {/* Table View */}
@@ -4109,43 +4582,115 @@ export default function EmployeesPage() {
             </div>
 
             <div className="flex items-center justify-between pt-3 shrink-0 border-t border-slate-100 dark:border-slate-800 print:hidden">
-              <Button
-                variant="primary"
-                appearance="fill"
-                size="sm"
+              <button
+                type="button"
                 onClick={handlePrintStatCardModal}
-                className="flex items-center gap-1.5 font-bold cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-emerald-400/50 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-extrabold text-white transition-all duration-200 hover:from-emerald-600 hover:to-teal-800 active:scale-95 cursor-pointer"
               >
                 <Printer className="size-4" />
-                Cetak Tabel Popup
-              </Button>
+                <span>Cetak Tabel Popup</span>
+              </button>
 
-              <Button
-                variant="ghost"
-                appearance="outline"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => { setStatCardModal({ isOpen: false, type: '', title: '', badge: '' }); setStatCardSearch('') }}
+                className="inline-flex items-center gap-2 rounded-2xl border border-rose-400/50 bg-gradient-to-r from-rose-500 via-rose-600 to-rose-700 px-4 py-2 text-xs font-extrabold text-white transition-all duration-200 hover:from-rose-600 hover:to-rose-800 active:scale-95 cursor-pointer"
               >
-                Tutup
-              </Button>
+                <div className="flex size-4 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <X className="size-3 text-white" strokeWidth={2.2} />
+                </div>
+                <span>Tutup</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="employee-toast-stack" aria-live="polite" aria-atomic="true">
-        {notifications.map((notification) => (
-          <article key={notification.id} className={`employee-toast employee-toast--${notification.tone}`}>
-            <span className="employee-toast__icon">
-              {notification.tone === 'info' ? <Info /> : notification.tone === 'warning' ? <FaExclamationTriangle /> : notification.tone === 'error' ? <FaTimes /> : <BadgeCheck />}
-            </span>
-            <div className="min-w-0 flex-1">
-              <h3>{notification.title}</h3>
-              <p>{notification.message}</p>
+      {/* Notification Toast Stack — TailGrids Modern Vivid Style */}
+      <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite" aria-atomic="true">
+        {notifications.map((notification) => {
+          const isDanger = notification.tone === 'error' || notification.tone === 'danger'
+          const isWarning = notification.tone === 'warning'
+          const isInfo = notification.tone === 'info'
+          const isSuccess = !isDanger && !isWarning && !isInfo
+
+          return (
+            <div
+              key={notification.id}
+              className={cn(
+                "relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]",
+                isSuccess && "border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50",
+                isDanger && "border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50",
+                isWarning && "border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50",
+                isInfo && "border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50"
+              )}
+            >
+              {/* Top Accent Gradient Line */}
+              <div
+                className={cn(
+                  "absolute top-0 left-0 right-0 h-1",
+                  isSuccess && "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600",
+                  isDanger && "bg-gradient-to-r from-rose-500 via-rose-600 to-red-700",
+                  isWarning && "bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600",
+                  isInfo && "bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600"
+                )}
+              />
+
+              <div className="flex items-start gap-3 mt-0.5">
+                {/* Squircle Icon Badge */}
+                <div
+                  className={cn(
+                    "flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
+                    isSuccess && "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30",
+                    isDanger && "bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30",
+                    isWarning && "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30",
+                    isInfo && "bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30"
+                  )}
+                >
+                  {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
+                  {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
+                  {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
+                  {isInfo && <Info className="size-5" strokeWidth={2.3} />}
+                </div>
+
+                {/* Text Body */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                      {notification.title}
+                    </h4>
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border",
+                        isSuccess && "bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80",
+                        isDanger && "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80",
+                        isWarning && "bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80",
+                        isInfo && "bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80"
+                      )}
+                    >
+                      {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
+                    </span>
+                  </div>
+                  {notification.message && (
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                      {notification.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Dismiss Button */}
+                <button
+                  type="button"
+                  onClick={() => setNotifications((current) => current.filter((item) => item.id !== notification.id))}
+                  className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  aria-label="Tutup notifikasi"
+                >
+                  <X className="size-4" strokeWidth={2.2} />
+                </button>
+              </div>
             </div>
-            <button type="button" onClick={() => setNotifications((current) => current.filter((item) => item.id !== notification.id))} aria-label="Tutup notifikasi"><FaTimes /></button>
-          </article>
-        ))}
+          )
+        })}
       </div>
     </PageContainer>
   )

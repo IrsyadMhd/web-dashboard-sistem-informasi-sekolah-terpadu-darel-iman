@@ -58,6 +58,7 @@ import {
   SquircleActionButton,
 } from '../components/master-data'
 import { printCleanTable, downloadPdfTable, printWeeklyStudentEvaluation } from '../utils/printHelper'
+import { handleApiExport } from '../utils/exportUtils'
 
 import {
   Card,
@@ -316,8 +317,26 @@ export default function LaporanSiswaPage() {
     return parts.length > 0 ? parts.join(' | ') : 'Semua Data Siswa'
   }
 
-  const handlePrintClean = () => {
+  const handleExportData = async () => {
+    const params = {}
+    if (search) params.search = search
+    if (unit && unit !== 'semua') params.unit_id = unit
+    if (kelas && kelas !== 'semua') params.kelas_id = kelas
+
+    await handleApiExport({
+      endpoint: '/students/export',
+      params,
+      title: 'Ekspor Laporan Siswa',
+      defaultFilename: `Laporan_Data_Siswa_${new Date().toISOString().slice(0, 10)}`,
+    })
+  }
+
+  const handlePrintClean = (orientation = 'portrait') => {
     const listToPrint = printTargetStudent ? [printTargetStudent] : hasilFilter
+    const activeUnitTarget = printTargetStudent
+      ? printTargetStudent.unit
+      : (unit !== 'semua' ? unit : null)
+
     const title = printTargetStudent
       ? `Laporan Detail Siswa: ${printTargetStudent.nama || ''}`
       : 'Rekap Laporan Data Siswa Terpadu'
@@ -328,6 +347,8 @@ export default function LaporanSiswaPage() {
     printCleanTable({
       title,
       subtitle,
+      unit: activeUnitTarget,
+      orientation,
       headers: ['NO', 'NIS', 'NAMA SISWA', 'UNIT PENDIDIKAN', 'KELAS / ROMBEL', 'JK', 'STATUS'],
       rows: listToPrint.map((item, index) => {
         const itemStatus = item.status || (item.aktif ? 'Aktif' : 'Non-aktif')
@@ -344,8 +365,12 @@ export default function LaporanSiswaPage() {
     })
   }
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = (orientation = 'portrait') => {
     const listToPrint = printTargetStudent ? [printTargetStudent] : hasilFilter
+    const activeUnitTarget = printTargetStudent
+      ? printTargetStudent.unit
+      : (unit !== 'semua' ? unit : null)
+
     const title = printTargetStudent
       ? `Laporan Detail Siswa: ${printTargetStudent.nama || ''}`
       : 'Rekap Laporan Data Siswa Terpadu'
@@ -356,6 +381,8 @@ export default function LaporanSiswaPage() {
     downloadPdfTable({
       title,
       filename,
+      unit: activeUnitTarget,
+      orientation,
       headers: ['NO', 'NIS', 'NAMA SISWA', 'UNIT PENDIDIKAN', 'KELAS / ROMBEL', 'JK', 'STATUS'],
       rows: listToPrint.map((item, index) => {
         const itemStatus = item.status || (item.aktif ? 'Aktif' : 'Non-aktif')
@@ -493,7 +520,8 @@ export default function LaporanSiswaPage() {
           setIsPrintModalOpen(false)
           setPrintTargetStudent(null)
         }}
-        title={printTargetStudent ? `Cetak Laporan: ${printTargetStudent.nama}` : 'Laporan Data Siswa'}
+        title={printTargetStudent ? `Cetak Laporan: ${printTargetStudent.nama}` : 'Laporan Data Siswa Terpadu'}
+        activeUnit={printTargetStudent ? printTargetStudent.unit : (unit !== 'semua' ? unit : null)}
         onPrint={handlePrintClean}
         onDownloadPdf={handleDownloadPdf}
       />
@@ -503,20 +531,29 @@ export default function LaporanSiswaPage() {
         <Backdrop
           isOpen={Boolean(selectedStudentModal)}
           onOpenChange={(open) => !open && setSelectedStudentModal(null)}
+          className="z-[70] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-5"
         >
-          <Dialog className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-[#1B2433]">
-            <DialogHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Eye className="h-5 w-5 text-emerald-600" />
-                  <span>Detail Data Siswa</span>
-                </DialogTitle>
-                <MasterStatusBadge status={selectedStudentModal.aktif ? 'aktif' : 'nonaktif'} />
-              </div>
-              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Informasi profil lengkap dan status keaktifan siswa.
-              </DialogDescription>
-            </DialogHeader>
+          <Dialog className="w-full max-w-lg rounded-3xl overflow-hidden bg-white p-0 shadow-2xl dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800">
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+            <div className="p-6">
+              <DialogHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+                      <Eye className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-black text-slate-900 dark:text-white">
+                        Detail Data Siswa
+                      </DialogTitle>
+                      <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Informasi profil lengkap dan status keaktifan siswa.
+                      </DialogDescription>
+                    </div>
+                  </div>
+                  <MasterStatusBadge status={selectedStudentModal.aktif ? 'aktif' : 'nonaktif'} />
+                </div>
+              </DialogHeader>
 
             <DialogBody className="space-y-4 py-4 text-xs">
               {/* Profile Summary Card */}
@@ -632,9 +669,10 @@ export default function LaporanSiswaPage() {
                 Tutup
               </Button>
             </DialogFooter>
-          </Dialog>
-        </Backdrop>
-      )}
+          </div>
+        </Dialog>
+      </Backdrop>
+    )}
 
       {/* ── KPI Stat Cards Grid ─────────────────────────────────────────────── */}
       <MasterStatsGrid columns={5}>
@@ -924,8 +962,8 @@ export default function LaporanSiswaPage() {
               {/* Soft Pastel Squircle Action Buttons */}
               <SquircleActionButton
                 variant="export"
-                label="Export CSV"
-                onClick={() => exportCsv('rekap-siswa.csv', kolomCsv, hasilFilter)}
+                label="Export Data"
+                onClick={handleExportData}
               />
               <SquircleActionButton
                 variant="view"
@@ -1051,7 +1089,7 @@ export default function LaporanSiswaPage() {
                 </TableRow>
               </TableHeader>
 
-              <TableBody>
+              <TableBody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                 {baris.map((item, index) => {
                   const itemStatus = item.status || (item.aktif ? 'aktif' : 'nonaktif')
 
@@ -1180,7 +1218,7 @@ export default function LaporanSiswaPage() {
             currentPage={halaman}
             totalPages={totalHalaman}
             onPageChange={(page) => setHalaman(page)}
-            sideLayout="full"
+            sideLayout="icon"
           />
         </div>
       </div>

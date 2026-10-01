@@ -135,14 +135,27 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       const isSuperAdmin = roles.some((r) => String(r).toLowerCase().replace(/[\s_-]+/g, '').includes('superadmin'))
       if (isDenied && !isSuperAdmin) return false
     }
-    if (item.link?.includes('/absensi-gerbang') || item.link?.includes('/laporan-alumni') || item.link?.includes('/kelola-alumni') || item.link?.includes('/laporan-tahfizh')) {
-      const isTeacherOnly = roles.some((r) => [
-        'guru', 'gurumatapelajaran', 'gurutahfizh', 'gurubk', 'walikelas', 'musyrif', 'musyrifah'
-      ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, ''))) &&
-      !roles.some((r) => [
-        'superadmin', 'admin', 'tatausaha', 'tu', 'operator', 'kepalasekolah', 'kepsek', 'divisipendidikan'
-      ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, '')))
-      if (isTeacherOnly) return false
+    const isTeacherOnly = roles.some((r) => [
+      'guru', 'gurumatapelajaran', 'gurutahfizh', 'gurubk', 'walikelas', 'musyrif', 'musyrifah'
+    ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, ''))) &&
+    !roles.some((r) => [
+      'superadmin', 'admin', 'tatausaha', 'tu', 'operator', 'kepalasekolah', 'kepsek', 'divisipendidikan'
+    ].includes(String(r).toLowerCase().replace(/[\s_-]+/g, '')))
+
+    if (isTeacherOnly && (
+      item.link === '/dashboard/students' ||
+      item.link?.includes('/unit-pendidikan') ||
+      item.link?.includes('/master-jenis-unit') ||
+      item.link?.includes('/master-jabatan') ||
+      item.link === '/dashboard/employees' ||
+      item.link?.includes('/absensi-gerbang') ||
+      item.link?.includes('/laporan-alumni') ||
+      item.link?.includes('/kelola-alumni') ||
+      item.link?.includes('/laporan-tahfizh') ||
+      item.link?.includes('/monitoring-tahfizh-ibadah') ||
+      item.link?.includes('/yayasan')
+    )) {
+      return false
     }
     const matchesTab = activeTab === 'Semua' || item.type === activeTab
     const q = query.toLowerCase().trim()

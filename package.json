@@ -14,6 +14,8 @@
     "@floating-ui/react": "^0.27.20",
     "@hookform/resolvers": "^5.5.7",
     "@internationalized/date": "^3.12.3",
+    "@lineiconshq/free-icons": "^1.0.7",
+    "@lineiconshq/react-lineicons": "^1.0.5",
     "@tailgrids/icons": "^2.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.101.3",
@@ -36,6 +38,7 @@
     "sonner": "^2.0.8",
     "sweetalert2": "^11.14.5",
     "tailwind-merge": "^3.6.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },

@@ -13,32 +13,34 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
   const generatedAt = report?.generated_at ? new Date(report.generated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
 
   return (
-    <OverlayWrapper isOpen={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <Backdrop className="print:hidden" isOpen={isOpen} onOpenChange={(open) => !open && onClose()} />
-      <Dialog className="max-w-4xl max-h-[90vh] print:max-w-full print:max-h-none print:h-auto print:border-none print:shadow-none print:bg-white print:static print:p-0">
-        <DialogHeader className="print:hidden">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full pr-6">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                <ShieldCheck className="h-5 w-5" />
+    <OverlayWrapper isOpen={isOpen} onOpenChange={(open) => !open && onClose()} className="z-[70]">
+      <Backdrop className="print:hidden z-[70] bg-slate-950/70 backdrop-blur-md" isOpen={isOpen} onOpenChange={(open) => !open && onClose()} />
+      <Dialog className="z-[70] max-w-4xl max-h-[90vh] p-0 rounded-3xl overflow-hidden bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-2xl print:max-w-full print:max-h-none print:h-auto print:border-none print:shadow-none print:bg-white print:static print:p-0">
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0 print:hidden" />
+        <div className="p-6">
+          <DialogHeader className="print:hidden pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full pr-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-black text-slate-900 dark:text-white">Dokumen Preview Laporan</DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pratinjau sebelum cetak atau ekspor PDF</DialogDescription>
+                </div>
               </div>
-              <div>
-                <DialogTitle>Dokumen Preview Laporan</DialogTitle>
-                <DialogDescription>Pratinjau sebelum cetak atau ekspor PDF</DialogDescription>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={onPrint} prefixIcon={<Printer className="h-3.5 w-3.5" />}>
-                Cetak
-              </Button>
-              <Button variant="success" appearance="fill" size="sm" onClick={onExportPdf} prefixIcon={<Download className="h-3.5 w-3.5" />}>
-                Download PDF
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={onPrint} prefixIcon={<Printer className="h-3.5 w-3.5" />} className="rounded-xl font-bold">
+                  Cetak
+                </Button>
+                <Button variant="success" appearance="fill" size="sm" onClick={onExportPdf} prefixIcon={<Download className="h-3.5 w-3.5" />} className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20">
+                  Download PDF
+                </Button>
+              </div>
             </div>
-          </div>
-          <DialogClose onClick={onClose} />
-        </DialogHeader>
+            <DialogClose onClick={onClose} />
+          </DialogHeader>
 
         <DialogBody className="space-y-6 py-4 overflow-y-auto max-h-[72vh] print:max-h-none print:overflow-visible print:p-0 print:text-slate-900 text-slate-800 dark:text-slate-100 font-sans">
           {/* Foundation Letterhead */}
@@ -133,6 +135,7 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
             <span>Halaman 1 / 1</span>
           </div>
         </DialogBody>
+        </div>
       </Dialog>
     </OverlayWrapper>
   )

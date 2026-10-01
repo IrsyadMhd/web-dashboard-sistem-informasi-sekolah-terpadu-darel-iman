@@ -66,8 +66,6 @@ import { Badge } from '@/components/tailgrids/core/badge'
 import { Button } from '@/components/tailgrids/core/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/tailgrids/core/card'
 
-// Fallback dataset removed: children loaded dynamically from API
-const MOCK_FALLBACK_CHILDREN = []
 
 const menu = [
   ['ringkasan', 'Dashboard', Sparkles, 'bg-sky-100/90 text-sky-600 border-sky-200/90 hover:bg-sky-200'],

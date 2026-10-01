@@ -234,7 +234,7 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
 
   useEffect(() => {
     let active = true
-    const fallbackToken = `STUDENT_CARD:${data.nis || data.nisn || data.id || 'DEMO'}:${data.nama || 'STUDENT'}`
+    const fallbackToken = data.id || data.nis || data.nisn ? `STUDENT_CARD:${data.id || data.nis || data.nisn}:${data.nama || ''}` : ''
     setQrToken(fallbackToken)
     setQrError('')
 

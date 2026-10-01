@@ -34,7 +34,9 @@ import {
   MessageCircle,
   Send,
   Printer,
+  FileSpreadsheet,
 } from 'lucide-react'
+import InputLaporanBulananModal from '../components/pemantauan/InputLaporanBulananModal'
 import { printWeeklyStudentEvaluation } from '../utils/printHelper'
 import { useAuthStore } from '../stores/authStore'
 import { familyPortalService } from '../services/familyPortalService'
@@ -89,6 +91,7 @@ import {
   SectionHeader,
   PageContainer,
 } from '../components/app'
+import { QuickAccessCard } from '../components/master-data'
 
 import ChartCard from '../components/dashboard/ChartCard'
 import SkeletonDashboard from '../components/dashboard/SkeletonDashboard'
@@ -316,6 +319,7 @@ export default function KepalaSekolahDashboardPage() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null)
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('all')
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState('')
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
 
   const handlePrintWeekly = (st) => {
     const sName = st?.nama || st?.name || st?.full_name || 'Shezakia Mufidah Alfirdausi'
@@ -1235,81 +1239,67 @@ export default function KepalaSekolahDashboardPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Navigasi langsung ke pemantauan presensi, tahfizh, dan kesiswaan</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {/* 1. Monitoring Divisi - Sky Blue Theme */}
-            <button
-              type="button"
+          <div className="flex flex-wrap gap-2.5">
+            {/* 1. Input Laporan Bulanan - Teal Theme */}
+            <QuickAccessCard
+              tone="teal"
+              icon={FileSpreadsheet}
+              title="Input Laporan Bulanan"
+              subtitle="Kinerja & Evaluasi"
+              onClick={() => setIsReportModalOpen(true)}
+              className="w-full sm:basis-[calc(50%_-_5px)] lg:basis-[calc(25%_-_7.5px)] grow"
+            />
+
+            {/* 2. Monitoring Divisi - Sky Blue Theme */}
+            <QuickAccessCard
+              tone="sky"
+              icon={FileText}
+              title="Monitoring Divisi"
+              subtitle="Divisi & Unit"
               onClick={() => navigate('/dashboard/monitoring-divisi')}
-              className="group flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-2.5 transition-all duration-200 hover:border-sky-300 hover:bg-sky-50/50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-sky-700/60 dark:hover:bg-sky-950/30 text-left"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100/80 text-sky-600 border border-sky-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-sky-950/60 dark:text-sky-400 dark:border-sky-800/60">
-                <FileText className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 pr-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-sky-700 dark:group-hover:text-sky-300">Monitoring Divisi</p>
-                <p className="text-[10px] text-slate-400 truncate">Divisi & Unit</p>
-              </div>
-            </button>
+              className="w-full sm:basis-[calc(50%_-_5px)] lg:basis-[calc(25%_-_7.5px)] grow"
+            />
 
             {/* 2. Rekap Kehadiran - Emerald Green Theme */}
-            <button
-              type="button"
+            <QuickAccessCard
+              tone="emerald"
+              icon={CheckCircle2}
+              title="Rekap Kehadiran"
+              subtitle="Presensi Guru & Siswa"
               onClick={() => navigate('/absensi/rekap-kehadiran')}
-              className="group flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-2.5 transition-all duration-200 hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-700/60 dark:hover:bg-emerald-950/30 text-left"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100/80 text-emerald-600 border border-emerald-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 pr-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Rekap Kehadiran</p>
-                <p className="text-[10px] text-slate-400 truncate">Presensi Guru & Siswa</p>
-              </div>
-            </button>
+              className="w-full sm:basis-[calc(50%_-_5px)] lg:basis-[calc(25%_-_7.5px)] grow"
+            />
 
-            {/* 3. Monitoring Tahfizh - Violet Theme */}
-            <button
-              type="button"
+            {/* 3. Monitoring Tahfizh - Purple Theme */}
+            <QuickAccessCard
+              tone="purple"
+              icon={BookOpen}
+              title="Tahfizh & Mutabaah Non-Pesantren"
+              subtitle="Hafalan & Ibadah Harian"
               onClick={() => navigate('/dashboard/monitoring-tahfizh-ibadah-non-pesantren')}
-              className="group flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-2.5 transition-all duration-200 hover:border-violet-300 hover:bg-violet-50/50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-violet-700/60 dark:hover:bg-violet-950/30 text-left"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100/80 text-violet-600 border border-violet-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-violet-950/60 dark:text-violet-400 dark:border-violet-800/60">
-                <BookOpen className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 pr-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-violet-700 dark:group-hover:text-violet-300">Tahfizh & Mutabaah Non-Pesantren</p>
-                <p className="text-[10px] text-slate-400 truncate">Hafalan & Ibadah Harian</p>
-              </div>
-            </button>
+              className="w-full sm:basis-[calc(50%_-_5px)] lg:basis-[calc(25%_-_7.5px)] grow"
+            />
 
             {/* 4. Verifikasi Prestasi - Amber Theme */}
-            <button
-              type="button"
+            <QuickAccessCard
+              tone="amber"
+              icon={Award}
+              title="Verifikasi Prestasi"
+              subtitle="Capaian & Penghargaan"
               onClick={() => navigate('/dashboard/pemantauan')}
-              className="group flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-2.5 transition-all duration-200 hover:border-amber-300 hover:bg-amber-50/50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-amber-700/60 dark:hover:bg-amber-950/30 text-left"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100/80 text-amber-600 border border-amber-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60">
-                <Award className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 pr-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-amber-700 dark:group-hover:text-amber-300">Verifikasi Prestasi</p>
-                <p className="text-[10px] text-slate-400 truncate">Capaian & Penghargaan</p>
-              </div>
-            </button>
+              className="w-full sm:basis-[calc(50%_-_5px)] lg:basis-[calc(25%_-_7.5px)] grow"
+            />
 
-            {/* 5. Segarkan Data - Cyan Theme */}
-            <button
-              type="button"
+            {/* 5. Segarkan Data - Slate Theme */}
+            <QuickAccessCard
+              tone="slate"
+              icon={RefreshCw}
+              title="Segarkan Data"
+              subtitle="Update Real-Time"
               onClick={fetchDashboard}
-              className="group flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-2.5 transition-all duration-200 hover:border-cyan-300 hover:bg-cyan-50/50 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-cyan-700/60 dark:hover:bg-cyan-950/30 text-left"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-100/80 text-cyan-600 border border-cyan-200/60 transition-transform duration-200 group-hover:scale-110 dark:bg-cyan-950/60 dark:text-cyan-400 dark:border-cyan-800/60">
-                <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
-              </div>
-              <div className="min-w-0 pr-1">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-cyan-700 dark:group-hover:text-cyan-300">Segarkan Data</p>
-                <p className="text-[10px] text-slate-400 truncate">Update Real-Time</p>
-              </div>
-            </button>
+              loading={loading}
+              className="w-full sm:basis-[calc(50%_-_5px)] lg:basis-[calc(25%_-_7.5px)] grow"
+            />
           </div>
         </div>
       </section>
@@ -2089,6 +2079,15 @@ export default function KepalaSekolahDashboardPage() {
           onClose={() => setActiveModal(null)}
         />
       </ModalErrorBoundary>
+
+      {/* Modal Input Laporan Bulanan Kepala Sekolah (Modul 1 - Poin 3) */}
+      <InputLaporanBulananModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        unitName={schoolInfo?.nama || 'Unit Sekolah'}
+        onSuccess={fetchDashboard}
+      />
+
       {/* TailGrids Dialog Modal Chat Direct Pegawai / Guru */}
       <Dialog
         isOpen={Boolean(activeChatUser)}
@@ -2168,17 +2167,46 @@ export default function KepalaSekolahDashboardPage() {
           ) : (
             chatMessages.map((msg, mIdx) => {
               const isMe = msg.is_sender || msg.sender_id === currentAuthUser?.id
+              const senderDisplayName = isMe ? 'Anda' : (activeChatUser?.name || 'Pegawai')
               return (
-                <div key={msg.id || mIdx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                <div key={msg.id || mIdx} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-2`}>
                   <div
                     className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-xs font-medium leading-relaxed shadow-2xs ${
                       isMe
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-br-none'
-                        : 'bg-white dark:bg-[#1B2433] text-slate-800 dark:text-slate-100 border border-slate-200/80 dark:border-slate-800 rounded-bl-none'
+                        ? 'bg-emerald-600 dark:bg-emerald-600 border border-emerald-500/80 text-white rounded-tr-xs'
+                        : 'bg-blue-50/95 dark:bg-blue-950/70 border border-blue-200/90 dark:border-blue-800/80 text-slate-900 dark:text-blue-50 rounded-tl-xs'
                     }`}
                   >
+                    {/* Header Label Nama pada Isi Chat */}
+                    <div
+                      className={`flex items-center gap-1.5 mb-1.5 pb-1 border-b ${
+                        isMe
+                          ? 'border-emerald-500/60 justify-end'
+                          : 'border-blue-200/60 dark:border-blue-800/60 justify-start'
+                      }`}
+                    >
+                      {!isMe && (
+                        <span className="text-[11px] font-extrabold tracking-tight text-blue-700 dark:text-blue-300">
+                          {senderDisplayName}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                          isMe
+                            ? 'bg-emerald-700/80 text-emerald-100 border border-emerald-500/40'
+                            : 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60'
+                        }`}
+                      >
+                        {isMe ? 'Balasan' : 'Pesan Masuk'}
+                      </span>
+                      {isMe && (
+                        <span className="text-[11px] font-extrabold tracking-tight text-emerald-100">
+                          {senderDisplayName}
+                        </span>
+                      )}
+                    </div>
                     <p className="whitespace-pre-wrap break-words">{msg.message || msg.text || msg.body}</p>
-                    <span className={`block text-[9px] mt-1 font-bold ${isMe ? 'text-emerald-100/70 text-right' : 'text-slate-400'}`}>
+                    <span className={`block text-[9px] mt-1 font-bold ${isMe ? 'text-emerald-100/90 text-right' : 'text-blue-600/75 dark:text-blue-300/80'}`}>
                       {msg.created_at ? new Date(msg.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'Baru saja'}
                     </span>
                   </div>

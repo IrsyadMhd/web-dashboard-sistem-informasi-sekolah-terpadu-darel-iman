@@ -41,8 +41,8 @@ export const lmsBankSoalService = {
     return response.data
   },
 
-  getOptions: async () => {
-    const response = await api.get('/lms/bank-soal/options')
+  getOptions: async (params = {}) => {
+    const response = await api.get('/lms/bank-soal/options', { params })
     return response.data
   },
 }

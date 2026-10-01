@@ -3,24 +3,16 @@ import { FiSearch, FiCheck } from 'react-icons/fi'
 import { FaGraduationCap, FaSchool, FaBookQuran, FaBuildingColumns } from 'react-icons/fa6'
 import { Button } from '@/components/tailgrids/core/button'
 import { Badge } from '@/components/tailgrids/core/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
 import { Card } from '@/components/tailgrids/core/card'
 import { educationUnitService } from '../../services/educationUnitService'
-import Swal from 'sweetalert2'
-
-const DEFAULT_UNITS = [
-  { id: 'tkit', name: 'TKIT', fullName: 'TKIT Dar El-Iman', subtext: 'Unit Pendidikan Anak Dini', icon: FaSchool },
-  { id: 'sdit', name: 'SDIT', fullName: 'SDIT Dar El-Iman', subtext: 'Unit Pendidikan Dasar', icon: FaGraduationCap },
-  { id: 'smpit', name: 'SMPIT', fullName: 'SMPIT Dar El-Iman', subtext: 'Unit Pendidikan Menengah Pertama', icon: FaBuildingColumns },
-  { id: 'smait', name: 'SMAIT', fullName: 'SMAIT Dar El-Iman', subtext: 'Unit Pendidikan Menengah Atas', icon: FaBuildingColumns },
-  { id: 'ponpes', name: 'Pondok Pesantren', fullName: 'Pondok Pesantren Dar El-Iman', subtext: 'Unit Pesantren & Asrama', icon: FaBookQuran },
-  { id: 'mahad', name: 'Ma\'had Aly', fullName: 'Ma\'had Aly Dar El-Iman', subtext: 'Unit Pendidikan Tinggi Islam', icon: FaBuildingColumns },
-]
 
 export default function SelectUnitCard({ onNavigate, disabled = false }) {
-  const [selectedUnit, setSelectedUnit] = useState('sdit')
+  const [selectedUnit, setSelectedUnit] = useState('')
   const [search, setSearch] = useState('')
-  const [units, setUnits] = useState(DEFAULT_UNITS)
+  const [units, setUnits] = useState([])
   const [loading, setLoading] = useState(true)
+  const [savedUnitName, setSavedUnitName] = useState(null)
 
   useEffect(() => {
     educationUnitService
@@ -43,10 +35,15 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
           }))
           setUnits(mapped)
           setSelectedUnit(mapped[0].id)
+        } else {
+          setUnits([])
+          setSelectedUnit('')
         }
       })
       .catch((err) => {
         console.error('Gagal memuat unit pendidikan:', err)
+        setUnits([])
+        setSelectedUnit('')
       })
       .finally(() => {
         setLoading(false)
@@ -62,14 +59,11 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
   const handleSelect = () => {
     if (disabled) return
     const activeObj = units.find((u) => u.id === selectedUnit) || units[0]
-    Swal.fire({
-      icon: 'success',
-      title: 'Unit Pendidikan Dipilih',
-      html: `Unit aktif berhasil disetel ke <b>${activeObj.fullName || activeObj.name}</b>`,
-      timer: 1800,
-      showConfirmButton: false,
-    })
-    if (onNavigate) onNavigate(7)
+    setSavedUnitName(activeObj.fullName || activeObj.name)
+    setTimeout(() => {
+      setSavedUnitName(null)
+      if (onNavigate) onNavigate(7)
+    }, 1500)
   }
 
   return (
@@ -87,17 +81,28 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
               🔒 Terkunci (Non-Aktif)
             </Badge>
           ) : (
-            <Badge color="success" size="sm">
-              {units.length} Unit Pendidikan Aktif
+            <Badge color="emerald" size="sm">
+              Tersedia
             </Badge>
           )}
         </h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          {disabled
-            ? 'Pemilihan unit pendidikan tidak aktif untuk role akun ini.'
-            : 'Pilih unit pendidikan yang akan Anda kelola.'}
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Tentukan unit sekolah aktif yang menjadi konteks kerja Anda saat ini.
         </p>
       </div>
+
+      {savedUnitName && (
+        <Alert status="success" className="rounded-xl">
+          <AlertIndicator>
+            <FiCheck className="w-4 h-4" />
+          </AlertIndicator>
+          <AlertContent>
+            <AlertDescription>
+              Unit aktif berhasil disetel ke <b>{savedUnitName}</b>
+            </AlertDescription>
+          </AlertContent>
+        </Alert>
+      )}
 
       {/* Search Input */}
       <div className="relative max-w-md">
@@ -115,56 +120,62 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
       </div>
 
       {/* Units Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {filtered.map((unit) => {
-          const isSelected = selectedUnit === unit.id
-          const IconComp = unit.icon
+      {units.length === 0 && !loading ? (
+        <div className="text-center py-10 px-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+          Belum ada data unit pendidikan yang tersedia di sistem.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {filtered.map((unit) => {
+            const isSelected = selectedUnit === unit.id
+            const IconComp = unit.icon
 
-          return (
-            <div
-              key={unit.id}
-              onClick={() => !disabled && setSelectedUnit(unit.id)}
-              className={`relative p-5 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${
-                disabled ? 'cursor-not-allowed border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40' : 'cursor-pointer'
-              } ${
-                isSelected
-                  ? 'border-[#0E5C44] dark:border-[#3FBF75] bg-emerald-50/40 dark:bg-emerald-950/30 shadow-xs ring-2 ring-emerald-600/20'
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-slate-50/50 shadow-xs'
-              }`}
-            >
-              {/* Icon Badge */}
+            return (
               <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 transition-colors ${
+                key={unit.id}
+                onClick={() => !disabled && setSelectedUnit(unit.id)}
+                className={`relative p-5 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${
+                  disabled ? 'cursor-not-allowed border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40' : 'cursor-pointer'
+                } ${
                   isSelected
-                    ? 'bg-[#0E5C44] dark:bg-[#3FBF75] text-amber-300 dark:text-slate-900 shadow-md shadow-emerald-700/20'
-                    : 'bg-emerald-100/70 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                    ? 'border-[#0E5C44] dark:border-[#3FBF75] bg-emerald-50/40 dark:bg-emerald-950/30 shadow-xs ring-2 ring-emerald-600/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-slate-50/50 shadow-xs'
                 }`}
               >
-                <IconComp />
-              </div>
-
-              {/* Text */}
-              <div className="flex-1 min-w-0">
-                <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {unit.name}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{unit.subtext}</p>
-              </div>
-
-              {/* Selection Checkmark */}
-              {isSelected && (
-                <div className="w-6 h-6 rounded-full bg-[#0E5C44] dark:bg-[#3FBF75] text-white dark:text-slate-900 flex items-center justify-center shrink-0 shadow-xs">
-                  <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
+                {/* Icon Badge */}
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 transition-colors ${
+                    isSelected
+                      ? 'bg-[#0E5C44] dark:bg-[#3FBF75] text-amber-300 dark:text-slate-900 shadow-md shadow-emerald-700/20'
+                      : 'bg-emerald-100/70 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                  }`}
+                >
+                  <IconComp />
                 </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
+                    {unit.name}
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{unit.subtext}</p>
+                </div>
+
+                {/* Selection Checkmark */}
+                {isSelected && (
+                  <div className="w-6 h-6 rounded-full bg-[#0E5C44] dark:bg-[#3FBF75] text-white dark:text-slate-900 flex items-center justify-center shrink-0 shadow-xs">
+                    <FiCheck className="w-3.5 h-3.5 stroke-[3]" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Action Button */}
-      <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
-        <Button type="button" variant="primary" size="md" disabled={disabled} onClick={handleSelect}>
+      <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800 gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+        <Button type="button" variant="primary" size="md" disabled={disabled || !selectedUnit || units.length === 0} onClick={handleSelect}>
           Pilih Unit Ini
         </Button>
       </div>

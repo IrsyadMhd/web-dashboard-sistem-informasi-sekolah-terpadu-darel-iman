@@ -60,9 +60,9 @@ export default function ActionDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Menu Aksi"
-        className="flex size-10 items-center justify-center rounded-2xl bg-slate-100/90 text-slate-600 hover:bg-slate-500 hover:text-white dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-500 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-slate-500/30 cursor-pointer shadow-2xs"
+        className="flex size-9 sm:size-10 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 cursor-pointer"
       >
-        {trigger || <MenuMeatballs1 className="size-5" />}
+        {trigger || <MenuMeatballs1 className="size-5 text-white" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent className="p-1.5 border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 min-w-36 shadow-lg rounded-xl">
         {canView && (

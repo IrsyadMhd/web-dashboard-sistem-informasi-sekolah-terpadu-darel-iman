@@ -22,7 +22,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { lmsPengumpulanTugasService } from '../services/lmsPengumpulanTugasService'
 import { api } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
@@ -124,7 +124,7 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', on
   )
 }
 
-export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabNav }) {
+export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const user = useAuthStore((state) => state.user)
   const activeUnit = useUnitStore((state) => state.activeUnit)
 
@@ -1345,5 +1345,17 @@ export default function LmsPengumpulanTugasPage({ embedded, hidePageHeader, tabN
     </div>
   )
 
-  return <PageContainer maxW="7xl">{pageContent}</PageContainer>
+  return (
+    <PageContainer maxW="7xl">
+      {!(embedded || hideBreadcrumb) && (
+        <AppBreadcrumb
+          items={[
+            { label: 'LMS & Akademik', href: '/dashboard' },
+            { label: 'Pengumpulan Tugas Siswa' },
+          ]}
+        />
+      )}
+      {pageContent}
+    </PageContainer>
+  )
 }

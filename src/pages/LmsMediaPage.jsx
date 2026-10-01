@@ -132,7 +132,68 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', on
   )
 }
 
+function HarmonizedDeleteMediaModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
+  if (!isOpen || !item) return null
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.94 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+        <div className="p-6">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div>
+              <span className="inline-block rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                Hapus Permanen
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                Hapus Media Pembelajaran?
+              </h3>
+            </div>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+            Apakah Anda yakin ingin menghapus media <strong className="text-slate-900 dark:text-white">"{item.nama_file}"</strong>?
+          </p>
+          <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3 dark:border-rose-900/40 dark:bg-rose-950/20 mb-6">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-rose-800 dark:text-rose-300">
+                File media ini tidak akan dapat diakses oleh siswa atau guru yang terhubung ke materi terkait.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isSubmitting}
+              className="h-10 px-5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-xs font-extrabold text-white shadow-md shadow-rose-600/30 transition cursor-pointer disabled:opacity-50"
+            >
+              {isSubmitting ? 'Menghapus...' : 'Ya, Hapus Media'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, item: null, isSubmitting: false })
   const [dataMedia, setDataMedia] = useState([])
   const [optionsMateri, setOptionsMateri] = useState([])
   const [tipeOptions, setTipeOptions] = useState([
@@ -764,15 +825,15 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
 
         <MasterDataTable className="!rounded-none !border-0 !shadow-none">
           <table className="w-full text-left text-sm border-collapse">
-            <thead className="bg-[#F8FAFB] dark:bg-[#202B3A] border-b border-[#EDF0F4] dark:border-[#354153]">
-              <tr>
-                <th className="w-[6%] bg-[#F8FAFB] dark:bg-[#202B3A] px-5 sm:px-6 md:px-8 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">No</th>
-                <th className="w-[8%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
-                <th className="w-[30%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Nama Media / Lampiran</th>
-                <th className="hidden w-[14%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Tipe Media</th>
-                <th className="hidden w-[22%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Materi Pembelajaran</th>
-                <th className="hidden w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Ukuran / Durasi</th>
-                <th className="w-[12%] bg-[#F8FAFB] dark:bg-[#202B3A] px-3 py-3.5 text-center text-[#58677B] dark:text-[#DCE5F1] font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
+            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+              <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-emerald-950 dark:text-emerald-200">
+                <th className="w-[6%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">No</th>
+                <th className="w-[8%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Urutan</th>
+                <th className="w-[30%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider">Nama Media / Lampiran</th>
+                <th className="hidden w-[14%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider sm:table-cell">Tipe Media</th>
+                <th className="hidden w-[22%] bg-transparent px-3 py-3.5 font-extrabold text-[11px] uppercase tracking-wider md:table-cell">Materi Pembelajaran</th>
+                <th className="hidden w-[12%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider lg:table-cell">Ukuran / Durasi</th>
+                <th className="w-[12%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -1298,7 +1359,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
           </div>
         </div>
       )}
-        </motion.div>
+      </motion.div>
       </div>
     </PageContainer>
   )

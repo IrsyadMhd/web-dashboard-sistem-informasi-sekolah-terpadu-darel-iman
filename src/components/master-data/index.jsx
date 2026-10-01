@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  CalendarCheck,
   ChevronDown,
   ChevronRight,
   Database,
@@ -8,6 +9,7 @@ import {
   FileInput,
   FileSpreadsheet,
   Home,
+  LayoutGrid,
   Pencil,
   Plus,
   Printer,
@@ -18,6 +20,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import { Breadcrumbs } from '../tailgrids/core/breadcrumbs'
 import {
   AppBadge,
   AppButton,
@@ -33,7 +36,6 @@ import {
   AppSkeleton,
   AppToolbar,
   ConfirmDialog,
-  IconButton,
   SummaryCard,
 } from '../app'
 
@@ -45,28 +47,57 @@ export const masterStyles = {
   error: 'mt-1.5 text-xs font-medium text-rose-600',
 }
 
-export function MasterDataPage({ children, className = '', hideBreadcrumb = false }) {
+export function MasterDataPage({
+  children,
+  className = '',
+  hideBreadcrumb = true,
+  breadcrumbItems,
+  breadcrumbPageTitle,
+}) {
   const location = useLocation()
-  const currentLabel = {
-    '/dashboard/students/unit-pendidikan': 'Unit Pendidikan',
-    '/dashboard/master-jenis-unit': 'Jenis Unit',
-    '/dashboard/master-tahun-ajaran': 'Tahun Ajaran',
-    '/dashboard/master-subjects': 'Mata Pelajaran',
-    '/dashboard/master-jabatan': 'Jabatan',
-    '/dashboard/employees': 'Pegawai',
-    '/dashboard/students': 'Siswa',
-  }[location.pathname] || 'Master Data'
+
+  const resolvedBreadcrumbs = React.useMemo(() => {
+    if (breadcrumbItems && breadcrumbItems.length > 0) {
+      return breadcrumbItems
+    }
+    const path = location.pathname
+    if (path.includes('/akademik/jadwal')) {
+      return [
+        { href: '/dashboard/akademik', label: 'Akademik' },
+        { label: 'Jadwal Pelajaran' },
+      ]
+    }
+    if (path.includes('/orang-tua')) {
+      return [
+        { href: '/dashboard', label: 'Master Data' },
+        { label: 'Orang Tua / Wali' },
+      ]
+    }
+    const labelMap = {
+      '/dashboard/students/unit-pendidikan': 'Unit Pendidikan',
+      '/dashboard/master-jenis-unit': 'Jenis Unit',
+      '/dashboard/master-tahun-ajaran': 'Tahun Ajaran',
+      '/dashboard/master-subjects': 'Mata Pelajaran',
+      '/dashboard/master/mata-pelajaran': 'Mata Pelajaran',
+      '/dashboard/master-jabatan': 'Jabatan',
+      '/dashboard/employees': 'Pegawai',
+      '/dashboard/students': 'Siswa',
+      '/dashboard/master/siswa': 'Data Siswa',
+    }
+    const label = labelMap[path] || 'Data Master'
+    return [
+      { href: '/dashboard', label: 'Master Data' },
+      { label },
+    ]
+  }, [breadcrumbItems, location.pathname])
 
   return (
     <div className={`master-data-page space-y-6 pb-12 ${className}`}>
       {!hideBreadcrumb && (
-        <nav className="master-breadcrumb ui-enter" aria-label="Breadcrumb">
-          <Link to="/dashboard" aria-label="Kembali ke Dashboard"><Home aria-hidden="true" /></Link>
-          <ChevronRight aria-hidden="true" />
-          <span>Master Data</span>
-          <ChevronRight aria-hidden="true" />
-          <strong aria-current="page">{currentLabel}</strong>
-        </nav>
+        <Breadcrumbs
+          items={resolvedBreadcrumbs}
+          pageTitle={breadcrumbPageTitle}
+        />
       )}
       {children}
     </div>
@@ -90,88 +121,144 @@ export function MasterHeaderActions({ children }) {
   return <div className="master-header-actions grid grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center">{children}</div>
 }
 
+// ── Tombol Aksi Berlabel (§H.3/§H.6 Tailgrids_Pengaturan_Halaman) ──
+// Bahasa visual = tombol submit modal: vivid gradient rounded-2xl + ikon dalam
+// wrapper putih/20. Varian secondary = slate outline netral (bukan cancel).
 const actionIcons = {
   export: FileSpreadsheet,
   import: FileInput,
   primary: Plus,
+  emerald: Plus,
+  view: Eye,
+  danger: Trash2,
+  secondary: null,
 }
 
 const actionVariantClasses = {
-  import:
-    'inline-flex items-center gap-2 rounded-xl border border-sky-200/80 bg-sky-50 px-3.5 py-2 text-xs font-bold text-sky-700 shadow-xs transition-colors hover:border-sky-300 hover:bg-sky-100/90 dark:border-sky-800/60 dark:bg-sky-950/50 dark:text-sky-300 dark:hover:bg-sky-900/60',
-  export:
-    'inline-flex items-center gap-2 rounded-xl border border-amber-200/80 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-700 shadow-xs transition-colors hover:border-amber-300 hover:bg-amber-100/90 dark:border-amber-800/60 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-900/60',
   primary:
-    'inline-flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-700 shadow-xs transition-colors hover:border-emerald-300 hover:bg-emerald-100/90 dark:border-emerald-800/60 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60',
+    'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40',
+  emerald:
+    'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40',
+  view:
+    'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40',
+  export:
+    'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40',
+  import:
+    'bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40',
+  danger:
+    'bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40',
   secondary:
-    'inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200',
+    'border border-slate-200/90 bg-white text-slate-700 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800',
 }
 
-export function MasterActionButton({ variant = 'primary', icon: CustomIcon, children, className = '', ...props }) {
+export function MasterActionButton({ variant = 'primary', icon: CustomIcon, children, disabled = false, loading = false, className = '', ...props }) {
   const Icon = CustomIcon || actionIcons[variant] || actionIcons.primary
   const variantStyle = actionVariantClasses[variant] || actionVariantClasses.primary
+  const isSecondary = variant === 'secondary'
+  const isDisabled = disabled || loading
   return (
     <button
       type="button"
-      className={`${variantStyle} ${className}`}
+      disabled={isDisabled}
+      className={`inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.03] active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${variantStyle} ${className}`}
       {...props}
     >
-      {Icon && <Icon className="h-4 w-4 shrink-0" />}
+      {loading ? (
+        <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
+      ) : (
+        Icon && (
+          <span className={`flex size-5 items-center justify-center rounded-lg ${isSecondary ? 'bg-slate-200/70 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-white/20 text-white'}`}>
+            <Icon className="size-3.5" strokeWidth={2.2} />
+          </span>
+        )
+      )}
       {children && <span>{children}</span>}
     </button>
   )
 }
 
+// ── Vivid Gradient Squircle (§H Tailgrids_Pengaturan_Halaman — kontrak global) ──
+// WAJIB: bg-gradient-to-br + border [warna]-300/40 TANPA shadow.
+// DILARANG: pastel flat, solid, shadow-md/lg, bg-gradient-to-r.
 const squircleVariants = {
   import: {
     icon: Upload,
-    base: 'bg-sky-100/90 text-sky-600 dark:bg-sky-950/60 dark:text-sky-300',
-    hover: 'hover:bg-sky-500 hover:text-white dark:hover:bg-sky-500 dark:hover:text-white hover:shadow-md hover:shadow-sky-500/30',
+    classes: 'bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40',
   },
   export: {
     icon: Download,
-    base: 'bg-amber-100/90 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300',
-    hover: 'hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white hover:shadow-md hover:shadow-amber-500/30',
+    classes: 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40',
   },
   print: {
     icon: Printer,
-    base: 'bg-indigo-100/90 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300',
-    hover: 'hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white hover:shadow-md hover:shadow-indigo-600/30',
+    classes: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40',
   },
   primary: {
     icon: Plus,
-    base: 'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300',
-    hover: 'hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white hover:shadow-md hover:shadow-emerald-600/30',
+    classes: 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40',
+    iconStrokeWidth: 2.5,
   },
   view: {
     icon: Eye,
-    base: 'bg-indigo-100/90 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300',
-    hover: 'hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white hover:shadow-md hover:shadow-indigo-600/30',
+    classes: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40',
   },
   edit: {
     icon: Pencil,
-    base: 'bg-amber-100/90 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300',
-    hover: 'hover:bg-amber-500 hover:text-white dark:hover:bg-amber-500 dark:hover:text-white hover:shadow-md hover:shadow-amber-500/30',
+    classes: 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40',
   },
   delete: {
     icon: Trash2,
-    base: 'bg-rose-100/90 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300',
-    hover: 'hover:bg-rose-500 hover:text-white dark:hover:bg-rose-500 dark:hover:text-white hover:shadow-md hover:shadow-rose-500/30',
+    classes: 'bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40',
   },
   restore: {
     icon: RotateCcw,
-    base: 'bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300',
-    hover: 'hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white hover:shadow-md hover:shadow-emerald-600/30',
+    classes: 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40',
   },
   setActive: {
     icon: Star,
-    base: 'bg-sky-100/90 text-sky-600 dark:bg-sky-950/60 dark:text-sky-300',
-    hover: 'hover:bg-sky-500 hover:text-white dark:hover:bg-sky-500 dark:hover:text-white hover:shadow-md hover:shadow-sky-500/30',
+    classes: 'bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40',
   },
   neutral: {
     icon: Database,
-    base: 'bg-slate-100/90 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300',
-    hover: 'hover:bg-slate-500 hover:text-white dark:hover:bg-slate-500 dark:hover:text-white hover:shadow-md hover:shadow-slate-500/30',
+    classes: 'bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700 text-white border border-slate-300/40',
+  },
+  teal: {
+    icon: LayoutGrid,
+    classes: 'bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 text-white border border-teal-300/40',
+  },
+  cyan: {
+    icon: CalendarCheck,
+    classes: 'bg-gradient-to-br from-cyan-400 via-cyan-500 to-sky-600 text-white border border-cyan-300/40',
+  },
+  violet: {
+    icon: LayoutGrid,
+    classes: 'bg-gradient-to-br from-violet-500 via-violet-600 to-purple-700 text-white border border-violet-300/40',
+  },
+  pink: {
+    icon: FileSpreadsheet,
+    classes: 'bg-gradient-to-br from-pink-500 via-pink-600 to-rose-700 text-white border border-pink-300/40',
+  },
+  // Alias lawas — dipetakan ke varian kanonis (§H). Jangan dipakai di kode baru.
+  vividBlue: {
+    icon: Database,
+    classes: 'bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40',
+  },
+  vividPurple: {
+    icon: Printer,
+    classes: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40',
+  },
+  vividSky: {
+    icon: Upload,
+    classes: 'bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40',
+  },
+  vividAmber: {
+    icon: Download,
+    classes: 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40',
+  },
+  vividEmerald: {
+    icon: Plus,
+    classes: 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40',
+    iconStrokeWidth: 2.5,
   },
 }
 
@@ -181,30 +268,36 @@ export function SquircleActionButton({
   label,
   onClick,
   disabled = false,
+  loading = false,
   className = '',
   ...props
 }) {
   const config = squircleVariants[variant] || squircleVariants.primary
   const Icon = CustomIcon || config.icon
+  const isDisabled = disabled || loading
 
   return (
     <div className="group relative inline-flex" {...props}>
       <button
         type="button"
         onClick={onClick}
-        disabled={disabled}
+        disabled={isDisabled}
         title={label}
         aria-label={label}
+        aria-busy={loading || undefined}
         className={`
           flex size-10 items-center justify-center rounded-2xl
-          ${config.base}
-          ${config.hover}
-          transition-colors duration-200 cursor-pointer shadow-2xs
-          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-current disabled:hover:shadow-none
+          ${config.classes}
+          transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer
+          disabled:opacity-50 disabled:pointer-events-none
           ${className}
         `}
       >
-        {Icon && <Icon className="size-5 transition-colors" />}
+        {loading ? (
+          <span className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
+        ) : (
+          Icon && <Icon className="size-5 text-white" strokeWidth={config.iconStrokeWidth || 2.2} />
+        )}
       </button>
       {label && (
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
@@ -213,6 +306,59 @@ export function SquircleActionButton({
         </div>
       )}
     </div>
+  )
+}
+
+// ── Kartu Akses Cepat Horizontal (§H.7 Tailgrids_Pengaturan_Halaman) ──
+// Navigasi modul dashboard: ikon squircle putih/20 + judul + subjudul di atas
+// gradient vivid. Dilarang versi pastel flat.
+const quickAccessTones = {
+  emerald: 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 border-emerald-300/40',
+  sky: 'bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 border-sky-300/40',
+  purple: 'bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 border-purple-300/40',
+  amber: 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 border-amber-300/40',
+  rose: 'bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 border-rose-300/40',
+  teal: 'bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 border-teal-300/40',
+  slate: 'bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700 border-slate-300/40',
+}
+
+export function QuickAccessCard({
+  icon: Icon,
+  title,
+  subtitle,
+  onClick,
+  tone = 'emerald',
+  loading = false,
+  className = '',
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={title}
+      aria-busy={loading || undefined}
+      className={`
+        group flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left text-white
+        transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60
+        ${quickAccessTones[tone] || quickAccessTones.emerald}
+        ${className}
+      `}
+      {...props}
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] bg-white/20 text-white transition-transform duration-200 group-hover:scale-110">
+        {loading ? (
+          <span className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
+        ) : (
+          Icon && <Icon className="h-5 w-5 text-white" strokeWidth={2.2} />
+        )}
+      </span>
+      <span className="min-w-0 flex-1 pr-1">
+        <span className="block truncate text-xs font-extrabold text-white">{title}</span>
+        {subtitle && <span className="block truncate text-[10px] font-medium text-white/80">{subtitle}</span>}
+      </span>
+    </button>
   )
 }
 
@@ -467,10 +613,13 @@ export function MasterBadge({ variant = 'neutral', children, color, className = 
   )
 }
 
-export function MasterStatusBadge({ active, activeLabel = 'Aktif', inactiveLabel = 'Tidak Aktif' }) {
+export function MasterStatusBadge({ active, status, activeLabel = 'Aktif', inactiveLabel = 'Tidak Aktif' }) {
+  const isCurrentlyActive = active !== undefined 
+    ? Boolean(active) 
+    : (status === true || String(status).toLowerCase() === 'aktif' || String(status).toLowerCase() === 'active')
   return (
-    <AppBadge variant={active ? 'success' : 'danger'} dot>
-      {active ? activeLabel : inactiveLabel}
+    <AppBadge variant={isCurrentlyActive ? 'success' : 'danger'} dot>
+      {isCurrentlyActive ? activeLabel : inactiveLabel}
     </AppBadge>
   )
 }
@@ -479,25 +628,28 @@ export function MasterActionGroup({ children }) {
   return <div className="inline-flex items-center gap-2">{children}</div>
 }
 
-const iconButtonVariants = {
-  view: { Icon: Eye, variant: 'outline', label: 'Lihat Detail' },
-  edit: { Icon: Pencil, variant: 'warning', label: 'Edit Data' },
-  delete: { Icon: Trash2, variant: 'destructive', label: 'Hapus Data' },
+// ── Aksi Ikon Level Baris (§H.6):SELALU Alias ke SquircleActionButton ──
+// Dilarang memakai IconButton/AppButton ghost-outlined untuk aksi baris.
+const iconButtonVariantMap = {
+  view: 'view',
+  edit: 'edit',
+  delete: 'delete',
 }
 
-export function MasterActionIconButton({ variant = 'view', icon: CustomIcon, label, loading = false, ...props }) {
-  const config = iconButtonVariants[variant] || iconButtonVariants.view
-  const Icon = CustomIcon || config.Icon
-  const title = label || config.label
+const iconButtonDefaultLabels = {
+  view: 'Lihat Detail',
+  edit: 'Edit Data',
+  delete: 'Hapus Data',
+}
 
+export function MasterActionIconButton({ variant = 'view', icon, label, loading = false, ...props }) {
+  const mapped = iconButtonVariantMap[variant] || 'view'
   return (
-    <IconButton
-      label={title}
-      icon={Icon}
-      variant={config.variant}
-      size="icon"
+    <SquircleActionButton
+      variant={mapped}
+      icon={icon}
+      label={label || iconButtonDefaultLabels[mapped]}
       loading={loading}
-      className="h-11 w-11"
       {...props}
     />
   )

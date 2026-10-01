@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   UserRound,
   Shield,
@@ -35,7 +35,6 @@ import { useAuthStore } from '../../stores/authStore'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { Skeleton } from '../../components/ui/skeleton'
-import Swal from 'sweetalert2'
 
 const containerVariants = {
   hidden: { opacity: 0, y: 15 },
@@ -51,7 +50,70 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 }
 
+function useToast() {
+  const [toasts, setToasts] = useState([])
+  const add = (type, title, message) => {
+    const id = Date.now() + Math.random()
+    setToasts((p) => [...p, { id, type, title, message }])
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4000)
+  }
+  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
+  return {
+    toasts,
+    dismiss,
+    success: (t, m) => add('success', t, m),
+    error: (t, m) => add('error', t, m),
+    warning: (t, m) => add('warning', t, m),
+    info: (t, m) => add('info', t, m),
+  }
+}
+
+function ToastStack({ toasts, onDismiss }) {
+  return (
+    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
+              t.type === 'success'
+                ? 'border-emerald-300 bg-emerald-50/95 text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/90 dark:text-emerald-100'
+                : t.type === 'error'
+                ? 'border-rose-300 bg-rose-50/95 text-rose-900 dark:border-rose-700/60 dark:bg-rose-950/90 dark:text-rose-100'
+                : t.type === 'warning'
+                ? 'border-amber-300 bg-amber-50/95 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/90 dark:text-amber-100'
+                : 'border-blue-300 bg-blue-50/95 text-blue-900 dark:border-blue-700/60 dark:bg-blue-950/90 dark:text-blue-100'
+            }`}
+          >
+            <div className="shrink-0 mt-0.5">
+              {t.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+              {t.type === 'error' && <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
+              {t.type === 'warning' && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
+              {t.type === 'info' && <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h5 className="text-xs font-bold leading-tight">{t.title}</h5>
+              {t.message && <p className="text-[11px] opacity-85 mt-0.5 leading-snug">{t.message}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => onDismiss(t.id)}
+              className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs p-0.5 cursor-pointer"
+            >
+              ✕
+            </button>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export function FoundationProfilePage() {
+  const toast = useToast()
   const authUser = useAuthStore((state) => state.user)
   const setSession = useAuthStore((state) => state.setSession)
   const token = localStorage.getItem('school_erp_token')
@@ -134,13 +196,7 @@ export function FoundationProfilePage() {
     const updated = { ...preferences, [key]: value }
     setPreferences(updated)
     localStorage.setItem('user_preferences', JSON.stringify(updated))
-    Swal.fire({
-      title: 'Tersimpan',
-      text: 'Preferensi pengguna berhasil diperbarui.',
-      icon: 'success',
-      timer: 1500,
-      showConfirmButton: false,
-    })
+    toast.success('Tersimpan', 'Preferensi pengguna berhasil diperbarui.')
   }
 
   // Handle Edit Submit
@@ -166,11 +222,11 @@ export function FoundationProfilePage() {
       }
 
       setEditModalOpen(false)
-      Swal.fire('Berhasil!', 'Profil berhasil diperbarui.', 'success')
+      toast.success('Berhasil!', 'Profil berhasil diperbarui.')
     } catch (err) {
       console.error('Gagal update profil:', err)
       const message = err.response?.data?.message || 'Terjadi kesalahan saat menyimpan profil.'
-      Swal.fire('Gagal Menyimpan', message, 'error')
+      toast.error('Gagal Menyimpan', message)
     } finally {
       setSavingEdit(false)
     }
@@ -182,7 +238,7 @@ export function FoundationProfilePage() {
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      Swal.fire('Ukuran File Terlalu Besar', 'Maksimal ukuran foto adalah 2MB.', 'warning')
+      toast.warning('Ukuran File Terlalu Besar', 'Maksimal ukuran foto adalah 2MB.')
       return
     }
 
@@ -217,11 +273,11 @@ export function FoundationProfilePage() {
       setAvatarModalOpen(false)
       setSelectedFile(null)
       setPreviewUrl(null)
-      Swal.fire('Berhasil!', 'Foto profil berhasil diperbarui.', 'success')
+      toast.success('Berhasil!', 'Foto profil berhasil diperbarui.')
     } catch (err) {
       console.error('Gagal upload avatar:', err)
       const message = err.response?.data?.message || 'Gagal mengunggah foto profil.'
-      Swal.fire('Gagal Upload', message, 'error')
+      toast.error('Gagal Upload', message)
     } finally {
       setUploadingAvatar(false)
     }
@@ -256,7 +312,7 @@ export function FoundationProfilePage() {
         password_confirmation: '',
       })
 
-      Swal.fire('Password Diubah!', 'Password Anda berhasil diperbarui. Gunakan password baru untuk login berikutnya.', 'success')
+      toast.success('Password Diubah!', 'Password Anda berhasil diperbarui. Gunakan password baru untuk login berikutnya.')
     } catch (err) {
       console.error('Gagal ganti password:', err)
       const msg = err.response?.data?.message || 'Gagal mengubah password. Pastikan password saat ini benar.'
@@ -292,12 +348,16 @@ export function FoundationProfilePage() {
   }
 
   const employee = profile.employee
-  const namaLengkap = employee?.nama_lengkap || profile.name || 'Pengurus Yayasan'
-  const niyNip = employee?.niy || employee?.nik || 'YYS-001'
-  const jabatanName = employee?.position?.name || 'Pengurus Yayasan'
-  const unitName = employee?.unit?.name || 'Yayasan Dar el-Iman'
-  const divisionName = employee?.division?.name || 'Sekretariat Yayasan'
-  const userRoles = profile.roles || ['Pengurus Yayasan']
+  const isSuperAdmin = profile.is_superadmin || profile.roles?.some(r => String(r).toLowerCase().includes('super')) || profile.email?.includes('superadmin') || profile.email?.includes('super.admin')
+  const namaLengkap = employee?.nama_lengkap || profile.name || (isSuperAdmin ? 'Super Administrator' : 'Pengurus Yayasan')
+  const niyNip = employee?.niy || employee?.nik || (isSuperAdmin ? 'SUPERADMIN' : 'YYS-001')
+  const roleBadgeLabel = isSuperAdmin ? 'Super Admin' : (profile.roles?.[0] || 'Pengurus Yayasan')
+  const jabatanName = isSuperAdmin ? 'Administrator Sistem' : (employee?.position?.name || 'Pengurus Yayasan')
+  const unitName = isSuperAdmin ? 'Pusat Yayasan Dar el-Iman' : (employee?.unit?.name || 'Yayasan Dar el-Iman')
+  const divisionName = isSuperAdmin ? 'IT & Tata Kelola Sistem' : (employee?.division?.name || 'Sekretariat Yayasan')
+  const userRoles = profile.roles || [roleBadgeLabel]
+
+  const avatarDisplayUrl = profile.foto || profile.photo_url || profile.avatar_url || employee?.photo_url || employee?.avatar_url || employee?.foto
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-16">
@@ -317,15 +377,15 @@ export function FoundationProfilePage() {
             {/* Avatar Image with Edit Overlay */}
             <div className="relative group shrink-0">
               <div className="w-24 h-24 rounded-2xl bg-white dark:bg-slate-800 p-1.5 shadow-xl border-2 border-emerald-300/50 dark:border-emerald-700/50 overflow-hidden">
-                {profile.foto ? (
+                {avatarDisplayUrl ? (
                   <img
-                    src={profile.foto}
+                    src={avatarDisplayUrl}
                     alt={namaLengkap}
                     className="w-full h-full object-cover rounded-xl"
                   />
                 ) : (
-                  <div className="w-full h-full rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black text-2xl flex items-center justify-center shadow-inner">
-                    {namaLengkap.charAt(0)}
+                  <div className="w-full h-full rounded-xl bg-gradient-to-br from-purple-700 via-indigo-600 to-emerald-600 text-white font-black text-2xl flex items-center justify-center shadow-inner">
+                    {isSuperAdmin ? 'SA' : namaLengkap.charAt(0)}
                   </div>
                 )}
               </div>
@@ -347,7 +407,7 @@ export function FoundationProfilePage() {
                 </h1>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Pengurus Yayasan
+                  {roleBadgeLabel}
                 </span>
                 <Badge variant="success" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold text-[10px]">
                   Aktif
@@ -905,6 +965,9 @@ export function FoundationProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Toast Notification Stack */}
+      <ToastStack toasts={toast.toasts} onDismiss={toast.dismiss} />
     </motion.div>
   )
 }

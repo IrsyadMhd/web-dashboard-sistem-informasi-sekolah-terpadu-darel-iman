@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { dashboardPemantauanService } from '../services/dashboardPemantauanService'
 
 export function useRingkasanDashboardPemantauan() {

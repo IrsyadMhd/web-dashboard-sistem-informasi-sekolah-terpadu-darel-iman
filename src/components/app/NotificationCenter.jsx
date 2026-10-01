@@ -64,7 +64,8 @@ export default function NotificationCenter({
     if (controlled || disabled || (typeof document !== 'undefined' && document.hidden)) return
     try {
       const count = await reportService.notificationUnreadCount()
-      setUnreadCount(Number(count.unread_count) || 0)
+      const val = Number(count?.data?.unread_count ?? count?.unread_count) || 0
+      setUnreadCount(val)
     } catch {
       // ignore
     }
@@ -90,7 +91,7 @@ export default function NotificationCenter({
   // Periodic polling only polls unread count (very lightweight payload)
   useEffect(() => {
     muatUnreadCount()
-    const interval = setInterval(muatUnreadCount, 30000)
+    const interval = setInterval(muatUnreadCount, 15000)
     const onVisibilityChange = () => {
       if (!document.hidden) muatUnreadCount()
     }

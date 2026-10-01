@@ -12,7 +12,7 @@ export function ReportRecapTable({
   if (!data || data.length === 0) return null
 
   return (
-    <Card className="border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433]">
+    <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] dark:border-emerald-500/25">
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-bold text-slate-900 dark:text-white">{title}</CardTitle>
         {description && <CardDescription className="text-xs text-slate-500 dark:text-slate-400">{description}</CardDescription>}
@@ -32,7 +32,7 @@ export function ReportRecapTable({
                 ))}
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-slate-100/80 bg-white dark:divide-slate-800/60 dark:bg-[#111827]">
+            <TableBody className="divide-y divide-emerald-100/80 bg-white dark:divide-emerald-900/40 dark:bg-[#111827]">
               {data.map((row, rIdx) => (
                 <TableRow key={rIdx} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
                   {columns.map((col, cIdx) => {

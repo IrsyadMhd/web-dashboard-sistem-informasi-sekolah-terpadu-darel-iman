@@ -1038,9 +1038,11 @@ export const getKotaOptions = (provName) => {
 /** Get list of kecamatan for a given kota. */
 export const getKecamatanOptions = (kotaName) => {
   if (!kotaName) return []
+  const clean = (s) => (s || '').toLowerCase().replace(/^(kota|kab\.|kabupaten)\s+/i, '').trim()
+  const target = clean(kotaName)
   for (const prov of WILAYAH_DATA) {
-    const foundKota = prov.kotaList.find(k => k.nama.toLowerCase() === kotaName.toLowerCase())
-    if (foundKota) {
+    const foundKota = prov.kotaList.find(k => k.nama.toLowerCase() === kotaName.toLowerCase() || clean(k.nama) === target)
+    if (foundKota && foundKota.kecamatanList) {
       return foundKota.kecamatanList.map(kec => kec.nama)
     }
   }
@@ -1050,9 +1052,12 @@ export const getKecamatanOptions = (kotaName) => {
 /** Get list of kelurahan for a given kecamatan. */
 export const getKelurahanOptions = (kecName) => {
   if (!kecName) return []
+  const clean = (s) => (s || '').toLowerCase().replace(/^(kec\.|kecamatan)\s+/i, '').trim()
+  const target = clean(kecName)
   for (const prov of WILAYAH_DATA) {
     for (const kota of prov.kotaList) {
-      const foundKec = kota.kecamatanList.find(k => k.nama.toLowerCase() === kecName.toLowerCase())
+      if (!kota.kecamatanList) continue
+      const foundKec = kota.kecamatanList.find(k => k.nama.toLowerCase() === kecName.toLowerCase() || clean(k.nama) === target)
       if (foundKec) {
         return foundKec.kelurahanList || []
       }

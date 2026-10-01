@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/tailgrids/core/card'
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from '@/components/tailgrids/core/dialog'
@@ -6,6 +6,8 @@ import { Backdrop } from '@/components/tailgrids/core/overlay'
 import { Badge } from '@/components/tailgrids/core/badge'
 import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
 import { Button } from '@/components/tailgrids/core/button'
+import { Pagination } from '@/components/tailgrids/core/pagination'
+import { useDebounce } from '../hooks/useDebounce'
 import { printCleanTable, downloadPdfTable } from '@/utils/printHelper'
 import {
   Moon,
@@ -67,6 +69,9 @@ import {
   Volume2,
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
+import { worshipAttendanceService } from '../services/worshipAttendanceService'
+import { studentService } from '../services/studentService'
+import { kelasService } from '../services/kelasService'
 import { SquircleActionButton, PrintOptionModal } from '@/components/master-data'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 
@@ -81,97 +86,6 @@ function useToast() {
   const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
   return { toasts, dismiss, success: (t, m) => add('success', t, m), error: (t, m) => add('error', t, m), warning: (t, m) => add('warning', t, m), info: (t, m) => add('info', t, m) }
 }
-
-// ─── DYNAMIC UNIT SCOPED DATA GENERATOR ─────────────────────────────────────
-function getScopedClassesForUnit(unitName) {
-  const nameLower = (unitName || '').toLowerCase()
-  if (nameLower.includes('sd') || nameLower.includes('sdit') || nameLower.includes('dasar')) {
-    return ['Kelas 1A', 'Kelas 1B', 'Kelas 2A', 'Kelas 3A', 'Kelas 4A', 'Kelas 5A', 'Kelas 6A']
-  }
-  if (nameLower.includes('smp') || nameLower.includes('smpit') || nameLower.includes('menengah pertama')) {
-    return ['Kelas VII A', 'Kelas VII B', 'Kelas VIII A', 'Kelas VIII B', 'Kelas IX A']
-  }
-  return ['X MIPA 1', 'X MIPA 2', 'XI IPS 1', 'XI IPS 2', 'XI MIPA 3', 'XII MIPA 1']
-}
-
-function getScopedStudentsForUnit(unitName) {
-  const classes = getScopedClassesForUnit(unitName)
-  const targetUnit = unitName || 'SDIT 1 Dar el-Iman - 50 Kota'
-
-  return [
-    { id: 'S001', nisn: '0054321001', name: 'Ahmad Fadhil', gender: 'L', class_name: classes[0] || 'Kelas 1A', unit_name: targetUnit, status: 'hadir_berjamaah', time: '12:05:12', method: 'RFID Tap', verified_by: `Wali Kelas ${classes[0] || '1A'}`, selected: false },
-    { id: 'S002', nisn: '0054321002', name: 'Aisyah Putri', gender: 'P', class_name: classes[0] || 'Kelas 1A', unit_name: targetUnit, status: 'hadir_berjamaah', time: '12:06:40', method: 'QR Code', verified_by: 'Guru Pendamping', selected: false },
-    { id: 'S003', nisn: '0054321003', name: 'Bilal Ar-Rasyid', gender: 'L', class_name: classes[1] || 'Kelas 1B', unit_name: targetUnit, status: 'masbuk', time: '12:22:15', method: 'Manual', notes: 'Masbuk 1 Rakaat', selected: false },
-    { id: 'S004', nisn: '0054321004', name: 'Fatimah Azzahra', gender: 'P', class_name: classes[2] || 'Kelas 2A', unit_name: targetUnit, status: 'uzur_sakit', time: '-', method: '-', notes: 'Halangan / Uzur Syar\'i', selected: false },
-    { id: 'S005', nisn: '0054321005', name: 'Muhammad Rayhan', gender: 'L', class_name: classes[3] || 'Kelas 3A', unit_name: targetUnit, status: 'izin', time: '-', method: '-', notes: 'Izin UKS Sakit Kepala', selected: false },
-    { id: 'S006', nisn: '0054321006', name: 'Zahra Nabila', gender: 'P', class_name: classes[4] || 'Kelas 4A', unit_name: targetUnit, status: 'hadir_berjamaah', time: '12:08:02', method: 'RFID Tap', verified_by: 'Guru BK', selected: false },
-    { id: 'S007', nisn: '0054321007', name: 'Umar Al-Faruq', gender: 'L', class_name: classes[5] || 'Kelas 5A', unit_name: targetUnit, status: 'alpa', time: '-', method: '-', notes: 'Tanpa Keterangan', selected: false },
-    { id: 'S008', nisn: '0054321008', name: 'Khadijah Nurul', gender: 'P', class_name: classes[6] || 'Kelas 6A', unit_name: targetUnit, status: 'belum_verifikasi', time: '-', method: '-', selected: false },
-  ]
-}
-
-const INITIAL_SCHOOL_SESSIONS = [
-  {
-    id: 'school-session-4',
-    scheduled_start_at: '07:00',
-    scheduled_end_at: '07:15',
-    status: 'opened',
-    location_name: 'Kelas / Rombel Masing-Masing',
-    template: {
-      id: 'tmpl-doa-pagi',
-      nama: 'Dzikir Pagi & Doa Sebelum Belajar',
-      code: 'DOA_PAGI_SEKOLAH',
-      category: 'ibadah_lain',
-      obligation_type: 'pembiasaan',
-      gender_scope: 'all',
-    },
-  },
-  {
-    id: 'school-session-1',
-    scheduled_start_at: '07:15',
-    scheduled_end_at: '07:45',
-    status: 'opened',
-    location_name: 'Musholla Utama Sekolah',
-    template: {
-      id: 'tmpl-dhuha',
-      nama: 'Shalat Dhuha Bersama Sekolah',
-      code: 'DHUHA_SEKOLAH',
-      category: 'shalat_sunnah',
-      obligation_type: 'sunnah_muakkad',
-      gender_scope: 'all',
-    },
-  },
-  {
-    id: 'school-session-2',
-    scheduled_start_at: '12:00',
-    scheduled_end_at: '12:45',
-    status: 'opened',
-    location_name: 'Masjid Kampus / Hall Sekolah',
-    template: {
-      id: 'tmpl-zhuhur',
-      nama: 'Shalat Zhuhur Berjamaah Siswa',
-      code: 'ZHUHUR_SEKOLAH',
-      category: 'shalat_wajib',
-      obligation_type: 'wajib',
-      gender_scope: 'all',
-    },
-  },
-  {
-    id: 'school-session-3',
-    scheduled_start_at: '15:15',
-    scheduled_end_at: '15:45',
-    status: 'upcoming',
-    location_name: 'Musholla Utama Sekolah',
-    template: {
-      id: 'tmpl-ashar',
-      nama: 'Shalat Ashar Berjamaah Siswa',
-      code: 'ASHAR_SEKOLAH',
-      category: 'shalat_wajib',
-      obligation_type: 'wajib',
-      gender_scope: 'all',
-    },
-  },
-]
 
 export default function StudentWorshipAttendancePage() {
   const authUser = useAuthStore((s) => s.user) || (() => {
@@ -193,7 +107,7 @@ export default function StudentWorshipAttendancePage() {
     authUser?.unit_name ||
     authUser?.unit?.nama ||
     authUser?.school_info?.nama_unit ||
-    'SDIT 1 Dar el-Iman - 50 Kota'
+    'Unit Pendidikan'
 
   const isSuperOrYayasan = userRole === 'Superadmin' || userRole === 'Pengurus Yayasan'
 
@@ -207,14 +121,65 @@ export default function StudentWorshipAttendancePage() {
     return () => clearInterval(timer)
   }, [])
 
-  const [sessions, setSessions] = useState(INITIAL_SCHOOL_SESSIONS)
-  const [selectedSession, setSelectedSession] = useState(INITIAL_SCHOOL_SESSIONS[2]) // Zhuhur
+  const [sessions, setSessions] = useState([])
+  const [selectedSession, setSelectedSession] = useState(null)
   
-  // Dynamic student list scoped 100% to active logged in unit (e.g. SDIT 1 Dar el-Iman - 50 Kota)
-  const [students, setStudents] = useState(() => getScopedStudentsForUnit(userUnitName))
+  // Dynamic student list scoped to active logged in unit
+  const [students, setStudents] = useState([])
 
-  // Dynamic class options based on unit level
-  const availableClasses = getScopedClassesForUnit(userUnitName)
+  // Dynamic class options based on database rombel
+  const [availableClasses, setAvailableClasses] = useState([])
+
+  useEffect(() => {
+    let active = true
+
+    worshipAttendanceService
+      .getSessions({ date })
+      .then((res) => {
+        const raw = res?.data?.data || res?.data || []
+        if (active && Array.isArray(raw) && raw.length > 0) {
+          setSessions(raw)
+          setSelectedSession((prev) => prev || raw[0])
+        }
+      })
+      .catch(() => {})
+
+    studentService
+      .getDaftar({ per_page: 100 })
+      .then((res) => {
+        const raw = res?.data?.data || res?.data || []
+        if (active && Array.isArray(raw) && raw.length > 0) {
+          const mapped = raw.map((st) => ({
+            id: st.id,
+            nisn: st.nisn || st.nis || '-',
+            name: st.full_name || st.name || 'Siswa',
+            gender: st.gender === 'female' || st.jenis_kelamin === 'P' ? 'P' : 'L',
+            class_name: st.kelas?.nama_kelas || st.kelas?.nama || 'Kelas',
+            unit_name: st.educationUnit?.name || userUnitName,
+            status: 'belum_verifikasi',
+            time: '-',
+            method: '-',
+            selected: false,
+          }))
+          setStudents(mapped)
+        }
+      })
+      .catch(() => {})
+
+    kelasService
+      .getDaftar()
+      .then((res) => {
+        const raw = res?.data?.data || res?.data || []
+        if (active && Array.isArray(raw) && raw.length > 0) {
+          setAvailableClasses(raw.map((c) => c.nama_kelas || c.nama).filter(Boolean))
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      active = false
+    }
+  }, [date, userUnitName])
 
   // Filters & Search — Strictly scope filterUnit if non-superadmin
   const [searchQuery, setSearchQuery] = useState('')
@@ -337,14 +302,31 @@ export default function StudentWorshipAttendancePage() {
   const countBelum = students.filter((s) => s.status === 'belum_verifikasi').length
   const pctHadir = totalStudents > 0 ? ((countHadir / totalStudents) * 100).toFixed(1) : '0'
 
+  const debouncedSearchQuery = useDebounce(searchQuery, 350)
+  const [currentPage, setCurrentPage] = useState(1)
+
   // ── FILTERED STUDENTS ────────────────────────────────────────────────────
   const filteredStudents = students.filter((s) => {
-    const matchSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.nisn.includes(searchQuery)
+    const matchSearch =
+      !debouncedSearchQuery ||
+      s.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      s.nisn.includes(debouncedSearchQuery)
     const matchClass = filterClass === 'ALL' || s.class_name === filterClass
     const matchUnit = filterUnit === 'ALL' || s.unit_name === filterUnit || !isSuperOrYayasan
     const matchStatus = filterStatus === 'ALL' || s.status === filterStatus
     return matchSearch && matchClass && matchUnit && matchStatus
   })
+
+  // Reset page on filter change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearchQuery, filterClass, filterUnit, filterStatus, perPage])
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / perPage))
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * perPage
+    return filteredStudents.slice(start, start + perPage)
+  }, [filteredStudents, currentPage, perPage])
 
   // ── MANUAL CHECKLIST HANDLERS ─────────────────────────────────────────────
   const toggleSelectStudent = (id) => {
@@ -694,71 +676,83 @@ export default function StudentWorshipAttendancePage() {
     visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
   }
 
-  function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
-    const tones = {
-      sky: {
-        card: 'border-sky-100 bg-sky-50/50 hover:border-sky-200 dark:border-sky-950/50 dark:bg-sky-950/20',
-        title: 'text-sky-700 dark:text-sky-400',
-        icon: 'text-sky-500',
-        val: 'text-sky-600 dark:text-sky-300',
-        sub: 'text-sky-600/70 dark:text-sky-400/70',
-      },
-      emerald: {
-        card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-        title: 'text-emerald-700 dark:text-emerald-400',
-        icon: 'text-emerald-500',
-        val: 'text-emerald-600 dark:text-emerald-300',
-        sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-      },
-      amber: {
-        card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-        title: 'text-amber-700 dark:text-amber-400',
-        icon: 'text-amber-500',
-        val: 'text-amber-600 dark:text-amber-300',
-        sub: 'text-amber-600/70 dark:text-amber-400/70',
-      },
-      purple: {
-        card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
-        title: 'text-purple-700 dark:text-purple-400',
-        icon: 'text-purple-500',
-        val: 'text-purple-600 dark:text-purple-300',
-        sub: 'text-purple-600/70 dark:text-purple-400/70',
-      },
-      rose: {
-        card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
-        title: 'text-rose-700 dark:text-rose-400',
-        icon: 'text-rose-500',
-        val: 'text-rose-600 dark:text-rose-300',
-        sub: 'text-rose-600/70 dark:text-rose-400/70',
-      },
-      slate: {
-        card: 'border-slate-100 bg-slate-50/50 hover:border-slate-200 dark:border-slate-800 dark:bg-slate-800/20',
-        title: 'text-slate-700 dark:text-slate-400',
-        icon: 'text-slate-500',
-        val: 'text-slate-600 dark:text-slate-300',
-        sub: 'text-slate-600/70 dark:text-slate-400/70',
-      },
-    }
-    const t = tones[tone] || tones.emerald
+  const MODERN_CARD_TONES = {
+    sky: {
+      badgeBg: 'bg-sky-500/10 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300 border-sky-500/20',
+      iconGradient: 'from-sky-500 via-blue-600 to-indigo-700 shadow-sky-500/25',
+      glow: 'bg-sky-500/15 group-hover:bg-sky-500/25',
+      border: 'hover:border-sky-400/60 dark:hover:border-sky-500/40',
+    },
+    emerald: {
+      badgeBg: 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-500/20',
+      iconGradient: 'from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/25',
+      glow: 'bg-emerald-500/15 group-hover:bg-emerald-500/25',
+      border: 'hover:border-emerald-400/60 dark:hover:border-emerald-500/40',
+    },
+    amber: {
+      badgeBg: 'bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 border-amber-500/20',
+      iconGradient: 'from-amber-500 via-orange-600 to-amber-700 shadow-amber-500/25',
+      glow: 'bg-amber-500/15 group-hover:bg-amber-500/25',
+      border: 'hover:border-amber-400/60 dark:hover:border-amber-500/40',
+    },
+    purple: {
+      badgeBg: 'bg-purple-500/10 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 border-purple-500/20',
+      iconGradient: 'from-purple-500 via-violet-600 to-indigo-700 shadow-purple-500/25',
+      glow: 'bg-purple-500/15 group-hover:bg-purple-500/25',
+      border: 'hover:border-purple-400/60 dark:hover:border-purple-500/40',
+    },
+    rose: {
+      badgeBg: 'bg-rose-500/10 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300 border-rose-500/20',
+      iconGradient: 'from-rose-500 via-rose-600 to-red-700 shadow-rose-500/25',
+      glow: 'bg-rose-500/15 group-hover:bg-rose-500/25',
+      border: 'hover:border-rose-400/60 dark:hover:border-rose-500/40',
+    },
+    slate: {
+      badgeBg: 'bg-slate-500/10 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300 border-slate-500/20',
+      iconGradient: 'from-slate-500 via-slate-600 to-slate-700 shadow-slate-500/25',
+      glow: 'bg-slate-500/15 group-hover:bg-slate-500/25',
+      border: 'hover:border-slate-400/60 dark:hover:border-slate-500/40',
+    },
+  }
+
+  function ModernKpiCard({ icon: Icon, label, subtext, value, tone = 'emerald', tag = 'METRIK', onClick }) {
+    const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
 
     return (
-      <Card
+      <motion.div
+        whileHover={{ y: -3, transition: { duration: 0.2 } }}
         onClick={onClick}
-        className={`text-left rounded-2xl border ${t.card} p-3.5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group min-w-0 flex flex-col gap-1`}
+        className={`group relative overflow-hidden rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-xs transition-all duration-300 hover:shadow-lg dark:border-slate-800/80 dark:bg-[#1B2433] ${t.border} ${onClick ? 'cursor-pointer' : ''}`}
       >
-        <CardHeader className="p-0 flex flex-row items-center justify-between gap-1 min-w-0">
-          <CardDescription className={`text-[11px] font-bold ${t.title} truncate`}>{label}</CardDescription>
-          <Icon className={`h-4 w-4 shrink-0 ${t.icon} opacity-60 group-hover:opacity-100 transition-opacity`} />
-        </CardHeader>
-        <CardContent className="p-0">
-          <CardTitle className={`mt-1.5 text-xl font-black ${t.val}`}>{value ?? 0}</CardTitle>
-          {subtext && (
-            <p className={`mt-0.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
-              {subtext}
+        <div className={`pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full blur-2xl transition-all duration-500 ${t.glow}`} />
+        <div className="relative z-10 flex items-start justify-between gap-2">
+          <div className="space-y-1 min-w-0">
+            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider ${t.badgeBg}`}>
+              {tag}
+            </span>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 pt-0.5 truncate">{label}</p>
+          </div>
+          <div className={`flex size-9 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-md transition-transform duration-300 group-hover:scale-105 ${t.iconGradient}`}>
+            {Icon && <Icon className="size-4 text-white" />}
+          </div>
+        </div>
+        <div className="relative z-10 mt-2.5 flex items-baseline justify-between gap-1">
+          <div className="min-w-0">
+            <p className="text-xl sm:text-2xl font-black tabular-nums tracking-tight text-slate-900 dark:text-white truncate">
+              {value ?? 0}
             </p>
+            {subtext && (
+              <p className="mt-0.5 text-[10.5px] font-medium text-slate-500 dark:text-slate-400 truncate">{subtext}</p>
+            )}
+          </div>
+          {onClick && (
+            <div className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <span>Detail</span>
+              <ChevronRight className="size-3" />
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </motion.div>
     )
   }
 
@@ -829,7 +823,7 @@ export default function StudentWorshipAttendancePage() {
               </div>
 
               {/* Right Controls: Live Clock & Actions */}
-              <div className="flex items-center gap-2 shrink-0 flex-nowrap z-10">
+              <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap z-10">
                 <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-white/80 px-3.5 py-2 dark:border-emerald-600/40 dark:bg-slate-900/80 backdrop-blur-sm">
                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
                   <div className="text-right">
@@ -864,52 +858,58 @@ export default function StudentWorshipAttendancePage() {
 
         {/* CARD 1: KPI STATS METRIC CARDS GRID */}
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <KpiTintedCard
+          <ModernKpiCard
             icon={Users}
             label="Total Wajib Ibadah"
             value={`${totalStudents} Siswa`}
             subtext={userUnitName}
             tone="sky"
+            tag="TOTAL SISWA"
             onClick={() => handleOpenAttendingModal('ALL')}
           />
-          <KpiTintedCard
+          <ModernKpiCard
             icon={CheckCircle2}
             label="Hadir Berjamaah"
             value={`${countHadir} Siswa`}
             subtext={`${pctHadir}% Presensi`}
             tone="emerald"
+            tag="BERJAMAAH"
             onClick={() => handleOpenAttendingModal('hadir')}
           />
-          <KpiTintedCard
+          <ModernKpiCard
             icon={Clock}
             label="Masbuk / Terlambat"
             value={`${countMasbuk} Siswa`}
             subtext="Dicatat Guru"
             tone="amber"
+            tag="MASBUK"
             onClick={() => handleOpenAttendingModal('masbuk')}
           />
-          <KpiTintedCard
+          <ModernKpiCard
             icon={Heart}
             label="Uzur / Sakit"
             value={`${countUzur} Siswa`}
             subtext="Halangan Syar'i"
             tone="purple"
+            tag="UZUR SYAR'I"
             onClick={() => handleOpenAttendingModal('uzur')}
           />
-          <KpiTintedCard
+          <ModernKpiCard
             icon={ShieldAlert}
             label="Izin / Alpa"
             value={`${countIzin + countAlpa} Siswa`}
             subtext="Tercatat di BK/UKS"
             tone="rose"
+            tag="IZIN / ALPA"
             onClick={() => handleOpenAttendingModal('izin')}
           />
-          <KpiTintedCard
+          <ModernKpiCard
             icon={ShieldCheck}
             label="Belum Verifikasi"
             value={`${countBelum} Siswa`}
             subtext="Menunggu Input"
             tone="slate"
+            tag="PENDING"
             onClick={() => handleOpenAttendingModal('belum_verifikasi')}
           />
         </section>
@@ -1073,65 +1073,67 @@ export default function StudentWorshipAttendancePage() {
           </div>
         </motion.div>
 
-        {/* CARD 3: SESI IBADAH SEKOLAH HORIZONTAL CARD */}
-        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#111827]">
-          <div className="mb-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 shadow-2xs">
-                <Moon className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  Sesi Ibadah Sekolah
-                </h2>
-                <p className="text-[11px] font-medium text-slate-400">Pilih sesi ibadah aktif untuk mencatat atau meninjau presensi siswa</p>
-              </div>
+        {/* CARD 3: DAFTAR SESI SHALAT BERJALAN HARI INI */}
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-emerald-600" />
+                Daftar Sesi Shalat & Ibadah Hari Ini
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Pilih sesi ibadah aktif untuk melakukan verifikasi absensi atau input data santri/siswa
+              </p>
             </div>
-            <span className="rounded-full bg-emerald-100/90 px-3 py-1 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300">
-              {sessions.length} Sesi
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400">
+                Total: <strong className="text-emerald-700 dark:text-emerald-400">{sessions.length} Sesi</strong>
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {/* SESSIONS HORIZONTAL SCROLL / GRID */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {sessions.map((sess) => {
               const isSelected = selectedSession?.id === sess.id
-              const isDzikir = sess.template.code.includes('DOA') || sess.template.code.includes('DZIKIR')
-              const isDhuha = sess.template.code.includes('DHUHA')
-              const isZhuhur = sess.template.code.includes('ZHUHUR')
-              
-              const SessionIconComponent = isDzikir ? Sun : isDhuha ? Sparkles : isZhuhur ? Sun : Moon
-
+              const isWajib = sess.template?.obligation_type === 'wajib'
               return (
                 <div
                   key={sess.id}
-                  onClick={() => {
-                    setSelectedSession(sess)
-                    handleOpenAttendingModal('hadir')
-                  }}
-                  className={`cursor-pointer group relative overflow-hidden rounded-2xl border p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                  onClick={() => setSelectedSession(sess)}
+                  className={`relative cursor-pointer rounded-2xl border-2 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                     isSelected
-                      ? 'border-emerald-500 bg-gradient-to-br from-emerald-50/90 via-emerald-50/40 to-white dark:border-emerald-600 dark:from-emerald-950/50 dark:to-[#111827] shadow-sm ring-2 ring-emerald-500/20'
-                      : 'border-slate-200/80 bg-white hover:border-emerald-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700'
+                      ? 'border-emerald-500 bg-emerald-50/40 shadow-sm dark:border-emerald-500/70 dark:bg-emerald-950/20'
+                      : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-[#111827]'
                   }`}
                 >
-                  {isSelected && (
-                    <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-emerald-500 to-teal-600" />
-                  )}
-
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-all ${
-                        isSelected
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 group-hover:bg-emerald-100 group-hover:text-emerald-700'
-                      }`}>
-                        <SessionIconComponent className="size-4.5" />
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-sm shadow-xs ${
+                          isSelected
+                            ? 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white'
+                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                        }`}
+                      >
+                        {sess.template?.nama?.charAt(0) || 'S'}
                       </div>
                       <div className="min-w-0">
-                        <h3 className={`text-xs font-black truncate ${isSelected ? 'text-emerald-950 dark:text-emerald-100' : 'text-slate-800 dark:text-slate-200'}`}>
-                          {sess.template.nama}
-                        </h3>
-                        <div className="mt-0.5 flex items-center gap-1 text-[11px] font-black text-amber-600 dark:text-amber-400">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                            {sess.template?.nama}
+                          </h4>
+                          <span
+                            className={`rounded-full px-1.5 py-0.2 text-[9px] font-black ${
+                              isWajib
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            }`}
+                          >
+                            {isWajib ? 'Wajib' : 'Sunnah'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5 font-medium">
                           <Clock className="size-3 shrink-0" />
                           <span>{sess.scheduled_start_at} - {sess.scheduled_end_at} WIB</span>
                         </div>
@@ -1219,9 +1221,9 @@ export default function StudentWorshipAttendancePage() {
                 </div>
 
                 {/* Action Buttons Row */}
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
                   {worshipMethod === 'MANUAL' && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <button
                         onClick={() => handleBulkStatusChange('hadir_berjamaah')}
                         className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-all hover:bg-emerald-700 hover:scale-105 active:scale-95"
@@ -1260,8 +1262,8 @@ export default function StudentWorshipAttendancePage() {
               </div>
 
               {/* Row 2: Search + Filter Dropdowns + PerPage Select */}
-              <div className="flex flex-wrap items-center gap-3 p-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800">
-                <div className="relative min-w-[220px] flex-1">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 sm:gap-3 p-4 sm:px-6 bg-slate-50/50 border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800 w-full">
+                <div className="relative min-w-[200px] flex-1">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
@@ -1277,7 +1279,7 @@ export default function StudentWorshipAttendancePage() {
                   value={filterUnit}
                   disabled={!isSuperOrYayasan}
                   onChange={(e) => setFilterUnit(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:bg-slate-100 dark:disabled:bg-slate-800/80"
+                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:bg-slate-100 dark:disabled:bg-slate-800/80"
                 >
                   {isSuperOrYayasan && <option value="ALL">Semua Unit Pendidikan</option>}
                   <option value={userUnitName}>{userUnitName}</option>
@@ -1290,7 +1292,7 @@ export default function StudentWorshipAttendancePage() {
                 <select
                   value={filterClass}
                   onChange={(e) => setFilterClass(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="ALL">Semua Kelas / Rombel</option>
                   {availableClasses.map((cls) => (
@@ -1301,7 +1303,7 @@ export default function StudentWorshipAttendancePage() {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value="ALL">Semua Status Presensi</option>
                   <option value="hadir_berjamaah">Hadir Berjamaah</option>
@@ -1315,7 +1317,7 @@ export default function StudentWorshipAttendancePage() {
                 <select
                   value={perPage}
                   onChange={(e) => setPerPage(Number(e.target.value))}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="w-full sm:w-auto min-w-[90px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
                   <option value={5}>5 / hal</option>
                   <option value={10}>10 / hal</option>
@@ -1327,50 +1329,50 @@ export default function StudentWorshipAttendancePage() {
               {/* Data Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                  <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-extrabold text-[11px] uppercase tracking-wider">
                     <tr>
                       {worshipMethod === 'MANUAL' && (
-                        <th className="w-10 px-4 py-3 text-center">
+                        <th className="w-10 px-4 py-3.5 text-center bg-transparent">
                           <input
                             type="checkbox"
                             checked={filteredStudents.length > 0 && filteredStudents.every((s) => s.selected)}
                             onChange={toggleSelectAllFiltered}
-                            className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                           />
                         </th>
                       )}
-                      <th className="px-4 sm:px-6 py-3.5">Siswa</th>
-                      <th className="px-4 py-3.5">NISN</th>
-                      <th className="px-4 py-3.5">Kelas / Rombel</th>
-                      <th className="px-4 py-3.5">Status Ibadah</th>
-                      <th className="px-4 py-3.5">Metode & Waktu</th>
-                      <th className="px-4 sm:px-6 py-3.5 text-right">Aksi</th>
+                      <th className="px-4 sm:px-6 py-3.5 bg-transparent">Siswa</th>
+                      <th className="hidden sm:table-cell px-4 py-3.5 bg-transparent">NISN</th>
+                      <th className="hidden md:table-cell px-4 py-3.5 bg-transparent">Kelas / Rombel</th>
+                      <th className="px-4 py-3.5 bg-transparent">Status Ibadah</th>
+                      <th className="hidden lg:table-cell px-4 py-3.5 bg-transparent">Metode & Waktu</th>
+                      <th className="px-4 sm:px-6 py-3.5 text-right bg-transparent">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {filteredStudents.length === 0 ? (
                       <tr>
-                        <td colSpan={worshipMethod === 'MANUAL' ? 7 : 6} className="px-4 py-8 text-center text-slate-400">
+                        <td colSpan={worshipMethod === 'MANUAL' ? 7 : 6} className="px-4 py-12 text-center text-slate-400">
                           Tidak ada data siswa yang sesuai dengan filter kelas/unit.
                         </td>
                       </tr>
                     ) : (
-                      filteredStudents.slice(0, perPage).map((student) => {
+                      paginatedStudents.map((student) => {
                         return (
-                          <tr key={student.id} className={`transition-all hover:bg-slate-50/90 hover:scale-[1.001] dark:hover:bg-slate-800/40 ${student.selected ? 'bg-sky-50/50 dark:bg-sky-950/20' : ''}`}>
+                          <tr key={student.id} className={`transition-all hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 ${student.selected ? 'bg-emerald-50/60 dark:bg-emerald-950/30' : ''}`}>
                             {worshipMethod === 'MANUAL' && (
                               <td className="px-4 py-3.5 text-center">
                                 <input
                                   type="checkbox"
                                   checked={student.selected || false}
                                   onChange={() => toggleSelectStudent(student.id)}
-                                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                                 />
                               </td>
                             )}
                             <td className="px-4 sm:px-6 py-3.5 font-semibold text-slate-900 dark:text-white">
                               <div className="flex items-center gap-2.5">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-700 font-bold text-xs dark:bg-sky-950 dark:text-sky-300">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold text-xs dark:bg-emerald-950 dark:text-emerald-300">
                                   {student.name.charAt(0)}
                                 </div>
                                 <div>
@@ -1378,9 +1380,21 @@ export default function StudentWorshipAttendancePage() {
                                   <p className="text-[10px] text-slate-400">{student.unit_name}</p>
                                 </div>
                               </div>
+                              {/* Compact Mobile Metadata Row */}
+                              <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+                                <span className="font-mono text-slate-500">{student.nisn}</span>
+                                <span className="text-slate-300 dark:text-slate-600">•</span>
+                                <span className="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-semibold text-slate-700 dark:text-slate-300">{student.class_name}</span>
+                                {student.time && student.time !== '-' && (
+                                  <>
+                                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                                    <span className="text-slate-500">{student.time}</span>
+                                  </>
+                                )}
+                              </div>
                             </td>
-                            <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 font-mono">{student.nisn}</td>
-                            <td className="px-4 py-3.5">
+                            <td className="hidden sm:table-cell px-4 py-3.5 text-slate-600 dark:text-slate-300 font-mono">{student.nisn}</td>
+                            <td className="hidden md:table-cell px-4 py-3.5">
                               <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                                 {student.class_name}
                               </span>
@@ -1407,7 +1421,7 @@ export default function StudentWorshipAttendancePage() {
                                 {student.status === 'belum_verifikasi' && 'Belum Verifikasi'}
                               </span>
                             </td>
-                            <td className="px-4 py-3.5 text-slate-500">
+                            <td className="hidden lg:table-cell px-4 py-3.5 text-slate-500">
                               <p className="font-semibold text-slate-700 dark:text-slate-300">{student.time}</p>
                               <p className="text-[10px] text-slate-400">{student.method}</p>
                             </td>
@@ -1419,7 +1433,7 @@ export default function StudentWorshipAttendancePage() {
                                   setVerifyNotes(student.notes || '')
                                   setShowVerifyModal(true)
                                 }}
-                                className="rounded-xl bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-600 transition hover:bg-sky-100 hover:scale-105 active:scale-95 dark:bg-sky-950/60 dark:text-sky-400"
+                                className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 hover:scale-105 active:scale-95 dark:bg-emerald-950/60 dark:text-emerald-300 cursor-pointer"
                               >
                                 Edit Status
                               </button>
@@ -1433,12 +1447,17 @@ export default function StudentWorshipAttendancePage() {
               </div>
 
               {/* TailGrids Standard Pagination Row */}
-              <div className="flex items-center justify-between text-xs text-slate-500 border-t border-slate-100 px-4 py-3.5 sm:px-6 dark:border-slate-800">
-                <p>Menampilkan 1-{Math.min(perPage, filteredStudents.length)} dari {filteredStudents.length} Siswa</p>
-                <div className="flex items-center gap-1">
-                  <button disabled className="rounded-xl border border-slate-200 px-3 py-1.5 text-slate-400 disabled:opacity-50 dark:border-slate-700 font-semibold">Prev</button>
-                  <button className="rounded-xl bg-sky-600 px-3.5 py-1.5 font-bold text-white shadow-sm">1</button>
-                  <button disabled className="rounded-xl border border-slate-200 px-3 py-1.5 text-slate-400 disabled:opacity-50 dark:border-slate-700 font-semibold">Next</button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 border-t border-emerald-100 px-4 py-3.5 sm:px-6 dark:border-emerald-900/50">
+                <p>
+                  Menampilkan {filteredStudents.length > 0 ? (currentPage - 1) * perPage + 1 : 0}-{Math.min(currentPage * perPage, filteredStudents.length)} dari {filteredStudents.length} Siswa
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setCurrentPage(p)}
+                    sideLayout="icon"
+                  />
                 </div>
               </div>
             </div>
@@ -1446,57 +1465,79 @@ export default function StudentWorshipAttendancePage() {
         </section>
 
       {/* ── MODAL UBAH MANUAL JADWAL SESI IBADAH ─────────────────────────── */}
+      {/* ── MODAL UBAH MANUAL JADWAL SESI IBADAH ─────────────────────────── */}
       {showEditSessionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <form onSubmit={handleSaveEditSession} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-[#111827] space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Ubah Manual Jam & Lokasi Sesi Ibadah
-              </h3>
-              <button type="button" onClick={() => setShowEditSessionModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Sesi</label>
-                <p className="font-bold text-sky-700 dark:text-sky-400 text-sm">{editSessionForm.nama}</p>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-fadeIn">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94 }}
+            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+          >
+            <div className="h-1.5 w-full bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-600" />
+            <form onSubmit={handleSaveEditSession} className="p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 via-teal-600 to-emerald-700 text-white shadow-md shadow-sky-500/30">
+                    <Clock className="size-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="inline-block rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">
+                      Sesi Ibadah
+                    </span>
+                    <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                      Ubah Jam & Lokasi Sesi
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowEditSessionModal(false)}
+                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <X className="size-5" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-3 text-xs">
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai Sesi</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Sesi</label>
+                  <p className="font-bold text-sky-700 dark:text-sky-400 text-sm">{editSessionForm.nama}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai Sesi</label>
+                    <input
+                      type="time"
+                      required
+                      value={editSessionForm.start_time}
+                      onChange={(e) => setEditSessionForm({ ...editSessionForm, start_time: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-bold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Selesai Sesi</label>
+                    <input
+                      type="time"
+                      required
+                      value={editSessionForm.end_time}
+                      onChange={(e) => setEditSessionForm({ ...editSessionForm, end_time: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-bold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Ibadah</label>
                   <input
-                    type="time"
+                    type="text"
                     required
-                    value={editSessionForm.start_time}
-                    onChange={(e) => setEditSessionForm({ ...editSessionForm, start_time: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-bold focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                    value={editSessionForm.location_name}
+                    onChange={(e) => setEditSessionForm({ ...editSessionForm, location_name: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Selesai Sesi</label>
-                  <input
-                    type="time"
-                    required
-                    value={editSessionForm.end_time}
-                    onChange={(e) => setEditSessionForm({ ...editSessionForm, end_time: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-bold focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Ibadah</label>
-                <input
-                  type="text"
-                  required
-                  value={editSessionForm.location_name}
-                  onChange={(e) => setEditSessionForm({ ...editSessionForm, location_name: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-semibold focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
 
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Status Sesi</label>
@@ -1512,24 +1553,25 @@ export default function StudentWorshipAttendancePage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+            <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setShowEditSessionModal(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700"
+                className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
               >
                 Simpan Perubahan
               </button>
             </div>
           </form>
-        </div>
-      )}
+        </motion.div>
+      </div>
+    )}
 
       {/* ── MODAL CAMERA SCANNER QR CODE ──────────────────────────────────── */}
       {showCameraModal && (
@@ -1645,168 +1687,216 @@ export default function StudentWorshipAttendancePage() {
 
       {/* ── MODAL VERIFIKASI STATUS IBADAH SISWA ──────────────────────────── */}
       {showVerifyModal && selectedStudentForVerify && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-[#111827] space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Verifikasi Status Ibadah Siswa
-              </h3>
-              <button onClick={() => setShowVerifyModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <p className="font-bold text-slate-800 dark:text-slate-200">{selectedStudentForVerify.name}</p>
-                <p className="text-slate-400">NISN: {selectedStudentForVerify.nisn} | Kelas: {selectedStudentForVerify.class_name}</p>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Status Presensi Ibadah</label>
-                <select
-                  value={verifyStatus}
-                  onChange={(e) => setVerifyStatus(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-fadeIn">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94 }}
+            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+          >
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
+                    <UserCheck className="size-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                      Verifikasi
+                    </span>
+                    <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                      Verifikasi Ibadah Siswa
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowVerifyModal(false)}
+                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
                 >
-                  <option value="hadir_berjamaah">Hadir Berjamaah</option>
-                  <option value="masbuk">Masbuk / Terlambat</option>
-                  <option value="uzur_sakit">Uzur / Sakit (Halangan Syar'i)</option>
-                  <option value="izin">Izin UKS / Izin Khusus</option>
-                  <option value="alpa">Alpa / Tanpa Keterangan</option>
-                </select>
+                  <X className="size-5" />
+                </button>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Verifikator</label>
-                <textarea
-                  rows={3}
-                  value={verifyNotes}
-                  onChange={(e) => setVerifyNotes(e.target.value)}
-                  placeholder="Catatan tambahan (misal: Masbuk 1 rakaat, izin UKS...)"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                />
+              <div className="space-y-3.5 text-xs">
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                  <p className="font-bold text-slate-900 dark:text-white">{selectedStudentForVerify.name}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    NISN: {selectedStudentForVerify.nisn} • Kelas: {selectedStudentForVerify.class_name}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Status Presensi Ibadah</label>
+                  <select
+                    value={verifyStatus}
+                    onChange={(e) => setVerifyStatus(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <option value="hadir_berjamaah">Hadir Berjamaah</option>
+                    <option value="masbuk">Masbuk / Terlambat</option>
+                    <option value="uzur_sakit">Uzur / Sakit (Halangan Syar'i)</option>
+                    <option value="izin">Izin UKS / Izin Khusus</option>
+                    <option value="alpa">Alpa / Tanpa Keterangan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Catatan Verifikator</label>
+                  <textarea
+                    rows={3}
+                    value={verifyNotes}
+                    onChange={(e) => setVerifyNotes(e.target.value)}
+                    placeholder="Catatan tambahan (misal: Masbuk 1 rakaat, izin UKS...)"
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowVerifyModal(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveVerify}
+                  className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
+                >
+                  Simpan Verifikasi
+                </button>
               </div>
             </div>
-
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-              <button
-                onClick={() => setShowVerifyModal(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveVerify}
-                className="rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700"
-              >
-                Simpan Verifikasi
-              </button>
-            </div>
-          </div>
+          </motion.div>
         </div>
       )}
 
       {/* ── MODAL TAMBAH TEMPLATE IBADAH SEKOLAH ─────────────────────────── */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <form onSubmit={handleCreateTemplate} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-[#111827] space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Tambah Jadwal Ibadah Sekolah Baru
-              </h3>
-              <button type="button" onClick={() => setShowTemplateModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="col-span-2">
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Kegiatan Ibadah</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Misal: Shalat Zhuhur Berjamaah Siswa"
-                  value={templateForm.nama}
-                  onChange={(e) => setTemplateForm({ ...templateForm, nama: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Kategori Ibadah</label>
-                <select
-                  value={templateForm.category}
-                  onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-4 animate-fadeIn">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.94 }}
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#1B2433]"
+          >
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+            <form onSubmit={handleCreateTemplate} className="p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/30">
+                    <Plus className="size-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                      Jadwal Baru
+                    </span>
+                    <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5">
+                      Tambah Jadwal Ibadah Sekolah
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateModal(false)}
+                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
                 >
-                  <option value="shalat_wajib">Shalat Wajib</option>
-                  <option value="shalat_sunnah">Shalat Sunnah (Dhuha)</option>
-                  <option value="ibadah_lain">Pembiasaan Doa & Dzikir</option>
-                </select>
+                  <X className="size-5" />
+                </button>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tipe Kewajiban</label>
-                <select
-                  value={templateForm.obligation_type}
-                  onChange={(e) => setTemplateForm({ ...templateForm, obligation_type: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="col-span-2">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Kegiatan Ibadah</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Misal: Shalat Zhuhur Berjamaah Siswa"
+                    value={templateForm.nama}
+                    onChange={(e) => setTemplateForm({ ...templateForm, nama: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Kategori Ibadah</label>
+                  <select
+                    value={templateForm.category}
+                    onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <option value="shalat_wajib">Shalat Wajib</option>
+                    <option value="shalat_sunnah">Shalat Sunnah (Dhuha)</option>
+                    <option value="ibadah_lain">Pembiasaan Doa & Dzikir</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tipe Kewajiban</label>
+                  <select
+                    value={templateForm.obligation_type}
+                    onChange={(e) => setTemplateForm({ ...templateForm, obligation_type: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-semibold focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <option value="wajib">Wajib Sekolah</option>
+                    <option value="sunnah_muakkad">Sunnah Muakkad</option>
+                    <option value="pembiasaan">Pembiasaan Harian</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai</label>
+                  <input
+                    type="time"
+                    value={templateForm.start_time}
+                    onChange={(e) => setTemplateForm({ ...templateForm, start_time: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Selesai</label>
+                  <input
+                    type="time"
+                    value={templateForm.end_time}
+                    onChange={(e) => setTemplateForm({ ...templateForm, end_time: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Pelaksanaan</label>
+                  <input
+                    type="text"
+                    placeholder="Misal: Musholla Utama Sekolah / Hall Serbaguna"
+                    value={templateForm.location_name}
+                    onChange={(e) => setTemplateForm({ ...templateForm, location_name: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateModal(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-all cursor-pointer"
                 >
-                  <option value="wajib">Wajib Sekolah</option>
-                  <option value="sunnah_muakkad">Sunnah Muakkad</option>
-                  <option value="pembiasaan">Pembiasaan Harian</option>
-                </select>
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/25 hover:brightness-105 transition-all cursor-pointer"
+                >
+                  Simpan Jadwal
+                </button>
               </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai</label>
-                <input
-                  type="time"
-                  value={templateForm.start_time}
-                  onChange={(e) => setTemplateForm({ ...templateForm, start_time: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Selesai</label>
-                <input
-                  type="time"
-                  value={templateForm.end_time}
-                  onChange={(e) => setTemplateForm({ ...templateForm, end_time: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-
-              <div className="col-span-2">
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lokasi Pelaksanaan</label>
-                <input
-                  type="text"
-                  placeholder="Misal: Musholla Utama Sekolah / Hall Serbaguna"
-                  value={templateForm.location_name}
-                  onChange={(e) => setTemplateForm({ ...templateForm, location_name: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowTemplateModal(false)}
-                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700"
-              >
-                Simpan Jadwal
-              </button>
-            </div>
-          </form>
+            </form>
+          </motion.div>
         </div>
       )}
 

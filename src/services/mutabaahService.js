@@ -17,6 +17,7 @@ export const mutabaahService = {
   copyPreviousDay: (payload) => api.post('/mutabaah/daily/copy-previous-day', payload).then((r) => r.data),
   finalizeStudent: (payload) => api.post('/mutabaah/daily/finalize-student', payload).then((r) => r.data),
   finalizeBulk: (payload) => api.post('/mutabaah/daily/finalize-bulk', payload).then((r) => r.data),
+  verifyHome: (payload) => api.post('/mutabaah/daily/verify-home', payload).then((r) => r.data),
   reopenDaily: (payload) => api.post('/mutabaah/daily/reopen', payload).then((r) => r.data),
   dashboardAnalytics: (params = {}) => api.get('/mutabaah/analytics/dashboard', { params }).then((r) => r.data.data),
   recapAnalytics: (params = {}) => api.get('/mutabaah/analytics/recap', { params }).then((r) => r.data.data),

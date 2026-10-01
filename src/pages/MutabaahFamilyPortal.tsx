@@ -2,21 +2,25 @@ import { useEffect, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  BookHeart, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock3,
-  Edit3, History, MessageSquareText, Printer, RotateCcw, Search, ShieldCheck,
-  Signature, UserRound, Users, X, XCircle, Zap,
+  BookHeart, Building2, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3,
+  Download, Edit3, History, MessageSquareText, Printer, RotateCcw, Search,
+  Signature, UserRound, Users, X, XCircle,
+  Sparkles,
 } from 'lucide-react'
-import Swal from 'sweetalert2'
-import { Download1 } from '@tailgrids/icons'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { mutabaahService } from '../services/mutabaahService'
 import MutabaahSubNav from '../components/mutabaah/MutabaahSubNav'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import PageContainer from '../components/app/PageContainer'
+import AppSkeleton from '../components/app/AppSkeleton'
+import AppEmptyState from '../components/app/AppEmptyState'
+import AppErrorState from '../components/app/AppErrorState'
 import {
-  MasterDataPage,
-  MasterStatCard,
-  MasterStatsGrid,
+  MasterActionButton,
+  MasterActionIconButton,
+  SquircleActionButton,
   PrintOptionModal,
 } from '../components/master-data'
-import { Button } from '@/components/tailgrids/core/button'
 import { useAuthStore } from '../stores/authStore'
 import { downloadPdfTable, printCleanTable } from '../utils/printHelper'
 import './MutabaahFamilyPortal.css'
@@ -48,6 +52,76 @@ const statusMeta: Record<string, { label: string; bg: string; text: string; icon
   less: { label: 'Kurang', bg: 'bg-amber-100 dark:bg-amber-950/60', text: 'text-amber-700 dark:text-amber-300', icon: Clock3 },
   not_done: { label: 'Belum', bg: 'bg-rose-100 dark:bg-rose-950/60', text: 'text-rose-700 dark:text-rose-300', icon: XCircle },
   na: { label: 'N/A', bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-500 dark:text-slate-400', icon: Clock3 },
+}
+
+// ── MODERN CARD TONES (§C Tailgrids_Pengaturan_Halaman) ──
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-sm shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
+  },
+}
+
+function ModernKpiCard({ icon: Icon, label, value, subtext, tag, tone = 'emerald' }: {
+  icon: any
+  label: string
+  value: string | number
+  subtext?: string
+  tag?: string
+  tone?: keyof typeof MODERN_CARD_TONES
+}) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left cursor-default hover:shadow-md ${t.card}`}
+    >
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={`text-[11px] font-bold uppercase tracking-wider truncate ${t.title}`} title={label}>{label}</p>
+          </div>
+        </div>
+        {tag && (
+          <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>{tag}</span>
+        )}
+      </div>
+      <p className={`text-4xl font-black tabular-nums truncate ${t.val}`} title={String(value ?? 0)}>{value ?? 0}</p>
+      {subtext && <p className={`mt-0.5 text-[11px] font-semibold truncate ${t.sub}`} title={subtext}>{subtext}</p>}
+    </motion.div>
+  )
 }
 
 export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
@@ -161,254 +235,268 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
   }
 
   return (
-    <MasterDataPage className="education-unit-page mutabaah-parent-monitoring-page" hideBreadcrumb>
-      {/* 📊 KPI CARDS GRID */}
-      <MasterStatsGrid>
-        <MasterStatCard
+    <PageContainer className="space-y-6 pb-12">
+      {/* BREADCRUMB NAV (§W) */}
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="print:hidden">
+        <AppBreadcrumb
+          items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Mutaba’ah Yaumiyyah', href: '/dashboard/mutabaah' },
+            { label: 'Monitoring Orang Tua' },
+          ]}
+        />
+      </motion.div>
+
+      {/* MODERN HERO CARD HEADER (§B / §7.7 Vivid Emerald Responsive Hero) */}
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="print:hidden">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
+
+          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+              <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                <BookHeart className="size-5 sm:size-7 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40">
+                    <Sparkles className="size-3 sm:size-3.5 text-amber-300 animate-pulse" />
+                    {isStaff ? 'Supervisi Sekolah' : 'Portal Orang Tua'}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    Mutaba’ah Keluarga
+                  </span>
+                </div>
+                <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Monitoring Mutaba’ah Yaumiyyah
+                </h1>
+                <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                  {isStaff
+                    ? 'Pantau pembiasaan ibadah harian seluruh santri, cek status paraf orang tua, dan beri catatan supervisi pembimbing.'
+                    : 'Pantau pembiasaan ibadah harian santri, rekap mingguan/bulanan, dan berikan paraf persetujuan.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+              <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
+                <Users className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="tabular-nums">{children.data?.length || (data?.student ? 1 : 0)} Santri Terhubung</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 📊 KPI CARDS GRID (§C + §7.3) */}
+      <motion.div variants={itemVariants} initial="hidden" animate="visible" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ModernKpiCard
           icon={Users}
           label="Total Santri Terhubung"
           value={children.data?.length || (data?.student ? 1 : 0)}
-          description={isStaff ? 'Santri terpilih / binaan' : 'Anak terdaftar di portal'}
-          variant="info"
-          delay={40}
+          subtext={isStaff ? 'Santri terpilih / binaan' : 'Anak terdaftar di portal'}
+          tag="Terhubung"
+          tone="blue"
         />
-        <MasterStatCard
+        <ModernKpiCard
           icon={CheckCircle2}
           label="Pencapaian Hari Ini"
           value={`${Math.round(data?.today?.score || 0)}%`}
-          description="Capaian amalan ibadah harian"
-          variant="success"
-          delay={80}
+          subtext="Capaian amalan ibadah harian"
+          tag="Harian"
+          tone="emerald"
         />
-        <MasterStatCard
+        <ModernKpiCard
           icon={Signature}
           label="Status Paraf Ortu"
           value={data?.today?.signature ? 'Sudah Diparaf' : 'Menunggu Paraf'}
-          description={data?.today?.signature ? `Jenis: ${data.today.signature.signature_status}` : 'Belum dikonfirmasi ortu'}
-          variant={data?.today?.signature ? 'success' : 'warning'}
-          delay={120}
+          subtext={data?.today?.signature ? `Jenis: ${data.today.signature.signature_status}` : 'Belum dikonfirmasi ortu'}
+          tag="Paraf"
+          tone={data?.today?.signature ? 'emerald' : 'amber'}
         />
-        <MasterStatCard
+        <ModernKpiCard
           icon={History}
           label="Riwayat Mutabaah"
           value={history.data?.rows?.data?.length || 0}
-          description="Hari difinalisasi tersimpan"
-          variant="info"
-          delay={160}
+          subtext="Hari difinalisasi tersimpan"
+          tag="Riwayat"
+          tone="blue"
         />
-      </MasterStatsGrid>
+      </motion.div>
 
       {/* 🧭 SUB NAV */}
       <MutabaahSubNav />
 
-      {/* 🟢 MAIN WORKSPACE CARD (ANIMATED CONTAINER) */}
+      {/* 🟢 MAIN WORKSPACE CARD (ANIMATED CONTAINER §K) */}
       <motion.section
         initial="hidden"
         animate="visible"
         variants={containerVariants}
-        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] space-y-5"
+        className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] space-y-5"
       >
-        {/* BARIS 1: TITLE & ACTION BUTTONS */}
-        <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 uppercase tracking-wider">
-              {isStaff ? 'Supervisi & Monitoring Sekolah (Kepala Sekolah / Musyrif / Admin / TU)' : 'Portal Monitoring Orang Tua'}
-            </span>
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white mt-1">Monitoring Mutaba’ah Yaumiyyah</h1>
-            <p className="text-xs text-slate-400">
-              {isStaff
-                ? 'Pantau pembiasaan ibadah harian seluruh santri, cek status paraf orang tua, dan beri catatan supervisi pembimbing.'
-                : 'Pantau pembiasaan ibadah harian santri, rekap mingguan/bulanan, dan berikan paraf persetujuan.'}
-            </p>
+        <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+        {/* BARIS 1: TITLE & ACTION BUTTONS (§H.5) */}
+        <motion.div variants={itemVariants} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3.5 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shrink-0 shadow-sm border border-emerald-300/40">
+              <BookHeart className="size-5" />
+            </div>
+            <div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
+                {isStaff ? 'Supervisi & Monitoring Sekolah' : 'Portal Monitoring Orang Tua'}
+              </span>
+              <h1 className="text-sm sm:text-base font-black text-slate-900 dark:text-white mt-0.5">Monitoring Mutaba’ah Yaumiyyah</h1>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-0.5">
+                {isStaff
+                  ? 'Pantau pembiasaan ibadah harian seluruh santri, cek status paraf orang tua, dan beri catatan supervisi pembimbing.'
+                  : 'Pantau pembiasaan ibadah harian santri, rekap mingguan/bulanan, dan berikan paraf persetujuan.'}
+              </p>
+            </div>
           </div>
 
-          {/* SOFT PASTEL SQUIRCLE ACTION BUTTONS WITH SPRING MICRO-ANIMATION & HOVER TOOLTIPS */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
             {/* PRINT BUTTON */}
-            <div className="group relative inline-flex">
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.06, y: -2 }}
-                whileTap={{ scale: 0.94 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                onClick={() => setPrintModalOpen(true)}
-                className="flex size-10 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white transition-colors duration-200 shadow-2xs cursor-pointer"
-                title="Cetak Data"
-                aria-label="Cetak Data"
-              >
-                <Printer className="size-5" />
-              </motion.button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                Cetak Data
-              </div>
-            </div>
+            <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => setPrintModalOpen(true)} />
 
             {/* EXPORT BUTTON */}
-            <div className="group relative inline-flex">
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.06, y: -2 }}
-                whileTap={{ scale: 0.94 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                onClick={() => handlePrint('pdf')}
-                className="flex size-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-colors duration-200 shadow-2xs cursor-pointer"
-                title="Export PDF"
-                aria-label="Export PDF"
-              >
-                <Download1 className="size-5" />
-              </motion.button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                Export PDF
-              </div>
-            </div>
+            <SquircleActionButton variant="export" icon={Download} label="Export PDF" onClick={() => handlePrint('pdf')} />
 
             {/* MUSYRIF / STAFF NOTE ACTION BUTTON */}
             {isStaff && data?.today && (
-              <div className="group relative inline-flex">
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.06, y: -2 }}
-                  whileTap={{ scale: 0.94 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                  onClick={() => setNoteOpen(true)}
-                  className="flex size-10 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700 hover:bg-cyan-600 hover:text-white dark:bg-cyan-950/60 dark:text-cyan-300 dark:hover:bg-cyan-600 dark:hover:text-white transition-colors duration-200 shadow-2xs cursor-pointer"
-                  title="Catatan Pembimbing / Musyrif"
-                  aria-label="Catatan Pembimbing / Musyrif"
-                >
-                  <Edit3 className="size-5" />
-                </motion.button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                  Edit Catatan Pembimbing
-                </div>
-              </div>
+              <SquircleActionButton variant="edit" icon={Edit3} label="Edit Catatan Pembimbing" onClick={() => setNoteOpen(true)} />
             )}
 
             {/* PARAF ACTION BUTTON */}
             {mode === 'parent' && data?.today && (
-              <div className="group relative inline-flex">
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.06, y: -2 }}
-                  whileTap={{ scale: 0.94 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                  onClick={() => setSignatureOpen(true)}
-                  className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white transition-colors duration-200 shadow-2xs cursor-pointer"
-                  title="Beri Paraf Ortu"
-                  aria-label="Beri Paraf Ortu"
-                >
-                  <Signature className="size-5" />
-                </motion.button>
-                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-                  <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
-                  Beri Paraf Ortu
-                </div>
-              </div>
+              <SquircleActionButton variant="primary" icon={Signature} label="Beri Paraf Ortu" onClick={() => setSignatureOpen(true)} />
             )}
           </div>
         </motion.div>
 
-        {/* BARIS 2: CONTROLS & FILTERS */}
-        <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/80 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 flex-wrap flex-1 min-w-[280px]">
+        {/* BARIS 2: CONTROLS & FILTERS (§7.9 flex-wrap + field §J.3) */}
+        <motion.div variants={itemVariants} className="px-4 py-3 sm:px-6 md:px-8 border-b border-emerald-200/80 bg-white dark:border-emerald-800/60 dark:bg-[#1B2433]">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+              Filter:
+            </span>
             {/* UNIT FILTER */}
             {isStaff && optionsQuery.data?.units?.length > 0 && (
-              <select
-                value={unitId}
-                onChange={(e) => setUnitId(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white cursor-pointer"
-              >
-                <option value="">Semua Unit</option>
-                {optionsQuery.data.units.map((u: any) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+              <div className="w-full sm:w-auto min-w-[140px]">
+                <label htmlFor="portal-unit" className="sr-only">Unit pendidikan</label>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <Building2 className="size-4" />
+                  </div>
+                  <select
+                    id="portal-unit"
+                    value={unitId}
+                    onChange={(e) => setUnitId(e.target.value)}
+                    className="w-full sm:w-auto min-w-[140px] appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                  >
+                    <option value="">Semua Unit</option>
+                    {optionsQuery.data.units.map((u: any) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
+                </div>
+              </div>
             )}
 
             {/* INPUT PENCARIAN NAMA SANTRI / NIS */}
             {isStaff && (
-              <div className="relative min-w-[180px] max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari Nama Santri / NIS..."
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                />
+              <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[160px]">
+                <label htmlFor="portal-search" className="sr-only">Cari santri</label>
+                <div className="relative flex items-center">
+                  <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                    <Search className="size-4" />
+                  </div>
+                  <input
+                    id="portal-search"
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Cari Nama Santri / NIS..."
+                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                  />
+                </div>
               </div>
             )}
 
             {/* SANTRI SELECT DROPDOWN */}
-            <div className="flex-1 min-w-[200px] max-w-sm">
-              <select
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white cursor-pointer"
-              >
-                {!children.data?.length ? (
-                  <option value="">{children.isLoading ? 'Memuat data santri...' : '-- Tidak Ada Data Santri --'}</option>
-                ) : (
-                  <option value="">-- Pilih Santri --</option>
-                )}
-                {children.data?.map((child: any) => (
-                  <option key={child.id} value={child.id}>
-                    {child.name} · Kelas {child.class_name || '-'} ({child.unit || '-'})
-                  </option>
-                ))}
-              </select>
+            <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[200px]">
+              <label htmlFor="portal-santri" className="sr-only">Pilih santri</label>
+              <div className="relative flex items-center">
+                <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                  <UserRound className="size-4" />
+                </div>
+                <select
+                  id="portal-santri"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
+                >
+                  {!children.data?.length ? (
+                    <option value="">{children.isLoading ? 'Memuat data santri...' : '-- Tidak Ada Data Santri --'}</option>
+                  ) : (
+                    <option value="">-- Pilih Santri --</option>
+                  )}
+                  {children.data?.map((child: any) => (
+                    <option key={child.id} value={child.id}>
+                      {child.name} · Kelas {child.class_name || '-'} ({child.unit || '-'})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400" />
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
-              <motion.button
+            <div className="flex items-center gap-1.5">
+              <button
                 type="button"
-                whileTap={{ scale: 0.9 }}
                 onClick={() => changeDay(-1)}
-                className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                title="Hari Sebelumnya"
+                aria-label="Hari sebelumnya"
+                className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 cursor-pointer"
               >
-                <ChevronLeft className="size-4" />
-              </motion.button>
+                <ChevronLeft className="size-5 shrink-0" />
+              </button>
+              <label htmlFor="portal-date" className="sr-only">Tanggal</label>
               <input
+                id="portal-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-white p-2 text-xs font-bold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
               />
-              <motion.button
+              <button
                 type="button"
-                whileTap={{ scale: 0.9 }}
                 onClick={() => changeDay(1)}
-                className="rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                title="Hari Berikutnya"
+                aria-label="Hari berikutnya"
+                className="flex size-9 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 cursor-pointer"
               >
-                <ChevronRight className="size-4" />
-              </motion.button>
+                <ChevronRight className="size-5 shrink-0" />
+              </button>
             </div>
 
-            <motion.button
+            <button
               type="button"
-              whileTap={{ scale: 0.95 }}
               onClick={() => {
                 setDate(today())
                 setUnitId('')
                 setClassId('')
                 setSearch('')
               }}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+              className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center gap-1.5 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
             >
               <RotateCcw className="size-3.5" /> Reset
-            </motion.button>
+            </button>
           </div>
         </motion.div>
 
-        {/* LOADING & ERROR STATES */}
-        {(overview.isLoading || children.isLoading) && <PortalSkeleton />}
-        {overview.isError && <ErrorState retry={() => overview.refetch()} />}
+        {/* LOADING & ERROR STATES (§U.1) */}
+        {(overview.isLoading || children.isLoading) && <AppSkeleton variant="card" className="h-40" />}
+        {overview.isError && <AppErrorState title="Data mutabaah gagal dimuat" description="Silakan periksa koneksi dan coba kembali." onRetry={() => overview.refetch()} compact />}
 
         {/* CONTENT WITH STAGGERED ITEM VARIANTS */}
         {!overview.isLoading && data && (
@@ -427,13 +515,19 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
             {/* AGENDA HARI INI */}
             {data.today ? (
               <>
-                <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 mb-4">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">Agenda Mutabaah Hari Ini</h3>
-                      <p className="text-xs text-slate-400">
-                        {new Date(`${data.date}T12:00:00`).toLocaleDateString('id-ID', { dateStyle: 'full' })}
-                      </p>
+                <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+                  <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+                  <div className="flex items-center justify-between mb-4 pb-3.5 border-b border-emerald-200/90 dark:border-emerald-800/60">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
+                        <BookHeart className="size-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Agenda Mutabaah Hari Ini</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {new Date(`${data.date}T12:00:00`).toLocaleDateString('id-ID', { dateStyle: 'full' })}
+                        </p>
+                      </div>
                     </div>
                     <ProgressRing value={Number(data.today.score || 0)} />
                   </div>
@@ -447,7 +541,7 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
                           key={item.id}
                           whileHover={{ y: -2, scale: 1.02 }}
                           transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                          className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40"
+                          className="flex items-start gap-3 p-3 rounded-xl border border-emerald-100 bg-slate-50/70 hover:border-emerald-300 dark:border-emerald-900/40 dark:bg-slate-900/40"
                         >
                           <div className={`p-2 rounded-xl shrink-0 ${meta.bg} ${meta.text}`}>
                             <StatusIcon className="size-4" />
@@ -455,9 +549,9 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
                           <div className="flex-1 min-w-0">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{item.category}</span>
                             <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{item.name}</h4>
-                            {item.notes && <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{item.notes}</p>}
+                            {item.notes && <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{item.notes}</p>}
                           </div>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${meta.bg} ${meta.text}`}>
+                          <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${meta.bg} ${meta.text}`}>
                             {meta.label}
                           </span>
                         </motion.div>
@@ -467,9 +561,9 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
                 </motion.div>
 
                 {/* CATATAN MUSYRIF / SUPERVISI */}
-                <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] flex items-start justify-between gap-3">
+                <motion.div variants={itemVariants} className="rounded-2xl border border-amber-200/80 bg-amber-50/50 p-5 dark:border-amber-900/50 dark:bg-amber-950/20 flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <div className="p-2.5 rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 shrink-0">
+                    <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white shadow-sm shrink-0">
                       <MessageSquareText className="size-5" />
                     </div>
                     <div>
@@ -480,9 +574,7 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
                     </div>
                   </div>
                   {isStaff && (
-                    <Button variant="ghost" size="xs" onClick={() => setNoteOpen(true)}>
-                      <Edit3 className="size-3.5 mr-1" /> Edit Catatan
-                    </Button>
+                    <MasterActionIconButton variant="edit" label="Edit Catatan" onClick={() => setNoteOpen(true)} />
                   )}
                 </motion.div>
 
@@ -508,14 +600,17 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
                   </div>
 
                   {mode === 'parent' && (
-                    <Button variant="primary" size="sm" onClick={() => setSignatureOpen(true)}>
+                    <MasterActionButton variant="primary" icon={Signature} onClick={() => setSignatureOpen(true)}>
                       {data.today.signature ? 'Perbarui Paraf' : 'Beri Paraf Persetujuan'}
-                    </Button>
+                    </MasterActionButton>
                   )}
                 </motion.div>
               </>
             ) : (
-              <EmptyState />
+              <AppEmptyState
+                title="Belum ada hasil hari ini"
+                description="Hasil mutabaah akan tampil setelah pembimbing/musyrif mencatat amalan santri."
+              />
             )}
 
             {/* RIWAYAT HARIAN TIMELINE */}
@@ -548,17 +643,19 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
           )}
         </AnimatePresence>
 
-        {/* MODAL CETAK DATA */}
+        {/* MODAL CETAK DATA (§Q — prop onPrint/onDownload, bukan onPrintClean) */}
         {printModalOpen && (
           <PrintOptionModal
             isOpen={printModalOpen}
             onClose={() => setPrintModalOpen(false)}
-            onPrintClean={() => handlePrint('clean')}
-            onDownloadPdf={() => handlePrint('pdf')}
+            onPrint={() => handlePrint('clean')}
+            onDownload={() => handlePrint('pdf')}
+            title="Laporan Mutaba'ah Santri"
+            subtitle={`Tanggal: ${new Date(`${date}T12:00:00`).toLocaleDateString('id-ID', { dateStyle: 'full' })}`}
           />
         )}
       </motion.section>
-    </MasterDataPage>
+    </PageContainer>
   )
 }
 
@@ -567,7 +664,7 @@ function StudentSummary({ data }: any) {
     <motion.div
       whileHover={{ y: -2, scale: 1.01 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433] flex items-center justify-between gap-4"
+      className="rounded-2xl border border-emerald-200/80 bg-white p-5 shadow-xs dark:border-emerald-800/60 dark:bg-[#1B2433] flex items-center justify-between gap-4"
     >
       <div className="flex items-center gap-3.5">
         {data.student.photo ? (
@@ -598,11 +695,11 @@ function ProgressCard({ title, data }: any) {
     <motion.div
       whileHover={{ y: -2, scale: 1.01 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]"
+      className="rounded-2xl border border-emerald-200/80 bg-white p-5 shadow-xs dark:border-emerald-800/60 dark:bg-[#1B2433]"
     >
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800 mb-3">
+      <div className="flex items-center justify-between border-b border-emerald-200/80 pb-3 dark:border-emerald-800/60 mb-3">
         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</h4>
-        <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{data.score}%</span>
+        <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{data.score}%</span>
       </div>
       <p className="text-[11px] text-slate-400 mb-3">{data.days} hari tercatat dalam periode</p>
       <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-bold">
@@ -639,10 +736,12 @@ function ProgressRing({ value }: { value: number }) {
 
 function HistoryTimeline({ rows }: any) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
-      <div className="flex items-center gap-2 border-b border-slate-100 pb-3 dark:border-slate-800 mb-4">
-        <History className="size-4 text-[#0E5C44] dark:text-emerald-400" />
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Riwayat Mutabaah Harian</h3>
+    <div className="rounded-2xl border border-emerald-200/80 bg-white p-5 shadow-xs dark:border-emerald-800/60 dark:bg-[#1B2433]">
+      <div className="flex items-center gap-2.5 border-b border-emerald-200/80 pb-3 dark:border-emerald-800/60 mb-4">
+        <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm shrink-0">
+          <History className="size-4" />
+        </div>
+        <h3 className="text-sm font-black text-slate-900 dark:text-white">Riwayat Mutabaah Harian</h3>
       </div>
       <div className="space-y-2.5">
         {rows.map((row: any) => (
@@ -650,7 +749,7 @@ function HistoryTimeline({ rows }: any) {
             key={row.id}
             whileHover={{ x: 3 }}
             transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/40 text-xs"
+            className="flex items-center justify-between p-3 rounded-xl border border-emerald-100 bg-slate-50/70 hover:border-emerald-300 dark:border-emerald-900/40 dark:bg-slate-900/40 text-xs"
           >
             <div className="flex items-center gap-3">
               <span className={`size-2.5 rounded-full ${row.parent_signed ? 'bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-950' : 'bg-slate-300 dark:bg-slate-600'}`} />
@@ -669,7 +768,7 @@ function HistoryTimeline({ rows }: any) {
             <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{row.score || 0}%</span>
           </motion.div>
         ))}
-        {!rows.length && <p className="text-xs text-slate-400 text-center py-4">Belum ada riwayat mutabaah yang difinalisasi.</p>}
+        {!rows.length && <AppEmptyState title="Belum ada riwayat" description="Belum ada riwayat mutabaah yang difinalisasi." />}
       </div>
     </div>
   )
@@ -690,21 +789,28 @@ function SignatureSheet({ close, submit, saving }: any) {
         onMouseDown={close}
       />
 
-      {/* Modal with Spring Physics Pop-up */}
+      {/* Modal with Spring Physics Pop-up (§R) */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 15 }}
+        initial={{ opacity: 0, scale: 0.94, y: 14 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]"
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="relative z-10 w-full max-w-md rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60 overflow-hidden"
       >
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800 mb-4">
-          <div>
-            <span className="text-[10px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Konfirmasi Orang Tua</span>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Paraf Mutaba’ah Yaumiyyah</h3>
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+        <div className="p-5 sm:p-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+              <Signature className="h-5 w-5 text-white" strokeWidth={2.25} />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Konfirmasi Orang Tua</span>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Paraf Mutaba’ah Yaumiyyah</h3>
+            </div>
           </div>
-          <button type="button" onClick={close} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-            <X className="size-5" />
+          <button type="button" onClick={close} aria-label="Tutup modal" className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0">
+            <X className="size-4 text-white" strokeWidth={2.25} />
           </button>
         </div>
 
@@ -736,24 +842,51 @@ function SignatureSheet({ close, submit, saving }: any) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Tambahan (Opsional)</label>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              maxLength={1000}
-              rows={3}
-              placeholder="Tuliskan pesan untuk pembimbing..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            />
+            <label htmlFor="paraf-note" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Catatan Tambahan (Opsional)</label>
+            <div className="relative">
+              <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+                <MessageSquareText className="size-4" />
+              </div>
+              <textarea
+                id="paraf-note"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                maxLength={1000}
+                rows={3}
+                placeholder="Tuliskan pesan untuk pembimbing..."
+                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
+              />
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <Button appearance="outline" size="sm" type="button" onClick={close}>Batal</Button>
-            <Button variant="primary" size="sm" type="submit" disabled={saving}>
-              {saving ? 'Menyimpan...' : 'Konfirmasi Paraf'}
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={close}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+            >
+              <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                <X className="size-3.5 text-white" strokeWidth={2.2} />
+              </div>
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-md shadow-emerald-500/20"
+            >
+              {saving ? (
+                <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <Signature className="size-3.5 text-white" strokeWidth={2.2} />
+                </div>
+              )}
+              <span>{saving ? 'Menyimpan...' : 'Konfirmasi Paraf'}</span>
+            </button>
           </div>
         </form>
+        </div>
       </motion.div>
     </div>
   )
@@ -773,78 +906,79 @@ function NoteSheet({ close, initialNote, submit, saving }: any) {
         onMouseDown={close}
       />
 
-      {/* Modal with Spring Physics Pop-up */}
+      {/* Modal with Spring Physics Pop-up (§R) */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 15 }}
+        initial={{ opacity: 0, scale: 0.94, y: 14 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-[#1B2433]"
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="relative z-10 w-full max-w-md rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60 overflow-hidden"
       >
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800 mb-4">
-          <div>
-            <span className="text-[10px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Supervisi Sekolah</span>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Edit Catatan Pembimbing / Musyrif</h3>
+        <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+        <div className="p-5 sm:p-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+              <MessageSquareText className="h-5 w-5 text-white" strokeWidth={2.25} />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-[#0E5C44] dark:text-emerald-400 uppercase tracking-wider">Supervisi Sekolah</span>
+              <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Edit Catatan Pembimbing / Musyrif</h3>
+            </div>
           </div>
-          <button type="button" onClick={close} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">
-            <X className="size-5" />
+          <button type="button" onClick={close} aria-label="Tutup modal" className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0">
+            <X className="size-4 text-white" strokeWidth={2.25} />
           </button>
         </div>
 
         <form onSubmit={(e) => { e.preventDefault(); submit(note) }} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Pesan / Evaluasi Musyrif untuk Santri & Orang Tua</label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              maxLength={1000}
-              rows={4}
-              placeholder="Tuliskan evaluasi amalan ibadah santri hari ini..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            />
+            <label htmlFor="note-text" className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Pesan / Evaluasi Musyrif untuk Santri & Orang Tua</label>
+            <div className="relative">
+              <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+                <MessageSquareText className="size-4" />
+              </div>
+              <textarea
+                id="note-text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={1000}
+                rows={4}
+                placeholder="Tuliskan evaluasi amalan ibadah santri hari ini..."
+                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
+              />
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
-            <Button appearance="outline" size="sm" type="button" onClick={close}>Batal</Button>
-            <Button variant="primary" size="sm" type="submit" disabled={saving}>
-              {saving ? 'Menyimpan...' : 'Simpan Catatan'}
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-4 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={close}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
+            >
+              <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                <X className="size-3.5 text-white" strokeWidth={2.2} />
+              </div>
+              <span>Batal</span>
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-md shadow-emerald-500/20"
+            >
+              {saving ? (
+                <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                  <CheckCircle2 className="size-3.5 text-white" strokeWidth={2.2} />
+                </div>
+              )}
+              <span>{saving ? 'Menyimpan...' : 'Simpan Catatan'}</span>
+            </button>
           </div>
         </form>
+        </div>
       </motion.div>
-    </div>
-  )
-}
-
-function PortalSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      <div className="h-24 w-full rounded-2xl bg-slate-100 dark:bg-slate-800" />
-      <div className="grid grid-cols-2 gap-4">
-        <div className="h-32 rounded-2xl bg-slate-100 dark:bg-slate-800" />
-        <div className="h-32 rounded-2xl bg-slate-100 dark:bg-slate-800" />
-      </div>
-    </div>
-  )
-}
-
-function EmptyState() {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-400 dark:border-slate-800 dark:bg-[#1B2433]">
-      <BookHeart className="size-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-      <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300">Belum ada hasil hari ini</h3>
-      <p className="text-[11px] text-slate-400 mt-0.5">Hasil mutabaah akan tampil setelah pembimbing/musyrif mencatat amalan santri.</p>
-    </div>
-  )
-}
-
-function ErrorState({ retry }: any) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-rose-500 dark:border-slate-800 dark:bg-[#1B2433]">
-      <XCircle className="size-8 mx-auto mb-2 text-rose-400" />
-      <h3 className="text-xs font-bold">Data gagal dimuat</h3>
-      <p className="text-[11px] text-slate-400 mt-0.5">Silakan periksa koneksi dan coba kembali.</p>
-      <Button appearance="outline" size="sm" className="mt-3" onClick={retry}>Coba Lagi</Button>
     </div>
   )
 }

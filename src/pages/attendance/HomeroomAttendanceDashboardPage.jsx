@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   AlertCircle,
   Award,
   BookOpen,
   CalendarCheck,
   CheckCircle2,
-  Clock,
   Eye,
   FileCheck2,
   FileText,
@@ -18,13 +17,13 @@ import {
   ShieldAlert,
   Sparkles,
   Users,
-  X,
 } from 'lucide-react'
 import { lmsPresensiService } from '../../services/lmsPresensiService'
 import { kelasService } from '../../services/kelasService'
-import { employeeService } from '../../services/employeeService'
+import { scheduleService } from '../../services/scheduleService'
 import { useAuthStore } from '../../stores/authStore'
 import { hasAnyRole } from '../../auth/portalResolver'
+import { generateOfficialPrintHeaderHtml } from '../../utils/printHelper'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppBadge from '../../components/app/AppBadge'
 import AppSkeleton from '../../components/app/AppSkeleton'
@@ -51,8 +50,6 @@ const UNIT_BADGE_STYLES = {
   PONPES: 'bg-amber-100/90 text-amber-800 border border-amber-200/80 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800/80',
   MAHAD: 'bg-amber-100/90 text-amber-800 border border-amber-200/80 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800/80',
 }
-
-const DEFAULT_TEACHERS = []
 
 function getUnitBadgeStyle(unitName = '') {
   const str = String(unitName).toUpperCase()
@@ -169,110 +166,117 @@ export default function HomeroomAttendanceDashboardPage() {
   // 6. Modal Tambah Jadwal Pelajaran State
   const [isAddScheduleModalOpen, setIsAddScheduleModalOpen] = useState(false)
   const [scheduleForm, setScheduleForm] = useState({
-    subjectName: '',
-    customSubject: '',
-    day: 'Senin',
-    startTime: '07:30',
-    endTime: '09:00',
-    teacherName: '',
-    customTeacher: '',
+    subjectId: '',
+    employeeId: '',
+    academicYearId: '',
+    semesterId: '',
+    dayOfWeek: '',
+    startTime: '',
+    endTime: '',
   })
+  const [scheduleOptions, setScheduleOptions] = useState({})
+  const [loadingScheduleOptions, setLoadingScheduleOptions] = useState(false)
   const [savingSchedule, setSavingSchedule] = useState(false)
   const [scheduleSuccessMessage, setScheduleSuccessMessage] = useState('')
+  const [scheduleError, setScheduleError] = useState('')
 
   // 7. Modal Daftar Guru Pengampu State
-  const [teachersList, setTeachersList] = useState([])
   const [isTeachersModalOpen, setIsTeachersModalOpen] = useState(false)
-  const [loadingTeachers, setLoadingTeachers] = useState(false)
 
-  const handleOpenTeachersListModal = async () => {
+  const teachersList = useMemo(() => {
+    const teachers = Array.isArray(scheduleOptions?.guru) ? scheduleOptions.guru : []
+    return teachers.map((teacher) => ({
+      id: teacher.id,
+      name: teacher.nama_lengkap || '-',
+      niy: teacher.niy || teacher.nik || '-',
+      subject: teacher.bidang_studi || teacher.jabatan || '-',
+      status: teacher.status || '-',
+    }))
+  }, [scheduleOptions])
+
+  const handleOpenTeachersListModal = () => {
     setIsTeachersModalOpen(true)
-    if (teachersList.length === 0) {
-      setLoadingTeachers(true)
-      try {
-        const res = await employeeService.getDaftar({ per_page: 100 }).catch(() => null)
-        const raw = res?.data || (Array.isArray(res) ? res : [])
-        if (Array.isArray(raw) && raw.length > 0) {
-          const mapped = raw.map((t) => ({
-            id: t.id,
-            name: t.nama_lengkap || t.nama || t.name || 'Guru Pengajar',
-            niy: t.niy || t.nip || '-',
-            subject: t.bidang_studi || t.jabatan || 'Guru Pengampu',
-            status: t.status || 'Aktif',
-          }))
-          setTeachersList(mapped)
-        } else {
-          setTeachersList([])
-        }
-      } catch (err) {
-        console.error('Failed to fetch teachers:', err)
-        setTeachersList([])
-      } finally {
-        setLoadingTeachers(false)
-      }
-    }
   }
 
   const handleSelectTeacher = (teacher) => {
     setScheduleForm((prev) => ({
       ...prev,
-      teacherName: teacher.name,
+      employeeId: teacher.id,
     }))
     setIsTeachersModalOpen(false)
   }
 
-  const handleOpenAddScheduleModal = (classItem = null) => {
+  const handleOpenAddScheduleModal = async (classItem = null) => {
     const targetClass = classItem || selectedClass || (classesList.length > 0 ? classesList[0] : null)
-    if (targetClass) {
-      setSelectedClass(targetClass)
-    }
+    if (!targetClass) return
+
+    setSelectedClass(targetClass)
     setScheduleForm({
-      subjectName: '',
-      customSubject: '',
-      day: 'Senin',
-      startTime: '07:30',
-      endTime: '09:00',
-      teacherName: '',
-      customTeacher: '',
+      subjectId: '',
+      employeeId: '',
+      academicYearId: '',
+      semesterId: '',
+      dayOfWeek: '',
+      startTime: '',
+      endTime: '',
     })
     setScheduleSuccessMessage('')
+    setScheduleError('')
     setIsAddScheduleModalOpen(true)
+    setLoadingScheduleOptions(true)
+    try {
+      const response = await scheduleService.getOptions()
+      const options = response?.data || response || {}
+      setScheduleOptions(options)
+      const classOption = (options.kelas || []).find((item) => item.id === targetClass.id)
+      const activeYear = (options.tahun_ajaran || options.academic_years || []).find((item) => item.is_active)
+      const activeSemester = (options.semester || []).find((item) => item.is_active && (!classOption?.tahun_ajaran_id || item.academic_year_id === classOption.tahun_ajaran_id))
+      setScheduleForm((previous) => ({
+        ...previous,
+        academicYearId: classOption?.tahun_ajaran_id || activeYear?.id || '',
+        semesterId: classOption?.semester_id || activeSemester?.id || '',
+      }))
+    } catch (err) {
+      console.error('Failed to load schedule options:', err)
+      setScheduleOptions({})
+      setScheduleError('Opsi jadwal dari database tidak dapat dimuat.')
+    } finally {
+      setLoadingScheduleOptions(false)
+    }
   }
 
   const handleSaveSchedule = async (e) => {
     e?.preventDefault()
-    const targetSubject = scheduleForm.subjectName === 'Lainnya' ? scheduleForm.customSubject : scheduleForm.subjectName
-    if (!targetSubject?.trim()) return
-
-    const teacher = scheduleForm.teacherName === 'custom' ? (scheduleForm.customTeacher || '') : scheduleForm.teacherName
-    const subjectWithTeacher = teacher?.trim() ? `${targetSubject.trim()} (${teacher.trim()})` : targetSubject.trim()
-
     setSavingSchedule(true)
+    setScheduleError('')
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300))
-
-      if (selectedClass) {
-        const updatedSubjects = Array.isArray(selectedClass.mata_pelajaran)
-          ? selectedClass.mata_pelajaran.includes(subjectWithTeacher)
-            ? selectedClass.mata_pelajaran
-            : [...selectedClass.mata_pelajaran, subjectWithTeacher]
-          : [subjectWithTeacher]
-
-        const updatedClass = { ...selectedClass, mata_pelajaran: updatedSubjects }
-        setSelectedClass(updatedClass)
-
-        setClassesList((prevList) =>
-          prevList.map((c) => (c.id === selectedClass.id ? { ...c, mata_pelajaran: updatedSubjects } : c))
-        )
+      const response = await scheduleService.tambah({
+        kelas_id: selectedClass?.id,
+        employee_id: scheduleForm.employeeId,
+        subject_id: scheduleForm.subjectId,
+        academic_year_id: scheduleForm.academicYearId,
+        semester_id: scheduleForm.semesterId,
+        day_of_week: Number(scheduleForm.dayOfWeek),
+        time_start: scheduleForm.startTime,
+        time_end: scheduleForm.endTime,
+        is_active: true,
+      })
+      const savedSchedule = response?.data || response
+      const subjectName = savedSchedule?.subject?.nama_mapel || savedSchedule?.subject?.name || (scheduleOptions.mata_pelajaran || []).find((item) => item.id === scheduleForm.subjectId)?.nama_mapel || (scheduleOptions.mata_pelajaran || []).find((item) => item.id === scheduleForm.subjectId)?.name
+      if (subjectName && selectedClass) {
+        const updateClassSubjects = (classItem) => ({
+          ...classItem,
+          mata_pelajaran: Array.from(new Set([...(classItem.mata_pelajaran || []), subjectName])),
+        })
+        setSelectedClass(updateClassSubjects)
+        setClassesList((items) => items.map((item) => (item.id === selectedClass.id ? updateClassSubjects(item) : item)))
       }
-
-      setScheduleSuccessMessage(`Jadwal ${targetSubject} (${teacher || 'Guru Pengampu'}) berhasil ditambahkan!`)
-      setTimeout(() => {
-        setIsAddScheduleModalOpen(false)
-        setSavingSchedule(false)
-      }, 700)
+      setScheduleSuccessMessage(response?.message || 'Jadwal berhasil disimpan ke database.')
+      setIsAddScheduleModalOpen(false)
     } catch (err) {
       console.error('Failed to save schedule:', err)
+      setScheduleError(err?.response?.data?.message || 'Jadwal tidak dapat disimpan.')
+    } finally {
       setSavingSchedule(false)
     }
   }
@@ -296,18 +300,14 @@ export default function HomeroomAttendanceDashboardPage() {
     [userRoles]
   )
 
-  const stats = useMemo(() => {
-    return (
-      dashboardData?.stats || {
-        total_students: dashboardData?.total_students || 0,
-        attendance_rate: dashboardData?.attendance_rate || 0,
-        present_today: dashboardData?.present || 0,
-        sick_today: dashboardData?.sick || 0,
-        permission_today: dashboardData?.permission || 0,
-        absent_today: dashboardData?.absent || 0,
-      }
-    )
-  }, [dashboardData])
+  const stats = useMemo(() => ({
+    total_students: dashboardData?.stats?.total_students ?? dashboardData?.total_students ?? 0,
+    attendance_rate: dashboardData?.stats?.attendance_rate ?? dashboardData?.attendance_rate ?? null,
+    present_today: dashboardData?.stats?.present_today ?? dashboardData?.present ?? 0,
+    sick_today: dashboardData?.stats?.sick_today ?? dashboardData?.sick ?? 0,
+    permission_today: dashboardData?.stats?.permission_today ?? dashboardData?.permission ?? 0,
+    absent_today: dashboardData?.stats?.absent_today ?? dashboardData?.absent ?? 0,
+  }), [dashboardData])
 
   useEffect(() => {
     let active = true
@@ -316,7 +316,7 @@ export default function HomeroomAttendanceDashboardPage() {
       try {
         const [dashRes, permRes, followRes] = await Promise.all([
           lmsPresensiService.getHomeroomDashboard().catch(() => null),
-          lmsPresensiService.getHomeroomPermissions({ status: 'submitted' }).catch(() => ({ data: [] })),
+          lmsPresensiService.getHomeroomPermissions({ status: 'pending' }).catch(() => ({ data: [] })),
           lmsPresensiService.getFollowUps({ status: 'new' }).catch(() => ({ data: [] })),
         ])
 
@@ -365,7 +365,7 @@ export default function HomeroomAttendanceDashboardPage() {
     setLoadingPermissionModal(true)
 
     try {
-      const response = await lmsPresensiService.getHomeroomPermissions({ status: 'submitted', per_page: 100 })
+      const response = await lmsPresensiService.getHomeroomPermissions({ status: 'pending', per_page: 100 })
       setPendingPermissions(extractCollection(response))
     } catch (err) {
       console.error('Failed to load permission modal data:', err)
@@ -456,7 +456,7 @@ export default function HomeroomAttendanceDashboardPage() {
     }
 
     const total = hadir + izin + sakit + alpa
-    const pct = total > 0 ? Math.round((hadir / total) * 100) : (siswaItem?.attendance_rate ?? (total === 0 ? 100 : 0))
+    const pct = total > 0 ? Math.round((hadir / total) * 100) : (siswaItem?.attendance_rate ?? null)
 
     return { hadir, izin, sakit, alpa, total, pct }
   }
@@ -521,7 +521,7 @@ export default function HomeroomAttendanceDashboardPage() {
           <div><strong>Nama Rombel:</strong> ${selectedClass?.nama_kelas || '-'}</div>
           <div><strong>Wali Kelas:</strong> ${selectedClass?.wali_kelas || 'Belum Ditentukan'}</div>
           <div><strong>Total Siswa:</strong> ${classDetailStudents.length || selectedClass?.jumlah_siswa || 0} Siswa</div>
-          <div><strong>Kapasitas Rombel:</strong> ${selectedClass?.kapasitas || 30} Siswa</div>
+          <div><strong>Kapasitas Rombel:</strong> ${selectedClass?.kapasitas ?? '-'} Siswa</div>
           <div><strong>Mata Pelajaran:</strong> ${Array.isArray(selectedClass?.mata_pelajaran) ? selectedClass.mata_pelajaran.join(', ') : '-'}</div>
         </div>
       `
@@ -604,7 +604,7 @@ export default function HomeroomAttendanceDashboardPage() {
           <td style="text-align: center; color: #0284c7;">${sStats.izin}</td>
           <td style="text-align: center; color: #d97706;">${sStats.sakit}</td>
           <td style="text-align: center; color: #dc2626;">${sStats.alpa}</td>
-          <td style="text-align: center; font-weight: bold; color: #047857;">${sStats.pct}%</td>
+          <td style="text-align: center; font-weight: bold; color: #047857;">${sStats.pct == null ? '-' : `${sStats.pct}%`}</td>
         </tr>
       `
       }).join('')
@@ -630,41 +630,147 @@ export default function HomeroomAttendanceDashboardPage() {
             font-size: 10pt;
             line-height: 1.4;
           }
-          .kop-header {
+          .print-official-header {
+            display: grid;
+            grid-template-columns: 80px 1fr 90px;
+            align-items: center;
+            gap: 12px;
+            min-height: 50mm;
+            max-height: 60mm;
+            padding-bottom: 4px;
+          }
+          .print-logo-left-box {
+            width: 76px;
+            height: 76px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            border-bottom: 3px double #0f172a;
-            padding-bottom: 10px;
-            margin-bottom: 16px;
+            justify-content: center;
           }
-          .kop-title h1 {
-            font-size: 13pt;
-            font-weight: 900;
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #075d45;
+          .print-logo-left-img {
+            max-width: 76px;
+            max-height: 76px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
           }
-          .kop-title h2 {
-            font-size: 11pt;
-            font-weight: 800;
-            margin: 3px 0 0 0;
-            color: #1e293b;
-          }
-          .kop-meta {
-            text-align: right;
-            font-size: 9pt;
-            color: #475569;
-          }
-          .report-heading {
+          .print-center-box {
             text-align: center;
+            padding: 0 4px;
+          }
+          .print-org-name {
             font-size: 11pt;
             font-weight: 800;
-            text-transform: uppercase;
-            margin: 16px 0;
             color: #0f172a;
-            text-decoration: underline;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin: 0 0 2px 0;
+            line-height: 1.2;
+          }
+          .print-school-formal {
+            font-size: 12.5pt;
+            font-weight: 900;
+            color: #047857;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1.2;
+          }
+          .print-school-unit {
+            font-size: 11.5pt;
+            font-weight: 900;
+            color: #047857;
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
+            margin: 1px 0 2px 0;
+            line-height: 1.2;
+          }
+          .print-slogan {
+            font-size: 8.5pt;
+            font-weight: 600;
+            font-style: italic;
+            color: #334155;
+            margin: 2px 0;
+          }
+          .print-address {
+            font-size: 7.8pt;
+            font-weight: 500;
+            color: #475569;
+            margin: 2px 0 1px 0;
+          }
+          .print-legality {
+            font-size: 7.8pt;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 1px 0 0 0;
+          }
+          .print-logo-right-box {
+            width: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          }
+          .print-unit-logo-wrapper {
+            width: 74px;
+            height: 74px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .print-logo-right-img {
+            max-width: 74px;
+            max-height: 74px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+          }
+          .print-unit-type-badge {
+            margin-top: 3px;
+            font-size: 8pt;
+            font-weight: 900;
+            color: #047857;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            text-align: center;
+            line-height: 1;
+          }
+          .print-header-divider {
+            border-bottom: 2px solid #0f172a;
+            margin-top: 4px;
+            margin-bottom: 12px;
+          }
+          .print-doc-title-container {
+            text-align: center;
+            margin-bottom: 12px;
+          }
+          .print-doc-title {
+            font-size: 13.5pt;
+            font-weight: 900;
+            color: #047857;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 1.25;
+          }
+          .print-doc-period {
+            font-size: 9pt;
+            font-weight: 700;
+            color: #334155;
+            margin-top: 3px;
+          }
+          .print-doc-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 8pt;
+            color: #64748b;
+            font-weight: 600;
+            margin-top: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed #cbd5e1;
           }
           .meta-grid {
             display: grid;
@@ -726,19 +832,12 @@ export default function HomeroomAttendanceDashboardPage() {
         </style>
       </head>
       <body>
-        <div class="kop-header">
-          <div class="kop-title">
-            <h1>YAYASAN DAREL IMAN</h1>
-            <h2>SISTEM MANAJEMEN SEKOLAH TERPADU</h2>
-            <div style="font-size: 8.5pt; color: #64748b; margin-top: 2px;">Laporan Resmi Kehadiran & Presensi Rombel</div>
-          </div>
-          <div class="kop-meta">
-            <div><strong>TANGGAL CETAK:</strong> ${currentDate}</div>
-            <div><strong>DICETAK OLEH:</strong> ${user?.name || user?.username || 'Wali Kelas / Sistem'}</div>
-          </div>
-        </div>
-
-        <div class="report-heading">${reportTitle}</div>
+        ${generateOfficialPrintHeaderHtml({
+          unit: selectedClass?.unit_name || selectedClass?.unit,
+          title: reportTitle,
+          period: 'Tahun Ajaran 2026/2027',
+          showDivider: true,
+        })}
 
         ${metaInfoHtml}
 
@@ -759,7 +858,7 @@ export default function HomeroomAttendanceDashboardPage() {
             <div style="font-weight: bold; border-bottom: 1px solid #000; display: inline-block; padding: 0 10px;">( ______________________ )</div>
           </div>
           <div class="signature-box">
-            <div>Padang, ${currentDate}</div>
+            <div>${currentDate}</div>
             <div style="font-weight: bold; margin-top: 2px;">Wali Kelas / Guru Pengampu</div>
             <div class="signature-space"></div>
             <div style="font-weight: bold; border-bottom: 1px solid #000; display: inline-block; padding: 0 10px;">( ${selectedClass?.wali_kelas || '______________________'} )</div>
@@ -930,9 +1029,6 @@ export default function HomeroomAttendanceDashboardPage() {
     )
   }
 
-  // Alias untuk kompatibilitas internal
-  const KpiTintedCard = ModernKpiCard
-
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Main Dashboard Workspace (Hidden on Print so only Modal Report prints) */}
@@ -1011,8 +1107,8 @@ export default function HomeroomAttendanceDashboardPage() {
           <ModernKpiCard
             icon={Award}
             title="% Kehadiran Bulan Ini"
-            value={`${stats.attendance_rate || 100}%`}
-            subtext="Tingkat Kehadiran Rombel"
+            value={stats.attendance_rate == null ? '-' : `${stats.attendance_rate}%`}
+            subtext="Tingkat Kehadiran Hari Ini"
             tone="blue"
             tag="Presensi"
           />
@@ -1439,7 +1535,7 @@ export default function HomeroomAttendanceDashboardPage() {
               </div>
               <div className="p-3.5 bg-amber-50/90 border border-amber-200/70 rounded-xl dark:bg-amber-950/40 dark:border-amber-800/60">
                 <span className="text-[11px] font-bold uppercase text-amber-600 dark:text-amber-400 block">Kapasitas</span>
-                <span className="text-xs font-black text-slate-900 dark:text-white mt-0.5 block">{selectedClass?.kapasitas || 30} Siswa</span>
+                <span className="text-xs font-black text-slate-900 dark:text-white mt-0.5 block">{selectedClass?.kapasitas ?? '-'} Siswa</span>
               </div>
             </div>
 
@@ -1810,7 +1906,7 @@ export default function HomeroomAttendanceDashboardPage() {
                             <TableCell className="text-center text-xs font-semibold text-rose-600">{sStats.alpa}</TableCell>
                             <TableCell className="text-center">
                               <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                {sStats.pct}%
+                                {sStats.pct == null ? '-' : `${sStats.pct}%`}
                               </span>
                             </TableCell>
                           </TableRow>
@@ -2038,44 +2134,30 @@ export default function HomeroomAttendanceDashboardPage() {
                 </div>
               )}
 
+              {scheduleError && (
+                <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span>{scheduleError}</span>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                   Mata Pelajaran <span className="text-rose-500">*</span>
                 </label>
                 <select
-                  value={scheduleForm.subjectName}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, subjectName: e.target.value })}
+                  value={scheduleForm.subjectId}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, subjectId: e.target.value })}
                   required
+                  disabled={loadingScheduleOptions}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 >
-                  <option value="">-- Pilih Mata Pelajaran --</option>
-                  <option value="Pendidikan Agama Islam">Pendidikan Agama Islam (PAI)</option>
-                  <option value="Bahasa Arab">Bahasa Arab</option>
-                  <option value="Tahfidz Al-Qur'an">Tahfidz Al-Qur'an</option>
-                  <option value="Hadits & Aqidah">Hadits & Aqidah</option>
-                  <option value="Matematika">Matematika</option>
-                  <option value="IPA (Sains)">IPA (Sains)</option>
-                  <option value="IPS (Sosial)">IPS (Sosial)</option>
-                  <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-                  <option value="Bahasa Inggris">Bahasa Inggris</option>
-                  <option value="Pendidikan Pancasila">Pendidikan Pancasila</option>
-                  <option value="Lainnya">-- Tulis Mapel Lainnya --</option>
+                  <option value="">{loadingScheduleOptions ? 'Memuat mata pelajaran...' : '-- Pilih Mata Pelajaran --'}</option>
+                  {(scheduleOptions.mata_pelajaran || []).map((subject) => (
+                    <option key={subject.id} value={subject.id}>{subject.nama_mapel || subject.name}</option>
+                  ))}
                 </select>
               </div>
-
-              {scheduleForm.subjectName === 'Lainnya' && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Nama Mata Pelajaran Khusus</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Fiqih Ibadah"
-                    value={scheduleForm.customSubject}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, customSubject: e.target.value })}
-                    required
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                  />
-                </div>
-              )}
 
               {/* Row 2: Guru Pengampu (Full Width for clean spacing) */}
               <div className="space-y-1.5">
@@ -2094,33 +2176,36 @@ export default function HomeroomAttendanceDashboardPage() {
                   </button>
                 </div>
                 <select
-                  value={scheduleForm.teacherName}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, teacherName: e.target.value })}
+                  value={scheduleForm.employeeId}
+                  onChange={(e) => setScheduleForm({ ...scheduleForm, employeeId: e.target.value })}
+                  required
+                  disabled={loadingScheduleOptions}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 >
-                  <option value="">-- Pilih Guru Pengampu --</option>
-                  {selectedClass?.wali_kelas && (
-                    <option value={selectedClass.wali_kelas}>
-                      {selectedClass.wali_kelas} (Wali Kelas)
-                    </option>
-                  )}
+                  <option value="">{loadingScheduleOptions ? 'Memuat guru...' : '-- Pilih Guru Pengampu --'}</option>
                   {teachersList.map((t) => (
-                    <option key={t.id} value={t.name}>
+                    <option key={t.id} value={t.id}>
                       {t.name} ({t.subject})
                     </option>
                   ))}
-                  <option value="custom">-- Tulis Nama Guru Lainnya --</option>
                 </select>
+              </div>
 
-                {scheduleForm.teacherName === 'custom' && (
-                  <input
-                    type="text"
-                    placeholder="Tulis nama lengkap guru pengampu..."
-                    value={scheduleForm.customTeacher || ''}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, customTeacher: e.target.value })}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                  />
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Tahun Ajaran <span className="text-rose-500">*</span></label>
+                  <select value={scheduleForm.academicYearId} onChange={(e) => setScheduleForm({ ...scheduleForm, academicYearId: e.target.value, semesterId: '' })} required disabled={loadingScheduleOptions} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <option value="">-- Pilih Tahun Ajaran --</option>
+                    {(scheduleOptions.tahun_ajaran || scheduleOptions.academic_years || []).map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Semester <span className="text-rose-500">*</span></label>
+                  <select value={scheduleForm.semesterId} onChange={(e) => setScheduleForm({ ...scheduleForm, semesterId: e.target.value })} required disabled={loadingScheduleOptions} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <option value="">-- Pilih Semester --</option>
+                    {(scheduleOptions.semester || []).filter((semester) => !scheduleForm.academicYearId || semester.academic_year_id === scheduleForm.academicYearId).map((semester) => <option key={semester.id} value={semester.id}>{semester.name}</option>)}
+                  </select>
+                </div>
               </div>
 
               {/* Row 3: Hari & Jam Pelaksanaan (2 Columns) */}
@@ -2128,16 +2213,14 @@ export default function HomeroomAttendanceDashboardPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">Hari Pelaksanaan</label>
                   <select
-                    value={scheduleForm.day}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, day: e.target.value })}
+                    value={scheduleForm.dayOfWeek}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, dayOfWeek: e.target.value })}
+                    required
+                    disabled={loadingScheduleOptions}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                   >
-                    <option value="Senin">Senin</option>
-                    <option value="Selasa">Selasa</option>
-                    <option value="Rabu">Rabu</option>
-                    <option value="Kamis">Kamis</option>
-                    <option value="Jumat">Jumat</option>
-                    <option value="Sabtu">Sabtu</option>
+                    <option value="">-- Pilih Hari --</option>
+                    {(scheduleOptions.hari || []).map((day) => <option key={day.id} value={day.id}>{day.name}</option>)}
                   </select>
                 </div>
 
@@ -2148,6 +2231,7 @@ export default function HomeroomAttendanceDashboardPage() {
                       type="time"
                       value={scheduleForm.startTime}
                       onChange={(e) => setScheduleForm({ ...scheduleForm, startTime: e.target.value })}
+                      required
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                     />
                     <span className="text-xs text-slate-400 font-bold shrink-0">s.d</span>
@@ -2155,6 +2239,7 @@ export default function HomeroomAttendanceDashboardPage() {
                       type="time"
                       value={scheduleForm.endTime}
                       onChange={(e) => setScheduleForm({ ...scheduleForm, endTime: e.target.value })}
+                      required
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-900 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                     />
                   </div>
@@ -2196,9 +2281,9 @@ export default function HomeroomAttendanceDashboardPage() {
           </DialogHeader>
 
           <DialogBody className="space-y-4 my-3">
-            {loadingTeachers ? (
+            {loadingScheduleOptions ? (
               <AppSkeleton rows={5} />
-            ) : (teachersList.length > 0 ? teachersList : DEFAULT_TEACHERS).length === 0 ? (
+            ) : teachersList.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-900 rounded-xl">
                 Belum ada data guru pengampu yang terdaftar.
               </div>
@@ -2216,7 +2301,7 @@ export default function HomeroomAttendanceDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(teachersList.length > 0 ? teachersList : DEFAULT_TEACHERS).map((teacher, tIdx) => (
+                    {teachersList.map((teacher, tIdx) => (
                       <TableRow key={teacher.id || tIdx} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-colors">
                         <TableCell className="text-center text-xs font-semibold text-slate-500">{tIdx + 1}</TableCell>
                         <TableCell>

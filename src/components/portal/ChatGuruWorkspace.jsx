@@ -94,36 +94,60 @@ const ChatMessageBubble = React.memo(function ChatMessageBubble({
         </div>
       )}
 
-      <div className={`flex items-start gap-2.5 ${isOwn ? 'justify-end' : 'justify-start'} mb-2`}>
+      <div className={`flex items-start gap-2.5 ${isOwn ? 'justify-end' : 'justify-start'} mb-3`}>
+        {/* Avatar untuk pesan masuk di sebelah kiri */}
         {!isOwn && (
           msg.sender_avatar || msg.sender_foto ? (
             <img
               src={msg.sender_avatar || msg.sender_foto}
               alt={senderName}
-              className="h-8 w-8 rounded-full object-cover shrink-0 ring-1 ring-slate-200/80 mt-0.5"
+              className="h-8 w-8 rounded-full object-cover shrink-0 ring-2 ring-blue-300 dark:ring-blue-600 mt-0.5 shadow-2xs"
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-xs font-black text-white shrink-0 shadow-2xs mt-0.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-xs font-black text-white shrink-0 shadow-2xs mt-0.5">
               {(senderName || 'P')[0]}
             </div>
           )
         )}
 
         <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[85%] sm:max-w-[78%]`}>
-          {!isOwn && (
-            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
-              {senderName}
-            </span>
-          )}
-
           <div className="flex items-end gap-2">
             <div
-              className={`group relative rounded-2xl p-3 text-xs shadow-2xs ${
+              className={`group relative rounded-2xl p-3 text-xs shadow-2xs transition-all ${
                 isOwn
-                  ? 'bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/80 text-slate-900 dark:text-emerald-100 rounded-tr-xs'
-                  : 'bg-slate-100/90 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-xs'
+                  ? 'bg-emerald-600 dark:bg-emerald-600 border border-emerald-500/80 text-white rounded-tr-xs shadow-xs'
+                  : 'bg-blue-50/95 dark:bg-blue-950/70 border border-blue-200/90 dark:border-blue-800/80 text-slate-900 dark:text-blue-50 rounded-tl-xs shadow-2xs'
               }`}
             >
+              {/* Header Label Nama pada Isi Chat */}
+              <div
+                className={`flex items-center gap-1.5 mb-2 pb-1.5 border-b ${
+                  isOwn
+                    ? 'border-emerald-500/60 justify-end'
+                    : 'border-blue-200/60 dark:border-blue-800/60 justify-start'
+                }`}
+              >
+                {!isOwn && (
+                  <span className="text-[11px] font-extrabold tracking-tight text-blue-700 dark:text-blue-300">
+                    {senderName}
+                  </span>
+                )}
+                <span
+                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                    isOwn
+                      ? 'bg-emerald-700/80 text-emerald-100 border border-emerald-500/40'
+                      : 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60'
+                  }`}
+                >
+                  {isOwn ? 'Balasan' : 'Pesan Masuk'}
+                </span>
+                {isOwn && (
+                  <span className="text-[11px] font-extrabold tracking-tight text-emerald-100">
+                    {senderName || 'Anda'}
+                  </span>
+                )}
+              </div>
+
               {/* Message Attachments */}
               {Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
                 <div className="mb-2 space-y-1.5">
@@ -154,30 +178,49 @@ const ChatMessageBubble = React.memo(function ChatMessageBubble({
                         target="_blank"
                         rel="noreferrer"
                         download={att.original_name}
-                        className="flex items-center gap-2.5 p-2 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 transition shadow-xs max-w-[280px]"
+                        className={`flex items-center gap-2.5 p-2 rounded-xl transition shadow-xs max-w-[280px] ${
+                          isOwn
+                            ? 'bg-emerald-700/70 border border-emerald-500/80 text-white hover:bg-emerald-700'
+                            : 'bg-white/95 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-800 hover:border-blue-400'
+                        }`}
                       >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                          isOwn
+                            ? 'bg-emerald-800/80 text-emerald-200'
+                            : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                        }`}>
                           <FileText className="h-5 w-5" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-bold text-slate-800 dark:text-slate-100">{att.original_name || 'Dokumen'}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">{att.formatted_size || (att.file_size ? `${(att.file_size / 1024).toFixed(0)} KB` : 'File')}</p>
+                          <p className={`truncate text-xs font-bold ${isOwn ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>
+                            {att.original_name || 'Dokumen'}
+                          </p>
+                          <p className={`text-[10px] font-medium ${isOwn ? 'text-emerald-100/80' : 'text-slate-400'}`}>
+                            {att.formatted_size || (att.file_size ? `${(att.file_size / 1024).toFixed(0)} KB` : 'File')}
+                          </p>
                         </div>
-                        <Download className="h-4 w-4 text-slate-400 hover:text-emerald-600 shrink-0" />
+                        <Download className={`h-4 w-4 shrink-0 ${isOwn ? 'text-emerald-200 hover:text-white' : 'text-slate-400 hover:text-blue-600'}`} />
                       </a>
                     )
                   })}
                 </div>
               )}
 
-              {Boolean(msg.message && msg.message.trim()) && (
-                <p className="whitespace-pre-wrap leading-relaxed">{msg.message}</p>
-              )}
+              {(() => {
+                const messageText = msg.message ?? msg.content ?? msg.pesan ?? msg.text ?? ''
+                return Boolean(messageText && String(messageText).trim()) ? (
+                  <p className="whitespace-pre-wrap leading-relaxed">{messageText}</p>
+                ) : null
+              })()}
 
-              <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-400 font-semibold">
+              <div
+                className={`mt-1.5 flex items-center justify-end gap-1 text-[10px] font-semibold ${
+                  isOwn ? 'text-emerald-100/90' : 'text-blue-600/75 dark:text-blue-300/80'
+                }`}
+              >
                 <span>{timeFormatted}</span>
                 {isOwn && (
-                  <CheckCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  <CheckCheck className="h-3.5 w-3.5 text-emerald-100" />
                 )}
               </div>
 
@@ -201,17 +244,38 @@ const ChatMessageBubble = React.memo(function ChatMessageBubble({
             )}
           </div>
         </div>
+
+        {/* Avatar untuk pesan keluar / balasan di sebelah kanan */}
+        {isOwn && (
+          msg.sender_avatar || msg.sender_foto ? (
+            <img
+              src={msg.sender_avatar || msg.sender_foto}
+              alt="Anda"
+              className="h-8 w-8 rounded-full object-cover shrink-0 ring-2 ring-emerald-300 dark:ring-emerald-600 mt-0.5 shadow-2xs"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 text-xs font-black text-white shrink-0 shadow-2xs mt-0.5">
+              {(senderName || 'A')[0]}
+            </div>
+          )
+        )}
       </div>
     </React.Fragment>
   )
 })
 
 // Isolated Message Composer component: keeps typed text state isolated so typing never re-renders messages
-const ChatMessageComposer = React.memo(function ChatMessageComposer({ onSend, sending, totalUnreadCount }) {
-  const [text, setText] = useState('')
+const ChatMessageComposer = React.memo(function ChatMessageComposer({ onSend, sending, totalUnreadCount, initialText = '' }) {
+  const [text, setText] = useState(initialText || '')
   const [category, setCategory] = useState('')
   const [stagedAttachment, setStagedAttachment] = useState(null)
   const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    if (initialText) {
+      setText(initialText)
+    }
+  }, [initialText])
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
@@ -289,13 +353,13 @@ const ChatMessageComposer = React.memo(function ChatMessageComposer({ onSend, se
         />
 
         {/* Curved Rounded Input Bar */}
-        <div className="flex items-center gap-2 rounded-3xl border border-slate-200/90 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-1 shadow-inner">
+        <div className="flex items-center gap-2 rounded-3xl border border-slate-200/90 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-1 shadow-inner focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
           <input
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={stagedAttachment ? "Tambah keterangan (opsional)..." : "Ketik pesan..."}
-            className="h-9 flex-1 bg-transparent text-xs text-slate-900 dark:text-white outline-none placeholder:text-slate-400"
+            className="h-9 flex-1 bg-transparent text-xs text-slate-900 dark:text-white outline-none placeholder:text-slate-400 font-medium"
           />
 
           <button
@@ -371,7 +435,10 @@ export default function ChatGuruWorkspace({
   childrenList = [],
   onSelectChild = () => {},
   hideHeader = false,
-  isPopup = false
+  isPopup = false,
+  targetStudentId = '',
+  targetParentId = '',
+  initialMessage = ''
 }) {
   const [tab, setTab] = useState(mode === 'employee' ? 'percakapan' : 'all') // 'percakapan' | 'directory' | 'all' | 'kepsek' | 'divisi_pendidikan' | 'homeroom' | 'subject' | 'unread'
   const [contacts, setContacts] = useState(() => {
@@ -416,7 +483,7 @@ export default function ChatGuruWorkspace({
       return null
     }
   }, [])
-  const currentUserId = currentUser?.id || currentUser?.user_id
+  const currentUserId = currentUser?.id || currentUser?.user_id || currentUser?.data?.id
 
   const getAvatarUrl = (item) => {
     if (!item) return null
@@ -549,7 +616,19 @@ export default function ChatGuruWorkspace({
         const res = await familyPortalService.teacherConversations()
         const list = res.data || []
         setContacts(list)
-        if (!selectedContact && list.length > 0) {
+        setDirectoryContacts(list)
+        if (targetStudentId || targetParentId) {
+          const match = list.find((c) =>
+            (targetStudentId && String(c.student_id) === String(targetStudentId)) ||
+            (targetParentId && String(c.parent_user_id) === String(targetParentId))
+          )
+          if (match) {
+            setSelectedContact(match)
+            setMobileDetailOpen(true)
+          } else if (!selectedContact && list.length > 0) {
+            setSelectedContact(list[0])
+          }
+        } else if (!selectedContact && list.length > 0) {
           setSelectedContact(list[0])
         }
       }
@@ -616,7 +695,10 @@ export default function ChatGuruWorkspace({
       } else {
         const parentUserId = selectedContact.parent_user_id || targetUserId
         const studentId = selectedContact.student_id || childId
-        const res = await familyPortalService.teacherMessages(parentUserId, studentId).catch(() => ({ data: [] }))
+        const res = await familyPortalService.teacherMessages(parentUserId, studentId).catch((err) => {
+          console.warn('Teacher messages fetch error:', err)
+          return { data: [] }
+        })
         incoming = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : [])
       }
 
@@ -780,6 +862,9 @@ export default function ChatGuruWorkspace({
           item.name,
           item.nama_lengkap,
           item.nama_panggilan,
+          item.student_name,
+          item.parent_name,
+          item.class_name,
           item.position_name,
           item.position?.name,
           item.jabatan,
@@ -977,10 +1062,19 @@ export default function ChatGuruWorkspace({
               </div>
               <div>
                 <h2 className="text-base font-black tracking-tight text-white flex items-center gap-2">
-                  <span>Chat Antar Pegawai</span>
+                  {/* WM-05 PATCH: title is now mode-aware to prevent employee UI from bleeding into parent portal */}
+                  <span>
+                    {mode === 'parent' ? 'Chat dengan Guru'
+                      : mode === 'teacher' ? 'Chat dengan Orang Tua'
+                      : 'Chat Antar Pegawai'}
+                  </span>
                 </h2>
                 <p className="text-xs font-medium text-emerald-100/90">
-                  Ruang Diskusi Sekolah • Direct &amp; Group Perpesanan Terpadu
+                  {mode === 'parent'
+                    ? 'Komunikasi Orang Tua & Guru • Perpesanan Terpadu'
+                    : mode === 'teacher'
+                    ? 'Pesan Guru kepada Orang Tua Murid'
+                    : 'Ruang Diskusi Sekolah • Direct & Group Perpesanan Terpadu'}
                 </p>
               </div>
             </div>
@@ -1320,14 +1414,14 @@ export default function ChatGuruWorkspace({
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-1">
                                 <h4 className="truncate text-xs font-black text-slate-900 dark:text-white">
-                                  {contact.name}
+                                  {mode === 'teacher' ? (contact.parent_name || contact.name || 'Orang Tua Murid') : (contact.name || contact.nama_lengkap || 'Pegawai')}
                                 </h4>
                                 <span className="text-[10px] font-bold text-slate-400 shrink-0">
                                   {formatMessageTime(contact.last_message_at)}
                                 </span>
                               </div>
                               <p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-                                {contact.last_message || contact.subtitle || 'Belum ada pesan'}
+                                {contact.last_message || (mode === 'teacher' && contact.student_name ? `Wali dari ${contact.student_name} (${contact.class_name || '-'})` : (contact.subtitle || 'Belum ada pesan'))}
                               </p>
                             </div>
                           </div>
@@ -1566,13 +1660,13 @@ export default function ChatGuruWorkspace({
                   </div>
                 ) : (
                   messages.map((msg, index) => {
-                    const targetUserId = selectedContact?.user_id || selectedContact?.id
                     const isOwn = Boolean(
                       msg.is_own ||
-                      (currentUserId && String(msg.sender_user_id) === String(currentUserId)) ||
-                      (targetUserId && String(msg.sender_user_id) !== String(targetUserId))
+                      (currentUserId && String(msg.sender_user_id) === String(currentUserId))
                     )
-                    const senderName = isOwn ? 'Anda' : (msg.sender_name || selectedContact?.name || 'Pengirim')
+                    const senderName = isOwn
+                      ? 'Anda'
+                      : (msg.sender?.name || msg.sender_name || selectedContact?.parent_name || selectedContact?.name || 'Pengirim')
                     const isFirstUnread = Boolean(msg.is_unread || index === firstUnreadMessageIndex)
                     const timeFormatted = formatMessageTime(msg.created_at || msg.created_at_time)
 
@@ -1597,6 +1691,7 @@ export default function ChatGuruWorkspace({
                 onSend={handleSend}
                 sending={sending}
                 totalUnreadCount={totalUnreadCount}
+                initialText={initialMessage}
               />
             </>
           ) : (
@@ -1606,7 +1701,11 @@ export default function ChatGuruWorkspace({
                 Pilih Percakapan
               </h3>
               <p className="mt-1 max-w-xs text-xs text-slate-400">
-                Pilih pegawai atau staf di sebelah kiri untuk membuka pesan.
+                {mode === 'teacher'
+                  ? 'Pilih salah satu kontak orang tua di sebelah kiri untuk membuka ruang obrolan dan mulai mengetik pesan.'
+                  : mode === 'parent'
+                  ? 'Pilih guru di sebelah kiri untuk membuka pesan dan mulai konsultasi.'
+                  : 'Pilih pegawai atau staf di sebelah kiri untuk membuka pesan.'}
               </p>
             </div>
           )}
@@ -1642,26 +1741,30 @@ export default function ChatGuruWorkspace({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Pilih Anggota Pegawai:
+                  {mode === 'teacher' ? 'Pilih Wali Santri / Murid:' : 'Pilih Anggota Pegawai:'}
                 </label>
                 <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-800 space-y-1 scroll-smooth">
-                  {directoryContacts.map((emp) => {
-                    const empId = emp.user_id || emp.id
-                    const isChecked = selectedGroupParticipants.includes(empId)
+                  {directoryContacts.map((contact) => {
+                    const contactId = contact.user_id || contact.parent_user_id || contact.id
+                    const displayName = mode === 'teacher' ? (contact.parent_name || contact.name) : contact.name
+                    const subText = mode === 'teacher'
+                      ? `${contact.student_name} (${contact.class_name}) • ${contact.unit_name || 'Unit Sekolah'}`
+                      : (contact.position_name || 'Staf Pegawai')
+                    const isChecked = selectedGroupParticipants.includes(contactId)
 
                     return (
                       <div
-                        key={empId}
+                        key={contactId}
                         onClick={() => {
-                          if (!groupName.trim()) {
+                          if (!groupName.trim() || mode === 'teacher') {
                             // Direct Chat
-                            setSelectedContact(emp)
+                            setSelectedContact(contact)
                             setShowNewChatModal(false)
                             setMobileDetailOpen(true)
                           } else {
                             // Toggle for Group
                             setSelectedGroupParticipants((prev) =>
-                              prev.includes(empId) ? prev.filter((id) => id !== empId) : [...prev, empId]
+                              prev.includes(contactId) ? prev.filter((id) => id !== contactId) : [...prev, contactId]
                             )
                           }
                         }}
@@ -1670,10 +1773,10 @@ export default function ChatGuruWorkspace({
                         }`}
                       >
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{emp.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{emp.position_name || 'Staf Pegawai'}</p>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{displayName}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{subText}</p>
                         </div>
-                        {groupName.trim() && (
+                        {groupName.trim() && mode !== 'teacher' && (
                           <input type="checkbox" checked={isChecked} onChange={() => {}} className="accent-emerald-600" />
                         )}
                       </div>

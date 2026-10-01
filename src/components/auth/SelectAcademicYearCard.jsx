@@ -3,47 +3,46 @@ import { FiCalendar, FiCheckCircle } from 'react-icons/fi'
 import { tahunAjaranService } from '../../services/tahunAjaranService'
 import { Button } from '@/components/tailgrids/core/button'
 import { Badge } from '@/components/tailgrids/core/badge'
+import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
 import { Card } from '@/components/tailgrids/core/card'
-import Swal from 'sweetalert2'
-
-const DEFAULT_ACADEMIC_YEARS = [
-  { id: '1', nama: '2024/2025', tahun_ajaran: '2024/2025' },
-  { id: '2', nama: '2025/2026', tahun_ajaran: '2025/2026' },
-  { id: '3', nama: '2023/2024', tahun_ajaran: '2023/2024' },
-  { id: '4', nama: '2022/2023', tahun_ajaran: '2022/2023' },
-  { id: '5', nama: '2021/2022', tahun_ajaran: '2021/2022' },
-]
 
 export default function SelectAcademicYearCard({ onNavigate, disabled = false }) {
-  const [year, setYear] = useState('2024/2025')
-  const [semester, setSemester] = useState('Genap')
-  const [academicYears, setAcademicYears] = useState(DEFAULT_ACADEMIC_YEARS)
+  const [year, setYear] = useState('')
+  const [semester, setSemester] = useState('Ganjil')
+  const [academicYears, setAcademicYears] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [savedNotice, setSavedNotice] = useState(null)
 
   useEffect(() => {
+    setIsLoading(true)
     tahunAjaranService
       .getDaftar()
       .then((res) => {
         const data = res?.data?.data || res?.data || []
         if (Array.isArray(data) && data.length > 0) {
           setAcademicYears(data)
-          setYear(data[0].nama || data[0].tahun_ajaran || '2024/2025')
+          const activeYear = data.find((y) => y.is_active || y.status === 'Aktif') || data[0]
+          setYear(activeYear.nama || activeYear.tahun_ajaran || '')
+        } else {
+          setAcademicYears([])
         }
       })
       .catch((err) => {
         console.error('Gagal memuat tahun ajaran:', err)
+        setAcademicYears([])
+      })
+      .finally(() => {
+        setIsLoading(false)
       })
   }, [])
 
   const handleContinue = () => {
     if (disabled) return
-    Swal.fire({
-      icon: 'success',
-      title: 'Tahun Ajaran Disimpan',
-      html: `Tahun Ajaran Aktif: <b>${year}</b> (${semester})`,
-      timer: 1800,
-      showConfirmButton: false,
-    })
-    if (onNavigate) onNavigate(8)
+    setSavedNotice(`Tahun Ajaran Aktif berhasil disetel ke: ${year} (${semester})`)
+    setTimeout(() => {
+      setSavedNotice(null)
+      if (onNavigate) onNavigate(8)
+    }, 1500)
   }
 
   return (
@@ -69,6 +68,17 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
         </p>
       </div>
 
+      {savedNotice && (
+        <Alert status="success" className="rounded-xl">
+          <AlertIndicator>
+            <FiCheckCircle className="w-4 h-4" />
+          </AlertIndicator>
+          <AlertContent>
+            <AlertDescription>{savedNotice}</AlertDescription>
+          </AlertContent>
+        </Alert>
+      )}
+
       {/* Inputs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -77,15 +87,21 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
           </label>
           <select
             value={year}
-            disabled={disabled}
+            disabled={disabled || isLoading || academicYears.length === 0}
             onChange={(e) => setYear(e.target.value)}
             className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
           >
-            {academicYears.map((ay) => (
-              <option key={ay.id || ay.nama} value={ay.nama || ay.tahun_ajaran}>
-                {ay.nama || ay.tahun_ajaran}
-              </option>
-            ))}
+            {isLoading ? (
+              <option value="">Memuat tahun ajaran...</option>
+            ) : academicYears.length === 0 ? (
+              <option value="">Tidak ada tahun ajaran tersedia</option>
+            ) : (
+              academicYears.map((ay) => (
+                <option key={ay.id || ay.nama} value={ay.nama || ay.tahun_ajaran}>
+                  {ay.nama || ay.tahun_ajaran}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
@@ -99,8 +115,8 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
             onChange={(e) => setSemester(e.target.value)}
             className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-all shadow-xs disabled:cursor-not-allowed disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-500"
           >
-            <option value="Genap">Genap</option>
             <option value="Ganjil">Ganjil</option>
+            <option value="Genap">Genap</option>
           </select>
         </div>
       </div>
@@ -115,7 +131,7 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-xl p-4 border border-emerald-100/60 dark:border-slate-800 shadow-xs">
           <div>
             <span className="text-[11px] text-slate-400 block font-medium">Tahun Ajaran</span>
-            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{year}</span>
+            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{year || '-'}</span>
           </div>
 
           <div>
@@ -126,7 +142,15 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
           <div>
             <span className="text-[11px] text-slate-400 block font-medium">Periode</span>
             <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-              {semester === 'Genap' ? 'Januari 2025 - Juni 2025' : 'Juli 2024 - Desember 2024'}
+              {(() => {
+                if (!year) return '-'
+                const parts = year.split('/')
+                const startY = parts[0]
+                const endY = parts[1] || startY
+                return semester === 'Genap'
+                  ? `Januari ${endY} - Juni ${endY}`
+                  : `Juli ${startY} - Desember ${startY}`
+              })()}
             </span>
           </div>
 
@@ -140,9 +164,9 @@ export default function SelectAcademicYearCard({ onNavigate, disabled = false })
       </div>
 
       {/* Action Button */}
-      <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
-        <Button type="button" variant="primary" size="md" disabled={disabled} onClick={handleContinue}>
-          Simpan &amp; Lanjutkan
+      <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800 gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+        <Button type="button" variant="primary" size="md" disabled={disabled || !year || academicYears.length === 0} onClick={handleContinue}>
+          Lanjutkan
         </Button>
       </div>
     </Card>

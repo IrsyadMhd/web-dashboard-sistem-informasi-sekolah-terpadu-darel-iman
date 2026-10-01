@@ -115,10 +115,9 @@ export function LaporanMutasiPage() {
     setIsExportOpen(true)
   }
 
-  const handleConfirmExport = ({ format, orientation }) => {
+  const handleConfirmExport = async ({ format, orientation }) => {
     setIsExportOpen(false)
-    const url = reportService.exportFoundationReport('mutasi', { ...filters, format, orientation })
-    window.open(url, '_blank')
+    await reportService.exportFoundationReport('mutasi', { ...filters, format, orientation })
   }
 
   if (loading && !reportData) return <ReportSkeleton />

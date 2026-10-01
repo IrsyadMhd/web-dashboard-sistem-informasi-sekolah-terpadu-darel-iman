@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { X, BookOpen, Save, RefreshCw, AlertCircle } from 'lucide-react'
 import { api } from '../../services/api'
+import AppModal from '../app/AppModal'
+import { Button } from '@/components/tailgrids/core/button'
 
 const JENIS_OPTIONS = ['SIT', 'Merdeka', 'Nasional', 'Pesantren', 'Lokal', 'Lainnya']
 const JENJANG_OPTIONS = ['TK', 'PAUD', 'SD', 'MI', 'SMP', 'MTs', 'SMA', 'MA', 'Pesantren']
@@ -102,57 +104,49 @@ export default function KurikulumFormModal({
       setUnits(unitList)
 
       // Fetch Academic Years
-      const resTahun = await api.get('/master/tahun-ajaran/dropdown')
-      const tahunList = resTahun.data?.data || []
-      setTahunAjarans(tahunList)
-
-      const targetUnits = (availableUnitOptions && availableUnitOptions.length > 0) ? availableUnitOptions : unitList
-      if (!initialData && targetUnits.length > 0) {
-        setFormData((prev) => ({ ...prev, unit_pendidikan_id: prev.unit_pendidikan_id || targetUnits[0].id }))
-      }
-      if (!initialData && tahunList.length > 0) {
-        setFormData((prev) => ({ ...prev, tahun_ajaran_id: prev.tahun_ajaran_id || tahunList[0].id }))
-      }
+      const resTA = await api.get('/master/tahun-ajaran/dropdown')
+      const taList = resTA.data?.data || resTA.data || []
+      setTahunAjarans(taList)
     } catch (err) {
-      console.error('Error fetching dropdown options:', err)
+      console.error('Gagal mengambil data referensi form kurikulum:', err)
     }
   }
 
-function getJenjangFromUnit(unit) {
-  if (!unit) return ''
-  const str = `${unit.code || ''} ${unit.level || ''} ${unit.name || ''} ${unit.nama || ''} ${unit.tingkat || ''}`.toUpperCase()
-
-  if (str.includes('TAUD') || str.includes('PAUD')) return 'PAUD'
-  if (str.includes('TK')) return 'TK'
-  if (str.includes('MIT') || str.includes(' MI ') || str.endsWith(' MI') || str.startsWith('MI ')) return 'MI'
-  if (str.includes('SD')) return 'SD'
-  if (str.includes('MTS')) return 'MTs'
-  if (str.includes('SMP')) return 'SMP'
-  if (str.includes('MA') && !str.includes('SMA') && !str.includes('MAHAD')) return 'MA'
-  if (str.includes('SMA')) return 'SMA'
-  if (str.includes('PESANTREN') || str.includes('PONPES') || str.includes('MAHAD')) return 'Pesantren'
-
-  return ''
-}
+  function getJenjangFromUnit(unit) {
+    if (!unit) return ''
+    const str = `${unit.code || ''} ${unit.level || ''} ${unit.name || ''} ${unit.nama || ''} ${unit.tingkat || ''}`.toUpperCase()
+    if (str.includes('TAUD') || str.includes('PAUD')) return 'PAUD'
+    if (str.includes('TK')) return 'TK'
+    if (str.includes('MIT') || str.includes(' MI ') || str.endsWith(' MI') || str.startsWith('MI ')) return 'MI'
+    if (str.includes('SD')) return 'SD'
+    if (str.includes('MTS')) return 'MTs'
+    if (str.includes('SMP')) return 'SMP'
+    if (str.includes('MA') && !str.includes('SMA') && !str.includes('MAHAD')) return 'MA'
+    if (str.includes('SMA')) return 'SMA'
+    if (str.includes('PONDOK') || str.includes('PESANTREN') || str.includes('MAHAD')) return 'Pesantren'
+    return unit.jenjang || 'SD'
+  }
 
   if (!isOpen) return null
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    const val = type === 'checkbox' ? checked : value
-
     setFormData((prev) => {
-      const next = { ...prev, [name]: val }
-      if (name === 'unit_pendidikan_id' && val) {
-        const selectedUnit = displayUnits.find((u) => String(u.id) === String(val))
-        const matchedJenjang = getJenjangFromUnit(selectedUnit)
-        if (matchedJenjang && JENJANG_OPTIONS.includes(matchedJenjang)) {
-          next.jenjang = matchedJenjang
-        }
-        if (selectedUnit && (selectedUnit.code || selectedUnit.name || '').toUpperCase().includes('PONPES')) {
-          next.jenis_kurikulum = 'Pesantren'
+      const next = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value,
+      }
+
+      if (name === 'unit_pendidikan_id') {
+        const u = displayUnits.find((unit) => String(unit.id) === String(value))
+        if (u) {
+          const autoJenjang = getJenjangFromUnit(u)
+          if (autoJenjang) {
+            next.jenjang = autoJenjang
+          }
         }
       }
+
       return next
     })
 
@@ -163,10 +157,9 @@ function getJenjangFromUnit(unit) {
 
   const validate = () => {
     const errs = {}
-    if (!formData.kode_kurikulum.trim()) errs.kode_kurikulum = 'Kode kurikulum wajib diisi.'
-    if (!formData.nama_kurikulum.trim()) errs.nama_kurikulum = 'Nama kurikulum wajib diisi.'
+    if (!formData.kode_kurikulum?.trim()) errs.kode_kurikulum = 'Kode kurikulum wajib diisi.'
+    if (!formData.nama_kurikulum?.trim()) errs.nama_kurikulum = 'Nama kurikulum wajib diisi.'
     if (!formData.unit_pendidikan_id) errs.unit_pendidikan_id = 'Unit pendidikan wajib dipilih.'
-    if (!formData.tahun_ajaran_id) errs.tahun_ajaran_id = 'Tahun ajaran wajib dipilih.'
     if (!formData.tanggal_mulai) errs.tanggal_mulai = 'Tanggal mulai wajib diisi.'
 
     setErrors(errs)
@@ -174,42 +167,22 @@ function getJenjangFromUnit(unit) {
   }
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    if (e && e.preventDefault) e.preventDefault()
     if (validate()) {
       onSubmit(formData)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-emerald-100 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
-        {/* Header Modal */}
-        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-700 px-6 py-5 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-white/10 border border-white/20">
-              <BookOpen className="w-6 h-6 text-emerald-300" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold">
-                {initialData ? 'Edit Data Master Kurikulum' : 'Tambah Master Kurikulum Baru'}
-              </h2>
-              <p className="text-emerald-100/80 text-xs mt-0.5">
-                {initialData
-                  ? 'Perbarui informasi rincian kurikulum yang berlaku.'
-                  : 'Lengkapi formulir untuk menambahkan kurikulum unit pendidikan.'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Body Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 text-xs text-slate-700">
+    <AppModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={initialData ? 'Edit Data Master Kurikulum' : 'Tambah Master Kurikulum Baru'}
+      subtitle={initialData ? 'Perbarui informasi rincian kurikulum yang berlaku.' : 'Lengkapi formulir untuk menambahkan kurikulum unit pendidikan.'}
+      icon={<BookOpen className="h-5 w-5" />}
+      maxWidth="max-w-2xl"
+    >
+      <form onSubmit={handleSubmit} className="space-y-5 text-xs text-slate-700">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Kode Kurikulum */}
             <div>
@@ -423,32 +396,34 @@ function getJenjangFromUnit(unit) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button
               type="button"
+              variant="ghost"
+              appearance="outline"
+              size="sm"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors"
             >
               Batal
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="primary"
+              size="sm"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-md disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" /> Menyimpan...
+                  <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" /> Menyimpan...
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4" /> Simpan Data
+                  <Save className="w-4 h-4 mr-1.5" /> Simpan Data
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </AppModal>
   )
 }

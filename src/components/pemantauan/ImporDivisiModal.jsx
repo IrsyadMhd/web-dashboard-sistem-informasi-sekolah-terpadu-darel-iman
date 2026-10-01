@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/tailgrids/core/dialog'
 import { Button } from '@/components/tailgrids/core/button'
-import Swal from 'sweetalert2'
+import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 
 export default function ImporDivisiModal({ isOpen, onClose, onImportSuccess }) {
   const [file, setFile] = useState(null)
@@ -35,14 +35,14 @@ export default function ImporDivisiModal({ isOpen, onClose, onImportSuccess }) {
             const cols = line.split(',').map((c) => c.replace(/^"|"$/g, '').trim())
             return {
               id: `imp_${idx}_${Date.now()}`,
-              nama_divisi: cols[0] || 'Divisi Pendidikan',
-              aspek_pemantauan: cols[1] || 'Supervisi Operasional',
-              persentase_capaian: Number(cols[2]) || 80,
+              nama_divisi: cols[0] || '',
+              aspek_pemantauan: cols[1] || '',
+              persentase_capaian: Number(cols[2]) || 0,
               status_pemantauan: cols[3] || 'proses',
               tanggal_pemantauan: cols[4] || new Date().toISOString().split('T')[0],
-              petugas_supervisi: cols[5] || 'Tim Yayasan',
-              unit_pendidikan: cols[6] || 'SD IT',
-              catatan: cols[7] || 'Impor dari CSV',
+              petugas_supervisi: cols[5] || '',
+              unit_pendidikan: cols[6] || '',
+              catatan: cols[7] || '',
             }
           })
           setParsedData(rows)
