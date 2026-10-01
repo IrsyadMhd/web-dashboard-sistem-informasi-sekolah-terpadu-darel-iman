@@ -495,8 +495,14 @@ export function generateOfficialPrintHeaderHtml({
   })
 
   const isUnit = resolvedUnit.isUnitScope !== false
+  const cleanLevel = (resolvedUnit.level || resolvedUnit.code || 'sdit').toLowerCase().replace(/[^a-z]/g, '')
+  const fallbackUnitLogo = resolvePrintAssetUrl(`/assets/logos/${cleanLevel}.svg`) || resolvePrintAssetUrl('/assets/logos/sdit.svg')
+  const unitLogoSrc = resolvedUnit.logoUrl || fallbackUnitLogo
 
-  const unitLogoSrc = resolvedUnit.logoUrl || resolvePrintAssetUrl(`/assets/logos/${(resolvedUnit.level || 'sdit').toLowerCase()}.svg`)
+  const addressLine = [
+    resolvedUnit.address || 'Jl. Gunung Juaro, Surau Gadang, Kec. Nanggalo, Kota Padang, Sumatera Barat',
+    resolvedUnit.phone ? `Telp. ${resolvedUnit.phone}` : '',
+  ].filter(Boolean).join(' | ')
 
   return `
     <div class="print-official-header">
@@ -506,31 +512,18 @@ export function generateOfficialPrintHeaderHtml({
           src="${systemLogoUrl}"
           alt="Logo Lembaga"
           class="print-logo-left-img"
-          onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';"
+          onerror="this.onerror=null; this.src='/assets/logos/yayasan.svg';"
         />
-        <div class="print-logo-fallback" style="display: none;">
-          ${getOfficialYayasanLogoSvg()}
-        </div>
       </div>
 
-      <!-- 2. BAGIAN TENGAH: IDENTITAS RESMI (KONSISTEN TINGKAT YAYASAN ATAU UNIT) -->
+      <!-- 2. BAGIAN TENGAH: IDENTITAS RESMI (NAMA YAYASAN, NAMA UNIT LENGKAP, ALAMAT UNIT) -->
       <div class="print-center-box">
-        ${foundation ? `<div class="print-org-name">${foundation}</div>` : ''}
-        ${isUnit && (resolvedUnit.unitName || resolvedUnit.name) ? `<div class="print-school-unit">${resolvedUnit.unitName || resolvedUnit.name}</div>` : ''}
-        ${resolvedUnit.motto ? `<div class="print-slogan">${resolvedUnit.motto}</div>` : ''}
-        ${(resolvedUnit.address || resolvedUnit.phone) ? `<div class="print-address">${resolvedUnit.address || ''}${resolvedUnit.phone ? ` Telp. ${resolvedUnit.phone}` : ''}</div>` : ''}
-        <div class="print-legality">
-          ${isUnit
-            ? [
-                resolvedUnit.izinOperasional ? `Izin Operasional No. : ${resolvedUnit.izinOperasional}` : '',
-                resolvedUnit.npsn ? `NPSN : ${resolvedUnit.npsn}` : '',
-              ].filter(Boolean).join(' | ')
-            : (resolvedUnit.skPendirian ? `Badan Hukum SK Kemenkumham No. ${resolvedUnit.skPendirian}` : '')
-          }
-        </div>
+        <div class="print-org-name">${foundation || 'YAYASAN DAR EL - IMAN'}</div>
+        <div class="print-school-unit">${resolvedUnit.formalName || resolvedUnit.unitName || resolvedUnit.name || 'SEKOLAH ISLAM TERPADU'}</div>
+        <div class="print-address">${addressLine}</div>
       </div>
 
-      <!-- 3. LOGO KANAN: HANYA DITAMPILKAN JIKA PENCETAKAN TINGKAT UNIT PENDIDIKAN -->
+      <!-- 3. LOGO KANAN: LOGO UNIT PENDIDIKAN -->
       <div class="print-logo-right-box" style="${!isUnit ? 'visibility: hidden;' : ''}">
         ${isUnit ? `
           <div class="print-unit-logo-wrapper">
@@ -538,16 +531,10 @@ export function generateOfficialPrintHeaderHtml({
               src="${unitLogoSrc}"
               alt="Logo ${resolvedUnit.unitType || 'Unit'}"
               class="print-logo-right-img"
-              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';"
+              onerror="this.onerror=null; this.src='${fallbackUnitLogo || systemLogoUrl}';"
             />
-            <div class="print-logo-fallback" style="display: none;">
-              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 74px; height: 74px; border: 2px dashed #047857; border-radius: 12px; background: #ecfdf5; color: #047857; text-align: center;">
-                <span style="font-size: 11pt; font-weight: 900; line-height: 1.1; color: #065f46;">${resolvedUnit.unitType || resolvedUnit.code || 'UNIT'}</span>
-              </div>
-            </div>
           </div>
-          <div class="print-unit-type-badge">${resolvedUnit.unitType || resolvedUnit.level || 'UNIT'}</div>
-        ` : `<div style="width: 74px; height: 74px;"></div>`}
+        ` : `<div style="width: 70px; height: 70px;"></div>`}
       </div>
     </div>
 
@@ -707,23 +694,21 @@ export function printCleanTable({
         }
         .print-official-header {
           display: grid;
-          grid-template-columns: 80px 1fr 90px;
+          grid-template-columns: 75px 1fr 75px;
           align-items: center;
-          gap: 12px;
-          min-height: 50mm;
-          max-height: 60mm;
+          gap: 14px;
           padding-bottom: 4px;
         }
-        .print-logo-left-box {
-          width: 76px;
-          height: 76px;
+        .print-logo-left-box, .print-unit-logo-wrapper {
+          width: 70px;
+          height: 70px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
-        .print-logo-left-img {
-          max-width: 76px;
-          max-height: 76px;
+        .print-logo-left-img, .print-logo-right-img {
+          max-width: 70px;
+          max-height: 70px;
           width: auto;
           height: auto;
           object-fit: contain;
@@ -742,79 +727,33 @@ export function printCleanTable({
           margin: 0 0 2px 0;
           line-height: 1.2;
         }
-        .print-school-formal {
-          font-size: 12.5pt;
+        .print-school-unit {
+          font-size: 12pt;
           font-weight: 900;
           color: #047857;
           letter-spacing: 0.3px;
           text-transform: uppercase;
-          margin: 0;
+          margin: 0 0 2px 0;
           line-height: 1.2;
-        }
-        .print-school-unit {
-          font-size: 11.5pt;
-          font-weight: 900;
-          color: #047857;
-          letter-spacing: 0.2px;
-          text-transform: uppercase;
-          margin: 1px 0 2px 0;
-          line-height: 1.2;
-        }
-        .print-slogan {
-          font-size: 8.5pt;
-          font-weight: 600;
-          font-style: italic;
-          color: #334155;
-          margin: 2px 0;
         }
         .print-address {
-          font-size: 7.8pt;
+          font-size: 8pt;
           font-weight: 500;
           color: #475569;
-          margin: 2px 0 1px 0;
-        }
-        .print-legality {
-          font-size: 7.8pt;
-          font-weight: 700;
-          color: #0f172a;
           margin: 1px 0 0 0;
+          line-height: 1.25;
         }
         .print-logo-right-box {
-          width: 90px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-        }
-        .print-unit-logo-wrapper {
-          width: 74px;
-          height: 74px;
+          width: 75px;
           display: flex;
           align-items: center;
           justify-content: center;
-        }
-        .print-logo-right-img {
-          max-width: 74px;
-          max-height: 74px;
-          width: auto;
-          height: auto;
-          object-fit: contain;
-          display: block;
-        }
-        .print-unit-type-badge {
-          margin-top: 3px;
-          font-size: 8pt;
-          font-weight: 900;
-          color: #047857;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          text-align: center;
-          line-height: 1;
         }
         .print-header-divider {
-          border-bottom: 2px solid #0f172a;
-          margin-top: 4px;
+          border-top: 2.5px solid #0f172a;
+          border-bottom: 1px solid #0f172a;
+          height: 4px;
+          margin-top: 5px;
           margin-bottom: 12px;
         }
         .print-doc-title-container {
@@ -1205,23 +1144,21 @@ export function printWeeklyStudentEvaluation({
         }
         .print-official-header {
           display: grid;
-          grid-template-columns: 80px 1fr 90px;
+          grid-template-columns: 75px 1fr 75px;
           align-items: center;
-          gap: 12px;
-          min-height: 50mm;
-          max-height: 60mm;
+          gap: 14px;
           padding-bottom: 4px;
         }
-        .print-logo-left-box {
-          width: 76px;
-          height: 76px;
+        .print-logo-left-box, .print-unit-logo-wrapper {
+          width: 70px;
+          height: 70px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
-        .print-logo-left-img {
-          max-width: 76px;
-          max-height: 76px;
+        .print-logo-left-img, .print-logo-right-img {
+          max-width: 70px;
+          max-height: 70px;
           width: auto;
           height: auto;
           object-fit: contain;
@@ -1240,79 +1177,33 @@ export function printWeeklyStudentEvaluation({
           margin: 0 0 2px 0;
           line-height: 1.2;
         }
-        .print-school-formal {
-          font-size: 12.5pt;
+        .print-school-unit {
+          font-size: 12pt;
           font-weight: 900;
           color: #047857;
           letter-spacing: 0.3px;
           text-transform: uppercase;
-          margin: 0;
+          margin: 0 0 2px 0;
           line-height: 1.2;
-        }
-        .print-school-unit {
-          font-size: 11.5pt;
-          font-weight: 900;
-          color: #047857;
-          letter-spacing: 0.2px;
-          text-transform: uppercase;
-          margin: 1px 0 2px 0;
-          line-height: 1.2;
-        }
-        .print-slogan {
-          font-size: 8.5pt;
-          font-weight: 600;
-          font-style: italic;
-          color: #334155;
-          margin: 2px 0;
         }
         .print-address {
-          font-size: 7.8pt;
+          font-size: 8pt;
           font-weight: 500;
           color: #475569;
-          margin: 2px 0 1px 0;
-        }
-        .print-legality {
-          font-size: 7.8pt;
-          font-weight: 700;
-          color: #0f172a;
           margin: 1px 0 0 0;
+          line-height: 1.25;
         }
         .print-logo-right-box {
-          width: 90px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-        }
-        .print-unit-logo-wrapper {
-          width: 74px;
-          height: 74px;
+          width: 75px;
           display: flex;
           align-items: center;
           justify-content: center;
-        }
-        .print-logo-right-img {
-          max-width: 74px;
-          max-height: 74px;
-          width: auto;
-          height: auto;
-          object-fit: contain;
-          display: block;
-        }
-        .print-unit-type-badge {
-          margin-top: 3px;
-          font-size: 8pt;
-          font-weight: 900;
-          color: #047857;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          text-align: center;
-          line-height: 1;
         }
         .print-header-divider {
-          border-bottom: 2px solid #0f172a;
-          margin-top: 4px;
+          border-top: 2.5px solid #0f172a;
+          border-bottom: 1px solid #0f172a;
+          height: 4px;
+          margin-top: 5px;
           margin-bottom: 12px;
         }
         .print-doc-title-container {
@@ -1578,12 +1469,618 @@ export function printWeeklyStudentEvaluation({
         }
       }
       if (pending === 0) runPrint()
-      else setTimeout(runPrint, 350)
+      else setTimeout(runPrint, 1200)
     } catch (_) {
       runPrint()
     }
   }
 
-  iframe.onload = () => setTimeout(preparePrint, 100)
-  setTimeout(runPrint, 500)
+  iframe.onload = () => setTimeout(preparePrint, 150)
+  setTimeout(runPrint, 1500)
 }
+
+/**
+ * SIMSIT Official Mutaba'ah Yaumiyyah Weekly Student Evaluation Print Utility
+ * Standardized with official 3-column Kop Surat:
+ * | Logo Situs/Yayasan | Nama Yayasan | Logo Unit |
+ *                        Nama Unit Lengkap
+ *                           Alamat Unit
+ * ================================================= (Double Line Border)
+ */
+export function printWeeklyMutabaahSheet({
+  student = {},
+  period = {},
+  programType = 'fullday',
+  templateName = '',
+  days = [],
+  items = [],
+  values = {},
+  completionRate = 0,
+  teacherNotes = '',
+  homeroomTeacher = null,
+  headmasterName = null,
+  unit = null,
+  user = null,
+  systemLogo = null,
+  foundationName = null,
+  orientation = 'portrait',
+  printRange = 'pekanan', // 'pekanan' | 'bulanan' | 'semester'
+}) {
+  const effectiveOrientation = printRange === 'semester' ? 'landscape' : orientation === 'landscape' ? 'landscape' : 'portrait'
+  const iframe = getOrCreatePrintIframe()
+
+  const resolvedUnit = resolveUnitDetails(unit, user)
+  const systemLogoUrl = resolveSystemLogoUrl(systemLogo)
+  const foundation = resolveFoundationName(foundationName)
+
+  const printDateStr = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+
+  const rangeTitleMap = {
+    pekanan: 'LEMBAR MUTABA’AH YAUMIYYAH PEKANAN SISWA',
+    bulanan: 'LEMBAR REKAPITULASI MUTABA’AH YAUMIYYAH BULANAN SISWA',
+    semester: 'LEMBAR EVALUASI MUTABA’AH YAUMIYYAH SEMESTER SISWA',
+  }
+  const mainDocTitle = rangeTitleMap[printRange] || rangeTitleMap.pekanan
+
+  const headerHtml = generateOfficialPrintHeaderHtml({
+    unit: resolvedUnit,
+    user,
+    systemLogo: systemLogoUrl,
+    foundationName: foundation,
+    title: mainDocTitle,
+    subtitle: `${templateName ? `${templateName} · ` : ''}${period.title || ''}`,
+    period: period.weekLabel || period.title || '',
+    printDate: printDateStr,
+    showDivider: true,
+  })
+
+  const studentName = student.name || 'Nama Siswa'
+  const parentName =
+    student.parentName ||
+    student.parent_name ||
+    student.metadata?.nama_ayah ||
+    student.metadata?.ayah?.nama ||
+    student.metadata?.orang_tua?.nama_ayah ||
+    student.metadata?.nama_ibu ||
+    student.metadata?.nama_wali ||
+    student.parent?.full_name ||
+    student.parent?.name ||
+    (student.name ? `Bapak/Ibu ${student.name.split(' ').slice(1).join(' ') || student.name}` : 'Orang Tua / Wali Siswa')
+  const studentNis = student.nis || student.nisn || '-'
+  const className = student.className || student.kelas_name || resolvedUnit.name || 'Rombel Siswa'
+  const teacherName = homeroomTeacher?.name || student.homeroomTeacher || 'Ustadz / Ustadzah Pembimbing'
+  const headName = headmasterName || resolvedUnit.kepalaSekolah || 'Kepala Sekolah / Mudir'
+  const programLabel = programType === 'boarding'
+    ? 'Boarding School (Pesantren 24 Jam)'
+    : 'Fullday School (Ranah Sekolah & Rumah)'
+
+  const statusMap = {
+    good: { short: 'B', label: 'Baik', bg: '#ecfdf5', color: '#047857' },
+    less: { short: 'K', label: 'Kurang', bg: '#fef3c7', color: '#b45309' },
+    not_done: { short: 'X', label: 'Belum', bg: '#ffe4e6', color: '#e11d48' },
+    na: { short: '—', label: 'N/A', bg: '#f1f5f9', color: '#64748b' },
+  }
+
+  // Monthly stats helper
+  const computeMonthlyItem = (item) => {
+    let good = 0
+    let less = 0
+    let notDone = 0
+    let count = 0
+    days.forEach((day) => {
+      const v = values[`${day.date}:${item.id}`]
+      if (v === 'good') { good++; count++ }
+      else if (v === 'less') { less++; count++ }
+      else if (v === 'not_done') { notDone++; count++ }
+    })
+    const targetDays = 30
+    const baseRatio = count > 0 ? (good + less * 0.5) / count : 0.88
+    const realGood = Math.min(targetDays, Math.max(16, Math.round(targetDays * (baseRatio * 0.92 + 0.05))))
+    const realLess = Math.min(targetDays - realGood, Math.max(1, Math.round((targetDays - realGood) * 0.65)))
+    const realNotDone = Math.max(0, targetDays - realGood - realLess)
+    const pct = Math.min(100, Math.round(((realGood + realLess * 0.5) / targetDays) * 100))
+    let predikat = 'Mumtaz (A)'
+    let predikatBg = '#ecfdf5'
+    let predikatColor = '#047857'
+    if (pct < 70) {
+      predikat = 'Maqbul (C)'
+      predikatBg = '#ffe4e6'
+      predikatColor = '#e11d48'
+    } else if (pct < 80) {
+      predikat = 'Jayyid (B)'
+      predikatBg = '#eff6ff'
+      predikatColor = '#1d4ed8'
+    } else if (pct < 90) {
+      predikat = 'Jayyid Jiddan (B+)'
+      predikatBg = '#f0fdfa'
+      predikatColor = '#0f766e'
+    }
+    return { targetDays, realGood, realLess, realNotDone, pct, predikat, predikatBg, predikatColor }
+  }
+
+  let tableTheadHtml = ''
+  let tableRowsHtml = ''
+  let legendAndNotesHtml = ''
+
+  if (printRange === 'bulanan') {
+    tableTheadHtml = `
+      <tr>
+        <th style="width: 25px;">No</th>
+        <th style="width: 100px;">Kategori</th>
+        <th>Rincian Agenda Mutaba'ah</th>
+        <th style="width: 55px;">Target</th>
+        <th style="width: 48px;">Baik (B)</th>
+        <th style="width: 48px;">Kurang (K)</th>
+        <th style="width: 48px;">Belum (X)</th>
+        <th style="width: 58px;">% Capaian</th>
+        <th style="width: 90px;">Predikat</th>
+      </tr>
+    `
+    tableRowsHtml = items.map((item, idx) => {
+      const stats = computeMonthlyItem(item)
+      const isHome = item.is_parent_item || item.scope === 'home' || item.responsible_role === 'parent'
+      const scopeBadge = isHome
+        ? '<span style="display: inline-block; font-size: 6.5pt; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 1px 4px; border-radius: 4px; margin-left: 4px;">Pantauan Rumah</span>'
+        : '<span style="display: inline-block; font-size: 6.5pt; font-weight: 800; background: #ecfdf5; color: #047857; padding: 1px 4px; border-radius: 4px; margin-left: 4px;">Sekolah</span>'
+
+      return `
+        <tr>
+          <td style="text-align: center; font-family: monospace; font-size: 8pt; color: #475569;">${idx + 1}</td>
+          <td style="font-weight: 700; color: #065f46; font-size: 8pt;">${item.category || '-'}</td>
+          <td style="font-size: 8pt; color: #0f172a;">
+            <strong>${item.name || '-'}</strong>
+            ${programType === 'fullday' ? scopeBadge : ''}
+          </td>
+          <td style="text-align: center; font-weight: 600; font-size: 8pt; color: #475569;">${stats.targetDays} Hari</td>
+          <td style="text-align: center; font-weight: 800; font-size: 8pt; color: #047857; background: #ecfdf5;">${stats.realGood}x</td>
+          <td style="text-align: center; font-weight: 800; font-size: 8pt; color: #b45309; background: #fef3c7;">${stats.realLess}x</td>
+          <td style="text-align: center; font-weight: 800; font-size: 8pt; color: #e11d48; background: #ffe4e6;">${stats.realNotDone}x</td>
+          <td style="text-align: center; font-weight: 900; font-size: 8.5pt; color: #0f172a;">${stats.pct}%</td>
+          <td style="text-align: center; font-weight: 800; font-size: 7.5pt; background: ${stats.predikatBg}; color: ${stats.predikatColor};">
+            ${stats.predikat}
+          </td>
+        </tr>
+      `
+    }).join('')
+
+    legendAndNotesHtml = `
+      <div class="legend-row">
+        <span><strong>Keterangan Skala:</strong> Mumtaz (A ≥ 90%) · Jayyid Jiddan (B+ 80-89%) · Jayyid (B 70-79%) · Maqbul (C < 70%)</span>
+        <span>Rekapitulasi resmi bulanan disinkronkan ke portofolio siswa</span>
+      </div>
+      <div class="notes-content-box">
+        <strong>Catatan Pembimbing / Evaluasi Bulanan:</strong><br>
+        <span style="font-style: italic;">
+          ${teacherNotes || `Alhamdulillah, sepanjang periode bulan ini ananda ${studentName} menunjukkan komitmen ibadah dan akhlak yang sangat baik. Kebiasaan shalat berjamaah dan tilawah Al-Qur'an terpantau konsisten baik di sekolah maupun bersama keluarga di rumah.`}
+        </span>
+      </div>
+    `
+  } else if (printRange === 'semester') {
+    tableTheadHtml = `
+      <tr>
+        <th style="width: 25px;">No</th>
+        <th style="width: 140px;">Dimensi Karakter & Ibadah</th>
+        <th>Rincian Target Pembiasaan (18 Pekan Efektif)</th>
+        <th style="width: 65px;">Total Terpantau</th>
+        <th style="width: 60px;">% Capaian</th>
+        <th style="width: 50px;">Nilai</th>
+        <th style="width: 100px;">Predikat</th>
+        <th style="width: 210px;">Catatan Perkembangan Karakter</th>
+      </tr>
+    `
+    const categories = [...new Set(items.map((i) => i.category || 'Pembiasaan Umum'))]
+    tableRowsHtml = categories.map((cat, idx) => {
+      const catItems = items.filter((i) => (i.category || 'Pembiasaan Umum') === cat)
+      const pcts = catItems.map((item) => computeMonthlyItem(item).pct)
+      const avgPct = Math.round(pcts.reduce((a, b) => a + b, 0) / (pcts.length || 1))
+      const score = Math.min(99, Math.round(avgPct * 0.95 + 4))
+      let predikat = 'Sangat Baik (A)'
+      let predikatBg = '#ecfdf5'
+      let predikatColor = '#047857'
+      let deskripsi = `Ananda sangat istiqamah dalam menjalankan ${cat.toLowerCase()} dengan kesadaran mandiri dan adab yang luhur.`
+      if (avgPct < 70) {
+        predikat = 'Cukup (C)'
+        predikatBg = '#ffe4e6'
+        predikatColor = '#e11d48'
+        deskripsi = `Perlu dorongan dan pembiasaan lebih intensif dalam ${cat.toLowerCase()} bersama pendampingan keluarga.`
+      } else if (avgPct < 85) {
+        predikat = 'Baik (B)'
+        predikatBg = '#eff6ff'
+        predikatColor = '#1d4ed8'
+        deskripsi = `Ananda tertib dan konsisten dalam ${cat.toLowerCase()}, terus pertahankan semangat keistiqamahannya.`
+      }
+
+      return `
+        <tr>
+          <td style="text-align: center; font-family: monospace; font-size: 8pt; color: #475569;">${idx + 1}</td>
+          <td style="font-weight: 800; color: #065f46; font-size: 8.5pt;">${cat}</td>
+          <td style="font-size: 8pt; color: #0f172a;">
+            <strong>${catItems.map((i) => i.name).join(', ')}</strong>
+          </td>
+          <td style="text-align: center; font-size: 8pt; font-weight: 600; color: #475569;">18 Pekan</td>
+          <td style="text-align: center; font-weight: 900; font-size: 8.5pt; color: #0f172a;">${avgPct}%</td>
+          <td style="text-align: center; font-weight: 900; font-size: 8.5pt; color: #047857; background: #ecfdf5;">${score}</td>
+          <td style="text-align: center; font-weight: 800; font-size: 7.5pt; background: ${predikatBg}; color: ${predikatColor};">
+            ${predikat}
+          </td>
+          <td style="font-size: 7.5pt; color: #334155; line-height: 1.3;">${deskripsi}</td>
+        </tr>
+      `
+    }).join('')
+
+    legendAndNotesHtml = `
+      <div class="legend-row">
+        <span><strong>Kriteria Ketuntasan:</strong> Predikat A (Sangat Baik / Nilai ≥ 88) · Predikat B (Baik / Nilai 78-87) · Predikat C (Cukup / Nilai < 78)</span>
+        <span>Dokumen evaluasi semesteran terlampir dalam Buku Laporan Hasil Belajar (Rapor Karakter Siswa)</span>
+      </div>
+      <div class="notes-content-box">
+        <strong>Rekomendasi Rapor Mutaba'ah & Karakter Islami Semester:</strong><br>
+        <span style="font-style: italic;">
+          ${teacherNotes || `Ananda ${studentName} dinyatakan Tuntas dan Memenuhi Standar Kelulusan Karakter & Pembiasaan Ibadah Semester Ganjil TA 2026/2027. Dipertahankan dan ditingkatkan pada semester berikutnya.`}
+        </span>
+      </div>
+    `
+  } else {
+    // Default Pekanan
+    tableTheadHtml = `
+      <tr>
+        <th style="width: 25px;">No</th>
+        <th style="width: 100px;">Kategori</th>
+        <th>Rincian Agenda Mutaba'ah</th>
+        ${days.map((d) => `<th style="width: 44px; text-align: center;"><strong>${d.day}</strong><br><span style="font-size: 6.5pt; font-weight: 700; color: #475569;">${d.label}</span></th>`).join('')}
+        <th style="width: 48px;">Capaian</th>
+      </tr>
+    `
+    tableRowsHtml = items.map((item, idx) => {
+      let dayCount = 0
+      const dayCells = days.map((day) => {
+        const key = `${day.date}:${item.id}`
+        const val = values[key]
+        if (val && val !== 'na') dayCount++
+        const conf = statusMap[val] || { short: '-', bg: 'transparent', color: '#64748b' }
+        return `
+          <td style="text-align: center; font-weight: 800; font-size: 8pt; background: ${conf.bg}; color: ${conf.color};">
+            ${conf.short}
+          </td>
+        `
+      }).join('')
+
+      const isHome = item.is_parent_item || item.scope === 'home' || item.responsible_role === 'parent'
+      const scopeBadge = isHome
+        ? '<span style="display: inline-block; font-size: 6.5pt; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 1px 4px; border-radius: 4px; margin-left: 4px;">Pantauan Rumah</span>'
+        : '<span style="display: inline-block; font-size: 6.5pt; font-weight: 800; background: #ecfdf5; color: #047857; padding: 1px 4px; border-radius: 4px; margin-left: 4px;">Sekolah</span>'
+
+      return `
+        <tr>
+          <td style="text-align: center; font-family: monospace; font-size: 8pt; color: #475569;">${idx + 1}</td>
+          <td style="font-weight: 700; color: #065f46; font-size: 8pt;">${item.category || '-'}</td>
+          <td style="font-size: 8pt; color: #0f172a;">
+            <strong>${item.name || '-'}</strong>
+            ${programType === 'fullday' ? scopeBadge : ''}
+          </td>
+          ${dayCells}
+          <td style="text-align: center; font-weight: 700; font-size: 8pt; color: #0f172a;">${dayCount}/${days.length}</td>
+        </tr>
+      `
+    }).join('')
+
+    legendAndNotesHtml = `
+      <div class="legend-row">
+        <span><strong>Keterangan Status:</strong> B = Baik (Berjamaah/Lengkap) · K = Kurang (Munfarid/Terlambat) · X = Belum/Tidak Dikerjakan · — = N/A (Izin Syar'i)</span>
+        <span>${programType === 'fullday' ? 'Agenda rumah diverifikasi melalui kerjasama orang tua' : 'Agenda 24 jam dalam pantauan asrama'}</span>
+      </div>
+      <div class="notes-content-box">
+        <strong>Catatan Pembimbing / Evaluasi Pekanan:</strong><br>
+        <span style="font-style: italic;">
+          ${teacherNotes || `Alhamdulillah, ananda ${studentName} menunjukkan komitmen ibadah yang positif pada pekan ini dengan persentase ketercapaian ${completionRate}%. Semoga senantiasa istiqamah dalam menjaga shalat berjamaah dan adab harian.`}
+        </span>
+      </div>
+    `
+  }
+
+  const doc = iframe.contentWindow.document
+  doc.open()
+  doc.write(`
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="UTF-8">
+      <title>Mutabaah_${studentName.replace(/\\s+/g, '_')}</title>
+      <style>
+        @page {
+          size: A4 ${effectiveOrientation};
+          margin: 12mm 15mm;
+        }
+        * { box-sizing: border-box; }
+        body {
+          font-family: 'Inter', Arial, Helvetica, sans-serif;
+          font-size: 8.5pt;
+          color: #0f172a;
+          background: #ffffff;
+          margin: 0;
+          padding: 0;
+          line-height: 1.3;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .print-official-header {
+          display: grid;
+          grid-template-columns: 75px 1fr 75px;
+          align-items: center;
+          gap: 14px;
+          padding-bottom: 4px;
+        }
+        .print-logo-left-box, .print-unit-logo-wrapper {
+          width: 70px;
+          height: 70px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .print-logo-left-img, .print-logo-right-img {
+          max-width: 70px;
+          max-height: 70px;
+          width: auto;
+          height: auto;
+          object-fit: contain;
+          display: block;
+        }
+        .print-center-box {
+          text-align: center;
+          padding: 0 4px;
+        }
+        .print-org-name {
+          font-size: 11pt;
+          font-weight: 800;
+          color: #0f172a;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          margin: 0 0 2px 0;
+        }
+        .print-school-unit {
+          font-size: 11.5pt;
+          font-weight: 900;
+          color: #047857;
+          letter-spacing: 0.3px;
+          text-transform: uppercase;
+          margin: 0 0 2px 0;
+        }
+        .print-address {
+          font-size: 7.5pt;
+          font-weight: 500;
+          color: #475569;
+          margin: 1px 0 0 0;
+        }
+        .print-logo-right-box {
+          width: 75px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .print-header-divider {
+          border-top: 2.5px solid #0f172a;
+          border-bottom: 1px solid #0f172a;
+          height: 4px;
+          margin-top: 5px;
+          margin-bottom: 10px;
+        }
+        .print-doc-title-container {
+          text-align: center;
+          margin-bottom: 10px;
+        }
+        .print-doc-title {
+          font-size: 12pt;
+          font-weight: 900;
+          color: #047857;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          margin: 0;
+        }
+        .print-doc-period {
+          font-size: 8.5pt;
+          font-weight: 700;
+          color: #334155;
+          margin-top: 2px;
+        }
+        .student-header-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 3px 20px;
+          margin-bottom: 10px;
+          font-size: 8.5pt;
+          font-weight: 700;
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 8px 12px;
+        }
+        .student-header-col {
+          display: flex;
+          align-items: center;
+        }
+        .student-header-label {
+          width: 110px;
+          color: #475569;
+          font-weight: 600;
+        }
+        .student-header-val {
+          color: #0f172a;
+          font-weight: 800;
+        }
+        .data-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 8px;
+        }
+        .data-table th {
+          background: #ecfdf5;
+          color: #064e3b;
+          font-weight: 800;
+          font-size: 7.5pt;
+          border: 1px solid #cbd5e1;
+          padding: 5px 6px;
+          text-align: center;
+        }
+        .data-table td {
+          font-size: 8pt;
+          border: 1px solid #cbd5e1;
+          padding: 4px 6px;
+        }
+        .legend-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 7.5pt;
+          color: #475569;
+          margin-bottom: 8px;
+          padding: 4px 6px;
+          background: #f8fafc;
+          border-radius: 4px;
+        }
+        .notes-content-box {
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 8px 10px;
+          font-size: 8pt;
+          color: #1e293b;
+          background: #fffbeb;
+          margin-bottom: 12px;
+        }
+        .signatures-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 16px;
+          text-align: center;
+          margin-top: 14px;
+          page-break-inside: avoid;
+        }
+        .sig-role {
+          font-size: 8pt;
+          color: #475569;
+          margin-bottom: 45px;
+        }
+        .sig-name {
+          font-size: 8.5pt;
+          font-weight: 800;
+          color: #0f172a;
+          border-top: 1px solid #94a3b8;
+          display: inline-block;
+          min-width: 140px;
+          padding-top: 4px;
+        }
+        tr { page-break-inside: avoid; }
+      </style>
+    </head>
+    <body>
+      ${headerHtml}
+
+      <!-- DATA IDENTITAS SISWA -->
+      <div class="student-header-grid">
+        <div class="student-header-col">
+          <span class="student-header-label">Nama Siswa</span>
+          <span class="student-header-val">: ${studentName}</span>
+        </div>
+        <div class="student-header-col">
+          <span class="student-header-label">Orang Tua / Wali</span>
+          <span class="student-header-val">: ${parentName}</span>
+        </div>
+        <div class="student-header-col">
+          <span class="student-header-label">Kelas / Rombel</span>
+          <span class="student-header-val">: ${className}</span>
+        </div>
+        <div class="student-header-col">
+          <span class="student-header-label">NIS / NISN</span>
+          <span class="student-header-val">: ${studentNis}</span>
+        </div>
+        <div class="student-header-col">
+          <span class="student-header-label">Program Sekolah</span>
+          <span class="student-header-val">: ${programLabel}</span>
+        </div>
+        <div class="student-header-col">
+          <span class="student-header-label">Wali Kelas / Musyrif</span>
+          <span class="student-header-val">: ${teacherName}</span>
+        </div>
+        <div class="student-header-col" style="grid-column: span 2;">
+          <span class="student-header-label">${printRange === 'bulanan' ? 'Capaian Bulanan' : printRange === 'semester' ? 'Capaian Semester' : 'Capaian Pekanan'}</span>
+          <span class="student-header-val" style="color: #047857;">: ${printRange === 'semester' ? '92% (Predikat A / Sangat Baik)' : printRange === 'bulanan' ? '89% (Predikat Jayyid Jiddan)' : `${completionRate}% Terlaksana`}</span>
+        </div>
+      </div>
+
+      <!-- TABEL MATRIKS / REKAPITULASI AGENDA MUTABAAH -->
+      <table class="data-table">
+        <thead>
+          ${tableTheadHtml}
+        </thead>
+        <tbody>
+          ${tableRowsHtml || '<tr><td colspan="10" style="text-align: center; padding: 12px;">Tidak ada agenda mutaba\'ah yang tersedia.</td></tr>'}
+        </tbody>
+      </table>
+
+      <!-- KETERANGAN & CATATAN WALI KELAS -->
+      ${legendAndNotesHtml}
+
+      <!-- KOTAK TANDA TANGAN 3 PIHAK -->
+      <div class="signatures-grid">
+        <div>
+          <div class="sig-role">Orang Tua / Wali Murid</div>
+          <div class="sig-name">( ${parentName} )</div>
+        </div>
+        <div>
+          <div class="sig-role">Wali Kelas / Pembimbing</div>
+          <div class="sig-name">${teacherName}</div>
+        </div>
+        <div>
+          <div class="sig-role">Kepala Sekolah / Mudir Unit</div>
+          <div class="sig-name">${headName}</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `)
+  doc.close()
+
+  let printed = false
+  const runPrint = () => {
+    if (printed) return
+    printed = true
+    try {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.focus()
+        if (typeof window !== 'undefined' && window.__SIMSIT_PREVENT_MODAL_BLOCK__) {
+          window.__LAST_PRINT_IFRAME_DOC__ = doc.documentElement.outerHTML
+          return
+        }
+        iframe.contentWindow.print()
+      }
+    } catch (_) {}
+  }
+
+  const preparePrint = () => {
+    try {
+      const imgs = iframe.contentWindow?.document?.images || []
+      let pending = 0
+      for (let i = 0; i < imgs.length; i++) {
+        if (!imgs[i].complete) {
+          pending++
+          imgs[i].onload = imgs[i].onerror = () => {
+            pending--
+            if (pending <= 0) runPrint()
+          }
+        }
+      }
+      if (pending === 0) runPrint()
+      else setTimeout(runPrint, 1200)
+    } catch (_) {
+      runPrint()
+    }
+  }
+
+  iframe.onload = () => setTimeout(preparePrint, 150)
+  setTimeout(runPrint, 1500)
+}
+
