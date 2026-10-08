@@ -62,6 +62,14 @@ export const jabatanService = {
   },
 
   /**
+   * Hapus massal data jabatan (Bulk Soft Delete).
+   */
+  hapusBanyak: async (ids) => {
+    const { data } = await api.post('/jabatan/batch-delete', { ids })
+    return data
+  },
+
+  /**
    * Pulihkan data jabatan yang terhapus.
    */
   pulihkan: async (id) => {

@@ -4,6 +4,10 @@ import { api } from './api'
  * Service API untuk Manajemen Master Data Tahun Ajaran (Academic Year).
  */
 export const tahunAjaranService = {
+  getAll: async (params = {}) => {
+    return tahunAjaranService.getDaftar(params)
+  },
+
   getDaftar: async (params = {}) => {
     const { data } = await api.get('/master/tahun-ajaran', { params })
     return data

@@ -13,6 +13,14 @@ export const FALLBACK_MODA_TRANSPORTASI = [
  * Service API untuk Opsi Master Moda Transportasi.
  */
 export const modaTransportasiService = {
+  getAll: async () => {
+    try {
+      const { data } = await api.get('/master/moda-transportasi/dropdown')
+      return data
+    } catch (e) {
+      return { data: FALLBACK_MODA_TRANSPORTASI }
+    }
+  },
   getDropdown: async () => {
     try {
       const { data } = await api.get('/master/moda-transportasi/dropdown')
