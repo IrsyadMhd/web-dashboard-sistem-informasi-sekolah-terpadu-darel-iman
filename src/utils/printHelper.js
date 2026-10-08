@@ -4,9 +4,8 @@
  * Supports A4 Portrait (default, 210mm x 297mm) and A4 Landscape with 15mm margins.
  * 
  * Header layout adheres strictly to institutional specifications:
- * [LOGO SIT]   YAYASAN DAR EL-IMAN            [LOGO UNIT]
- *              NAMA SEKOLAH
- *              NAMA SEKOLAH / UNIT
+ * [LOGO LEMBAGA]   NAMA YAYASAN / LEMBAGA            [LOGO UNIT]
+ *                  NAMA SEKOLAH / UNIT
  *              "SLOGAN"
  *              Alamat & Telepon
  *              Izin Operasional / NPSN        [JENIS UNIT]
@@ -14,180 +13,42 @@
 
 import { api } from '../services/api'
 import { toast } from 'sonner'
-
-export const DEFAULT_UNITS_CONFIG = {
-  YAYASAN: {
-    isUnitScope: false,
-    code: 'YAYASAN',
-    name: '',
-    formalName: '',
-    unitName: '',
-    level: 'YAYASAN',
-    unitType: 'Yayasan',
-    logoUrl: null,
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-  SMAIT: {
-    isUnitScope: true,
-    code: 'SMAIT-01',
-    name: 'SMAIT',
-    formalName: 'SMA ISLAM TERPADU',
-    unitName: 'SMAIT',
-    level: 'SMAIT',
-    unitType: 'SMA IT',
-    logoUrl: '/assets/logos/smait.svg',
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-  SMPIT: {
-    isUnitScope: true,
-    code: 'SMPIT-01',
-    name: 'SMPIT',
-    formalName: 'SMP ISLAM TERPADU',
-    unitName: 'SMPIT',
-    level: 'SMPIT',
-    unitType: 'SMP IT',
-    logoUrl: '/assets/logos/smpit.svg',
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-  SDIT: {
-    isUnitScope: true,
-    code: 'SDIT-01',
-    name: 'SDIT',
-    formalName: 'SD ISLAM TERPADU',
-    unitName: 'SDIT',
-    level: 'SDIT',
-    unitType: 'SD IT',
-    logoUrl: '/assets/logos/sdit.svg',
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-  TKIT: {
-    isUnitScope: true,
-    code: 'TKIT-01',
-    name: 'TKIT',
-    formalName: 'TK ISLAM TERPADU',
-    unitName: 'TKIT',
-    level: 'TKIT',
-    unitType: 'TK IT',
-    logoUrl: '/assets/logos/tkit.svg',
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-  PONPES: {
-    isUnitScope: true,
-    code: 'PONPES-01',
-    name: 'Pondok Pesantren',
-    formalName: 'PONDOK PESANTREN',
-    unitName: 'PONPES',
-    level: 'PONPES',
-    unitType: 'Pondok Pesantren',
-    logoUrl: '/assets/logos/ponpes.svg',
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-  MAHAD: {
-    isUnitScope: true,
-    code: 'MAHAD-01',
-    name: "Ma'had",
-    formalName: "MA'HAD",
-    unitName: "MA'HAD",
-    level: 'MAHAD',
-    unitType: "MA'HAD",
-    logoUrl: '/assets/logos/mahad.svg',
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-  TAUD: {
-    isUnitScope: true,
-    code: 'TAUD-01',
-    name: 'TAUD SaQu',
-    formalName: 'TAUD SAQU',
-    unitName: 'TAUD SAQU',
-    level: 'TAUD',
-    unitType: 'TAUD SaQu',
-    logoUrl: '/assets/logos/taud.svg',
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-  MIT: {
-    isUnitScope: true,
-    code: 'MIT-01',
-    name: 'MIT',
-    formalName: 'MADRASAH IBTIDAIYAH TERPADU',
-    unitName: 'MIT',
-    level: 'MIT',
-    unitType: 'MIT',
-    logoUrl: '/assets/logos/mit.svg',
-    npsn: '',
-    skPendirian: '',
-    izinOperasional: '',
-    address: '',
-    phone: '',
-    motto: '',
-    city: '',
-  },
-}
+import {
+  isBoardingStudent,
+  getWeekDates,
+  getMutabaahAgendas,
+  getMutabaahSigners,
+} from './mutabaahSheetHelper'
 
 // ============================================================================
 // HELPER LOGO & ASSET URL RESOLVER
 // ============================================================================
+export function getBackendOrigin() {
+  try {
+    const rawApiUrl = import.meta.env?.VITE_API_BASE_URL || import.meta.env?.VITE_BACKEND_URL || api?.defaults?.baseURL
+    if (rawApiUrl && typeof rawApiUrl === 'string' && (rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://'))) {
+      return new URL(rawApiUrl).origin
+    }
+  } catch (_) {}
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin
+  }
+  return ''
+}
+
 export function resolvePrintAssetUrl(url) {
   if (!url) return ''
   if (typeof url !== 'string') return ''
   if (url.startsWith('data:image') || url.startsWith('blob:')) return url
   if (url.startsWith('http://') || url.startsWith('https://')) return url
 
-  const isDevVite = typeof window !== 'undefined' && window.location?.origin?.includes('5173')
-  const apiOrigin = isDevVite ? 'http://localhost:8000' : (typeof window !== 'undefined' ? window.location.origin : '')
+  const backendOrigin = getBackendOrigin()
   const webOrigin = typeof window !== 'undefined' ? window.location.origin : ''
 
   const cleanPath = url.startsWith('/') ? url : `/${url}`
 
   if (cleanPath.startsWith('/storage')) {
-    return `${apiOrigin}${cleanPath}`
+    return backendOrigin ? `${backendOrigin}${cleanPath}` : cleanPath
   }
   return `${webOrigin}${cleanPath}`
 }
@@ -206,7 +67,7 @@ export function resolveSystemLogoUrl(systemLogoParam) {
       return resolvePrintAssetUrl(siteLogo)
     }
   } catch (_) {}
-  return resolvePrintAssetUrl('/assets/logos/yayasan.svg')
+  return ''
 }
 
 export function getResolvedYayasanConfig() {
@@ -243,6 +104,174 @@ export function getResolvedYayasanConfig() {
   }
 }
 
+// ============================================================================
+// DYNAMIC EDUCATION UNITS REGISTRY (LOADED FROM DATABASE)
+// Zero hardcoding. All units are dynamically fetched from database via /education-units
+// ============================================================================
+export const UNITS_DB_CACHE_KEY = 'simsit_education_units_db_cache'
+
+/**
+ * In-memory list of database unit records
+ */
+export let loadedDatabaseUnits = []
+
+/**
+ * Normalized registry dictionary of units config keyed by ID, code, and name.
+ * Initially contains dynamic YAYASAN config resolved from system settings.
+ */
+export const DEFAULT_UNITS_CONFIG = {
+  YAYASAN: getResolvedYayasanConfig(),
+}
+
+/**
+ * Helper to format a raw database unit record into normalized print config
+ */
+export function formatUnitFromDb(rawUnit) {
+  if (!rawUnit) return null
+  const meta = rawUnit.metadata || {}
+  const rawName = (
+    rawUnit.name ||
+    rawUnit.nama ||
+    rawUnit.unit_name ||
+    rawUnit.unitName ||
+    meta.name ||
+    meta.nama ||
+    ''
+  ).trim()
+
+  const rawCode = String(rawUnit.code || rawUnit.kode || '').trim()
+  const rawLevel = String(rawUnit.level || meta.jenjang || '').trim()
+  const rawLogo = rawUnit.logo_url || meta.logo_url || meta.logo || (meta.logo_path ? `/storage/${meta.logo_path.replace(/^\//, '')}` : null) || null
+
+  return {
+    id: rawUnit.id,
+    isUnitScope: true,
+    code: rawCode,
+    name: rawName || 'Unit Pendidikan',
+    formalName: meta.formal_name || (rawName ? rawName.toUpperCase() : 'UNIT PENDIDIKAN'),
+    unitName: (rawName || 'UNIT PENDIDIKAN').toUpperCase(),
+    level: rawLevel,
+    unitType: meta.singkatan || meta.unit_type || (rawName ? rawName.split(' ')[0] : 'Unit'),
+    logoUrl: rawLogo ? resolvePrintAssetUrl(rawLogo) : null,
+    npsn: meta.npsn || rawUnit.npsn || '',
+    skPendirian: meta.sk_pendirian || '',
+    izinOperasional: meta.izin_operasional || meta.sk_pendirian || '',
+    address: meta.address || rawUnit.address || '',
+    phone: meta.phone || rawUnit.phone || '',
+    motto: meta.motto || meta.slogan || '',
+    city: meta.city || rawUnit.city || '',
+    raw: rawUnit,
+  }
+}
+
+/**
+ * Update the in-memory DEFAULT_UNITS_CONFIG map from a list of database units
+ */
+export function updateUnitsConfigFromList(unitsList) {
+  if (!Array.isArray(unitsList)) return
+
+  loadedDatabaseUnits = unitsList
+  DEFAULT_UNITS_CONFIG.YAYASAN = getResolvedYayasanConfig()
+
+  unitsList.forEach((unit) => {
+    if (!unit) return
+    const formatted = formatUnitFromDb(unit)
+    if (!formatted) return
+
+    if (unit.id) {
+      DEFAULT_UNITS_CONFIG[String(unit.id)] = formatted
+    }
+    if (formatted.code) {
+      DEFAULT_UNITS_CONFIG[formatted.code.toUpperCase()] = formatted
+      const cleanCode = formatted.code.replace(/[-_0-9]/g, '').toUpperCase()
+      if (cleanCode && !DEFAULT_UNITS_CONFIG[cleanCode]) {
+        DEFAULT_UNITS_CONFIG[cleanCode] = formatted
+      }
+    }
+    if (formatted.name) {
+      DEFAULT_UNITS_CONFIG[formatted.name.toUpperCase()] = formatted
+    }
+  })
+
+  // Cache to localStorage for fast initial render
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(UNITS_DB_CACHE_KEY, JSON.stringify(unitsList))
+    } catch (_) {}
+  }
+}
+
+/**
+ * Fetch education units directly from database via API
+ */
+export async function loadUnitsConfigFromDatabase() {
+  try {
+    const res = await api.get('/education-units', { params: { per_page: 100 } })
+    const units = res.data?.data || (Array.isArray(res.data) ? res.data : [])
+    if (Array.isArray(units) && units.length > 0) {
+      updateUnitsConfigFromList(units)
+      return DEFAULT_UNITS_CONFIG
+    }
+  } catch (err) {
+    // Non-blocking fallback to local cache
+  }
+  return DEFAULT_UNITS_CONFIG
+}
+
+/**
+ * Find unit from database cache by ID, code, name, or search query
+ */
+export function findUnitInDatabase(searchKey) {
+  if (!searchKey) return null
+  if (typeof searchKey === 'object') {
+    if (searchKey.id && DEFAULT_UNITS_CONFIG[String(searchKey.id)]) {
+      return DEFAULT_UNITS_CONFIG[String(searchKey.id)]
+    }
+    return formatUnitFromDb(searchKey)
+  }
+
+  const query = String(searchKey).trim().toUpperCase()
+  if (!query) return null
+
+  if (DEFAULT_UNITS_CONFIG[query]) return DEFAULT_UNITS_CONFIG[query]
+
+  const found = loadedDatabaseUnits.find((u) => {
+    if (!u) return false
+    const id = String(u.id || '').toUpperCase()
+    const code = String(u.code || '').toUpperCase()
+    const name = String(u.name || '').toUpperCase()
+    const level = String(u.level || '').toUpperCase()
+    return (
+      id === query ||
+      code === query ||
+      name === query ||
+      name.includes(query) ||
+      query.includes(name) ||
+      (code && query.includes(code)) ||
+      (level && query.includes(level))
+    )
+  })
+
+  return found ? formatUnitFromDb(found) : null
+}
+
+// Auto-hydrate units from local cache, then asynchronously fetch fresh from database
+if (typeof window !== 'undefined') {
+  try {
+    const cached = localStorage.getItem(UNITS_DB_CACHE_KEY)
+    if (cached) {
+      const parsed = JSON.parse(cached)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        updateUnitsConfigFromList(parsed)
+      }
+    }
+  } catch (_) {}
+
+  setTimeout(() => {
+    loadUnitsConfigFromDatabase().catch(() => {})
+  }, 100)
+}
+
 export function resolveFoundationName(foundationParam) {
   if (foundationParam && String(foundationParam).trim()) return String(foundationParam).trim()
   try {
@@ -250,10 +279,30 @@ export function resolveFoundationName(foundationParam) {
     if (savedPengaturan?.school_name && String(savedPengaturan.school_name).trim()) {
       return String(savedPengaturan.school_name).trim()
     }
+    if (savedPengaturan?.institution_name && String(savedPengaturan.institution_name).trim()) {
+      return String(savedPengaturan.institution_name).trim()
+    }
+    if (savedPengaturan?.nama_yayasan && String(savedPengaturan.nama_yayasan).trim()) {
+      return String(savedPengaturan.nama_yayasan).trim()
+    }
+    if (savedPengaturan?.yayasan && String(savedPengaturan.yayasan).trim()) {
+      return String(savedPengaturan.yayasan).trim()
+    }
     if (savedPengaturan?.application_name && String(savedPengaturan.application_name).trim()) {
       return String(savedPengaturan.application_name).trim()
     }
   } catch (_) {}
+
+  try {
+    const rawUser = typeof localStorage !== 'undefined' ? JSON.parse(localStorage.getItem('school_erp_user') || '{}') : {}
+    if (rawUser?.foundation_name && String(rawUser.foundation_name).trim()) {
+      return String(rawUser.foundation_name).trim()
+    }
+    if (rawUser?.institution_name && String(rawUser.institution_name).trim()) {
+      return String(rawUser.institution_name).trim()
+    }
+  } catch (_) {}
+
   return ''
 }
 
@@ -357,65 +406,73 @@ export function resolveUnitDetails(unitParam, userParam = null) {
       }
       return resolveUnitDetails(userAssignedUnit, user)
     }
+
     const meta = effectiveUnitParam.metadata || {}
-    const levelStr = String(effectiveUnitParam.level || effectiveUnitParam.code || effectiveUnitParam.name || '').toUpperCase()
-    let defaultKey = 'SMAIT'
-    if (levelStr.includes('TAUD')) defaultKey = 'TAUD'
-    else if (levelStr.includes('TK')) defaultKey = 'TKIT'
-    else if (levelStr.includes('MIT')) defaultKey = 'MIT'
-    else if (levelStr.includes('SD')) defaultKey = 'SDIT'
-    else if (levelStr.includes('SMP')) defaultKey = 'SMPIT'
-    else if (levelStr.includes('SMA')) defaultKey = 'SMAIT'
-    else if (levelStr.includes('MAHAD') || levelStr.includes("MA'HAD") || levelStr.includes("JA'FAR") || levelStr.includes('JAFAR')) defaultKey = 'MAHAD'
-    else if (levelStr.includes('PONPES') || levelStr.includes('PESANTREN') || levelStr.includes('MA') || levelStr.includes('ASRAMA')) defaultKey = 'PONPES'
+    const rawName = (
+      effectiveUnitParam.name ||
+      effectiveUnitParam.nama ||
+      effectiveUnitParam.unit_name ||
+      effectiveUnitParam.unitName ||
+      effectiveUnitParam.nama_unit ||
+      (typeof effectiveUnitParam.unit === 'string' ? effectiveUnitParam.unit : '') ||
+      meta.name ||
+      meta.nama ||
+      ''
+    ).trim()
 
-    const fallback = DEFAULT_UNITS_CONFIG[defaultKey] || DEFAULT_UNITS_CONFIG.SMAIT
+    const rawCode = String(effectiveUnitParam.code || effectiveUnitParam.kode || '').trim()
+    const rawLevel = String(effectiveUnitParam.level || meta.jenjang || '').trim()
 
-    const rawLogo = effectiveUnitParam.logo_url || meta.logo_url || meta.logo || fallback.logoUrl || null
-
-    const unitName = effectiveUnitParam.name || fallback.name || ''
-
-    return {
-      isUnitScope: true,
-      code: effectiveUnitParam.code || fallback.code || '',
-      name: unitName,
-      formalName: meta.formal_name || (unitName ? unitName.toUpperCase() : ''),
-      unitName: (unitName || '').toUpperCase(),
-      level: effectiveUnitParam.level || fallback.level || '',
-      unitType: meta.singkatan || effectiveUnitParam.level || fallback.unitType || (unitName ? unitName.split(' ')[0] : ''),
-      logoUrl: rawLogo ? resolvePrintAssetUrl(rawLogo) : null,
-      npsn: meta.npsn || effectiveUnitParam.npsn || '',
-      skPendirian: meta.sk_pendirian || '',
-      izinOperasional: meta.izin_operasional || meta.sk_pendirian || '',
-      address: meta.address || effectiveUnitParam.address || '',
-      phone: meta.phone || effectiveUnitParam.phone || '',
-      motto: meta.motto || meta.slogan || '',
-      city: meta.city || effectiveUnitParam.city || '',
+    // If it's an empty object without name, code, or meaningful fields:
+    if (!rawName && !rawCode && !rawLevel && (!effectiveUnitParam.id || effectiveUnitParam.id === 'all' || effectiveUnitParam.id === 'semua')) {
+      if (!isCentral && userAssignedUnit) {
+        return resolveUnitDetails(userAssignedUnit, user)
+      }
+      return getResolvedYayasanConfig()
     }
+
+    // Lookup unit from database records
+    const dbUnit = findUnitInDatabase(effectiveUnitParam)
+    const formatted = formatUnitFromDb(effectiveUnitParam)
+
+    if (dbUnit) {
+      return {
+        ...dbUnit,
+        ...formatted,
+        logoUrl: formatted.logoUrl || dbUnit.logoUrl || null,
+        name: formatted.name || dbUnit.name,
+        formalName: formatted.formalName || dbUnit.formalName,
+        address: formatted.address || dbUnit.address,
+        phone: formatted.phone || dbUnit.phone,
+        npsn: formatted.npsn || dbUnit.npsn,
+        skPendirian: formatted.skPendirian || dbUnit.skPendirian,
+        izinOperasional: formatted.izinOperasional || dbUnit.izinOperasional,
+        motto: formatted.motto || dbUnit.motto,
+        city: formatted.city || dbUnit.city,
+      }
+    }
+
+    return formatted
   }
 
-  // 2. If explicit specific unit string key or name passed (e.g. 'SMAIT Dar el-Iman - Padang', 'SMPIT 1', etc.)
+  // 2. If explicit specific unit string key or name passed (e.g. 'SDIT 1', 'SMPIT 1', 'Pondok Pesantren', etc.)
   const str = String(effectiveUnitParam || '').trim()
   if (str) {
-    const rawUpper = str.toUpperCase()
-    let defaultKey = 'SMAIT'
-    if (rawUpper.includes('TAUD')) defaultKey = 'TAUD'
-    else if (rawUpper.includes('TK')) defaultKey = 'TKIT'
-    else if (rawUpper.includes('MIT')) defaultKey = 'MIT'
-    else if (rawUpper.includes('SD')) defaultKey = 'SDIT'
-    else if (rawUpper.includes('SMP')) defaultKey = 'SMPIT'
-    else if (rawUpper.includes('SMA')) defaultKey = 'SMAIT'
-    else if (rawUpper.includes('MAHAD') || rawUpper.includes("MA'HAD") || rawUpper.includes("JA'FAR") || rawUpper.includes('JAFAR')) defaultKey = 'MAHAD'
-    else if (rawUpper.includes('PONPES') || rawUpper.includes('PESANTREN') || rawUpper.includes('ASRAMA')) defaultKey = 'PONPES'
+    // Lookup from database
+    const dbUnit = findUnitInDatabase(str)
+    if (dbUnit) {
+      return dbUnit
+    }
 
-    const base = DEFAULT_UNITS_CONFIG[defaultKey] || DEFAULT_UNITS_CONFIG.SMAIT
     return {
-      ...base,
       isUnitScope: true,
+      code: '',
       name: str,
       formalName: str.toUpperCase(),
       unitName: str.toUpperCase(),
-      logoUrl: base.logoUrl ? resolvePrintAssetUrl(base.logoUrl) : null,
+      level: '',
+      unitType: str.split(' ')[0] || 'Unit',
+      logoUrl: null,
       npsn: '',
       skPendirian: '',
       izinOperasional: '',
@@ -499,8 +556,14 @@ export function generateOfficialPrintHeaderHtml({
   const fallbackUnitLogo = resolvePrintAssetUrl(`/assets/logos/${cleanLevel}.svg`) || resolvePrintAssetUrl('/assets/logos/sdit.svg')
   const unitLogoSrc = resolvedUnit.logoUrl || fallbackUnitLogo
 
+  let defaultAddress = ''
+  try {
+    const savedPengaturan = typeof localStorage !== 'undefined' ? JSON.parse(localStorage.getItem('pengaturan_dashboard') || '{}') : {}
+    defaultAddress = (savedPengaturan?.address || savedPengaturan?.footer_text || '').trim()
+  } catch (_) {}
+
   const addressLine = [
-    resolvedUnit.address || 'Jl. Gunung Juaro, Surau Gadang, Kec. Nanggalo, Kota Padang, Sumatera Barat',
+    resolvedUnit.address || defaultAddress || '',
     resolvedUnit.phone ? `Telp. ${resolvedUnit.phone}` : '',
   ].filter(Boolean).join(' | ')
 
@@ -518,9 +581,9 @@ export function generateOfficialPrintHeaderHtml({
 
       <!-- 2. BAGIAN TENGAH: IDENTITAS RESMI (NAMA YAYASAN, NAMA UNIT LENGKAP, ALAMAT UNIT) -->
       <div class="print-center-box">
-        <div class="print-org-name">${foundation || 'YAYASAN DAR EL - IMAN'}</div>
-        <div class="print-school-unit">${resolvedUnit.formalName || resolvedUnit.unitName || resolvedUnit.name || 'SEKOLAH ISLAM TERPADU'}</div>
-        <div class="print-address">${addressLine}</div>
+        ${foundation ? `<div class="print-org-name">${foundation}</div>` : ''}
+        <div class="print-school-unit">${resolvedUnit.formalName || resolvedUnit.unitName || resolvedUnit.name || ''}</div>
+        ${addressLine ? `<div class="print-address">${addressLine}</div>` : ''}
       </div>
 
       <!-- 3. LOGO KANAN: LOGO UNIT PENDIDIKAN -->
@@ -652,11 +715,14 @@ export function printCleanTable({
     } catch (_) {}
   }
 
+  const resolvedUnit = resolveUnitDetails(effectiveUnit, effectiveUser)
+  const foundation = resolveFoundationName(foundationName)
+
   const headerBlockHtml = generateOfficialPrintHeaderHtml({
-    unit: effectiveUnit,
+    unit: resolvedUnit,
     user: effectiveUser,
     systemLogo,
-    foundationName,
+    foundationName: foundation,
     title,
     subtitle,
     period,
@@ -840,8 +906,8 @@ export function printCleanTable({
       </table>
 
       <div class="print-footer">
-        <span>Dokumen Resmi Yayasan</span>
-        <span>Halaman 1 (Laporan Cetak Sah)</span>
+        <span>${customFooter?.left || (resolvedUnit?.isUnitScope ? `Dokumen Resmi ${resolvedUnit.name || 'Unit'}` : (foundation ? `Dokumen Resmi ${foundation}` : 'Dokumen Resmi Lembaga'))}</span>
+        <span>${customFooter?.right || 'Halaman 1 (Laporan Cetak Sah)'}</span>
       </div>
     </body>
     </html>
@@ -1009,12 +1075,327 @@ export async function downloadPdfTable({
 }
 
 /**
+ * Print Weekly Mutaba'ah Yaumiyyah Sheet (Format Fisik 7 Hari)
+ * Exact institutional table format as shown on the official printed mutaba'ah checklist:
+ * - NO | Agenda | Rincian Agenda | Hari/Tanggal (Senin s.d. Ahad)
+ * - Sholat (rowspan) & Mutaba'ah Yaumiyyah (rowspan)
+ * - Differentiated agendas and signatures for Fullday (Ustadz & Ortu) vs Boarding (Musyrif & Ustadz)
+ * - Zero hardcoding, dynamic unit & foundation resolution
+ */
+export function printOfficialMutabaahSheet({
+  student = {},
+  unit = null,
+  period = {},
+  dateFrom = null,
+  teacherNotes = '',
+  homeroomTeacher = {},
+  musyrif = {},
+  isBoarding = null,
+}) {
+  const studentName = student.name || student.full_name || student.nama_lengkap || '-'
+  const studentNis = student.nis || student.student_id || student.nisn || '-'
+  const className = student.className || student.class || student.kelas?.nama_kelas || student.kelas?.name || '-'
+  
+  // Resolve boarding flag dynamically
+  const boardingFlag = isBoarding !== null ? Boolean(isBoarding) : isBoardingStudent(student, unit)
+  const programLabel = boardingFlag ? 'Boarding / Pesantren (Asrama 24 Jam)' : 'Fullday School (Kemitraan Sekolah & Rumah)'
+  
+  // Resolve unit & foundation dynamically (Zero Hardcode)
+  const rawUnit = unit || student.education_unit || student.unit || student.unitName || (boardingFlag ? 'Pondok Pesantren' : 'Sekolah')
+  const resolvedUnit = resolveUnitDetails(rawUnit)
+  const foundation = resolveFoundationName()
+  
+  const weekDays = getWeekDates(dateFrom || period.dateFrom || period.date_from || period.start_date)
+  const { sholat, yaumiyyah } = getMutabaahAgendas(boardingFlag)
+  const signers = getMutabaahSigners(boardingFlag)
+  const periodText = period.title || period.name || `Pekan Berjalan (${weekDays[0]?.dateShort || ''} s.d. ${weekDays[6]?.dateShort || ''})`
+
+  // Remove existing print iframe
+  let iframe = document.getElementById('simsit-print-iframe')
+  if (iframe) {
+    try {
+      document.body.removeChild(iframe)
+    } catch (_) {}
+  }
+
+  iframe = document.createElement('iframe')
+  iframe.id = 'simsit-print-iframe'
+  iframe.style.position = 'fixed'
+  iframe.style.left = '0'
+  iframe.style.top = '0'
+  iframe.style.width = '100%'
+  iframe.style.height = '100%'
+  iframe.style.border = 'none'
+  iframe.style.opacity = '0.001'
+  iframe.style.pointerEvents = 'none'
+  iframe.style.zIndex = '-9999'
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentWindow.document
+  doc.open()
+
+  const headerHtml = generateOfficialPrintHeaderHtml({
+    unit: resolvedUnit,
+    foundationName: foundation,
+    title: 'LEMBAR MUTABA’AH YAUMIYYAH',
+    period: `PERIODE: ${periodText}`,
+    showDivider: true,
+  })
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="UTF-8">
+      <title>Mutaba'ah Yaumiyyah - ${studentName}</title>
+      <style>
+        @page {
+          size: A4 portrait;
+          margin: 6mm 10mm;
+        }
+        * { box-sizing: border-box; }
+        body {
+          font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+          font-size: 7.5pt;
+          color: #0f172a;
+          background: #ffffff;
+          margin: 0;
+          padding: 0;
+          line-height: 1.15;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .student-info-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 4px;
+          padding: 4px 8px;
+          margin-bottom: 5px;
+          font-size: 7.5pt;
+        }
+        .student-info-item {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .student-info-label {
+          font-weight: 700;
+          color: #475569;
+        }
+        .student-info-value {
+          font-weight: 800;
+          color: #0f172a;
+        }
+        .program-tag {
+          font-size: 7pt;
+          font-weight: 800;
+          padding: 1px 5px;
+          border-radius: 4px;
+          background: ${boardingFlag ? '#fef3c7' : '#ecfdf5'};
+          color: ${boardingFlag ? '#92400e' : '#065f46'};
+          border: 1px solid ${boardingFlag ? '#fde68a' : '#a7f3d0'};
+        }
+        table.mutabaah-grid {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 5px;
+        }
+        table.mutabaah-grid th, table.mutabaah-grid td {
+          border: 1px solid #64748b;
+          padding: 2px 4px;
+          font-size: 7pt;
+          line-height: 1.15;
+        }
+        table.mutabaah-grid th {
+          background: #e2e8f0;
+          color: #0f172a;
+          font-weight: 800;
+          text-align: center;
+        }
+        .col-no { width: 22px; text-align: center; font-weight: 700; }
+        .col-cat { width: 60px; text-align: center; font-weight: 800; background: #f8fafc; }
+        .col-desc { font-weight: 600; color: #1e293b; }
+        .col-day { width: 42px; text-align: center; }
+        .paraf-header-box {
+          display: flex;
+          justify-content: space-between;
+          border-bottom: 1px solid #64748b;
+          font-size: 6pt;
+          font-weight: 800;
+          padding-bottom: 1px;
+          margin-bottom: 1px;
+        }
+        .paraf-dots-box {
+          display: flex;
+          justify-content: space-between;
+          font-size: 5.5pt;
+          color: #94a3b8;
+          padding-top: 6px;
+        }
+        .notes-and-closing {
+          margin-top: 4px;
+          display: grid;
+          grid-template-columns: 1.2fr 0.8fr;
+          gap: 6px;
+          font-size: 7pt;
+        }
+        .notes-box {
+          border: 1px solid #cbd5e1;
+          border-radius: 4px;
+          background: #fffbeb;
+          padding: 4px 6px;
+          color: #78350f;
+          line-height: 1.2;
+        }
+        .closing-box {
+          border: 1px solid #cbd5e1;
+          border-radius: 4px;
+          background: #ecfdf5;
+          padding: 4px 6px;
+          text-align: center;
+        }
+        .closing-arabic {
+          font-family: 'Amiri', 'Traditional Arabic', serif;
+          font-size: 9.5pt;
+          font-weight: 800;
+          color: #047857;
+          direction: rtl;
+          margin-top: 1px;
+        }
+        tr { page-break-inside: avoid; }
+      </style>
+    </head>
+    <body>
+      ${headerHtml}
+
+      <div class="student-info-bar">
+        <div class="student-info-item">
+          <span class="student-info-label">Nama:</span>
+          <span class="student-info-value">${studentName}</span>
+        </div>
+        <div class="student-info-item">
+          <span class="student-info-label">NIS:</span>
+          <span class="student-info-value">${studentNis}</span>
+        </div>
+        <div class="student-info-item">
+          <span class="student-info-label">Kelas:</span>
+          <span class="student-info-value">${className}</span>
+        </div>
+        <div class="student-info-item">
+          <span class="student-info-label">Pembimbing:</span>
+          <span class="student-info-value">${student.supervisor || student.musyrif || homeroomTeacher?.name || '-'}</span>
+        </div>
+        <div>
+          <span class="program-tag">${programLabel}</span>
+        </div>
+      </div>
+
+      <table class="mutabaah-grid">
+        <thead>
+          <tr>
+            <th rowspan="2" style="width: 26px;">NO</th>
+            <th rowspan="2" style="width: 70px;">Agenda</th>
+            <th rowspan="2">Rincian Agenda</th>
+            <th colspan="7">Hari/ Tanggal</th>
+          </tr>
+          <tr>
+            ${weekDays.map(w => `<th style="width: 44px; font-size: 7.5pt;">${w.dayName}/<br/><span style="font-weight: 500; font-size: 6.5pt; color: #475569;">${w.dateShort}</span></th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          <!-- GRUP SHOLAT -->
+          ${sholat.map((s, idx) => `
+            <tr>
+              <td class="col-no">${s.no}</td>
+              ${idx === 0 ? `<td rowspan="${sholat.length}" class="col-cat" style="vertical-align: middle;">Sholat</td>` : ''}
+              <td class="col-desc">${s.displayName}</td>
+              ${weekDays.map(() => `<td class="col-day">&nbsp;</td>`).join('')}
+            </tr>
+          `).join('')}
+
+          <!-- GRUP MUTABAAH YAUMIYYAH -->
+          ${yaumiyyah.map((y, idx) => `
+            <tr>
+              <td class="col-no">${y.no}</td>
+              ${idx === 0 ? `<td rowspan="${yaumiyyah.length}" class="col-cat" style="vertical-align: middle;">Mutaba'ah Yaumiyyah</td>` : ''}
+              <td class="col-desc">${y.displayName}</td>
+              ${weekDays.map(() => `<td class="col-day">&nbsp;</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" rowspan="2" style="text-align: center; font-weight: 800; background: #e2e8f0; vertical-align: middle;">Paraf</td>
+            ${weekDays.map(() => `
+              <td style="padding: 2px; text-align: center; background: #f8fafc;">
+                <div class="paraf-header-box">
+                  <span>${signers.left}</span>
+                  <span>${signers.right}</span>
+                </div>
+              </td>
+            `).join('')}
+          </tr>
+          <tr>
+            ${weekDays.map(() => `
+              <td style="padding: 8px 2px 2px 2px; text-align: center;">
+                <div class="paraf-dots-box">
+                  <span>.......</span>
+                  <span>.......</span>
+                </div>
+              </td>
+            `).join('')}
+          </tr>
+        </tfoot>
+      </table>
+
+      <div class="notes-and-closing">
+        <div class="notes-box">
+          <strong>Catatan Pembimbing / Wali Kelas:</strong><br/>
+          ${teacherNotes || `Alhamdulillah ananda ${studentName} menunjukkan kedisiplinan dan adab harian yang baik. Terus pertahankan shalat berjamaah dan mutaba'ah harian.`}
+        </div>
+        <div class="closing-box">
+          <div style="font-weight: 600; color: #065f46;">
+            🤝 Sinergi Pendidikan Karakter & Ibadah Ananda
+          </div>
+          <div class="closing-arabic">
+            جَزَاكُمُ اللَّهُ خَيْرًا وَبَارَكَ اللَّهُ فِيكُمْ
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `
+
+  doc.write(htmlContent)
+  doc.close()
+
+  let printed = false
+  const runPrint = () => {
+    if (printed) return
+    printed = true
+    try {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.focus()
+        iframe.contentWindow.print()
+      }
+    } catch (_) {}
+  }
+
+  iframe.onload = runPrint
+  setTimeout(runPrint, 500)
+}
+
+/**
  * Print Weekly Student Evaluation Report (Format Lembar Evaluasi Terpadu Pekanan)
  */
 export function printWeeklyStudentEvaluation({
   student = {},
   period = {},
   tahfizh = {},
+  showTahfizh = true,
   attendance = [],
   morningAttendance = [],
   prayerAttendance = [],
@@ -1026,30 +1407,63 @@ export function printWeeklyStudentEvaluation({
 }) {
   const studentName = student.name || student.full_name || student.nama_lengkap || '-'
   const studentNis = student.nis || student.student_id || student.nisn || '-'
-  const className = student.className || student.kelas?.nama_kelas || student.kelas?.name || '-'
-  const guruWaliName = guruWali?.name || student.guru_wali || '-'
-  const waliKelasName = homeroomTeacher?.name || student.wali_kelas || '-'
+  const className = student.className || student.class || student.kelas?.nama_kelas || student.kelas?.name || '-'
+  const guruWaliName = guruWali?.name || student.guru_wali || student.musyrif || student.supervisor || '-'
+  const waliKelasName = homeroomTeacher?.name || student.wali_kelas || student.homeroomTeacher || '-'
   const periodText = period.title || period.name || 'Periode Berjalan'
 
-  // Resolve unit details using global canonical resolver
-  const unitObj = student.education_unit || student.unit || {}
-  const resolvedUnit = resolveUnitDetails(unitObj)
+  // Resolve unit details using global canonical resolver (Zero Hardcoding)
+  let rawStudentUnit = null
+  if (
+    student.education_unit &&
+    typeof student.education_unit === 'object' &&
+    Object.keys(student.education_unit).length > 0 &&
+    (student.education_unit.name || student.education_unit.nama || student.education_unit.id || student.education_unit.code)
+  ) {
+    rawStudentUnit = student.education_unit
+  } else if (
+    student.unit &&
+    (typeof student.unit === 'string' ? student.unit.trim() : typeof student.unit === 'object' && Object.keys(student.unit).length > 0)
+  ) {
+    rawStudentUnit = student.unit
+  } else if (student.unitName || student.unit_name || student.nama_unit) {
+    rawStudentUnit = student.unitName || student.unit_name || student.nama_unit
+  } else if (student.raw?.education_unit) {
+    rawStudentUnit = student.raw.education_unit
+  } else if (student.asrama || student.dorm || student.musyrif) {
+    rawStudentUnit = 'Pondok Pesantren'
+  }
 
-  // 1. DATA KEDISIPLINAN & KEHADIRAN PAGI
+  const resolvedUnit = resolveUnitDetails(rawStudentUnit)
+
+  // 100% Otomatis deteksi jenis unit (Boarding vs Fullday)
+  const isBoarding = typeof student.isBoarding === 'boolean'
+    ? student.isBoarding
+    : isBoardingStudent(student, resolvedUnit)
+
+  const programBadge = isBoarding
+    ? 'PESANTREN / BOARDING (PENGASUHAN 24 JAM)'
+    : 'FULLDAY SCHOOL (KEMITRAAN SEKOLAH & RUMAH)'
+
+  const docTitle = isBoarding
+    ? 'LAPORAN EVALUASI MUTABA’AH & PERKEMBANGAN PEKANAN SANTRI'
+    : 'LAPORAN EVALUASI MUTABA’AH & PERKEMBANGAN PEKANAN SISWA'
+
+  // 1. DATA KEDISIPLINAN & KEHADIRAN PAGI / HARIAN
   const finalMorning = Array.isArray(morningAttendance) ? morningAttendance : []
   let morningRowsHtml = ''
   if (finalMorning.length > 0) {
     finalMorning.forEach((m) => {
       morningRowsHtml += `
         <tr>
-          <td style="font-weight: 700; border: 1px solid #cbd5e1; padding: 6px 10px;">${m.dayDate || m.hari || '-'}</td>
-          <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 10px; color: ${m.status === 'Hadir' ? '#0f172a' : '#b91c1c'};">${m.status || 'Hadir'}</td>
-          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 10px; color: #475569;">${m.note || m.catatan || '-'}</td>
+          <td style="font-weight: 700; border: 1px solid #cbd5e1; padding: 4px 8px;">${m.dayDate || m.hari || '-'}</td>
+          <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 4px 8px; color: ${m.status === 'Hadir' ? '#0f172a' : '#b91c1c'};">${m.status || 'Hadir'}</td>
+          <td style="text-align: center; border: 1px solid #cbd5e1; padding: 4px 8px; color: #475569;">${m.note || m.catatan || '-'}</td>
         </tr>
       `
     })
   } else {
-    morningRowsHtml = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 8px 10px; font-style: italic;">Belum ada catatan kedisiplinan pada periode ini.</td></tr>`
+    morningRowsHtml = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 6px 8px; font-style: italic;">Belum ada catatan kedisiplinan pada periode ini.</td></tr>`
   }
 
   // 2. DATA ABSENSI SHALAT BERJAMAAH
@@ -1057,33 +1471,48 @@ export function printWeeklyStudentEvaluation({
   let prayerRowsHtml = ''
   if (finalPrayer.length > 0) {
     finalPrayer.forEach((p) => {
-      prayerRowsHtml += `
-        <tr>
-          <td style="font-weight: 700; border: 1px solid #cbd5e1; padding: 6px 10px;">${p.dayDate || p.hari || '-'}</td>
-          <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 10px;">${p.zuhur || p.dzuhur || '-'}</td>
-          <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 10px;">${p.ashar || '-'}</td>
-        </tr>
-      `
+      if (isBoarding) {
+        prayerRowsHtml += `
+          <tr>
+            <td style="font-weight: 700; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.dayDate || p.hari || '-'}</td>
+            <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.subuh || 'Berjamaah'}</td>
+            <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.zuhur || p.dzuhur || 'Berjamaah'}</td>
+            <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.ashar || 'Berjamaah'}</td>
+            <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.maghrib || 'Berjamaah'}</td>
+            <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.isya || 'Berjamaah'}</td>
+          </tr>
+        `
+      } else {
+        prayerRowsHtml += `
+          <tr>
+            <td style="font-weight: 700; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.dayDate || p.hari || '-'}</td>
+            <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.zuhur || p.dzuhur || 'Berjamaah'}</td>
+            <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.ashar || 'Berjamaah'}</td>
+            <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 6px;">${p.maghrib || p.isya || 'Tervalidasi Ortu'}</td>
+          </tr>
+        `
+      }
     })
   } else {
-    prayerRowsHtml = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 8px 10px; font-style: italic;">Belum ada catatan shalat berjamaah pada periode ini.</td></tr>`
+    const colCount = isBoarding ? 6 : 4
+    prayerRowsHtml = `<tr><td colspan="${colCount}" style="text-align: center; color: #64748b; padding: 6px 8px; font-style: italic;">Belum ada catatan shalat berjamaah pada periode ini.</td></tr>`
   }
 
-  // 4. DATA KEHADIRAN PER MATA PELAJARAN
+  // 3. DATA AGENDA PEMBINAAN & MUTABA'AH YAUMIYYAH
   const finalAttendance = Array.isArray(attendance) ? attendance : []
   let academicRowsHtml = ''
   if (finalAttendance.length > 0) {
     finalAttendance.forEach((item) => {
       academicRowsHtml += `
         <tr>
-          <td style="font-weight: 700; border: 1px solid #cbd5e1; padding: 6px 10px;">${item.dayDate || item.date || '-'}</td>
-          <td style="font-weight: 500; border: 1px solid #cbd5e1; padding: 6px 10px; color: #0f172a;">${item.subject || item.nama_mapel || '-'}</td>
-          <td style="text-align: center; font-weight: 600; border: 1px solid #cbd5e1; padding: 6px 10px; color: ${item.status === 'Hadir' ? '#0f172a' : '#b91c1c'};">${item.status || 'Hadir'}</td>
+          <td style="font-weight: 700; border: 1px solid #cbd5e1; padding: 3.5px 8px; text-align: center;">${item.dayDate || item.date || '-'}</td>
+          <td style="font-weight: 600; border: 1px solid #cbd5e1; padding: 3.5px 8px; color: #0f172a;">${item.subject || item.nama_mapel || item.agenda || '-'}</td>
+          <td style="text-align: center; font-weight: 700; border: 1px solid #cbd5e1; padding: 3.5px 8px; color: #047857;">${item.status || 'Tercapai'}</td>
         </tr>
       `
     })
   } else {
-    academicRowsHtml = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 8px 10px; font-style: italic;">Belum ada catatan kehadiran mata pelajaran pada periode ini.</td></tr>`
+    academicRowsHtml = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 6px 8px; font-style: italic;">Belum ada catatan agenda pembinaan pada periode ini.</td></tr>`
   }
 
   // Remove existing print iframe
@@ -1114,7 +1543,8 @@ export function printWeeklyStudentEvaluation({
     unit: resolvedUnit,
     systemLogo: yayasanLogo,
     foundationName: resolveFoundationName(),
-    title: 'LAPORAN PERKEMBANGAN PEKANAN SISWA',
+    title: docTitle,
+    subtitle: `KURIKULUM: ${programBadge}`,
     period: `PERIODE: ${periodText}`,
     showDivider: true,
   })
@@ -1128,37 +1558,37 @@ export function printWeeklyStudentEvaluation({
       <style>
         @page {
           size: A4 portrait;
-          margin: 15mm;
+          margin: 10mm 12mm 10mm 12mm;
         }
         * { box-sizing: border-box; }
         body {
-          font-family: 'Inter', 'Arial', sans-serif;
-          font-size: 9pt;
+          font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+          font-size: 8pt;
           color: #0f172a;
           background: #ffffff;
           margin: 0;
           padding: 0;
-          line-height: 1.35;
+          line-height: 1.25;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
         .print-official-header {
           display: grid;
-          grid-template-columns: 75px 1fr 75px;
+          grid-template-columns: 70px 1fr 70px;
           align-items: center;
-          gap: 14px;
-          padding-bottom: 4px;
+          gap: 12px;
+          padding-bottom: 2px;
         }
         .print-logo-left-box, .print-unit-logo-wrapper {
-          width: 70px;
-          height: 70px;
+          width: 65px;
+          height: 65px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
         .print-logo-left-img, .print-logo-right-img {
-          max-width: 70px;
-          max-height: 70px;
+          max-width: 65px;
+          max-height: 65px;
           width: auto;
           height: auto;
           object-fit: contain;
@@ -1169,71 +1599,67 @@ export function printWeeklyStudentEvaluation({
           padding: 0 4px;
         }
         .print-org-name {
-          font-size: 11pt;
+          font-size: 10pt;
           font-weight: 800;
           color: #0f172a;
           letter-spacing: 0.5px;
           text-transform: uppercase;
-          margin: 0 0 2px 0;
+          margin: 0 0 1px 0;
           line-height: 1.2;
         }
         .print-school-unit {
-          font-size: 12pt;
+          font-size: 11pt;
           font-weight: 900;
           color: #047857;
           letter-spacing: 0.3px;
           text-transform: uppercase;
-          margin: 0 0 2px 0;
+          margin: 0 0 1px 0;
           line-height: 1.2;
         }
         .print-address {
-          font-size: 8pt;
+          font-size: 7.5pt;
           font-weight: 500;
           color: #475569;
           margin: 1px 0 0 0;
-          line-height: 1.25;
-        }
-        .print-logo-right-box {
-          width: 75px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          line-height: 1.2;
         }
         .print-header-divider {
-          border-top: 2.5px solid #0f172a;
+          border-top: 2px solid #0f172a;
           border-bottom: 1px solid #0f172a;
-          height: 4px;
-          margin-top: 5px;
-          margin-bottom: 12px;
+          height: 3px;
+          margin-top: 4px;
+          margin-bottom: 8px;
         }
         .print-doc-title-container {
           text-align: center;
-          margin-bottom: 12px;
+          margin-bottom: 8px;
         }
         .print-doc-title {
-          font-size: 13.5pt;
+          font-size: 11.5pt;
           font-weight: 900;
           color: #047857;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.4px;
           text-transform: uppercase;
           margin: 0;
-          line-height: 1.25;
+          line-height: 1.2;
         }
         .print-doc-period {
-          font-size: 9pt;
+          font-size: 8pt;
           font-weight: 700;
           color: #334155;
-          margin-top: 3px;
+          margin-top: 2px;
         }
 
         .student-header-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 4px 24px;
-          margin-bottom: 14px;
-          font-size: 9pt;
-          font-weight: 700;
-          color: #0f172a;
+          gap: 3px 20px;
+          margin-bottom: 8px;
+          font-size: 8pt;
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 6px 10px;
         }
         .student-header-col {
           display: flex;
@@ -1242,17 +1668,28 @@ export function printWeeklyStudentEvaluation({
         .student-header-label {
           width: 95px;
           color: #475569;
+          font-weight: 700;
         }
         .student-header-val {
           color: #0f172a;
+          font-weight: 700;
+        }
+        .program-tag-inline {
+          font-size: 7pt;
+          font-weight: 800;
+          padding: 1px 6px;
+          border-radius: 4px;
+          background: ${isBoarding ? '#fef3c7' : '#ecfdf5'};
+          color: ${isBoarding ? '#92400e' : '#065f46'};
+          border: 1px solid ${isBoarding ? '#fde68a' : '#a7f3d0'};
         }
 
         .section-header-title {
-          font-size: 9.5pt;
+          font-size: 8.5pt;
           font-weight: 900;
           color: #047857;
-          margin-top: 12px;
-          margin-bottom: 6px;
+          margin-top: 8px;
+          margin-bottom: 4px;
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
@@ -1260,59 +1697,108 @@ export function printWeeklyStudentEvaluation({
           background: #ea580c;
           color: #ffffff;
           font-weight: 900;
-          font-size: 9pt;
-          padding: 6px 10px;
+          font-size: 8pt;
+          padding: 4px 8px;
           text-transform: uppercase;
-          margin-top: 12px;
+          margin-top: 8px;
+          border-radius: 4px 4px 0 0;
         }
 
         .data-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 10px;
+          margin-bottom: 6px;
         }
         .data-table th {
           background: #ecfdf5;
           color: #064e3b;
           font-weight: 800;
-          font-size: 8.5pt;
+          font-size: 7.5pt;
           border: 1px solid #cbd5e1;
-          padding: 6px 10px;
+          padding: 3.5px 6px;
           text-align: center;
         }
         .data-table td {
-          font-size: 8.5pt;
+          font-size: 7.5pt;
           border: 1px solid #cbd5e1;
-          padding: 5px 10px;
+          padding: 3px 6px;
         }
 
         .notes-content-box {
           border: 1px solid #cbd5e1;
           border-top: none;
-          padding: 10px 12px;
-          min-height: 40px;
-          font-size: 8.5pt;
+          padding: 6px 10px;
+          min-height: 32px;
+          font-size: 7.5pt;
           color: #1e293b;
           background: #fffbeb;
-          margin-bottom: 12px;
+          margin-bottom: 8px;
+          border-radius: 0 0 4px 4px;
+        }
+
+        .signature-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-top: 8px;
+          margin-bottom: 8px;
+          page-break-inside: avoid;
+        }
+        .signature-box {
+          text-align: center;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 6px 10px;
+          background: #f8fafc;
+        }
+        .sig-title {
+          font-size: 7.5pt;
+          font-weight: 800;
+          color: #475569;
+          text-transform: uppercase;
+        }
+        .sig-space {
+          height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-style: italic;
+          color: #94a3b8;
+          font-size: 7pt;
+        }
+        .sig-name {
+          font-size: 8pt;
+          font-weight: 800;
+          color: #0f172a;
+          border-top: 1px dashed #cbd5e1;
+          padding-top: 3px;
+        }
+        .sig-sub {
+          font-size: 6.5pt;
+          color: #64748b;
+          margin-top: 1px;
         }
 
         .closing-box {
-          margin-top: 16px;
-          font-size: 8.5pt;
-          line-height: 1.5;
+          margin-top: 6px;
+          font-size: 7.5pt;
+          line-height: 1.35;
           color: #0f172a;
+          border-top: 1px solid #e2e8f0;
+          padding-top: 4px;
+          text-align: center;
         }
         .closing-p {
-          margin-bottom: 8px;
+          margin-bottom: 2px;
           font-weight: 600;
+          color: #334155;
         }
         .closing-arabic {
           text-align: center;
           font-family: 'Amiri', 'Traditional Arabic', serif;
-          font-size: 13pt;
+          font-size: 11pt;
           font-weight: 800;
-          margin: 12px 0 8px 0;
+          margin: 3px 0 0 0;
           color: #047857;
           direction: rtl;
         }
@@ -1322,34 +1808,42 @@ export function printWeeklyStudentEvaluation({
     <body>
       ${headerHtml}
 
-      <!-- DATA IDENTITAS SISWA & WALI -->
+      <!-- DATA IDENTITAS SISWA / SANTRI -->
       <div class="student-header-grid">
         <div class="student-header-col">
-          <span class="student-header-label">Nama Siswa</span>
+          <span class="student-header-label">${isBoarding ? 'Nama Santri' : 'Nama Siswa'}</span>
           <span class="student-header-val">: ${studentName}</span>
         </div>
         <div class="student-header-col">
-          <span class="student-header-label">Kelas</span>
+          <span class="student-header-label">Kelas / Rombel</span>
           <span class="student-header-val">: ${className}</span>
         </div>
         <div class="student-header-col">
-          <span class="student-header-label">NIS</span>
+          <span class="student-header-label">NIS / ID</span>
           <span class="student-header-val">: ${studentNis}</span>
         </div>
         <div class="student-header-col">
-          <span class="student-header-label">Wali Kelas</span>
-          <span class="student-header-val">: ${waliKelasName}</span>
+          <span class="student-header-label">${isBoarding ? 'Kamar / Asrama' : 'Wali Kelas'}</span>
+          <span class="student-header-val">: ${isBoarding ? (student.asrama || student.dorm || 'Asrama Santri') : waliKelasName}</span>
+        </div>
+        <div class="student-header-col">
+          <span class="student-header-label">${isBoarding ? 'Musyrif Pembina' : 'Guru Wali'}</span>
+          <span class="student-header-val">: ${isBoarding ? (student.musyrif || student.supervisor || guruWaliName || '-') : (guruWaliName || '-')}</span>
+        </div>
+        <div class="student-header-col">
+          <span class="student-header-label">Kurikulum Unit</span>
+          <span class="student-header-val">: <span class="program-tag-inline">${programBadge}</span></span>
         </div>
       </div>
 
-      <!-- 1. KEDISIPLINAN & KEHADIRAN PAGI -->
-      <div class="section-header-title">1. KEDISIPLINAN & KEHADIRAN PAGI</div>
+      <!-- 1. KEDISIPLINAN & KEHADIRAN -->
+      <div class="section-header-title">1. ${isBoarding ? 'KEDISIPLINAN & KETERTIBAN ASRAMA (APEL & SHUBUH)' : 'KEDISIPLINAN & KEHADIRAN PAGI SEKOLAH'}</div>
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width: 35%;">Hari, Tanggal</th>
-            <th style="width: 25%;">Kehadiran Pagi</th>
-            <th style="width: 40%;">Catatan Pelanggaran Kedisiplinan</th>
+            <th style="width: 32%;">Hari, Tanggal</th>
+            <th style="width: 25%;">${isBoarding ? 'Kehadiran Apel' : 'Kehadiran Pagi'}</th>
+            <th style="width: 43%;">Catatan Kedisiplinan & Adab</th>
           </tr>
         </thead>
         <tbody>
@@ -1358,57 +1852,40 @@ export function printWeeklyStudentEvaluation({
       </table>
 
       <!-- 2. ABSENSI SHALAT BERJAMAAH -->
-      <div class="section-header-title">2. ABSENSI SHALAT BERJAMAAH</div>
+      <div class="section-header-title">2. ${isBoarding ? 'ABSENSI SHALAT FARDHU BERJAMAAH (MASJID PESANTREN)' : 'ABSENSI SHALAT BERJAMAAH (SEKOLAH & RUMAH)'}</div>
       <table class="data-table">
         <thead>
-          <tr>
-            <th style="width: 40%;">Hari, Tanggal</th>
-            <th style="width: 30%;">Shalat Zuhur</th>
-            <th style="width: 30%;">Shalat Ashar</th>
-          </tr>
+          ${
+            isBoarding
+              ? `<tr>
+                  <th style="width: 25%;">Hari, Tanggal</th>
+                  <th style="width: 15%;">Subuh</th>
+                  <th style="width: 15%;">Zuhur</th>
+                  <th style="width: 15%;">Ashar</th>
+                  <th style="width: 15%;">Maghrib</th>
+                  <th style="width: 15%;">Isya</th>
+                </tr>`
+              : `<tr>
+                  <th style="width: 34%;">Hari, Tanggal</th>
+                  <th style="width: 22%;">Shalat Zuhur (Sekolah)</th>
+                  <th style="width: 22%;">Shalat Ashar (Sekolah)</th>
+                  <th style="width: 22%;">Shalat Maghrib/Isya (Rumah)</th>
+                </tr>`
+          }
         </thead>
         <tbody>
           ${prayerRowsHtml}
         </tbody>
       </table>
 
-      <!-- 3. CAPAIAN TAHSIN & TAHFIZH -->
-      <div class="section-header-orange">3. CAPAIAN TAHSIN & TAHFIZH</div>
-      <table class="data-table" style="margin-bottom: 12px;">
-        <tbody>
-          <tr>
-            <td style="width: 40%; font-weight: 700;">Hafalan Terakhir</td>
-            <td style="width: 60%;">${tahfizh.lastSurah || tahfizh.surah || '-'}</td>
-          </tr>
-          <tr>
-            <td style="font-weight: 700;">Tanggal Setoran Terakhir</td>
-            <td>${tahfizh.lastDepositDate || tahfizh.tanggal || '-'}</td>
-          </tr>
-          <tr>
-            <td style="font-weight: 700;">Total Baris (Periode Ini)</td>
-            <td>${tahfizh.totalLines != null ? `${tahfizh.totalLines} Baris` : '-'}</td>
-          </tr>
-          <tr>
-            <td style="font-weight: 700;">Target Baris Pekan Ini</td>
-            <td>${tahfizh.targetLines != null ? `${tahfizh.targetLines} Baris` : '-'}</td>
-          </tr>
-          <tr>
-            <td style="font-weight: 700;">Status Pencapaian</td>
-            <td style="font-weight: 900; color: #047857;">
-              ● ${tahfizh.status || '-'}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- 4. KEHADIRAN PER MATA PELAJARAN (AKADEMIK) -->
-      <div class="section-header-title">4. KEHADIRAN PER MATA PELAJARAN (AKADEMIK)</div>
+      <!-- 3. AGENDA PEMBINAAN & MUTABA'AH YAUMIYYAH -->
+      <div class="section-header-title">3. EVALUASI AGENDA PEMBINAAN & MUTABA'AH YAUMIYYAH</div>
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width: 32%;">Hari, Tanggal</th>
-            <th style="width: 44%;">Mata Pelajaran</th>
-            <th style="width: 24%;">Status Kehadiran</th>
+            <th style="width: 28%;">Waktu / Frekuensi</th>
+            <th style="width: 48%;">Agenda Pembinaan Karakter & Ibadah</th>
+            <th style="width: 24%;">Status Capaian</th>
           </tr>
         </thead>
         <tbody>
@@ -1416,16 +1893,34 @@ export function printWeeklyStudentEvaluation({
         </tbody>
       </table>
 
-      <!-- 5. CATATAN GURU -->
-      <div class="section-header-orange">5. CATATAN GURU</div>
+      <!-- 4. CATATAN PEMBINA & EVALUASI PEKANAN -->
+      <div class="section-header-orange">4. CATATAN PEMBINA & EVALUASI PEKANAN</div>
       <div class="notes-content-box">
-        ${teacherNotes || 'Tidak ada catatan khusus pada periode ini. Tingkatkan terus kedisiplinan dan hafalan Ananda.'}
+        ${teacherNotes || `Alhamdulillah ananda ${studentName} menunjukkan komitmen adab dan ibadah yang baik pada periode ini. Terus tingkatkan kedisiplinan dan mutaba'ah harian.`}
+      </div>
+
+      <!-- 5. TANDA TANGAN & PENGESAHAN -->
+      <div class="signature-grid">
+        <div class="signature-box">
+          <div class="sig-title">${isBoarding ? 'Musyrif Asrama / Pembina' : 'Wali Kelas'}</div>
+          <div class="sig-space">( Tanda Tangan & Evaluasi )</div>
+          <div class="sig-name">${isBoarding ? (student.musyrif || student.supervisor || guruWaliName || 'Musyrif Pembina Asrama') : (waliKelasName || 'Wali Kelas')}</div>
+          <div class="sig-sub">${isBoarding ? 'Pembina Asrama Santri' : `Wali Kelas ${className}`}</div>
+        </div>
+        <div class="signature-box">
+          <div class="sig-title">${isBoarding ? 'Kepala Pengasuhan / Mudir Asrama' : 'Orang Tua / Wali Siswa'}</div>
+          <div class="sig-space">( Tanda Tangan & Sinergi )</div>
+          <div class="sig-name">${isBoarding ? 'Ustadz Pengasuhan Santri' : (student.parentName || student.parent_name || 'Orang Tua / Wali Siswa')}</div>
+          <div class="sig-sub">${isBoarding ? 'Bidang Pengasuhan & Karakter' : 'Mitra Sinergi Sekolah & Rumah'}</div>
+        </div>
       </div>
 
       <!-- PESAN KEMITRAAN & DOA -->
       <div class="closing-box">
         <div class="closing-p">
-          🤝 Kami meyakini bahwa keberhasilan pendidikan Ananda merupakan hasil sinergi antara sekolah dan keluarga. Semoga Allah ﷻ senantiasa menjaga, membimbing, dan memberkahi langkah Ananda dalam menuntut ilmu.
+          🤝 ${isBoarding
+            ? 'Keberhasilan pembinaan santri merupakan amanah bersama dalam membentuk generasi Qurani yang berakhlakul karimah.'
+            : 'Kami meyakini bahwa keberhasilan pendidikan ananda merupakan buah sinergi yang kokoh antara sekolah dan keluarga.'}
         </div>
         <div class="closing-arabic">
           جَزَاكُمُ اللَّهُ خَيْرًا وَبَارَكَ اللَّهُ فِيكُمْ
@@ -1487,25 +1982,32 @@ export function printWeeklyStudentEvaluation({
  *                           Alamat Unit
  * ================================================= (Double Line Border)
  */
-export function printWeeklyMutabaahSheet({
-  student = {},
-  period = {},
-  programType = 'fullday',
-  templateName = '',
-  days = [],
-  items = [],
-  values = {},
-  completionRate = 0,
-  teacherNotes = '',
-  homeroomTeacher = null,
-  headmasterName = null,
-  unit = null,
-  user = null,
-  systemLogo = null,
-  foundationName = null,
-  orientation = 'portrait',
-  printRange = 'pekanan', // 'pekanan' | 'bulanan' | 'semester'
-}) {
+export function printWeeklyMutabaahSheet(params = {}) {
+  // If called without items/days or explicitly as physical sheet, delegate to official 7-day checklist format
+  if (params && ((!params.items || params.items.length === 0) && (!params.days || params.days.length === 0))) {
+    return printOfficialMutabaahSheet(params)
+  }
+
+  const {
+    student = {},
+    period = {},
+    programType = 'fullday',
+    templateName = '',
+    days = [],
+    items = [],
+    values = {},
+    completionRate = 0,
+    teacherNotes = '',
+    homeroomTeacher = null,
+    headmasterName = null,
+    unit = null,
+    user = null,
+    systemLogo = null,
+    foundationName = null,
+    orientation = 'portrait',
+    printRange = 'pekanan', // 'pekanan' | 'bulanan' | 'semester'
+  } = params
+
   const effectiveOrientation = printRange === 'semester' ? 'landscape' : orientation === 'landscape' ? 'landscape' : 'portrait'
   const iframe = getOrCreatePrintIframe()
 
@@ -1721,7 +2223,7 @@ export function printWeeklyMutabaahSheet({
       <div class="notes-content-box">
         <strong>Rekomendasi Rapor Mutaba'ah & Karakter Islami Semester:</strong><br>
         <span style="font-style: italic;">
-          ${teacherNotes || `Ananda ${studentName} dinyatakan Tuntas dan Memenuhi Standar Kelulusan Karakter & Pembiasaan Ibadah Semester Ganjil TA 2026/2027. Dipertahankan dan ditingkatkan pada semester berikutnya.`}
+          ${teacherNotes || `Ananda ${studentName} dinyatakan Tuntas dan Memenuhi Standar Kelulusan Karakter & Pembiasaan Ibadah ${period.title || 'Semester Berjalan'}. Dipertahankan dan ditingkatkan pada semester berikutnya.`}
         </span>
       </div>
     `
