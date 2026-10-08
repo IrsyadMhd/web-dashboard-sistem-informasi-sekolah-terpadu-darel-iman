@@ -99,7 +99,14 @@ export default function StudentLeaderAnalyticsSection({
     const uniqueFromStudents = Array.from(
       new Set(
         students
-          .map((s) => s.kelas || s.raw?.kelas?.nama_kelas)
+          .map((s) => {
+            if (typeof s.kelas === 'object') return s.kelas?.nama_kelas || s.kelas?.name || ''
+            if (typeof s.kelas === 'string') return s.kelas
+            if (s.raw?.kelas) {
+              return typeof s.raw.kelas === 'object' ? (s.raw.kelas?.nama_kelas || s.raw.kelas?.name || '') : String(s.raw.kelas)
+            }
+            return ''
+          })
           .filter((k) => k && k !== '-')
       )
     )
@@ -391,11 +398,18 @@ export default function StudentLeaderAnalyticsSection({
                 >
                   <option value="">Semua Kelas</option>
                   {availableKelasList.map((c, idx) => {
-                    const val = typeof c === 'string' ? c : (c.nama_kelas || c.name || c.id)
-                    const label = typeof c === 'string' ? c : (c.nama_kelas || c.name || `Kelas ${c.id}`)
+                    const getStr = (v) => {
+                      if (!v) return ''
+                      if (typeof v === 'string' || typeof v === 'number') return String(v)
+                      if (typeof v === 'object') return String(v.nama_kelas || v.name || v.id || '')
+                      return ''
+                    }
+                    const val = typeof c === 'string' ? c : (getStr(c?.nama_kelas) || getStr(c?.name) || getStr(c?.id) || `opt-${idx}`)
+                    const rawLabel = typeof c === 'string' ? c : (getStr(c?.nama_kelas) || getStr(c?.name) || `Kelas ${getStr(c?.id)}`)
+                    const label = String(rawLabel).toLowerCase().startsWith('kelas') ? rawLabel : `Kelas ${rawLabel}`
                     return (
-                      <option key={c.id ? `opt-kls-${c.id}-${idx}` : `opt-kls-${val}-${idx}`} value={val}>
-                        {String(label).toLowerCase().startsWith('kelas') ? label : `Kelas ${label}`}
+                      <option key={`opt-kls-${val}-${idx}`} value={val}>
+                        {label}
                       </option>
                     )
                   })}
@@ -776,11 +790,18 @@ export default function StudentLeaderAnalyticsSection({
                   >
                     <option value="">Semua Kelas</option>
                     {availableKelasList.map((c, idx) => {
-                      const val = typeof c === 'string' ? c : (c.nama_kelas || c.name || c.id)
-                      const label = typeof c === 'string' ? c : (c.nama_kelas || c.name || `Kelas ${c.id}`)
+                      const getStr = (v) => {
+                        if (!v) return ''
+                        if (typeof v === 'string' || typeof v === 'number') return String(v)
+                        if (typeof v === 'object') return String(v.nama_kelas || v.name || v.id || '')
+                        return ''
+                      }
+                      const val = typeof c === 'string' ? c : (getStr(c?.nama_kelas) || getStr(c?.name) || getStr(c?.id) || `modal-opt-${idx}`)
+                      const rawLabel = typeof c === 'string' ? c : (getStr(c?.nama_kelas) || getStr(c?.name) || `Kelas ${getStr(c?.id)}`)
+                      const label = String(rawLabel).toLowerCase().startsWith('kelas') ? rawLabel : `Kelas ${rawLabel}`
                       return (
-                        <option key={c.id ? `modal-kls-${c.id}-${idx}` : `modal-kls-${val}-${idx}`} value={val}>
-                          {String(label).toLowerCase().startsWith('kelas') ? label : `Kelas ${label}`}
+                        <option key={`modal-kls-${val}-${idx}`} value={val}>
+                          {label}
                         </option>
                       )
                     })}

@@ -19,6 +19,7 @@ export function TahfizhSubNav() {
   const roles = user?.roles || []
   const userRoles = Array.isArray(roles) ? roles.map((r) => (typeof r === 'string' ? r : r?.name || '')) : []
   const isTeacher = userRoles.some((r) => /guru|musyrif|wali_kelas/i.test(r))
+  const isGuruTahfizhScope = userRoles.some((r) => /guru[_\s-]?tahfizh|musyrif/i.test(r))
   const isParent = isParentRole(roles)
   const isStudent = isStudentRole(roles)
 
@@ -48,13 +49,15 @@ export function TahfizhSubNav() {
         classes: 'bg-gradient-to-br from-violet-500 via-violet-600 to-purple-700 text-white border border-violet-300/40',
       },
     ] : []),
-    {
-      id: '/dashboard/guru-tahfizh',
-      path: '/dashboard/guru-tahfizh',
-      label: 'Dashboard Guru',
-      icon: UserCheck,
-      classes: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40',
-    },
+    ...(isGuruTahfizhScope ? [
+      {
+        id: '/dashboard/guru-tahfizh',
+        path: '/dashboard/guru-tahfizh',
+        label: 'Dashboard Guru Tahfizh',
+        icon: UserCheck,
+        classes: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40',
+      },
+    ] : []),
     ...(!(isParent || isStudent) ? [
       {
         id: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren',

@@ -81,8 +81,8 @@ export function MasterDataPage({
       '/dashboard/master/mata-pelajaran': 'Mata Pelajaran',
       '/dashboard/master-jabatan': 'Jabatan',
       '/dashboard/employees': 'Pegawai',
-      '/dashboard/students': 'Siswa',
-      '/dashboard/master/siswa': 'Data Siswa',
+      '/dashboard/students': 'Buku Induk Siswa',
+      '/dashboard/master/siswa': 'Buku Induk Siswa',
     }
     const label = labelMap[path] || 'Data Master'
     return [

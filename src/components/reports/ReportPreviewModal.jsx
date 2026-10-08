@@ -45,9 +45,18 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
         <DialogBody className="space-y-6 py-4 overflow-y-auto max-h-[72vh] print:max-h-none print:overflow-visible print:p-0 print:text-slate-900 text-slate-800 dark:text-slate-100 font-sans">
           {/* Foundation Letterhead */}
           <div className="border-b-2 border-[#0E5C44] pb-4 text-center">
-            <div className="inline-flex items-center gap-2 text-[#0E5C44] dark:text-emerald-400 font-black text-xl uppercase tracking-wide">
-              <Building2 className="h-6 w-6" /> YAYASAN DAR EL-IMAN PADANG
-            </div>
+            {(() => {
+              let schoolName = ''
+              try {
+                const saved = typeof localStorage !== 'undefined' ? JSON.parse(localStorage.getItem('pengaturan_dashboard') || '{}') : {}
+                schoolName = (saved?.school_name || saved?.institution_name || saved?.application_name || '').trim()
+              } catch (_) {}
+              return schoolName ? (
+                <div className="inline-flex items-center gap-2 text-[#0E5C44] dark:text-emerald-400 font-black text-xl uppercase tracking-wide">
+                  <Building2 className="h-6 w-6" /> {schoolName}
+                </div>
+              ) : null
+            })()}
             <h2 className="mt-1 font-bold text-lg text-slate-900 dark:text-white uppercase">{title}</h2>
             <p className="text-xs text-slate-500">Periode: {periodLabel} • Dicetak: {generatedAt}</p>
           </div>

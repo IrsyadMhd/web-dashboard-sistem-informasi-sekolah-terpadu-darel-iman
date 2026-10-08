@@ -31,21 +31,62 @@ export default function JabatanImportModal({ isOpen, onClose, onImport, isSubmit
       const headerMap = {
         'kode_jabatan': 'kode_jabatan',
         'kode jabatan': 'kode_jabatan',
+        'kode': 'kode_jabatan',
         'nama_jabatan': 'nama_jabatan',
         'nama jabatan': 'nama_jabatan',
+        'nama': 'nama_jabatan',
+        'name': 'nama_jabatan',
         'satuan_kerja': 'satuan_kerja',
         'satuan kerja': 'satuan_kerja',
         'scope_akses': 'scope_akses',
         'scope akses': 'scope_akses',
         'level_jabatan': 'level_jabatan',
         'level jabatan': 'level_jabatan',
+        'level': 'level_jabatan',
+        'level_label': 'level_label',
+        'level label': 'level_label',
+        'unit_sekolah': 'unit_sekolah',
+        'unit sekolah': 'unit_sekolah',
+        'unit_sekolah_id': 'unit_sekolah_id',
+        'unit_id': 'unit_sekolah_id',
+        'unit': 'unit_sekolah',
+        'atasan_langsung': 'atasan_langsung',
+        'atasan langsung': 'atasan_langsung',
+        'role_sistem': 'role_sistem',
+        'role sistem': 'role_sistem',
         'urutan': 'urutan',
         'warna': 'warna',
         'ikon': 'ikon',
         'deskripsi': 'deskripsi',
+        'description': 'deskripsi',
         'status': 'status',
         'tampil_struktur': 'tampil_struktur',
+        'tampil struktur': 'tampil_struktur',
         'boleh_login': 'boleh_login',
+        'boleh login': 'boleh_login',
+        'jumlah_pegawai': 'jumlah_pegawai',
+        'jumlah pegawai': 'jumlah_pegawai',
+      }
+
+      const parseBool = (val, defaultVal = true) => {
+        if (val === undefined || val === null || val === '' || val === '-') return defaultVal
+        if (typeof val === 'boolean') return val
+        if (typeof val === 'number') return val === 1
+        const str = String(val).toLowerCase().trim()
+        if (['ya', 'y', 'true', '1', 'aktif', 'active', 'yes'].includes(str)) return true
+        if (['tidak', 't', 'false', '0', 'nonaktif', 'inactive', 'no'].includes(str)) return false
+        return defaultVal
+      }
+
+      const parseLevel = (val, defaultVal = 8) => {
+        if (typeof val === 'number' && !isNaN(val)) return val >= 1 && val <= 10 ? val : defaultVal
+        const str = String(val || '')
+        const match = str.match(/\d+/)
+        if (match) {
+          const num = parseInt(match[0], 10)
+          return num >= 1 && num <= 10 ? num : defaultVal
+        }
+        return defaultVal
       }
 
       const rows = await parseSpreadsheetFile(selected, {
@@ -54,15 +95,20 @@ export default function JabatanImportModal({ isOpen, onClose, onImport, isSubmit
           ...row,
           kode_jabatan: row.kode_jabatan || '',
           nama_jabatan: row.nama_jabatan || '',
-          satuan_kerja: row.satuan_kerja || 'Unit Pendidikan',
-          scope_akses: row.scope_akses || 'unit_sendiri',
-          level_jabatan: Number(row.level_jabatan) || 8,
-          urutan: Number(row.urutan) || 1,
-          warna: row.warna || '#3B82F6',
-          ikon: row.ikon || 'UserCheck',
-          status: row.status || 'Aktif',
-          tampil_struktur: row.tampil_struktur !== undefined && row.tampil_struktur !== '' ? row.tampil_struktur : true,
-          boleh_login: row.boleh_login !== undefined && row.boleh_login !== '' ? row.boleh_login : true,
+          satuan_kerja: row.satuan_kerja && row.satuan_kerja !== '-' ? row.satuan_kerja : 'Unit Pendidikan',
+          scope_akses: row.scope_akses && row.scope_akses !== '-' ? row.scope_akses : 'unit_sendiri',
+          level_jabatan: parseLevel(row.level_jabatan, 8),
+          unit_sekolah: row.unit_sekolah && row.unit_sekolah !== '-' ? row.unit_sekolah : '',
+          unit_sekolah_id: row.unit_sekolah_id || undefined,
+          atasan_langsung: row.atasan_langsung && row.atasan_langsung !== '-' ? row.atasan_langsung : '',
+          role_sistem: row.role_sistem && row.role_sistem !== '-' ? row.role_sistem : '',
+          urutan: Number(row.urutan) || 0,
+          warna: row.warna && row.warna !== '-' ? row.warna : '#3B82F6',
+          ikon: row.ikon && row.ikon !== '-' ? row.ikon : 'UserCheck',
+          deskripsi: row.deskripsi && row.deskripsi !== '-' ? row.deskripsi : '',
+          status: parseBool(row.status, true) ? 'Aktif' : 'Nonaktif',
+          tampil_struktur: parseBool(row.tampil_struktur, true),
+          boleh_login: parseBool(row.boleh_login, false),
         }),
       })
 
@@ -95,18 +141,36 @@ export default function JabatanImportModal({ isOpen, onClose, onImport, isSubmit
   const handleDownloadTemplate = (type = 'xlsx') => {
     const sampleData = [
       {
-        kode_jabatan: 'JBT-101',
-        nama_jabatan: 'Koordinator Ekstrakurikuler',
-        satuan_kerja: 'Unit Pendidikan',
-        scope_akses: 'siswa_binaan',
-        level_jabatan: 8,
-        urutan: 15,
-        warna: '#3B82F6',
-        ikon: 'UserCheck',
-        deskripsi: 'Mengkoordinasi seluruh kegiatan ekstrakurikuler siswa',
-        status: 'Aktif',
-        tampil_struktur: true,
-        boleh_login: true,
+        'Kode Jabatan': 'JBT-101',
+        'Nama Jabatan': 'Koordinator Ekstrakurikuler',
+        'Satuan Kerja': 'Unit Pendidikan',
+        'Level': 8,
+        'Level Label': 'Level 8 - Guru',
+        'Unit Sekolah': 'Mahad Abu Ja\'far',
+        'Atasan Langsung': 'Kepala Sekolah',
+        'Role Sistem': 'Guru',
+        'Scope Akses': 'siswa_binaan',
+        'Urutan': 15,
+        'Status': 'Aktif',
+        'Tampil Struktur': 'Ya',
+        'Boleh Login': 'Ya',
+        'Deskripsi': 'Mengkoordinasi seluruh kegiatan ekstrakurikuler siswa',
+      },
+      {
+        'Kode Jabatan': 'JBT-102',
+        'Nama Jabatan': 'Staf Tata Usaha Unit',
+        'Satuan Kerja': 'Unit Pendidikan',
+        'Level': 6,
+        'Level Label': 'Level 6 - Tata Usaha',
+        'Unit Sekolah': 'Mahad Abu Ja\'far',
+        'Atasan Langsung': 'Kepala Sekolah',
+        'Role Sistem': 'Tata Usaha',
+        'Scope Akses': 'unit_sendiri',
+        'Urutan': 16,
+        'Status': 'Aktif',
+        'Tampil Struktur': 'Ya',
+        'Boleh Login': 'Ya',
+        'Deskripsi': 'Pengelolaan administrasi operasional sekolah',
       },
     ]
 
@@ -310,13 +374,15 @@ export default function JabatanImportModal({ isOpen, onClose, onImport, isSubmit
 
                       {/* Mini Preview Table */}
                       <div className="mt-3 overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 max-h-36">
-                        <table className="w-full min-w-[420px] text-left text-[10px]">
+                        <table className="w-full min-w-[500px] text-left text-[10px]">
                           <thead className="bg-emerald-100/80 dark:bg-emerald-950/60">
                             <tr>
                               <th className="px-3 py-2 font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">No</th>
-                              <th className="px-3 py-2 font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">Kode Jabatan</th>
+                              <th className="px-3 py-2 font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">Kode</th>
                               <th className="px-3 py-2 font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">Nama Jabatan</th>
                               <th className="px-3 py-2 font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">Level</th>
+                              <th className="px-3 py-2 font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">Unit Sekolah</th>
+                              <th className="px-3 py-2 font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wide">Status</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
@@ -332,11 +398,17 @@ export default function JabatanImportModal({ isOpen, onClose, onImport, isSubmit
                                 <td className="px-3 py-1.5 text-slate-500">
                                   {row.level_jabatan ? `Level ${row.level_jabatan}` : '-'}
                                 </td>
+                                <td className="px-3 py-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[120px]">
+                                  {row.unit_sekolah || (row.unit_sekolah_id ? 'Terkait Unit' : 'Auto / Sesuai Akun')}
+                                </td>
+                                <td className="px-3 py-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+                                  {row.status || 'Aktif'}
+                                </td>
                               </tr>
                             ))}
                             {parsedData.length > 5 && (
                               <tr>
-                                <td colSpan={4} className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400 italic">
+                                <td colSpan={6} className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400 italic">
                                   ... dan {parsedData.length - 5} baris lainnya
                                 </td>
                               </tr>

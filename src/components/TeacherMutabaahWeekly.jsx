@@ -561,7 +561,7 @@ export default function TeacherMutabaahWeekly({
       unit: currentAssignment?.unit_name || null,
       user,
       systemLogo: pengaturan?.logo_url || null,
-      foundationName: pengaturan?.school_name || 'YAYASAN DAR EL-IMAN',
+      foundationName: pengaturan?.school_name || null,
       orientation: rangeMode === 'semester' ? 'landscape' : 'portrait',
     })
   }
@@ -1321,14 +1321,16 @@ export default function TeacherMutabaahWeekly({
 
                     {/* Tengah: Nama Yayasan, Nama Unit Lengkap, Alamat */}
                     <div className="px-2">
-                      <h4 className="text-[11pt] font-extrabold uppercase tracking-wide text-slate-900 leading-tight">
-                        {pengaturan?.school_name || 'YAYASAN DAR EL-IMAN'}
-                      </h4>
+                      {pengaturan?.school_name && (
+                        <h4 className="text-[11pt] font-extrabold uppercase tracking-wide text-slate-900 leading-tight">
+                          {pengaturan.school_name}
+                        </h4>
+                      )}
                       <h5 className="text-[12pt] font-black uppercase tracking-tight text-emerald-800 leading-tight mt-0.5">
-                        {currentAssignment?.unit_name || 'SEKOLAH ISLAM TERPADU DAR EL-IMAN'}
+                        {currentAssignment?.unit_name || 'SEKOLAH ISLAM TERPADU'}
                       </h5>
                       <p className="text-[8pt] font-medium text-slate-600 leading-snug mt-1">
-                        {pengaturan?.address || 'Jl. Gunung Juaro, Surau Gadang, Kec. Nanggalo, Kota Padang, Sumatera Barat'}
+                        {pengaturan?.address || ''}
                         {pengaturan?.phone ? ` | Telp. ${pengaturan.phone}` : ''}
                       </p>
                     </div>

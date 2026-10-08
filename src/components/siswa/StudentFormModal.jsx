@@ -43,6 +43,7 @@ import { useProvinsiList, useKotaOptions, useKecamatanOptions, useKelurahanOptio
 import PersonAvatar, { resolveAvatarUrl } from '../ui/PersonAvatar'
 
 const defaultForm = () => ({
+  jenis_pendaftaran: 'baru', unit_asal_id: '',
   foto_url: '', no_pendaftaran: '', nik: '', no_registrasi_akta_lahir: '', no_kk: '', nis: '', nisn: '', full_name: '', birth_date: '', birth_place: '', gender: 'male', agama: 'Islam', email: '', anak_ke: '', jumlah_saudara: '', jumlah_saudara_tiri: '', berat_badan: '', tinggi_badan: '', riwayat_penyakit: '', kewarganegaraan: 'WNI', alamat_siswa: '', rt: '', rw: '', dusun: '', kelurahan: '', kecamatan: '', kode_pos: '', kota_kabupaten: '', provinsi: '', jenis_tempat_tinggal: '', jarak_tempuh_ke_sekolah: '', moda_transportasi: '', hobi: '', cita_cita: '', latitude: '', longitude: '',
   sekolah_asal: '', status_sekolah_asal: 'Formal', provinsi_sekolah_asal: '', kota_kab_sekolah_asal: '', kecamatan_sekolah_asal: '', kelurahan_sekolah_asal: '', nomor_hp_wa_sekolah_asal: '', nominal_spp: '', nominal_ortu_asuh: '', penerima_kps_pkh: 'tidak', apakah_punya_kip: 'tidak', apakah_layak_menerima_pip: 'tidak', alasan_menolak_pip: '',
   nik_ayah: '', nama_ayah: '', tempat_lahir_ayah: '', tgl_lahir_ayah: '', telfon_ayah: '', hp_ayah: '', pendidikan_terakhir_ayah: '', pekerjaan_ayah: '', instansi_pekerjaan_ayah: '', jabatan_pekerjaan_ayah: '', alamat_instansi_ayah: '', keahlian_ayah: '', penghasilan_ayah: '', alamat_ayah: '', nomor_wa_ayah: '', medsos_ayah: '',
@@ -368,6 +369,8 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
 
           unit_id: initialData.unit_id || meta.unit_id || '',
           unit_pendidikan: initialData.unit || meta.unit_pendidikan || '',
+          jenis_pendaftaran: meta.jenis_pendaftaran || (meta.unit_asal_id ? 'pindahan_internal' : (meta.sekolah_asal ? 'pindahan_eksternal' : 'baru')),
+          unit_asal_id: meta.unit_asal_id || '',
           nis_pembayaran: meta.nis_pembayaran || '',
           tahun_ajaran_masuk: meta.tahun_ajaran_masuk || '',
           kelas_id: initialData.kelas_id || meta.kelas_id || '',
@@ -559,6 +562,15 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
 
           if (tRes?.data && Array.isArray(tRes.data)) {
             setAcademicYears(tRes.data)
+            const activeYearObj = tRes.data.find(y => y.is_active) || tRes.data[0]
+            const activeYearName = activeYearObj?.name || activeYearObj?.tahun || activeYearObj?.tahun_ajaran || ''
+            if (activeYearName) {
+              setFormData(prev => ({
+                ...prev,
+                tahun_ajaran_masuk: prev.tahun_ajaran_masuk || activeYearName,
+                tahun_ajaran_berjalan: prev.tahun_ajaran_berjalan || activeYearName,
+              }))
+            }
           }
         }
       } catch (err) {
@@ -1103,9 +1115,96 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
               {/* STEP 2: PENDIDIKAN & BANTUAN */}
               {activeStep === 1 && (
                 <div className="space-y-6">
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Riwayat Sekolah Asal</h4>
+                  {/* Selector Jenis Pendaftaran Siswa (Prioritas 2) */}
+                  <div className="rounded-2xl border-2 border-emerald-500/25 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white p-4 sm:p-5 dark:border-emerald-700/40 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <label className="block text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">
+                          Jenis Pendaftaran Siswa <span className="text-rose-500">*</span>
+                        </label>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Tentukan klasifikasi masuk siswa untuk pemetaan data pokok dan riwayat mutasi
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                        <Sparkles className="size-3" />
+                        <span>Klasifikasi Siswa</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { id: 'baru', label: 'Siswa Baru (Reguler)', desc: 'Peserta didik baru masuk TP berjalan / PPDB', icon: UserCheck, tone: 'emerald' },
+                        { id: 'pindahan_eksternal', label: 'Pindahan Eksternal', desc: 'Pindah masuk dari sekolah luar yayasan', icon: School, tone: 'blue' },
+                        { id: 'pindahan_internal', label: 'Pindahan Internal', desc: 'Mutasi antar unit internal yayasan', icon: Building2, tone: 'amber' },
+                      ].map((item) => {
+                        const isSelected = (formData.jenis_pendaftaran || 'baru') === item.id
+                        const Icon = item.icon
+                        return (
+                          <button
+                            type="button"
+                            key={item.id}
+                            onClick={() => handleChange({ target: { name: 'jenis_pendaftaran', value: item.id } })}
+                            className={`flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
+                              isSelected
+                                ? 'border-emerald-500 bg-white dark:bg-slate-900 shadow-md ring-2 ring-emerald-500/25 dark:border-emerald-400'
+                                : 'border-slate-200/90 bg-white/70 hover:bg-white dark:border-slate-800 dark:bg-slate-900/50 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className={`p-2 rounded-xl shrink-0 ${
+                              isSelected
+                                ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm'
+                                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                            }`}>
+                              <Icon className="size-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-bold leading-tight ${isSelected ? 'text-emerald-900 dark:text-emerald-300' : 'text-slate-800 dark:text-slate-200'}`}>
+                                {item.label}
+                              </p>
+                              <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                                {item.desc}
+                              </p>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Jika Pindahan Internal: Tampilkan field Unit Asal */}
+                    {formData.jenis_pendaftaran === 'pindahan_internal' && (
+                      <div className="mt-4 pt-4 border-t border-emerald-200/60 dark:border-emerald-800/60">
+                        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 dark:bg-amber-950/30 dark:border-amber-800/50 mb-3">
+                          <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
+                          <p className="text-xs text-amber-800 dark:text-amber-300 font-medium leading-relaxed">
+                            Siswa tercatat sebagai <strong>Pindahan Internal Yayasan</strong>. Pilih unit pendidikan asal siswa di bawah ini untuk menghubungkan histori kesiswaan.
+                          </p>
+                        </div>
+                        <Select
+                          label="Unit Pendidikan Asal (Internal Yayasan)"
+                          name="unit_asal_id"
+                          required
+                          icon={School}
+                          options={unitOptions}
+                          placeholder="-- Pilih Unit Pendidikan Asal --"
+                          {...getProps('unit_asal_id')}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                    {formData.jenis_pendaftaran === 'pindahan_eksternal' ? 'Data Sekolah Asal (Luar Yayasan)' : 'Riwayat Sekolah Sebelumnya (Opsional)'}
+                  </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input label="Nama Sekolah Asal" name="sekolah_asal" icon={School} placeholder="SD Negeri 01 Padang" {...getProps('sekolah_asal')} />
+                    <Input
+                      label="Nama Sekolah Asal"
+                      name="sekolah_asal"
+                      icon={School}
+                      required={formData.jenis_pendaftaran === 'pindahan_eksternal'}
+                      placeholder={formData.jenis_pendaftaran === 'pindahan_eksternal' ? "Contoh: SD Negeri 01 Padang" : "Nama sekolah/madrasah/TK sebelumnya"}
+                      {...getProps('sekolah_asal')}
+                    />
                     <Select label="Status Sekolah Asal" name="status_sekolah_asal" icon={Building} options={['Formal', 'Tidak Formal']} {...getProps('status_sekolah_asal')} />
                     <Select
                       label="Provinsi Sekolah Asal"

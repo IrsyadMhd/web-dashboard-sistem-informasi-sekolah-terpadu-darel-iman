@@ -53,6 +53,14 @@ const MODAL_CONFIGS = {
     endpoint: '/foundation/employees',
     linkTo: '/dashboard/master/pegawai',
   },
+  tendik: {
+    title: 'Data Tenaga Kependidikan (Tendik)',
+    subtitle: 'Daftar Staf Administrasi, Operasional, dan Teknis Unit',
+    icon: Users,
+    endpoint: '/foundation/employees',
+    defaultParams: { role_type: 'tendik' },
+    linkTo: '/dashboard/master/pegawai',
+  },
   siswa: {
     title: 'Data Siswa Aktif',
     subtitle: 'Daftar Seluruh Peserta Didik Aktif Yayasan',
@@ -143,6 +151,8 @@ const KEY_ALIASES = {
   total_employees: 'pegawai',
   total_pegawai: 'pegawai',
   employees: 'pegawai',
+  total_tendik: 'tendik',
+  tendik: 'tendik',
   total_users: 'pengguna',
   active_users: 'pengguna',
   users: 'pengguna',
@@ -180,7 +190,7 @@ const kpiDataCache = new Map()
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 menit
 let cachedUnits = null
 
-export default function KpiQuickViewModal({ type, isOpen, onClose }) {
+export default function KpiQuickViewModal({ type, isOpen, onClose, initialUnitId }) {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const resolvedType = KEY_ALIASES[type] || type
@@ -194,8 +204,14 @@ export default function KpiQuickViewModal({ type, isOpen, onClose }) {
 
   // Filters
   const [search, setSearch] = useState('')
-  const [selectedUnit, setSelectedUnit] = useState('all')
+  const [selectedUnit, setSelectedUnit] = useState(initialUnitId || 'all')
   const [selectedStatus, setSelectedStatus] = useState('all')
+
+  useEffect(() => {
+    if (isOpen && initialUnitId) {
+      setSelectedUnit(initialUnitId)
+    }
+  }, [isOpen, initialUnitId])
 
   // Row Detail Drawer State
   const [selectedDetailId, setSelectedDetailId] = useState(null)

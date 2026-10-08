@@ -65,6 +65,7 @@ export default function AppDataTable({
   onRowClick,
   selectedKeys = [],
   onToggleSelect,
+  isRowSelectable = () => true,
   density = 'comfortable',
   emptyTitle,
   emptyDescription,
@@ -349,18 +350,25 @@ export default function AppDataTable({
                 <TableRow className="hover:bg-transparent border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent">
                   {onToggleSelect && (
                     <TableHead className={cn('w-10 px-4 print:hidden bg-transparent', fullBleed && 'pl-5 sm:pl-6 md:pl-8')}>
-                      <Checkbox
-                        size="sm"
-                        aria-label="Pilih semua"
-                        checked={selectedKeys.length > 0 && selectedKeys.length === visibleData.length}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            onToggleSelect?.(visibleData.map((row) => row[keyField]))
-                          } else {
-                            onToggleSelect?.([])
-                          }
-                        }}
-                      />
+                      {(() => {
+                        const selectableRows = visibleData.filter((r) => isRowSelectable(r))
+                        const isAllSelected = selectableRows.length > 0 && selectableRows.every((r) => selectedKeys.includes(r[keyField]))
+                        return (
+                          <Checkbox
+                            size="sm"
+                            aria-label="Pilih semua"
+                            disabled={selectableRows.length === 0}
+                            checked={isAllSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                onToggleSelect?.(selectableRows.map((row) => row[keyField]))
+                              } else {
+                                onToggleSelect?.([])
+                              }
+                            }}
+                          />
+                        )
+                      })()}
                     </TableHead>
                   )}
                   {columns.map((col, colIdx) => {
@@ -417,17 +425,21 @@ export default function AppDataTable({
                     >
                       {onToggleSelect && (
                         <TableCell className={cn('px-4 py-3.5 print:hidden', fullBleed && 'pl-5 sm:pl-6 md:pl-8')} onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            size="sm"
-                            aria-label={`Pilih ${rowKey}`}
-                            checked={selected}
-                            onChange={(e) => {
-                              const next = e.target.checked
-                                ? [...new Set([...selectedKeys, rowKey])]
-                                : selectedKeys.filter((k) => k !== rowKey)
-                              onToggleSelect?.(next)
-                            }}
-                          />
+                          {isRowSelectable(row) ? (
+                            <Checkbox
+                              size="sm"
+                              aria-label={`Pilih ${rowKey}`}
+                              checked={selected}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [...new Set([...selectedKeys, rowKey])]
+                                  : selectedKeys.filter((k) => k !== rowKey)
+                                onToggleSelect?.(next)
+                              }}
+                            />
+                          ) : (
+                            <span className="inline-block w-4 text-center text-slate-300 dark:text-slate-600 font-bold">-</span>
+                          )}
                         </TableCell>
                       )}
                       {columns.map((col, colIdx) => {

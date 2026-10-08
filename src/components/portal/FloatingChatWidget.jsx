@@ -277,9 +277,9 @@ export default function FloatingChatWidget() {
         </div>
       )}
 
-      {/* Floating Action Button (FAB) Bottom Right - Shown ONLY when closed or expanded */}
+      {/* Floating Action Button (FAB) Bottom Right - Positioned above mobile bottom bar */}
       {!isMinimized && (
-        <div className="fixed bottom-6 right-4 sm:right-6 z-50">
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40">
           <button
             type="button"
             onClick={toggleOpen}

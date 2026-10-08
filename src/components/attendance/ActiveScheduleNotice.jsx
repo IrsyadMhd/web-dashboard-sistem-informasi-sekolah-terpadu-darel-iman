@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlarmClock, CheckCircle2, Clock } from 'lucide-react'
+import { AlarmClock, CheckCircle2, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { lmsPresensiService } from '../../services/lmsPresensiService'
 import { useAuthStore } from '../../stores/authStore'
@@ -8,6 +8,7 @@ export default function ActiveScheduleNotice() {
   const navigate = useNavigate()
   const roles = useAuthStore((state) => state.user?.roles || [])
   const [data, setData] = useState(null)
+  const [isExpanded, setIsExpanded] = useState(false)
   const eligible = roles.includes('Guru') || roles.includes('Wali Kelas')
 
   useEffect(() => {
@@ -54,9 +55,12 @@ export default function ActiveScheduleNotice() {
     return currentMinutes >= sMin && currentMinutes <= eMin
   })
 
+  const totalSchedules = data.schedules.length
+  const displayedSchedules = isExpanded ? data.schedules : data.schedules.slice(0, 2)
+
   return (
     <section className="mb-3.5 space-y-2.5" aria-label="Jadwal pelajaran aktif">
-      {data.schedules.map((schedule, idx) => {
+      {displayedSchedules.map((schedule, idx) => {
         const done = ['final', 'locked'].includes(schedule.attendance_status)
         const className = schedule.kelas?.nama_kelas || schedule.school_class?.name || 'Kelas'
         const sMin = toMinutes(schedule.time_start)
@@ -183,6 +187,27 @@ export default function ActiveScheduleNotice() {
           </article>
         )
       })}
+      {totalSchedules > 2 && (
+        <div className="flex justify-center pt-0.5">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/80 bg-emerald-50/90 px-3.5 py-1 text-[11px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 transition shadow-2xs cursor-pointer active:scale-95"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="size-3.5" />
+                <span>Ciutkan Jadwal ({totalSchedules} Total)</span>
+              </>
+            ) : (
+              <>
+                <ChevronDown className="size-3.5" />
+                <span>Tampilkan {totalSchedules - 2} Jadwal Lainnya</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </section>
   )
 }

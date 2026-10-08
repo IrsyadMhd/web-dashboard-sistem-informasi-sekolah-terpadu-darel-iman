@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Printer,
@@ -14,6 +14,7 @@ import {
   CheckSquare,
   Square,
   Layers,
+  FileText,
 } from 'lucide-react'
 import { useUnitStore } from '../../stores/unitStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -39,10 +40,23 @@ export function PrintOptionModal({
   onToggleColumn = null,
   onSelectAllColumns = null,
   onClearAllColumns = null,
+  defaultPreview = false,
+  previewHeaders = null,
+  previewRows = null,
+  reportTypes = null,
+  selectedReportType = null,
+  onReportTypeChange = null,
+  children = null,
 }) {
   const isModalOpen = isOpen ?? open ?? false
   const [orientation, setOrientation] = useState('portrait')
-  const [showPreview, setShowPreview] = useState(false)
+  const [showPreview, setShowPreview] = useState(defaultPreview)
+
+  useEffect(() => {
+    if (isModalOpen) {
+      setShowPreview(defaultPreview)
+    }
+  }, [isModalOpen, defaultPreview])
   const storeActiveUnit = useUnitStore((s) => s.activeUnit)
   const user = useAuthStore((s) => s.user)
 
@@ -147,6 +161,45 @@ export function PrintOptionModal({
                   {currentUnit.isUnitScope !== false ? currentUnit.unitType : 'PUSAT / YAYASAN'}
                 </span>
               </div>
+
+              {/* 1.5 Pilihan Format/Model Laporan (Jika Disediakan) */}
+              {Array.isArray(reportTypes) && reportTypes.length > 0 && (
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+                    <FileText className="size-3.5 text-emerald-600" />
+                    <span>Pilihan Format / Model Dokumen</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {reportTypes.map((rt) => {
+                      const isSelected = selectedReportType === rt.id
+                      return (
+                        <button
+                          key={rt.id}
+                          type="button"
+                          onClick={() => onReportTypeChange && onReportTypeChange(rt.id)}
+                          className={`flex items-start justify-between p-3 rounded-2xl border text-xs font-bold transition-all cursor-pointer text-left ${
+                            isSelected
+                              ? 'border-[#047857] bg-emerald-50/80 text-[#047857] dark:bg-emerald-950/50 dark:border-emerald-500 shadow-xs ring-1 ring-[#047857]/30'
+                              : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                          }`}
+                        >
+                          <div className="flex flex-col pr-2 min-w-0">
+                            <span className="font-extrabold truncate">{rt.label}</span>
+                            {rt.description && (
+                              <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                                {rt.description}
+                              </span>
+                            )}
+                          </div>
+                          {isSelected && <CheckCircle2 className="size-4 text-[#047857] shrink-0 mt-0.5" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {children}
 
               {/* 2. Orientation Selector */}
               <div className="space-y-1.5">
@@ -276,13 +329,13 @@ export function PrintOptionModal({
                   className="w-full py-2 px-3 rounded-xl border border-dashed border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition-colors cursor-pointer"
                 >
                   <Eye className="size-3.5" />
-                  <span>{showPreview ? 'Sembunyikan Pratinjau Kop' : 'Lihat Pratinjau Kop Resmi Cetak'}</span>
+                  <span>{showPreview ? 'Sembunyikan Pratinjau Dokumen' : 'Lihat Pratinjau Dokumen Resmi Cetak'}</span>
                 </button>
 
                 {showPreview && (
-                  <div className="mt-2.5 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 shadow-inner max-h-56 overflow-y-auto">
+                  <div className="mt-2.5 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 shadow-inner max-h-72 overflow-y-auto">
                     <div className="text-[10px] uppercase font-bold text-slate-400 mb-2 text-center tracking-wider">
-                      — Pratinjau Format Header Dokumen —
+                      — Pratinjau Format Dokumen Resmi A4 —
                     </div>
                     <PrintHeader
                       unit={currentUnit}
@@ -292,6 +345,36 @@ export function PrintOptionModal({
                       showTitle={true}
                       className="scale-95 origin-top"
                     />
+
+                    {Array.isArray(previewHeaders) && previewHeaders.length > 0 && Array.isArray(previewRows) && previewRows.length > 0 && (
+                      <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                        <table className="w-full text-[10px] text-left">
+                          <thead className="bg-emerald-50/80 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-300 font-bold border-b border-emerald-100 dark:border-emerald-800/80">
+                            <tr>
+                              {previewHeaders.map((h, i) => (
+                                <th key={i} className="px-2.5 py-1.5 whitespace-nowrap">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {previewRows.slice(0, 5).map((row, rIdx) => (
+                              <tr key={rIdx} className={rIdx % 2 === 1 ? 'bg-slate-50/60 dark:bg-slate-900/40' : ''}>
+                                {row.map((cell, cIdx) => (
+                                  <td key={cIdx} className="px-2.5 py-1 whitespace-nowrap text-slate-700 dark:text-slate-300">
+                                    {String(cell ?? '-')}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {previewRows.length > 5 && (
+                          <div className="px-2.5 py-1.5 bg-emerald-50/40 dark:bg-slate-900/80 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium italic text-center border-t border-emerald-100 dark:border-emerald-900/40">
+                            * Menampilkan 5 sampel dari total {previewRows.length} baris data terfilter pada dokumen cetak
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

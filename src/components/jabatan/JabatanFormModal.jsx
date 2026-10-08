@@ -140,12 +140,16 @@ export default function JabatanFormModal({
   useEffect(() => {
     if (isOpen) {
       setCurrentStep(1)
+      const defaultUnitId = (isUnitScopedManager && options.unit_sekolah?.[0]?.id)
+        ? options.unit_sekolah[0].id
+        : ''
+
       if (initialData) {
         reset({
           kode_jabatan: initialData.kode_jabatan || initialData.code || '',
           nama_jabatan: initialData.nama_jabatan || initialData.name || '',
           satuan_kerja: initialData.satuan_kerja || 'Unit Pendidikan',
-          unit_sekolah_id: initialData.unit_sekolah_id || '',
+          unit_sekolah_id: initialData.unit_sekolah_id || defaultUnitId,
           level_jabatan: initialData.level_jabatan || 8,
           atasan_langsung_id: initialData.atasan_langsung_id || '',
           atasan_pegawai_id: initialData.atasan_pegawai_id || '',
@@ -164,7 +168,7 @@ export default function JabatanFormModal({
           kode_jabatan: '',
           nama_jabatan: '',
           satuan_kerja: 'Unit Pendidikan',
-          unit_sekolah_id: '',
+          unit_sekolah_id: defaultUnitId,
           level_jabatan: 8,
           atasan_langsung_id: '',
           atasan_pegawai_id: '',
@@ -180,7 +184,7 @@ export default function JabatanFormModal({
         })
       }
     }
-  }, [isOpen, initialData, reset])
+  }, [isOpen, initialData, reset, isUnitScopedManager, options.unit_sekolah])
 
   if (!isOpen) return null
 
@@ -484,6 +488,12 @@ export default function JabatanFormModal({
                         </div>
                         {(options.unit_sekolah || []).length === 0 && (
                           <p className="text-[11px] font-medium text-amber-700">Belum ada data unit pendidikan. Tambahkan di menu Unit Pendidikan.</p>
+                        )}
+                        {isUnitScopedManager && (
+                          <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1">
+                            <Sparkles className="size-3 shrink-0" />
+                            Unit otomatis terhubung sesuai wilayah wewenang unit akun Anda.
+                          </p>
                         )}
                       </div>
 
