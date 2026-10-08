@@ -178,25 +178,29 @@ export function FoundationStudentsPage() {
   }
 
   const handlePrintWeekly = (st) => {
-    const eduUnit = st.education_unit || st.unit
+    const eduUnit = st.education_unit || (typeof st.unit === 'object' ? st.unit : null)
+    const rawUnitName = eduUnit?.name || (typeof st.unit === 'string' ? st.unit : '') || st.unit_name || ''
+    const finalUnitObj = eduUnit || (rawUnitName ? { name: rawUnitName, code: rawUnitName } : null)
+
     printWeeklyStudentEvaluation({
       student: {
         ...st,
         name: st.full_name || st.nama || st.name,
         nis: st.nis || st.nisn || '-',
-        className: st.kelas?.nama_kelas || st.school_class?.name || '10 Madinah 1',
-        unitName: eduUnit?.name || 'Sekolah Menengah Atas Islam Terpadu',
-        education_unit: eduUnit,
+        className: st.kelas?.nama_kelas || st.school_class?.name || '-',
+        unit: rawUnitName,
+        unitName: rawUnitName,
+        education_unit: finalUnitObj,
       },
       period: {
         title: 'Senin, 10 Agustus 2026 s.d. Jumat, 14 Agustus 2026',
         academicYear: '2026/2027',
       },
       homeroomTeacher: {
-        name: st.kelas?.wali_kelas_nama || 'Ustadzah Elsa Putri Utami',
+        name: st.kelas?.wali_kelas_nama || 'Ustadzah Pembina',
       },
       guruWali: {
-        name: 'Ilma Emilia Widyastuti',
+        name: 'Guru Wali',
       },
       schoolCity: eduUnit?.metadata?.city || 'Padang',
     })

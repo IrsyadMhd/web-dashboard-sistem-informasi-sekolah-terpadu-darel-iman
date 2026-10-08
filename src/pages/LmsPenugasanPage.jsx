@@ -458,6 +458,17 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Harmonized Save / Update & Error Confirmation Modal State
+  const [confirmSaveModal, setConfirmSaveModal] = useState({
+    isOpen: false,
+    mode: 'create', // 'create' | 'update'
+  })
+  const [errorDialogModal, setErrorDialogModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+  })
+
   const handleExportSpreadsheet = (format = 'xlsx') => {
     try {
       setIsExporting(true)
@@ -698,24 +709,50 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
     setIsModalOpen(true)
   }
 
-  const handleFormSubmit = async (e) => {
+  // Step 1: Validasi form dan buka modal konfirmasi simpan / perbarui
+  const handleFormSubmit = (e) => {
     e.preventDefault()
+    if (!formData.judul?.trim()) {
+      setErrorDialogModal({
+        isOpen: true,
+        title: 'Judul Penugasan Kosong',
+        message: 'Silakan isi judul penugasan sebelum melanjutkan proses penyimpanan.',
+      })
+      return
+    }
+
+    setConfirmSaveModal({
+      isOpen: true,
+      mode: editId ? 'update' : 'create',
+    })
+  }
+
+  // Step 2: Eksekusi simpan setelah disetujui di modal konfirmasi
+  const handleExecuteSave = async () => {
     setFormLoading(true)
     setErrorMsg('')
 
     try {
       if (editId) {
         await lmsPenugasanService.update(editId, formData)
-        pushToast('Penugasan Diperbarui', 'Penugasan berhasil diperbarui.', 'success')
+        pushToast('Penugasan Diperbarui', `Penugasan "${formData.judul}" berhasil diperbarui.`, 'success')
       } else {
         await lmsPenugasanService.create(formData)
-        pushToast('Penugasan Ditambahkan', 'Penugasan baru berhasil ditambahkan.', 'success')
+        pushToast('Penugasan Ditambahkan', `Penugasan baru "${formData.judul}" berhasil ditambahkan.`, 'success')
       }
+      setConfirmSaveModal({ isOpen: false, mode: 'create' })
       setIsModalOpen(false)
       fetchPenugasan()
       fetchStats()
     } catch (err) {
-      setErrorMsg(err?.response?.data?.message || 'Gagal menyimpan data penugasan.')
+      setConfirmSaveModal({ isOpen: false, mode: 'create' })
+      const errorText = err?.response?.data?.message || err?.message || 'Gagal memproses data penugasan.'
+      setErrorMsg(errorText)
+      setErrorDialogModal({
+        isOpen: true,
+        title: editId ? 'Gagal Memperbarui Penugasan' : 'Gagal Menyimpan Penugasan',
+        message: errorText,
+      })
     } finally {
       setFormLoading(false)
     }
@@ -735,7 +772,13 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       fetchPenugasan()
       fetchStats()
     } catch (err) {
-      pushToast('Gagal Menghapus', err?.response?.data?.message || 'Gagal menghapus penugasan.', 'error')
+      const errorText = err?.response?.data?.message || err?.message || 'Gagal menghapus penugasan.'
+      pushToast('Gagal Menghapus', errorText, 'error')
+      setErrorDialogModal({
+        isOpen: true,
+        title: 'Gagal Menghapus Penugasan',
+        message: errorText,
+      })
     } finally {
       setIsDeleting(false)
     }
@@ -1939,14 +1982,14 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                             <button
                               type="button"
                               onClick={() => setGradingStudentId(null)}
-                              className="px-3 py-1 rounded-lg border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             >
                               Batal
                             </button>
                             <button
                               type="submit"
                               disabled={gradingLoading}
-                              className="px-4 py-1 rounded-lg bg-[#0E5C44] text-white hover:bg-[#1E8E5A] text-xs font-semibold flex items-center gap-1"
+                              className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors active:scale-95 disabled:opacity-50"
                             >
                               {gradingLoading && <RefreshCw size={12} className="animate-spin" />}
                               <span>Simpan Nilai</span>
@@ -2170,6 +2213,196 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                       <Trash2 className="size-3.5" />
                     )}
                     <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus'}</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── HARMONIZED SAVE / UPDATE CONFIRMATION MODAL ── */}
+      <AnimatePresence>
+        {confirmSaveModal.isOpen && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className={`w-full max-w-md overflow-hidden rounded-3xl border bg-white shadow-2xl dark:bg-slate-950 ${
+                confirmSaveModal.mode === 'update'
+                  ? 'border-amber-200/80 shadow-amber-950/20 dark:border-amber-900/60'
+                  : 'border-emerald-200/80 shadow-emerald-950/20 dark:border-emerald-900/60'
+              }`}
+            >
+              <div
+                className={`h-1.5 w-full ${
+                  confirmSaveModal.mode === 'update'
+                    ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600'
+                    : 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600'
+                }`}
+              />
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div
+                    className={`flex size-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-md border ${
+                      confirmSaveModal.mode === 'update'
+                        ? 'bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 shadow-amber-500/30 border-amber-300/40'
+                        : 'bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 shadow-emerald-500/30 border-emerald-300/40'
+                    }`}
+                  >
+                    {confirmSaveModal.mode === 'update' ? (
+                      <Edit3 className="size-5 text-white" strokeWidth={2.2} />
+                    ) : (
+                      <Sparkles className="size-5 text-white" strokeWidth={2.2} />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                        {confirmSaveModal.mode === 'update' ? 'Simpan Perubahan Penugasan?' : 'Terbitkan Penugasan Baru?'}
+                      </h4>
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold ${
+                          confirmSaveModal.mode === 'update'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300'
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300'
+                        }`}
+                      >
+                        {confirmSaveModal.mode === 'update' ? 'Update Data' : 'Penugasan Baru'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      Konfirmasi validasi data sebelum disimpan ke server
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-2xl border p-3.5 space-y-1.5 ${
+                    confirmSaveModal.mode === 'update'
+                      ? 'border-amber-100 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20'
+                      : 'border-emerald-100 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20'
+                  }`}
+                >
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-100 line-clamp-2">
+                    {formData.judul || '-'}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                    <span>
+                      Kelas:{' '}
+                      <strong className="text-slate-700 dark:text-slate-300">
+                        {options.kelas.find((k) => String(k.value || k.id) === String(formData.kelas_id))?.label ||
+                          'Semua Kelas'}
+                      </strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Tipe: <strong className="text-slate-700 dark:text-slate-300 capitalize">{formData.tipe}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Status:{' '}
+                      <strong className="text-slate-700 dark:text-slate-300 capitalize">
+                        {formData.status === 'dipublikasikan' ? 'Dipublikasikan' : 'Draft'}
+                      </strong>
+                    </span>
+                  </div>
+                  {formData.tanggal_selesai && (
+                    <p className="text-[10px] text-slate-500">
+                      Batas Waktu: {formData.tanggal_selesai.replace('T', ' ')}
+                    </p>
+                  )}
+                </div>
+
+                <p className="mt-3 text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                  {confirmSaveModal.mode === 'update'
+                    ? 'Pastikan seluruh parameter dan materi penugasan telah sesuai sebelum memperbarui data.'
+                    : 'Penugasan ini akan tersimpan dan dapat segera diakses oleh siswa sesuai dengan kelas tujuan.'}
+                </p>
+
+                <div className="mt-6 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    disabled={formLoading}
+                    onClick={() => setConfirmSaveModal({ isOpen: false, mode: 'create' })}
+                    className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={formLoading}
+                    onClick={handleExecuteSave}
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-black text-white hover:scale-[1.02] active:scale-95 transition-all shadow-md cursor-pointer disabled:opacity-50 ${
+                      confirmSaveModal.mode === 'update'
+                        ? 'bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 border border-amber-300/40 shadow-amber-600/20'
+                        : 'bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 border border-emerald-300/40 shadow-emerald-600/20'
+                    }`}
+                  >
+                    {formLoading ? (
+                      <RefreshCw className="size-3.5 animate-spin" />
+                    ) : confirmSaveModal.mode === 'update' ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      <Sparkles className="size-3.5" />
+                    )}
+                    <span>
+                      {formLoading
+                        ? 'Menyimpan...'
+                        : confirmSaveModal.mode === 'update'
+                        ? 'Ya, Perbarui Data'
+                        : 'Ya, Simpan Penugasan'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── HARMONIZED ERROR DIALOG MODAL ── */}
+      <AnimatePresence>
+        {errorDialogModal.isOpen && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="w-full max-w-md overflow-hidden rounded-3xl border border-rose-200/80 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/60 dark:bg-slate-950"
+            >
+              <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-500/30 border border-rose-300/40">
+                    <XCircle className="size-5 text-white" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                      {errorDialogModal.title || 'Terjadi Kendala'}
+                    </h4>
+                    <span className="text-[11px] font-semibold text-rose-500">
+                      Peringatan validasi sistem
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-3.5 dark:border-rose-900/50 dark:bg-rose-950/20">
+                  <p className="text-xs text-rose-800 dark:text-rose-200 leading-relaxed font-medium">
+                    {errorDialogModal.message || 'Operasi gagal dijalankan. Silakan periksa kembali data Anda.'}
+                  </p>
+                </div>
+
+                <div className="mt-6 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setErrorDialogModal({ isOpen: false, title: '', message: '' })}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-5 py-2 text-xs font-black text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 transition-all cursor-pointer shadow-xs"
+                  >
+                    Tutup
                   </button>
                 </div>
               </div>

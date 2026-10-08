@@ -37,6 +37,7 @@ import {
   Clock,
   Compass,
   FileCheck,
+  ArrowUpDown,
 } from 'lucide-react'
 import { lmsModulAjarService } from '../services/lmsModulAjarService'
 import PageContainer from '../components/app/PageContainer'
@@ -373,6 +374,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
   const [selectedFaseFilter, setSelectedFaseFilter] = useState('')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
   const [denganSampahFilter, setDenganSampahFilter] = useState('')
+  const [sortDateOrder, setSortDateOrder] = useState('desc') // 'desc' | 'asc'
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
 
@@ -446,7 +448,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
   const options = optionsData?.data || {}
 
   const { data: modulsData, isLoading, refetch } = useQuery({
-    queryKey: ['lmsModuls', debouncedSearch, selectedUnitFilter, selectedMapelFilter, selectedFaseFilter, selectedStatusFilter, denganSampahFilter, page, perPage],
+    queryKey: ['lmsModuls', debouncedSearch, selectedUnitFilter, selectedMapelFilter, selectedFaseFilter, selectedStatusFilter, denganSampahFilter, page, perPage, sortDateOrder],
     queryFn: () =>
       lmsModulAjarService.getAll({
         search: debouncedSearch,
@@ -457,6 +459,8 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
         dengan_sampah: denganSampahFilter,
         page,
         per_page: perPage,
+        order_by: 'created_at',
+        order_dir: sortDateOrder,
       }),
   })
 
@@ -934,7 +938,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     }
   }
 
-  const hasActiveFilters = Boolean(searchInput || selectedUnitFilter || selectedMapelFilter || selectedFaseFilter || selectedStatusFilter || denganSampahFilter)
+  const hasActiveFilters = Boolean(searchInput || selectedUnitFilter || selectedMapelFilter || selectedFaseFilter || selectedStatusFilter || denganSampahFilter || sortDateOrder !== 'desc')
 
   const handleResetFilters = () => {
     setSearchInput('')
@@ -943,6 +947,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     setSelectedFaseFilter('')
     setSelectedStatusFilter('')
     setDenganSampahFilter('')
+    setSortDateOrder('desc')
     setPage(1)
     refetch()
   }
@@ -1274,6 +1279,23 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                 <option value="1">Termasuk Sampah</option>
               </select>
 
+              {/* Sortir Tanggal Dropdown */}
+              <div className="flex items-center gap-1.5 bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-slate-700 rounded-xl px-2.5 h-9 shadow-xs">
+                <Calendar className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <select
+                  value={sortDateOrder}
+                  onChange={(e) => {
+                    setSortDateOrder(e.target.value)
+                    setPage(1)
+                  }}
+                  className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none cursor-pointer pr-1"
+                  title="Urutkan modul berdasarkan tanggal"
+                >
+                  <option value="desc">Tanggal: Terbaru ↓</option>
+                  <option value="asc">Tanggal: Terlama ↑</option>
+                </select>
+              </div>
+
               {/* Reset Filter Button */}
               {hasActiveFilters && (
                 <button
@@ -1314,6 +1336,19 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                     <th className="hidden sm:table-cell w-[12%] px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
                       Status
                     </th>
+                    <th
+                      onClick={() => {
+                        setSortDateOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+                        setPage(1)
+                      }}
+                      className="hidden xl:table-cell w-[11%] px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider cursor-pointer hover:bg-emerald-200/50 dark:hover:bg-emerald-900/60 transition select-none"
+                      title="Klik untuk mengubah urutan tanggal"
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Tanggal</span>
+                        <ArrowUpDown className="size-3 text-emerald-700 dark:text-emerald-300" />
+                      </div>
+                    </th>
                     <th className="w-14 sm:w-20 px-2 sm:px-3.5 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">
                       Aksi
                     </th>
@@ -1322,7 +1357,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                 <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-slate-700 dark:text-slate-200">
                   {isLoading ? (
                     <tr>
-                      <td colSpan="8" className="px-6 py-14 text-center text-slate-400">
+                      <td colSpan="9" className="px-6 py-14 text-center text-slate-400">
                         <div className="flex flex-col justify-center items-center gap-2">
                           <RefreshCw className="h-6 w-6 animate-spin text-[#0E5C44]" />
                           <span className="text-xs font-semibold">Memuat data Modul Ajar...</span>
@@ -1331,7 +1366,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                     </tr>
                   ) : moduls.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-6 py-14 text-center text-slate-400">
+                      <td colSpan="9" className="px-6 py-14 text-center text-slate-400">
                         <div className="flex flex-col justify-center items-center gap-2">
                           <BookOpen className="h-8 w-8 text-slate-300 dark:text-slate-600" />
                           <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Tidak ada data Modul Ajar ditemukan</p>
@@ -1445,6 +1480,19 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                             }`}
                           >
                             {item.status}
+                          </span>
+                        </td>
+
+                        {/* Tanggal */}
+                        <td className="hidden xl:table-cell px-3.5 py-3.5 text-center">
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {item.created_at
+                              ? new Date(item.created_at).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                })
+                              : '-'}
                           </span>
                         </td>
 

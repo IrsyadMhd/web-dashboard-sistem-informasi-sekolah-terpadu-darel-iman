@@ -281,6 +281,64 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
   // Toast feedback
   const [alertFeedback, setAlertFeedback] = useState(null)
 
+  const handleExportExcel = () => {
+    if (!filteredStudents.length) {
+      setAlertFeedback({ type: 'warning', message: 'Tidak ada data siswa untuk diekspor.' })
+      setTimeout(() => setAlertFeedback(null), 3000)
+      return
+    }
+    const headers = ['No', 'NISN', 'Nama Siswa', 'Unit', 'Kelas', 'Juz Target', 'Ziyadah Terakhir', 'Kelancaran', 'Sholat 5 Waktu', 'Dhuha', 'Tahajud', 'Verifikasi Ortu', 'Verifikasi Guru', 'Catatan Guru']
+    const rows = filteredStudents.map((st, i) => [
+      i + 1,
+      `"${st.nisn || st.nis || '-'}"`,
+      `"${(st.student_name || '').replace(/"/g, '""')}"`,
+      `"${(st.unit_name || '').replace(/"/g, '""')}"`,
+      `"${(st.class_name || '').replace(/"/g, '""')}"`,
+      `"Juz ${st.tahfizh?.juz_target || '-'}"`,
+      `"${st.tahfizh?.last_setoran || '-'}"`,
+      `"${st.tahfizh?.kelancaran || '-'}"`,
+      st.ibadah?.sholat_5_waktu === 5 ? 'Lengkap (5 Waktu)' : `${st.ibadah?.sholat_5_waktu || 0} Waktu`,
+      st.ibadah?.sholat_dhuha ? 'Ya' : 'Tidak',
+      st.ibadah?.tahajud ? 'Ya' : 'Tidak',
+      st.parent_verified ? 'Sudah' : 'Belum',
+      st.verification_status === 'verified' ? 'Sudah' : 'Belum',
+      `"${(st.teacher_notes || '').replace(/"/g, '""')}"`,
+    ])
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `laporan-monitoring-tahfizh-non-pesantren-${selectedDate || new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
+  const handlePrintStudentReport = (siswa) => {
+    setSelectedStudent(siswa)
+    setIsDetailOpen(true)
+    setTimeout(() => {
+      window.print()
+    }, 500)
+  }
+
+  const handleDownloadKpiReport = () => {
+    const headers = ['Indikator KPI', 'Nilai / Jumlah', 'Keterangan']
+    const rows = [
+      ['Total Siswa Terpantau', kpiStats.totalStudents, 'Total siswa di unit terpilih'],
+      ['Capaian Tahfizh Sesuai Target', `${kpiStats.tahfizhAboveTargetCount} siswa (${kpiStats.tahfizhComplianceRate}%)`, 'Mencapai target hafalan juz bulanan'],
+      ['Kepatuhan Shalat 5 Waktu', `${kpiStats.sholat5WaktuCount} siswa (${kpiStats.sholat5WaktuComplianceRate}%)`, 'Melaksanakan 5 waktu tertib'],
+      ['Verifikasi Orang Tua', `${kpiStats.verifiedParentCount} siswa (${kpiStats.parentVerifiedRate}%)`, 'Telah divalidasi wali santri'],
+    ]
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `laporan-kpi-tahfizh-mutabaah-${selectedDate || new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    URL.revokeObjectURL(link.href)
+    handleCloseKpiModal()
+  }
+
   // Fetch non-pesantren units
   const { data: unitsData } = useQuery({
     queryKey: ['education-units-non-pesantren'],
@@ -967,9 +1025,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                 variant="export"
                 icon={Download}
                 label="Ekspor Excel"
-                onClick={() => {
-                  alert('Mengunduh Laporan Monitoring Tahfizh & Mutabaah Non-Pesantren (CSV/Excel)...')
-                }}
+                onClick={handleExportExcel}
               />
 
               {/* Input Catatan Button */}
@@ -1277,7 +1333,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                               {
                                 label: 'Cetak Laporan Rapor Mutabaah',
                                 icon: FileText,
-                                onClick: () => alert(`Mencetak Rapor Mutaba'ah & Tahfizh siswa ${siswa.student_name}...`),
+                                onClick: () => handlePrintStudentReport(siswa),
                               },
                             ]}
                           />
@@ -2007,7 +2063,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
               >
                 <span>Tutup</span>
               </button>
-              <Button variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { handleCloseKpiModal(); alert('Mengunduh Laporan Detail KPI Mutabaah & Tahfizh (PDF/Excel)...') }}>
+              <Button variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleDownloadKpiReport}>
                 Unduh Laporan KPI
               </Button>
             </DialogFooter>

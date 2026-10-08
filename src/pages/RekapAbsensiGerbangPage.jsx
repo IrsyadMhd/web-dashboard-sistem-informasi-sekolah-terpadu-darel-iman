@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   ArrowUpDown,
+  Building2,
   Calendar,
   CalendarDays,
+  Camera,
   ChartPie as ChartPieIcon,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -11,18 +15,31 @@ import {
   Clock,
   Eye,
   Filter,
+  Layers,
+  Lock,
+  LogIn,
+  LogOut,
   Printer,
+  QrCode,
+  Radio,
   RefreshCcw,
+  RefreshCw,
   Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
   TrendingUp,
   User,
   UserCheck,
   Users,
   UserX,
-  Sparkles,
+  Volume2,
+  VolumeX,
+  Wifi,
   X,
+  XCircle,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Area,
   AreaChart,
@@ -36,6 +53,10 @@ import {
   YAxis,
 } from 'recharts'
 import { gateAttendanceService } from '../services/gateAttendanceService'
+import { educationUnitService } from '../services/educationUnitService'
+import { studentService } from '../services/studentService'
+import { useAuthStore } from '../stores/authStore'
+import { cn } from '../lib/utils'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
@@ -44,6 +65,8 @@ import AppEmptyState from '../components/app/AppEmptyState'
 import AppErrorState from '../components/app/AppErrorState'
 import {
   SquircleActionButton,
+  MasterActionButton,
+  MasterActionIconButton,
   PrintOptionModal,
 } from '../components/master-data'
 import { Pagination } from '@/components/tailgrids/core/pagination'
@@ -52,6 +75,83 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/tail
 import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/tailgrids/core/dialog'
 import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+
+// ── SEMANTIC TOAST STACK (§L Tailgrids_Pengaturan_Halaman) ───────────────────
+const TOAST_TONE = { success: 'success', error: 'error', danger: 'error', warning: 'warning', info: 'info' }
+
+function ToastStack({ items, onDismiss }) {
+  if (!items?.length) return null
+  return (
+    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none print:hidden" aria-live="polite" aria-atomic="true">
+      {items.map((n) => {
+        const tone = TOAST_TONE[n.type] || 'info'
+        const isDanger = tone === 'error' || tone === 'danger'
+        const isWarning = tone === 'warning'
+        const isInfo = tone === 'info'
+        const isSuccess = !isDanger && !isWarning && !isInfo
+        return (
+          <div
+            key={n.id}
+            className={cn(
+              'relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]',
+              isSuccess && 'border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50',
+              isDanger && 'border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50',
+              isWarning && 'border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50',
+              isInfo && 'border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50'
+            )}
+          >
+            <div className={cn(
+              'absolute top-0 left-0 right-0 h-1',
+              isSuccess && 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
+              isDanger && 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-700',
+              isWarning && 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600',
+              isInfo && 'bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600'
+            )} />
+            <div className="flex items-start gap-3 mt-0.5">
+              <div className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
+                isSuccess && 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30',
+                isDanger && 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30',
+                isWarning && 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30',
+                isInfo && 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30'
+              )}>
+                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
+                {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
+                {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
+                {isInfo && <Eye className="size-5" strokeWidth={2.3} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">{n.title}</h4>
+                  <span className={cn(
+                    'inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border',
+                    isSuccess && 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80',
+                    isDanger && 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
+                    isWarning && 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80',
+                    isInfo && 'bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80'
+                  )}>
+                    {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
+                  </span>
+                </div>
+                {n.message && (
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{n.message}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onDismiss(n.id)}
+                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                aria-label="Tutup notifikasi"
+              >
+                <X className="size-4" strokeWidth={2.2} />
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 const MODAL_PAGE_SIZE = 6
 const today = () => new Date().toISOString().slice(0, 10)
@@ -149,6 +249,10 @@ const getPeriodDateRange = (periodKey) => {
 }
 
 export default function RekapAbsensiGerbangPage() {
+  const { user } = useAuthStore()
+  const userUnitId = user?.unit_id || user?.education_unit_id
+  const isMultiUnitUser = !userUnitId || ['Yayasan', 'Admin', 'Super Admin'].includes(user?.role?.name)
+
   const [date, setDate] = useState(today())
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
@@ -156,6 +260,10 @@ export default function RekapAbsensiGerbangPage() {
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Multi-unit state
+  const [units, setUnits] = useState([])
+  const [selectedUnit, setSelectedUnit] = useState(userUnitId || '')
 
   // State filter Periode Waktu (Hari, Minggu, Bulan, Semester, Tahun)
   const [period, setPeriod] = useState('hari')
@@ -180,14 +288,99 @@ export default function RekapAbsensiGerbangPage() {
     page: 1,
   })
 
+  // ── INTEGRATED SCANNER STATE ───────────────────────────────────────────────
+  const [showScannerPanel, setShowScannerPanel] = useState(true)
+  const [scanMode, setScanMode] = useState('checkin') // 'checkin' | 'checkout'
+  const [scanMethod, setScanMethod] = useState('QRCODE') // 'QRCODE' | 'RFID' | 'MANUAL'
+  const [cardInput, setCardInput] = useState('')
+  const [modalCardInput, setModalCardInput] = useState('')
+  const [processingScan, setProcessingScan] = useState(false)
+  const [lastScanResult, setLastScanResult] = useState(null)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [toasts, setToasts] = useState([])
+
+  // Webcam Scanner State & Refs
+  const [showCameraModal, setShowCameraModal] = useState(false)
+  const [cameraActive, setCameraActive] = useState(false)
+  const [cameraLoading, setCameraLoading] = useState(false)
+  const [cameraError, setCameraError] = useState('')
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+  const scanTimerRef = useRef(null)
+  const isScanningBusyRef = useRef(false)
+  const lastScannedCodeRef = useRef('')
+
+  // Manual TU Student Search State
+  const [studentSearch, setStudentSearch] = useState('')
+  const [studentsList, setStudentsList] = useState([])
+  const [loadingStudents, setLoadingStudents] = useState(false)
+
+  // Gate Schedule Configuration State
+  const [scheduleConfig, setScheduleConfig] = useState({
+    jam_masuk: '07:15',
+    toleransi_menit: 15,
+    jam_pulang: '15:30',
+    jam_cutoff_alpha: '08:00',
+  })
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [savingSchedule, setSavingSchedule] = useState(false)
+  const [allUnitsSchedules, setAllUnitsSchedules] = useState([])
+  const [targetUnitForConfig, setTargetUnitForConfig] = useState('')
+
+  // Toast Helper
+  const pushToast = useCallback((type, title, message) => {
+    const id = Date.now() + Math.random().toString(36).slice(2, 6)
+    setToasts((prev) => [...prev, { id, type, title, message }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 4500)
+  }, [])
+
+  const dismissToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }, [])
+
+  // Web Audio Synthetic Beep
+  const playBeep = useCallback((isSuccess = true) => {
+    if (!soundEnabled) return
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = isSuccess ? 'sine' : 'sawtooth'
+      osc.frequency.setValueAtTime(isSuccess ? 880 : 330, ctx.currentTime)
+      gain.gain.setValueAtTime(0.18, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.15)
+    } catch {
+      // Audio context restricted until user gesture, safely ignore
+    }
+  }, [soundEnabled])
+
   // Load backend data from gateAttendanceService
   const load = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
       const [logs, summary] = await Promise.all([
-        gateAttendanceService.getLogs({ date: dateFrom || date, date_from: dateFrom, date_to: dateTo, status, search, per_page: 500 }),
-        gateAttendanceService.getStats({ date: dateFrom || date }),
+        gateAttendanceService.getLogs({
+          unit_id: selectedUnit || undefined,
+          date: dateFrom || date,
+          date_from: dateFrom,
+          date_to: dateTo,
+          status,
+          search,
+          per_page: 500
+        }),
+        gateAttendanceService.getStats({
+          unit_id: selectedUnit || undefined,
+          date: dateFrom || date
+        }),
       ])
       const fetchedRows = logs.data?.data?.data || logs.data?.data || []
       setRows(Array.isArray(fetchedRows) ? fetchedRows : [])
@@ -199,11 +392,303 @@ export default function RekapAbsensiGerbangPage() {
     } finally {
       setLoading(false)
     }
-  }, [date, dateFrom, dateTo, status, search])
+  }, [date, dateFrom, dateTo, status, search, selectedUnit])
 
   useEffect(() => {
     load()
   }, [load])
+
+  // Fetch education units for multi-unit selection
+  const fetchUnits = useCallback(async () => {
+    try {
+      const res = await educationUnitService.getDaftar({ per_page: 100 })
+      const data = res?.data?.data?.data || res?.data?.data || res?.data || []
+      setUnits(Array.isArray(data) ? data : [])
+    } catch (e) {
+      console.error('Failed fetching units:', e)
+    }
+  }, [])
+
+  // Fetch gate schedule config
+  const fetchScheduleConfig = useCallback(async () => {
+    try {
+      const res = await gateAttendanceService.getScheduleConfig({ unit_id: selectedUnit || undefined })
+      if (res?.data?.data) {
+        setScheduleConfig(res.data.data)
+      }
+    } catch (e) {
+      console.error('Failed fetching schedule config:', e)
+    }
+  }, [selectedUnit])
+
+  const fetchAllUnitsSchedules = useCallback(async () => {
+    try {
+      const res = await gateAttendanceService.getAllScheduleConfigs()
+      if (res?.data?.data) {
+        setAllUnitsSchedules(res.data.data.units || [])
+        const targetId = targetUnitForConfig || selectedUnit
+        if (targetId) {
+          const found = res.data.data.units?.find((u) => u.unit_id === targetId)
+          if (found) {
+            setScheduleConfig(found.schedule)
+          }
+        } else if (res.data.data.global) {
+          setScheduleConfig(res.data.data.global)
+        }
+      }
+    } catch (e) {
+      console.error('Failed fetching all schedule configs:', e)
+    }
+  }, [targetUnitForConfig, selectedUnit])
+
+  const handleSaveScheduleConfig = async (e) => {
+    e?.preventDefault()
+    setSavingSchedule(true)
+    const unitToSave = targetUnitForConfig || selectedUnit || null
+    try {
+      const res = await gateAttendanceService.saveScheduleConfig({
+        unit_id: unitToSave,
+        ...scheduleConfig,
+      })
+      pushToast('success', 'Pengaturan Disimpan!', res.data?.message || 'Pengaturan jam masuk dan jam pulang berhasil diperbarui.')
+      setShowScheduleModal(false)
+      fetchScheduleConfig()
+    } catch (err) {
+      pushToast('error', 'Gagal Menyimpan', err?.response?.data?.message || 'Gagal menyimpan pengaturan jadwal jam masuk/pulang.')
+    } finally {
+      setSavingSchedule(false)
+    }
+  }
+
+  // Fetch students for manual TU input
+  const fetchStudents = useCallback(async () => {
+    setLoadingStudents(true)
+    try {
+      const res = await studentService.getDaftar({
+        search: studentSearch,
+        unit_id: selectedUnit || undefined,
+        per_page: 15,
+      })
+      const list = res?.data?.data || res?.data || []
+      setStudentsList(Array.isArray(list) ? list : [])
+    } catch (e) {
+      console.error('Failed fetching students:', e)
+    } finally {
+      setLoadingStudents(false)
+    }
+  }, [studentSearch, selectedUnit])
+
+  useEffect(() => {
+    fetchUnits()
+    fetchScheduleConfig()
+  }, [fetchUnits, fetchScheduleConfig])
+
+  useEffect(() => {
+    if (scanMethod === 'MANUAL') {
+      fetchStudents()
+    }
+  }, [scanMethod, fetchStudents])
+
+  useEffect(() => {
+    if (showScheduleModal) {
+      fetchAllUnitsSchedules()
+    }
+  }, [showScheduleModal, fetchAllUnitsSchedules])
+
+  // Camera Management
+  const stopCamera = useCallback(() => {
+    if (scanTimerRef.current) {
+      clearInterval(scanTimerRef.current)
+      scanTimerRef.current = null
+    }
+    isScanningBusyRef.current = false
+    lastScannedCodeRef.current = ''
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    setCameraActive(false)
+  }, [])
+
+  const startCamera = useCallback(async () => {
+    setCameraLoading(true)
+    setCameraError('')
+    stopCamera()
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Browser Anda tidak mendukung WebRTC Camera atau context tidak aman. Pastikan menggunakan http://localhost atau HTTPS.')
+      setCameraLoading(false)
+      setCameraActive(false)
+      return
+    }
+
+    try {
+      let mediaStream = null
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        })
+      } catch {
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+          })
+        } catch {
+          mediaStream = await navigator.mediaDevices.getUserMedia({ video: true })
+        }
+      }
+
+      streamRef.current = mediaStream
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream
+        videoRef.current.setAttribute('playsinline', 'true')
+        videoRef.current.muted = true
+        try {
+          await videoRef.current.play()
+        } catch {
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play().catch(() => {})
+          }
+        }
+      }
+      setCameraActive(true)
+
+      // BarcodeDetector automatic scan loop
+      if ('BarcodeDetector' in window) {
+        try {
+          const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
+          scanTimerRef.current = window.setInterval(async () => {
+            if (!videoRef.current || videoRef.current.readyState < 2 || isScanningBusyRef.current) return
+            try {
+              const barcodes = await detector.detect(videoRef.current)
+              if (barcodes && barcodes.length > 0) {
+                const rawValue = barcodes[0].rawValue?.trim()
+                if (rawValue && rawValue !== lastScannedCodeRef.current) {
+                  isScanningBusyRef.current = true
+                  lastScannedCodeRef.current = rawValue
+                  setModalCardInput(rawValue)
+                  await executeScan(rawValue)
+                  setTimeout(() => {
+                    isScanningBusyRef.current = false
+                    lastScannedCodeRef.current = ''
+                  }, 2500)
+                }
+              }
+            } catch {
+              // Frame without barcode, safely ignore
+            }
+          }, 250)
+        } catch (detectorErr) {
+          console.warn('BarcodeDetector error:', detectorErr)
+        }
+      }
+    } catch (err) {
+      console.error('Camera Access Error:', err)
+      let msg = 'Kamera tidak dapat diakses.'
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        msg = 'Izin kamera diblokir oleh browser atau sistem operasi. Silakan izinkan akses kamera pada browser.'
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        msg = 'Perangkat webcam tidak terdeteksi pada laptop/komputer ini.'
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        msg = 'Kamera sedang digunakan oleh aplikasi lain.'
+      } else {
+        msg = `Kamera tidak dapat diakses: ${err.message || err.name || 'Periksa izin browser Anda'}`
+      }
+      setCameraError(msg)
+      setCameraActive(false)
+    } finally {
+      setCameraLoading(false)
+    }
+  }, [stopCamera])
+
+  const openCameraModal = () => {
+    setShowCameraModal(true)
+    setTimeout(() => {
+      startCamera()
+    }, 200)
+  }
+
+  const closeCameraModal = () => {
+    stopCamera()
+    setShowCameraModal(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      stopCamera()
+    }
+  }, [stopCamera])
+
+  // Execute Attendance Scan (masuk / pulang)
+  const executeScan = async (codeToScan, studentId = null) => {
+    setProcessingScan(true)
+    try {
+      const payload = {
+        ...(studentId
+          ? { student_id: studentId }
+          : scanMethod === 'QRCODE'
+            ? { qr_token: codeToScan.trim() }
+            : { card_number: codeToScan.trim() }),
+        unit_id: selectedUnit || undefined,
+        attendance_method: scanMethod,
+      }
+
+      let res
+      if (scanMode === 'checkin') {
+        res = await gateAttendanceService.scanCheckIn(payload)
+      } else {
+        res = await gateAttendanceService.scanCheckOut(payload)
+      }
+
+      const studentName = res?.data?.data?.student?.nama_lengkap || res?.data?.data?.student?.full_name || 'Siswa'
+      const actionName = scanMode === 'checkin' ? 'Kedatangan' : 'Kepulangan'
+
+      playBeep(true)
+      setLastScanResult({
+        success: true,
+        message: res.data?.message || `Presensi ${actionName} Berhasil!`,
+        data: res.data?.data,
+        timestamp: new Date().toLocaleTimeString('id-ID'),
+      })
+      pushToast('success', `Presensi ${actionName} Berhasil!`, `${studentName} telah tercatat melakukan absensi gerbang.`)
+
+      setCardInput('')
+      setModalCardInput('')
+      // Immediately refresh table and stats!
+      load()
+      if (scanMethod === 'MANUAL') {
+        fetchStudents()
+      }
+    } catch (err) {
+      playBeep(false)
+      const msg = err?.response?.data?.message || 'Gagal memproses absensi gerbang.'
+      setLastScanResult({
+        success: false,
+        message: msg,
+        data: null,
+        timestamp: new Date().toLocaleTimeString('id-ID'),
+      })
+      pushToast('error', 'Presensi Gagal', msg)
+    } finally {
+      setProcessingScan(false)
+    }
+  }
+
+  const handleScanSubmit = (e) => {
+    e?.preventDefault()
+    if (!cardInput.trim()) return
+    executeScan(cardInput)
+  }
+
+  const handleModalScanSubmit = (e) => {
+    e?.preventDefault()
+    if (!modalCardInput.trim()) return
+    executeScan(modalCardInput)
+  }
 
   // Time filtered rows based on dateFrom and dateTo
   const timeFilteredRows = useMemo(() => {
@@ -497,7 +982,7 @@ export default function RekapAbsensiGerbangPage() {
           <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-emerald-600/20 blur-3xl dark:from-emerald-500/50 dark:via-teal-400/40" />
           <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-gradient-to-tr from-emerald-600/30 via-teal-500/20 to-transparent blur-3xl dark:from-emerald-600/40 dark:via-teal-500/30" />
 
-          <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
               <div className="flex size-11 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
                 <Clock className="size-5 sm:size-7 text-white" />
@@ -506,22 +991,72 @@ export default function RekapAbsensiGerbangPage() {
                 <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 sm:px-3.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-white shadow-md shadow-emerald-600/25 border border-emerald-300/40">
                     <Sparkles className="size-3 sm:size-3.5 text-amber-300 animate-pulse" />
-                    Rekap Presensi Gerbang
+                    Rekap & Scanner Gerbang
                   </span>
-                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
-                    RFID & Barcode Scan
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                    <Clock className="size-3.5 text-emerald-600" /> Masuk: {scheduleConfig.jam_masuk} (Tol: {scheduleConfig.toleransi_menit}m) | Pulang: {scheduleConfig.jam_pulang}
                   </span>
                 </div>
                 <h1 className="mt-1.5 text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                  Rekapitulasi Absensi Gerbang Sekolah
+                  Rekapitulasi & Scanner Presensi Gerbang
                 </h1>
                 <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
-                  Pemantauan hasil scan kartu RFID, QR-code, dan barcode saat siswa masuk dan keluar melalui gerbang sekolah.
+                  Terminal pemindaian langsung (RFID / Barcode / QR Code) serta rekapitulasi data kehadiran dan kepulangan siswa secara real-time.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+            <div className="flex items-center gap-2 shrink-0 self-start lg:self-center flex-wrap">
+              {/* Multi-Unit Selector (bila role multi-unit) */}
+              {isMultiUnitUser && units.length > 0 && (
+                <div className="relative inline-flex items-center">
+                  <div className="pointer-events-none absolute left-3 flex items-center text-slate-400">
+                    <Building2 className="size-3.5" />
+                  </div>
+                  <select
+                    value={selectedUnit}
+                    onChange={(e) => setSelectedUnit(e.target.value)}
+                    aria-label="Filter unit pendidikan"
+                    className="h-9 appearance-none rounded-xl border border-emerald-300/80 bg-white/90 dark:bg-slate-900 pl-8 pr-7 text-xs font-bold text-slate-800 dark:text-slate-100 hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer shadow-xs"
+                  >
+                    <option value="">Semua Unit Pendidikan</option>
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nama || u.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 size-3 text-slate-400" />
+                </div>
+              )}
+
+              {/* Schedule Config Button */}
+              <button
+                type="button"
+                onClick={() => setShowScheduleModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/80 dark:border-emerald-700 bg-white/80 dark:bg-emerald-950/60 hover:bg-emerald-50 dark:hover:bg-emerald-900/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 shadow-xs transition-colors cursor-pointer"
+                title="Pengaturan jam masuk dan pulang per unit"
+              >
+                <Settings className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="hidden sm:inline">Jadwal Gerbang</span>
+              </button>
+
+              {/* Toggle Scanner Terminal Button */}
+              <button
+                type="button"
+                onClick={() => setShowScannerPanel(!showScannerPanel)}
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer ${
+                  showScannerPanel
+                    ? 'border-emerald-500 bg-emerald-600 text-white shadow-emerald-600/30 hover:bg-emerald-700'
+                    : 'border-emerald-300 dark:border-emerald-700 bg-white/90 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-50'
+                }`}
+              >
+                <QrCode className="size-3.5" />
+                <span>{showScannerPanel ? 'Tutup Scanner' : 'Buka Scanner Gerbang'}</span>
+                {showScannerPanel && <span className="size-2 rounded-full bg-emerald-300 animate-pulse ml-0.5" />}
+              </button>
+
+              {/* Refresh Data Button */}
               <button
                 type="button"
                 onClick={load}
@@ -535,6 +1070,455 @@ export default function RekapAbsensiGerbangPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* ── TERMINAL PEMINDAI GERBANG (INTEGRATED SCANNER TERMINAL) ──────────── */}
+      <AnimatePresence>
+        {showScannerPanel && (
+          <motion.section
+            id="terminal-scanner-gerbang"
+            initial={{ opacity: 0, height: 0, scale: 0.98 }}
+            animate={{ opacity: 1, height: 'auto', scale: 1 }}
+            exit={{ opacity: 0, height: 0, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+            className="overflow-hidden print:hidden"
+          >
+            <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+              {/* Ambient Glow */}
+              <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-emerald-400/15 blur-3xl dark:bg-emerald-400/20" />
+              <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-teal-400/10 blur-3xl dark:bg-teal-400/15" />
+
+              <div className="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-12">
+                {/* Main Terminal Controls (7 cols) */}
+                <div className="space-y-5 lg:col-span-7">
+                  {/* Terminal Header */}
+                  <div className="flex items-center justify-between pb-3.5 border-b border-emerald-200/90 dark:border-emerald-800/60">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
+                        <QrCode className="size-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                            Terminal Pemindai Absensi Gerbang
+                          </h3>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60">
+                            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Live
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                          Scan kartu RFID, Barcode/QR Code, atau input manual siswa di gerbang.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSoundEnabled(!soundEnabled)}
+                        title={soundEnabled ? 'Suara aktif (klik untuk membisukan)' : 'Suara dibisukan (klik untuk mengaktifkan)'}
+                        className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                          soundEnabled
+                            ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                            : 'border-slate-300 bg-slate-100 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'
+                        }`}
+                      >
+                        {soundEnabled ? <Volume2 className="size-3.5 text-emerald-600" /> : <VolumeX className="size-3.5" />}
+                        <span className="hidden sm:inline">{soundEnabled ? 'Audio Aktif' : 'Mute'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Scan Mode Switcher (MASUK / PULANG) */}
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1.5 dark:bg-slate-800" role="tablist" aria-label="Mode presensi gerbang">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={scanMode === 'checkin'}
+                      onClick={() => setScanMode('checkin')}
+                      className={`relative flex items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 z-10 cursor-pointer ${
+                        scanMode === 'checkin'
+                          ? 'text-white'
+                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
+                      }`}
+                    >
+                      {scanMode === 'checkin' && (
+                        <motion.div
+                          layoutId="activeGateScanModeBg"
+                          className="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 shadow-md shadow-emerald-600/30 -z-10"
+                          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                        />
+                      )}
+                      <LogIn className="size-4" /> PRESENSI KEDATANGAN
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={scanMode === 'checkout'}
+                      onClick={() => setScanMode('checkout')}
+                      className={`relative flex items-center justify-center gap-2 rounded-xl py-3 text-xs sm:text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 z-10 cursor-pointer ${
+                        scanMode === 'checkout'
+                          ? 'text-white'
+                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
+                      }`}
+                    >
+                      {scanMode === 'checkout' && (
+                        <motion.div
+                          layoutId="activeGateScanModeBg"
+                          className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 shadow-md shadow-indigo-600/30 -z-10"
+                          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                        />
+                      )}
+                      <LogOut className="size-4" /> PRESENSI PULANG
+                    </button>
+                  </div>
+
+                  {/* Method Selector */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                      Metode Pemindaian
+                    </label>
+                    <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Metode pemindaian">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={scanMethod === 'QRCODE'}
+                        onClick={() => setScanMethod('QRCODE')}
+                        className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border p-2.5 sm:p-3 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 cursor-pointer ${
+                          scanMethod === 'QRCODE'
+                            ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        <QrCode className="size-4 text-emerald-600 dark:text-emerald-400" />
+                        <span>QR Code / USB</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={scanMethod === 'RFID'}
+                        onClick={() => setScanMethod('RFID')}
+                        className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border p-2.5 sm:p-3 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 cursor-pointer ${
+                          scanMethod === 'RFID'
+                            ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        <Radio className="size-4 text-sky-500" />
+                        <span>RFID Tap</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={scanMethod === 'MANUAL'}
+                        onClick={() => setScanMethod('MANUAL')}
+                        className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border p-2.5 sm:p-3 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 cursor-pointer ${
+                          scanMethod === 'MANUAL'
+                            ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}
+                      >
+                        <UserCheck className="size-4 text-amber-500" />
+                        <span>Input Petugas TU</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dynamic View: QRCODE Method */}
+                  {scanMethod === 'QRCODE' && (
+                    <div className="space-y-4">
+                      <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 dark:border-emerald-950/50 dark:bg-emerald-950/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <motion.div
+                          className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-500 to-transparent shadow-[0_0_8px_rgba(16,185,129,0.8)] pointer-events-none"
+                          animate={{ top: ['0%', '100%', '0%'] }}
+                          transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+                        />
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
+                            <QrCode className="size-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">
+                              Mode Pemindai QR Code Kartu
+                            </h4>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              Gunakan barcode scanner USB fisik atau buka kamera live web.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={openCameraModal}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-4 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer whitespace-nowrap shrink-0 shadow-sm"
+                        >
+                          <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                            <Camera className="size-3.5 text-white" strokeWidth={2.2} />
+                          </div>
+                          <span>Buka Kamera Pemindai</span>
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleScanSubmit} className="space-y-2">
+                        <label htmlFor="gate-qr-input" className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                          Input Hardware Scanner USB / Barcode
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <QrCode className="size-4" />
+                          </div>
+                          <input
+                            id="gate-qr-input"
+                            type="text"
+                            autoFocus
+                            value={cardInput}
+                            onChange={(e) => setCardInput(e.target.value)}
+                            placeholder="Scan QR Code / Barcode kartu siswa via scanner USB..."
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-28 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                          <button
+                            type="submit"
+                            disabled={processingScan || !cardInput.trim()}
+                            className="absolute right-1.5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-4 py-2 text-xs font-extrabold text-white border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                          >
+                            {processingScan ? (
+                              <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            ) : null}
+                            <span>{processingScan ? 'Proses...' : 'Proses'}</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Dynamic View: RFID Method */}
+                  {scanMethod === 'RFID' && (
+                    <div className="space-y-4">
+                      <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/60 p-4 dark:border-blue-950/50 dark:bg-blue-950/30 flex items-center justify-between">
+                        <motion.div
+                          className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent shadow-[0_0_8px_rgba(59,130,246,0.8)] pointer-events-none"
+                          animate={{ top: ['0%', '100%', '0%'] }}
+                          transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                        />
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white shadow-sm border border-sky-300/40">
+                            <Wifi className="size-5 animate-pulse" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-blue-950 dark:text-blue-200">
+                              Perangkat RFID Reader Terhubung
+                            </h4>
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              Tempelkan (tap) kartu RFID siswa pada alat pembaca gerbang.
+                            </p>
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-extrabold text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700">
+                          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                          Standby RFID
+                        </span>
+                      </div>
+
+                      <form onSubmit={handleScanSubmit} className="space-y-2">
+                        <label htmlFor="gate-rfid-input" className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                          Input Kode Kartu RFID Tap
+                        </label>
+                        <div className="relative flex items-center">
+                          <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                            <Wifi className="size-4" />
+                          </div>
+                          <input
+                            id="gate-rfid-input"
+                            type="text"
+                            autoFocus
+                            value={cardInput}
+                            onChange={(e) => setCardInput(e.target.value)}
+                            placeholder="Tap kartu RFID pada reader atau ketik nomor kartu..."
+                            className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-32 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                          />
+                          <button
+                            type="submit"
+                            disabled={processingScan || !cardInput.trim()}
+                            className="absolute right-1.5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 px-4 py-2 text-xs font-extrabold text-white border border-sky-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                          >
+                            {processingScan ? (
+                              <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            ) : null}
+                            <span>{processingScan ? 'Proses...' : 'Proses RFID'}</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Dynamic View: MANUAL TU Method */}
+                  {scanMethod === 'MANUAL' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">Pencarian & Absensi Manual Siswa/Santri</h4>
+                        <span className="text-xs text-slate-500 font-medium">Petugas TU / Operator</span>
+                      </div>
+
+                      <div className="relative flex items-center">
+                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                          <Search className="size-4" />
+                        </div>
+                        <input
+                          type="text"
+                          value={studentSearch}
+                          onChange={(e) => setStudentSearch(e.target.value)}
+                          placeholder="Cari berdasarkan nama siswa, NIS, atau NISN..."
+                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
+                        />
+                      </div>
+
+                      <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                        {loadingStudents ? (
+                          <AppSkeleton variant="list" rows={3} />
+                        ) : studentsList.length === 0 ? (
+                          <AppEmptyState title="Siswa tidak ditemukan" description="Coba ubah kata kunci pencarian nama, NIS, atau NISN." />
+                        ) : (
+                          studentsList.map((st) => (
+                            <div
+                              key={st.id}
+                              className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/60 p-3 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/40"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                  {st.nama_lengkap || st.full_name || 'Siswa'}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                  NISN: <span className="font-semibold font-mono text-slate-700 dark:text-slate-300">{st.nisn || st.nis || '-'}</span> | Kelas: {st.kelas?.nama || st.school_class?.name || '-'}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={processingScan}
+                                onClick={() => executeScan('', st.id)}
+                                className={`inline-flex shrink-0 items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-extrabold text-white border transition-all duration-200 hover:scale-[1.03] active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${
+                                  scanMode === 'checkin'
+                                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 border-emerald-300/40'
+                                    : 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 border-indigo-300/40'
+                                }`}
+                              >
+                                <div className="flex size-4 items-center justify-center rounded-lg bg-white/20 text-white">
+                                  {scanMode === 'checkin' ? <LogIn className="size-3 text-white" /> : <LogOut className="size-3 text-white" />}
+                                </div>
+                                <span>{scanMode === 'checkin' ? 'Absen Masuk' : 'Absen Pulang'}</span>
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Feedback & Last Scan Status (5 cols) */}
+                <div className="space-y-4 lg:col-span-5 flex flex-col justify-between">
+                  <div>
+                    <div className="mb-4 pb-3.5 border-b border-emerald-200/90 dark:border-emerald-800/60 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                          Status Pemindaian Terakhir
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Umpan balik langsung hasil scan saat ini
+                        </p>
+                      </div>
+                      {lastScanResult?.timestamp && (
+                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                          {lastScanResult.timestamp}
+                        </span>
+                      )}
+                    </div>
+
+                    {lastScanResult ? (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                        className={`rounded-2xl border-2 p-4 shadow-sm ${
+                          lastScanResult.success
+                            ? 'border-emerald-300/80 bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white dark:border-emerald-800 dark:bg-emerald-950/40'
+                            : 'border-rose-300/80 bg-gradient-to-br from-rose-50 via-pink-50/50 to-white dark:border-rose-800 dark:bg-rose-950/40'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3.5">
+                          <div className={`flex size-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${
+                            lastScanResult.success
+                              ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30'
+                              : 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30'
+                          }`}>
+                            {lastScanResult.success ? (
+                              <CheckCircle2 className="size-6 text-white" strokeWidth={2.3} />
+                            ) : (
+                              <XCircle className="size-6 text-white" strokeWidth={2.3} />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase border ${
+                                lastScanResult.success
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                  : 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-900/60 dark:text-rose-300'
+                              }`}>
+                                {lastScanResult.success ? 'Berhasil Terverifikasi' : 'Pindai Ditolak'}
+                              </span>
+                            </div>
+                            <p className={`mt-1 text-sm font-black ${
+                              lastScanResult.success ? 'text-emerald-950 dark:text-emerald-200' : 'text-rose-950 dark:text-rose-200'
+                            }`}>
+                              {lastScanResult.message}
+                            </p>
+                            {lastScanResult.data?.student && (
+                              <div className="mt-2.5 pt-2 border-t border-emerald-200/60 dark:border-emerald-900/60 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                                <p>
+                                  <span className="text-slate-400">Nama Siswa:</span> <span className="font-bold text-slate-900 dark:text-white">{lastScanResult.data.student.nama_lengkap || lastScanResult.data.student.full_name}</span>
+                                </p>
+                                <p>
+                                  <span className="text-slate-400">NIS / NISN:</span> <span className="font-mono font-semibold">{lastScanResult.data.student.nis || lastScanResult.data.student.nisn || '-'}</span>
+                                </p>
+                                {(lastScanResult.data.student.kelas || lastScanResult.data.student.school_class) && (
+                                  <p>
+                                    <span className="text-slate-400">Kelas:</span> <span className="font-semibold">{lastScanResult.data.student.kelas?.nama || lastScanResult.data.student.school_class?.name || '-'}</span>
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <div className="rounded-2xl border-2 border-dashed border-emerald-200/80 p-6 text-center dark:border-emerald-800/60 bg-emerald-50/20 dark:bg-emerald-950/10">
+                        <div className="flex size-12 mx-auto items-center justify-center rounded-2xl bg-emerald-100/70 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 mb-2.5">
+                          <QrCode className="size-6 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
+                          Siap Memindai Kartu Gerbang
+                        </h4>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                          Tempelkan kartu RFID pada reader atau arahkan QR Code kartu siswa ke scanner untuk mencatat presensi secara otomatis.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Tips Box */}
+                  <div className="rounded-2xl border border-emerald-200/70 bg-gradient-to-r from-emerald-50/60 via-teal-50/40 to-emerald-50/60 p-3.5 dark:border-emerald-800/60 dark:bg-slate-900/50 text-[11px] text-slate-600 dark:text-slate-300">
+                    <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300 mb-1">
+                      <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Sinkronisasi Otomatis Real-Time</span>
+                    </div>
+                    <p className="leading-relaxed">
+                      Setiap kali pemindaian berhasil, rekapitulasi data tabel di bawah serta grafik kehadiran akan terbarui secara instan tanpa perlu memuat ulang halaman.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       {/* Summary Cards Grid (§C ModernKpiCard + §7.3 grid adaptif) */}
       <motion.div variants={itemVariants} initial="hidden" animate="visible" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -864,6 +1848,15 @@ export default function RekapAbsensiGerbangPage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+            <SquircleActionButton
+              variant="primary"
+              icon={QrCode}
+              label={showScannerPanel ? 'Fokus Scanner' : 'Buka Scanner'}
+              onClick={() => {
+                setShowScannerPanel(true)
+                document.getElementById('terminal-scanner-gerbang')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            />
             <SquircleActionButton
               variant="export"
               label="Export CSV"
@@ -1417,6 +2410,354 @@ export default function RekapAbsensiGerbangPage() {
         onDownload={handleDownloadPDF}
         title="Rekap Absensi Gerbang"
       />
+
+      {/* Pop-Up Camera Scanner Modal */}
+      <AnimatePresence>
+        {showCameraModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-3 sm:p-5 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="modal-dialog font-sans my-auto relative w-full max-w-xl"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border-2 border-emerald-500/30 bg-white shadow-2xl shadow-emerald-950/20 dark:border-emerald-600/40 dark:bg-[#182232] dark:shadow-black/60">
+                <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+                <div className="pointer-events-none absolute -top-20 -right-20 h-52 w-52 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl dark:from-emerald-500/40 dark:via-teal-400/30" />
+
+                {/* Modal Header */}
+                <div className="modal-header relative z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/20 border border-emerald-300/30">
+                      <Camera className="h-5 w-5 text-white" strokeWidth={2.25} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="modal-title text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
+                          Pemindai QR Code Live
+                        </h3>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 text-[11px] font-extrabold text-white shadow-sm border border-emerald-300/40">
+                          <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                          {scanMode === 'checkin' ? 'KEDATANGAN' : 'PULANG'}
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                        Arahkan QR Code kartu siswa ke dalam kotak pemindai
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeCameraModal}
+                    aria-label="Tutup pemindai"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                  >
+                    <X className="size-4 text-white" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="relative z-10 p-6 space-y-4">
+                  {/* Square QR Code Viewfinder */}
+                  <div className="relative mx-auto aspect-square w-full max-w-[320px] sm:max-w-[340px] overflow-hidden rounded-[24px] border-2 border-emerald-500/40 bg-slate-950 shadow-2xl shadow-emerald-500/10 dark:border-emerald-600/50">
+                    <video
+                      ref={(el) => {
+                        videoRef.current = el
+                        if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                          el.srcObject = streamRef.current
+                          el.muted = true
+                          el.play().catch((err) => console.warn('Play error:', err))
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="h-full w-full object-cover"
+                    />
+
+                    {/* Darkened Mask with Center Square QR Target */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                      <div className="relative z-10 h-56 w-56 sm:h-64 sm:w-64 rounded-2xl border-2 border-emerald-400/90 bg-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.52)] overflow-hidden">
+                        {/* 4 Corner Markers */}
+                        <span className="absolute top-0 left-0 h-6 w-6 border-t-[3.5px] border-l-[3.5px] border-emerald-400 rounded-tl-xl shadow-[0_0_8px_#10b981]" />
+                        <span className="absolute top-0 right-0 h-6 w-6 border-t-[3.5px] border-r-[3.5px] border-emerald-400 rounded-tr-xl shadow-[0_0_8px_#10b981]" />
+                        <span className="absolute bottom-0 left-0 h-6 w-6 border-b-[3.5px] border-l-[3.5px] border-emerald-400 rounded-bl-xl shadow-[0_0_8px_#10b981]" />
+                        <span className="absolute bottom-0 right-0 h-6 w-6 border-b-[3.5px] border-r-[3.5px] border-emerald-400 rounded-br-xl shadow-[0_0_8px_#10b981]" />
+
+                        {cameraActive && (
+                          <>
+                            <motion.div
+                              animate={{ top: ['-20%', '85%', '-20%'] }}
+                              transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                              className="absolute inset-x-0 h-16 bg-gradient-to-b from-emerald-500/20 via-teal-400/10 to-transparent pointer-events-none z-10"
+                            />
+                            <motion.div
+                              animate={{ top: ['4%', '94%', '4%'] }}
+                              transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
+                              className="absolute inset-x-1 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_16px_#10b981,0_0_24px_#34d399] z-20 pointer-events-none"
+                            />
+                          </>
+                        )}
+
+                        <div className="absolute -bottom-9 inset-x-0 flex justify-center pointer-events-none">
+                          <span className="bg-slate-950/90 backdrop-blur-md px-3.5 py-1 text-[10px] font-black text-emerald-300 rounded-full border border-emerald-500/40 whitespace-nowrap shadow-xl flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                            Posisikan QR Code di Dalam Kotak
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {cameraLoading && (
+                      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/85 text-white gap-2.5">
+                        <RefreshCw className="h-8 w-8 animate-spin text-emerald-400" />
+                        <p className="text-xs font-bold text-slate-200">Menghubungkan ke kamera...</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {cameraError && (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50/90 p-4 text-xs dark:border-rose-900/50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 space-y-2.5">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-[13px] text-rose-900 dark:text-rose-100">Kamera Tidak Dapat Diakses</p>
+                          <p className="leading-relaxed">{cameraError}</p>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-rose-200/60 dark:border-rose-900/60 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[11px] text-rose-700 dark:text-rose-300">
+                          <span className="font-bold">Panduan:</span> Izinkan akses Camera pada browser lalu coba hubungkan lagi.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={startCamera}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 px-4 py-2 text-xs font-extrabold text-white border border-rose-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer shrink-0"
+                        >
+                          <RefreshCw className="size-3.5 text-white" strokeWidth={2.2} />
+                          <span>Coba Lagi</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Code Entry in Modal */}
+                  <form onSubmit={handleModalScanSubmit} className="space-y-2 pt-1">
+                    <label htmlFor="gate-modal-scan" className="block text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                      Hasil Pindai QR / Input Manual Kartu
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex flex-1 items-center">
+                        <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
+                          <QrCode className="size-4" />
+                        </div>
+                        <input
+                          id="gate-modal-scan"
+                          type="text"
+                          value={modalCardInput}
+                          onChange={(e) => setModalCardInput(e.target.value)}
+                          placeholder="Hasil kode QR atau nomor kartu..."
+                          className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={processingScan || !modalCardInput.trim()}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-2.5 text-xs font-extrabold text-white border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                      >
+                        {processingScan ? (
+                          <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        ) : (
+                          <CheckCircle2 className="size-3.5" />
+                        )}
+                        <span>Proses</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pop-Up Schedule Configuration Modal */}
+      <AnimatePresence>
+        {showScheduleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-3 sm:p-5 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="modal-dialog font-sans my-auto relative w-full max-w-2xl"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border-2 border-emerald-500/30 bg-white shadow-2xl shadow-emerald-950/20 dark:border-emerald-600/40 dark:bg-[#182232] dark:shadow-black/60">
+                <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+                <div className="modal-header relative z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md border border-emerald-300/30">
+                      <Settings className="h-5 w-5 text-white" strokeWidth={2.25} />
+                    </div>
+                    <div>
+                      <h3 className="modal-title text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
+                        Pengaturan Jam Masuk & Pulang Gerbang
+                      </h3>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                        Tentukan jam masuk, toleransi keterlambatan, dan jam kepulangan siswa.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowScheduleModal(false)}
+                    aria-label="Tutup pengaturan"
+                    className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer shrink-0"
+                  >
+                    <X className="size-4 text-white" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                <div className="relative z-10 p-6 space-y-5 overflow-y-auto max-h-[calc(100dvh-12rem)]">
+                  <form onSubmit={handleSaveScheduleConfig} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="sched-jam-masuk" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Jam Masuk Sekolah <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          id="sched-jam-masuk"
+                          type="time"
+                          required
+                          value={scheduleConfig.jam_masuk}
+                          onChange={(e) => setScheduleConfig({ ...scheduleConfig, jam_masuk: e.target.value })}
+                          className="w-full rounded-xl border border-slate-200/90 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="sched-toleransi" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Toleransi Keterlambatan (Menit) <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          id="sched-toleransi"
+                          type="number"
+                          required
+                          min="0"
+                          max="120"
+                          value={scheduleConfig.toleransi_menit}
+                          onChange={(e) => setScheduleConfig({ ...scheduleConfig, toleransi_menit: e.target.value })}
+                          className="w-full rounded-xl border border-slate-200/90 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="sched-jam-pulang" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Jam Pulang Sekolah <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          id="sched-jam-pulang"
+                          type="time"
+                          required
+                          value={scheduleConfig.jam_pulang}
+                          onChange={(e) => setScheduleConfig({ ...scheduleConfig, jam_pulang: e.target.value })}
+                          className="w-full rounded-xl border border-slate-200/90 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="sched-cutoff" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
+                          Batas Jam Cutoff Alpha <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          id="sched-cutoff"
+                          type="time"
+                          required
+                          value={scheduleConfig.jam_cutoff_alpha}
+                          onChange={(e) => setScheduleConfig({ ...scheduleConfig, jam_cutoff_alpha: e.target.value })}
+                          className="w-full rounded-xl border border-slate-200/90 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={savingSchedule}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer shadow-md shadow-emerald-500/20"
+                      >
+                        {savingSchedule ? (
+                          <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        ) : (
+                          <CheckCircle2 className="size-3.5 text-white" strokeWidth={2.2} />
+                        )}
+                        <span>{savingSchedule ? 'Menyimpan...' : 'Simpan Pengaturan'}</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Summary of schedules across units */}
+                  {allUnitsSchedules.length > 0 && (
+                    <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                      <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="h-4 w-4 text-emerald-600" /> Ringkasan Jam Seluruh Unit
+                      </h4>
+                      <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
+                        <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                          <thead className="bg-gradient-to-r from-emerald-100/80 via-teal-50/60 to-emerald-100/80 border-b border-emerald-200/80 dark:from-emerald-950/80 dark:via-teal-950/60 dark:to-emerald-950/80 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                            <tr>
+                              <th className="px-3.5 py-2">Unit</th>
+                              <th className="px-3.5 py-2">Masuk</th>
+                              <th className="px-3.5 py-2">Toleransi</th>
+                              <th className="px-3.5 py-2">Pulang</th>
+                              <th className="px-3.5 py-2 text-right">Pilih</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                            {allUnitsSchedules.map((u) => (
+                              <tr key={u.unit_id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20">
+                                <td className="px-3.5 py-2 font-bold text-slate-900 dark:text-white">{u.unit_name}</td>
+                                <td className="px-3.5 py-2 font-bold text-emerald-700 dark:text-emerald-400">{u.schedule.jam_masuk}</td>
+                                <td className="px-3.5 py-2">{u.schedule.toleransi_menit}m</td>
+                                <td className="px-3.5 py-2 font-bold text-indigo-700 dark:text-indigo-400">{u.schedule.jam_pulang}</td>
+                                <td className="px-3.5 py-2 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setTargetUnitForConfig(u.unit_id)
+                                      setScheduleConfig(u.schedule)
+                                    }}
+                                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 underline cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Semantic Toast Stack */}
+      <ToastStack items={toasts} onDismiss={dismissToast} />
     </PageContainer>
   )
 }

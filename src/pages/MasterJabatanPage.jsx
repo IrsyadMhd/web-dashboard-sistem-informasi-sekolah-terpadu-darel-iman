@@ -54,6 +54,7 @@ import { MasterStatusBadge, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { downloadFileFromApi } from '../utils/exportUtils'
 import { Button } from '@/components/tailgrids/core/button'
+import { Checkbox } from '@/components/tailgrids/core/checkbox'
 import {
   HoverCard,
   HoverCardContent,
@@ -282,6 +283,8 @@ export default function MasterJabatanPage() {
   const [showExportModal, setShowExportModal] = useState(false)
   const [exportFormat, setExportFormat] = useState('xlsx')
   const [isExporting, setIsExporting] = useState(false)
+  const [selectedJabatanIds, setSelectedJabatanIds] = useState([])
+  const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false)
 
   // Toast Notifications (Zero SweetAlert2)
   const [toasts, setToasts] = useState([])
@@ -565,6 +568,53 @@ export default function MasterJabatanPage() {
     },
   })
 
+  const batchDeleteMutation = useMutation({
+    mutationFn: (ids) => jabatanService.hapusBanyak(ids),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['jabatan-list'] })
+      queryClient.invalidateQueries({ queryKey: ['jabatan-options'] })
+      queryClient.invalidateQueries({ queryKey: ['all-jabatan-for-kpi'] })
+      setSelectedJabatanIds([])
+      setShowBatchDeleteModal(false)
+      pushToast('Hapus Massal Berhasil', res?.message || 'Data jabatan terpilih berhasil dihapus.', 'success')
+    },
+    onError: (err) => {
+      setShowBatchDeleteModal(false)
+      pushToast('Gagal Menghapus', err.response?.data?.message || 'Terjadi kesalahan saat menghapus data massal.', 'error')
+    },
+  })
+
+  const isRowSelectableForBatchDelete = (row) => {
+    if (!row || row.terhapus) return false
+    if (!canManageGlobalPositions) return false
+    return !isRowRestrictedForUser(row)
+  }
+
+  const selectedJabatanObjects = useMemo(() => {
+    return daftarJabatan.filter((item) => selectedJabatanIds.includes(item.id))
+  }, [daftarJabatan, selectedJabatanIds])
+
+  const bulkActions = canManageGlobalPositions ? (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setShowBatchDeleteModal(true)}
+        className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 px-3 py-1.5 text-xs font-extrabold text-white shadow-sm shadow-rose-500/25 hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200 cursor-pointer border border-rose-300/40"
+      >
+        <Trash2 className="size-3.5" />
+        Hapus Terpilih ({selectedJabatanIds.length})
+      </button>
+      <button
+        type="button"
+        onClick={() => setSelectedJabatanIds([])}
+        className="inline-flex items-center gap-1 rounded-xl bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-600 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 transition-colors cursor-pointer"
+      >
+        <X className="size-3.5" />
+        Batal
+      </button>
+    </div>
+  ) : null
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleOpenCreate = () => {
     if (!canManageGlobalPositions) return
@@ -573,8 +623,8 @@ export default function MasterJabatanPage() {
   }
 
   const handleOpenEdit = (item) => {
-    if (!canEditPosition || isRowRestrictedForUser(item)) {
-      pushToast('Akses Dibatasi', 'Role Kepala Sekolah tidak diizinkan untuk mengubah data jabatan Pengurus Yayasan.', 'error')
+    if (!canManageGlobalPositions || isRowRestrictedForUser(item)) {
+      pushToast('Akses Dibatasi', 'Anda tidak diizinkan untuk mengubah data jabatan ini.', 'error')
       return
     }
     setSelectedJabatanForEdit(item)
@@ -588,14 +638,14 @@ export default function MasterJabatanPage() {
 
   const handleDelete = (item) => {
     if (!canManageGlobalPositions || isRowRestrictedForUser(item)) {
-      pushToast('Akses Dibatasi', 'Role Kepala Sekolah tidak diizinkan untuk menghapus data jabatan Pengurus Yayasan.', 'error')
+      pushToast('Akses Dibatasi', 'Anda tidak diizinkan untuk menghapus data jabatan ini.', 'error')
       return
     }
     setDeleteTarget(item)
   }
 
   const handleRestore = (item) => {
-    if (!canEditPosition || isRowRestrictedForUser(item)) return
+    if (!canManageGlobalPositions || isRowRestrictedForUser(item)) return
     setRestoreTarget(item)
   }
 
@@ -798,11 +848,21 @@ export default function MasterJabatanPage() {
   }
 
   // Mobile card view fallback
-  const renderMobileCard = ({ row, onView, onEdit, onDelete }) => {
+  const renderMobileCard = ({ row, selected, onToggleSelect, onView, onEdit, onDelete }) => {
     const isRestricted = isRowRestrictedForUser(row)
+    const canSelect = isRowSelectableForBatchDelete(row)
     return (
-      <div className={`rounded-[18px] border bg-white p-4 shadow-2xs dark:bg-[#1B2433] ${row.terhapus ? 'border-rose-200 dark:border-rose-900/50 bg-rose-50/20' : 'border-slate-200/80 dark:border-slate-700'}`}>
+      <div className={`rounded-[18px] border bg-white p-4 shadow-2xs dark:bg-[#1B2433] ${selected ? 'ring-2 ring-emerald-500 bg-emerald-50/20' : ''} ${row.terhapus ? 'border-rose-200 dark:border-rose-900/50 bg-rose-50/20' : 'border-slate-200/80 dark:border-slate-700'}`}>
         <div className="flex items-start gap-3">
+          {canSelect && onToggleSelect && (
+            <div className="pt-2">
+              <Checkbox
+                size="sm"
+                checked={selected}
+                onChange={onToggleSelect}
+              />
+            </div>
+          )}
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
             <FaSitemap className="h-5 w-5" />
           </span>
@@ -841,7 +901,7 @@ export default function MasterJabatanPage() {
           <ActionDropdown
             onView={onView}
             onEdit={canEditPosition && !row.terhapus && !isRestricted ? onEdit : undefined}
-            onDelete={canManageGlobalPositions && !row.terhapus && !isRestricted ? onDelete : undefined}
+            onDelete={canEditPosition && !row.terhapus && !isRestricted ? onDelete : undefined}
           />
         </div>
       </div>
@@ -1123,7 +1183,7 @@ export default function MasterJabatanPage() {
                 )}
 
                 {/* Tambah Jabatan Button (Vivid Emerald Squircle + Floating Tooltip) */}
-                {canEditPosition && (
+                {canManageGlobalPositions && (
                   <div className="group relative inline-flex">
                     <button
                       type="button"
@@ -1273,10 +1333,14 @@ export default function MasterJabatanPage() {
                 </div>
               }
               actionColumnLabel=""
+              selectedKeys={selectedJabatanIds}
+              onToggleSelect={canManageGlobalPositions ? setSelectedJabatanIds : undefined}
+              isRowSelectable={isRowSelectableForBatchDelete}
+              bulkActions={bulkActions}
               onView={(row) => handleOpenDetail(row)}
-              canEdit={(row) => canEditPosition && !row.terhapus && !isRowRestrictedForUser(row)}
+              canEdit={(row) => canManageGlobalPositions && !row.terhapus && !isRowRestrictedForUser(row)}
               canDelete={(row) => canManageGlobalPositions && !row.terhapus && !isRowRestrictedForUser(row)}
-              onEdit={canEditPosition ? (row) => handleOpenEdit(row) : undefined}
+              onEdit={canManageGlobalPositions ? (row) => handleOpenEdit(row) : undefined}
               onDelete={canManageGlobalPositions ? (row) => handleDelete(row) : undefined}
               extraActions={extraActions}
               renderMobileCard={renderMobileCard}
@@ -1861,6 +1925,124 @@ export default function MasterJabatanPage() {
                       <Trash2 className="size-4" />
                     )}
                     <span>{hapusMutation.isPending ? 'Menghapus...' : 'Ya, Hapus Data'}</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          HARMONIZED BATCH DELETE CONFIRMATION MODAL (z-[70])
+      ══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showBatchDeleteModal && (
+          <div
+            className="overlay modal fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget && !batchDeleteMutation.isPending) setShowBatchDeleteModal(false)
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              className="modal-dialog font-sans my-auto w-full max-w-lg"
+            >
+              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-rose-200/80 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/50 dark:bg-[#182232]">
+                <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 shrink-0" />
+
+                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white p-2.5 shadow-md shadow-rose-500/30 border border-rose-300/30 shrink-0">
+                      <Trash2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                    </div>
+                    <div>
+                      <h3 className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        <span>Hapus Massal Jabatan</span>
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400 dark:border-rose-800/60">
+                          <AlertTriangle className="size-3" />
+                          {selectedJabatanIds.length} Data Dipilih
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Konfirmasi penghapusan serentak data jabatan terpilih.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={batchDeleteMutation.isPending}
+                    onClick={() => setShowBatchDeleteModal(false)}
+                    className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <X className="size-4" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                <div className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200 overflow-y-auto max-h-[50vh]">
+                  {/* Summary Card with List */}
+                  <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 p-4 dark:border-rose-900/60 dark:bg-rose-950/30">
+                    <p className="text-xs font-bold text-rose-950 dark:text-rose-200 mb-2">
+                      Daftar jabatan yang akan dihapus:
+                    </p>
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {selectedJabatanObjects.slice(0, 5).map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-xs bg-white/70 dark:bg-slate-800/70 p-2 rounded-xl border border-rose-100 dark:border-rose-900/40">
+                          <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[240px]">
+                            {item.nama_jabatan || item.name}
+                          </span>
+                          <span className="font-mono text-[10px] text-slate-500">
+                            {item.kode_jabatan || item.code} · Level {item.level_jabatan}
+                          </span>
+                        </div>
+                      ))}
+                      {selectedJabatanIds.length > 5 && (
+                        <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 italic text-center pt-1">
+                          ... dan {selectedJabatanIds.length - 5} jabatan lainnya
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Danger Callout */}
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-3.5 text-xs text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200 leading-relaxed">
+                    <p className="font-bold flex items-center gap-1.5 mb-1">
+                      <AlertTriangle className="size-3.5 text-rose-600" />
+                      Perhatian Hapus Massal
+                    </p>
+                    <p className="text-[11px] text-rose-800 dark:text-rose-300">
+                      Sebanyak <strong>{selectedJabatanIds.length} jabatan</strong> akan dipindahkan ke arsip (soft delete). Riwayat assignment pegawai tidak akan hilang permanen dan dapat dipulihkan kapan saja bila diperlukan.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="modal-footer px-6 py-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-2.5 bg-slate-50/50 dark:bg-slate-900/40">
+                  <button
+                    type="button"
+                    disabled={batchDeleteMutation.isPending}
+                    onClick={() => setShowBatchDeleteModal(false)}
+                    className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 transition cursor-pointer disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={batchDeleteMutation.isPending}
+                    onClick={() => batchDeleteMutation.mutate(selectedJabatanIds)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-5 py-2.5 text-xs font-extrabold shadow-md shadow-rose-500/25 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 cursor-pointer border border-rose-300/40"
+                  >
+                    {batchDeleteMutation.isPending ? (
+                      <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
+                    <span>{batchDeleteMutation.isPending ? 'Menghapus...' : `Ya, Hapus (${selectedJabatanIds.length}) Data`}</span>
                   </button>
                 </div>
               </div>

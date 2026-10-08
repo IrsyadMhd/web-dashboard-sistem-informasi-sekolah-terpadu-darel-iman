@@ -89,6 +89,7 @@ import {
 import alumniService from '../services/alumniService'
 import { studentService } from '../services/studentService'
 import api from '../services/api'
+import CsvImportModal from '../components/master-data/CsvImportModal'
 
 // Sub-komponen KpiTintedCard Modern Style (Identik Spesifikasi TAILGRIDS_ALUMNI_MUTASI_CARDS)
 function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', tag, active, onClick }) {
@@ -598,6 +599,37 @@ export default function KelolaAlumniPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+
+  const handleImportAlumni = async (rows) => {
+    try {
+      if (alumniService?.prosesImport) {
+        await alumniService.prosesImport(rows)
+      }
+      Swal.fire({
+        icon: 'success',
+        title: 'Import Sukses',
+        text: `${rows.length} data alumni berhasil diproses!`,
+        timer: 2500,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+      })
+      await fetchData()
+      setIsImportModalOpen(false)
+    } catch (e) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Import Gagal',
+        text: e?.message || 'Gagal memproses data import alumni.',
+        timer: 2500,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+      })
+    }
+  }
 
   // Load Kelas / Rombel untuk Unit Tujuan Baru ketika Pindah Unit
   useEffect(() => {
@@ -1737,16 +1769,7 @@ export default function KelolaAlumniPage() {
                   title="Import Data (Excel/CSV)"
                   aria-label="Import Data"
                   className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-600 hover:bg-sky-600 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-600 dark:hover:text-white transition-colors duration-200 hover:shadow-md hover:shadow-sky-600/30 cursor-pointer shadow-2xs"
-                  onClick={() => {
-                    const input = document.createElement('input')
-                    input.type = 'file'
-                    input.accept = '.csv, .xlsx, .xls'
-                    input.onchange = (e) => {
-                      const file = e.target.files?.[0]
-                      if (file) alert(`Berkas "${file.name}" siap di-import ke direktori alumni!`)
-                    }
-                    input.click()
-                  }}
+                  onClick={() => setIsImportModalOpen(true)}
                 >
                   <Upload1 className="size-5 transition-colors" />
                 </button>
@@ -3456,6 +3479,14 @@ export default function KelolaAlumniPage() {
           </Dialog>
         </OverlayWrapper>
       )}
+
+      {/* CsvImportModal for Alumni */}
+      <CsvImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="Import Data Alumni"
+        onImport={handleImportAlumni}
+      />
     </PageContainer>
   )
 }

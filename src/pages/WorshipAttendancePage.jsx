@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Moon,
@@ -525,15 +525,26 @@ export default function WorshipAttendancePage() {
     setShowVerifyModal(false)
   }
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+
   // ── Filtered student list for active session ──────────────────────────────
   const activeDetails = sessionDetail?.details || []
-  const filteredDetails = activeDetails.filter((d) => {
-    const matchSearch = !searchSantri || d.student?.nama_lengkap?.toLowerCase().includes(searchSantri.toLowerCase()) || d.student?.nisn?.includes(searchSantri)
-    const matchStatus = !filterStatus || d.attendance_status === filterStatus
-    const matchKamar = !filterKamar || d.room === filterKamar
-    const matchKelompok = !filterKelompok || d.group === filterKelompok
-    return matchSearch && matchStatus && matchKamar && matchKelompok
-  })
+  const filteredDetails = useMemo(() => {
+    return activeDetails.filter((d) => {
+      const matchSearch = !searchSantri || d.student?.nama_lengkap?.toLowerCase().includes(searchSantri.toLowerCase()) || d.student?.nisn?.includes(searchSantri)
+      const matchStatus = !filterStatus || d.attendance_status === filterStatus
+      const matchKamar = !filterKamar || d.room === filterKamar
+      const matchKelompok = !filterKelompok || d.group === filterKelompok
+      return matchSearch && matchStatus && matchKamar && matchKelompok
+    })
+  }, [activeDetails, searchSantri, filterStatus, filterKamar, filterKelompok])
+
+  const totalPages = Math.max(1, Math.ceil(filteredDetails.length / perPage))
+  const paginatedDetails = useMemo(() => {
+    const start = (currentPage - 1) * perPage
+    return filteredDetails.slice(start, start + perPage)
+  }, [filteredDetails, currentPage, perPage])
 
   // ── Stats calculation ────────────────────────────────────────────────────
   const totalSantriCount = 128
@@ -1002,7 +1013,7 @@ export default function WorshipAttendancePage() {
                           <button
                             type="button"
                             onClick={openCameraModal}
-                            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+                            className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition active:scale-95"
                           >
                             <Camera className="h-3.5 w-3.5" /> Live Kamera
                           </button>
@@ -1017,12 +1028,12 @@ export default function WorshipAttendancePage() {
                             value={scanInput}
                             onChange={(e) => setScanInput(e.target.value)}
                             placeholder="Scan QR code via scanner USB atau ketik NISN..."
-                            className="h-9 flex-1 rounded-lg border border-emerald-200 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                            className="h-9 flex-1 rounded-xl border border-emerald-200 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           />
                           <button
                             type="submit"
                             disabled={processingScan}
-                            className="rounded-lg bg-emerald-600 px-4 text-xs font-bold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+                            className="rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition active:scale-95"
                           >
                             {processingScan ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : 'Absen'}
                           </button>
@@ -1051,12 +1062,12 @@ export default function WorshipAttendancePage() {
                             value={scanInput}
                             onChange={(e) => setScanInput(e.target.value)}
                             placeholder="Tap kartu RFID santri pada reader..."
-                            className="h-9 flex-1 rounded-lg border border-sky-200 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                            className="h-9 flex-1 rounded-xl border border-sky-200 bg-white px-3 text-xs font-semibold text-slate-900 focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                           />
                           <button
                             type="submit"
                             disabled={processingScan}
-                            className="rounded-lg bg-sky-600 px-4 text-xs font-bold text-white shadow hover:bg-sky-700 disabled:opacity-50"
+                            className="rounded-xl bg-sky-600 px-4 text-xs font-bold text-white shadow-sm hover:bg-sky-700 disabled:opacity-50 transition active:scale-95"
                           >
                             {processingScan ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : 'Tap RFID'}
                           </button>
@@ -1113,9 +1124,21 @@ export default function WorshipAttendancePage() {
                       <option value="Kelompok C">Kelompok C</option>
                     </select>
 
-                    <button className="flex h-9 w-full sm:w-auto items-center justify-center gap-1 rounded-xl bg-emerald-700 px-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 cursor-pointer">
-                      <Filter className="h-3.5 w-3.5" /> Filter
-                    </button>
+                    {(filterStatus || filterKamar || filterKelompok || searchSantri) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterStatus('')
+                          setFilterKamar('')
+                          setFilterKelompok('')
+                          setSearchSantri('')
+                          setCurrentPage(1)
+                        }}
+                        className="flex h-9 w-full sm:w-auto items-center justify-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 text-xs font-bold transition cursor-pointer dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        Reset Filter
+                      </button>
+                    )}
                   </div>
 
                   {/* ── ENTERPRISE DATA TABLE ───────────────────────────── */}
@@ -1134,7 +1157,7 @@ export default function WorshipAttendancePage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {filteredDetails.map((d) => (
+                        {paginatedDetails.map((d) => (
                           <tr key={d.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition">
                             <td className="px-3 py-3 text-center">
                               <input type="checkbox" className="rounded border-slate-300" />
@@ -1209,24 +1232,58 @@ export default function WorshipAttendancePage() {
 
                   {/* ── PAGINATION FOOTER ───────────────────────────────── */}
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 pt-1">
-                    <p>Menampilkan 1 - {filteredDetails.length} dari {totalSantriCount} santri</p>
+                    <p>
+                      Menampilkan {filteredDetails.length > 0 ? (currentPage - 1) * perPage + 1 : 0} - {Math.min(currentPage * perPage, filteredDetails.length)} dari {filteredDetails.length} santri
+                    </p>
                     <div className="flex items-center gap-1">
-                      <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 dark:border-slate-700">
-                        <ChevronLeft className="h-3.5 w-3.5" />
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage <= 1}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-700 transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
                       </button>
-                      <button className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-700 font-bold text-white">1</button>
-                      <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 dark:border-slate-700">2</button>
-                      <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 dark:border-slate-700">3</button>
-                      <span className="px-1 text-slate-400">...</span>
-                      <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 dark:border-slate-700">26</button>
-                      <button className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 dark:border-slate-700">
-                        <ChevronRight className="h-3.5 w-3.5" />
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                        .map((p, idx, arr) => (
+                          <React.Fragment key={p}>
+                            {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-slate-400">...</span>}
+                            <button
+                              type="button"
+                              onClick={() => setCurrentPage(p)}
+                              className={`flex h-8 w-8 items-center justify-center rounded-xl font-bold transition-colors cursor-pointer ${
+                                currentPage === p
+                                  ? 'bg-emerald-600 text-white shadow-sm'
+                                  : 'border border-slate-200 hover:bg-slate-50 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          </React.Fragment>
+                        ))}
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages}
+                        className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 hover:bg-slate-50 dark:border-slate-700 transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <ChevronRight className="h-4 w-4" />
                       </button>
                     </div>
-                    <select className="h-7 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                      <option>5 / halaman</option>
-                      <option>10 / halaman</option>
-                      <option>25 / halaman</option>
+                    <select
+                      value={perPage}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 10
+                        setPerPage(val)
+                        setCurrentPage(1)
+                      }}
+                      className="h-8 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                    >
+                      <option value={5}>5 / halaman</option>
+                      <option value={10}>10 / halaman</option>
+                      <option value={25}>25 / halaman</option>
+                      <option value={50}>50 / halaman</option>
                     </select>
                   </div>
 

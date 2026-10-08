@@ -306,10 +306,12 @@ function ModernSummaryCard({ icon: Icon, title, value, subtext, tag, tone = 'eme
 
 export default function KepalaSekolahDashboardPage() {
   const navigate = useNavigate()
+  const currentAuthUser = useAuthStore((state) => state.user)
+  const defaultUserUnit = currentAuthUser?.unit_id || currentAuthUser?.education_unit_id || currentAuthUser?.employee?.unit_id || currentAuthUser?.metadata?.education_unit_id || currentAuthUser?.metadata?.unit_id || ''
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
-  const [selectedUnitId, setSelectedUnitId] = useState('')
+  const [selectedUnitId, setSelectedUnitId] = useState(() => defaultUserUnit ? String(defaultUserUnit) : '')
   const [activeModal, setActiveModal] = useState(null)
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false)
   const [attendanceFilterUnit, setAttendanceFilterUnit] = useState('all')
@@ -325,8 +327,8 @@ export default function KepalaSekolahDashboardPage() {
     const sName = st?.nama || st?.name || st?.full_name || 'Shezakia Mufidah Alfirdausi'
     const sNisn = st?.nisn || st?.nis || '-'
     const sKelas = st?.kelas || st?.rombel || st?.school_class?.name || '10 Madinah 1'
-    const sUnit = st?.unit_name || st?.unit || schoolInfo?.nama || 'Sekolah Menengah Atas Islam Terpadu'
-    const sWali = st?.nama_ortu || st?.wali || 'Ilma Emilia Widyastuti'
+    const sUnit = st?.unit_name || st?.unit || schoolInfo?.nama || 'Unit Sekolah'
+    const sWali = st?.nama_ortu || st?.wali || 'Wali Santri'
     const eduUnit = st?.education_unit || (typeof st?.unit === 'object' ? st?.unit : null) || {
       name: schoolInfo?.nama || sUnit,
       code: schoolInfo?.kode,
@@ -345,6 +347,7 @@ export default function KepalaSekolahDashboardPage() {
         name: sName,
         nis: sNisn,
         className: sKelas,
+        unit: sUnit,
         unitName: sUnit,
         education_unit: eduUnit,
       },
@@ -363,7 +366,6 @@ export default function KepalaSekolahDashboardPage() {
   }
 
   // State Modal Chat Direct Real-Time
-  const currentAuthUser = useAuthStore((state) => state.user)
   const [activeChatUser, setActiveChatUser] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
   const [chatLoading, setChatLoading] = useState(false)
@@ -469,6 +471,9 @@ export default function KepalaSekolahDashboardPage() {
       const payload = res?.data || res
       if (payload) {
         setData(payload)
+        if (!selectedUnitId && payload?.context?.unit?.id) {
+          setSelectedUnitId(String(payload.context.unit.id))
+        }
       } else {
         setData(DEFAULT_FALLBACK_DATA)
       }
@@ -536,24 +541,30 @@ export default function KepalaSekolahDashboardPage() {
   const studentAttendanceList = data && Array.isArray(data.student_attendance) ? data.student_attendance : DEFAULT_STUDENT_ATTENDANCE
   const attendanceMeta = data?.attendance_meta
 
-  const hadirCount = studentAttendanceList.filter((s) => s.status === 'Hadir').length
-  const terlambatCount = studentAttendanceList.filter((s) => s.status === 'Terlambat').length
-  const izinCount = studentAttendanceList.filter((s) => s.status === 'Izin').length
-  const sakitCount = studentAttendanceList.filter((s) => s.status === 'Sakit').length
-  const alphaCount = studentAttendanceList.filter((s) => s.status === 'Alpha').length
-  const noActivityCount = studentAttendanceList.filter((s) => s.status.includes('Libur') || s.status.includes('Belum')).length
+  const hadirCount = studentAttendanceList.filter((s) => s?.status === 'Hadir').length
+  const terlambatCount = studentAttendanceList.filter((s) => s?.status === 'Terlambat').length
+  const izinCount = studentAttendanceList.filter((s) => s?.status === 'Izin').length
+  const sakitCount = studentAttendanceList.filter((s) => s?.status === 'Sakit').length
+  const alphaCount = studentAttendanceList.filter((s) => s?.status === 'Alpha').length
+  const noActivityCount = studentAttendanceList.filter((s) => {
+    const st = String(s?.status || '')
+    return st.includes('Libur') || st.includes('Belum')
+  }).length
 
   const filteredCardStudentList = attendanceStatusFilter === 'all'
     ? studentAttendanceList
     : attendanceStatusFilter === 'inactive'
-      ? studentAttendanceList.filter((s) => s.status.includes('Libur') || s.status.includes('Belum'))
-      : studentAttendanceList.filter((s) => s.status === attendanceStatusFilter)
+      ? studentAttendanceList.filter((s) => {
+          const st = String(s?.status || '')
+          return st.includes('Libur') || st.includes('Belum')
+        })
+      : studentAttendanceList.filter((s) => s?.status === attendanceStatusFilter)
 
   const filteredModalAttendanceList = studentAttendanceList.filter((st) => {
-    const sName = (st.nama || st.name || '').toLowerCase()
-    const sNisn = (st.nisn || st.nis || '').toLowerCase()
-    const sKelas = (st.kelas || st.rombel || '').toLowerCase()
-    const sUnit = (st.unit_name || st.unit || '').toLowerCase()
+    const sName = String(st?.nama || st?.name || '').toLowerCase()
+    const sNisn = String(st?.nisn || st?.nis || '').toLowerCase()
+    const sKelas = String(st?.kelas?.nama_kelas || (typeof st?.kelas === 'string' ? st?.kelas : st?.rombel) || '').toLowerCase()
+    const sUnit = String(st?.unit_name || (typeof st?.unit === 'string' ? st?.unit : st?.unit?.name) || '').toLowerCase()
     const search = attendanceSearchTerm.trim().toLowerCase()
 
     const matchesSearch = !search || sName.includes(search) || sNisn.includes(search) || sKelas.includes(search)
@@ -1154,13 +1165,13 @@ export default function KepalaSekolahDashboardPage() {
             onClick={() => setActiveModal('total_guru')}
           />
           <ModernKpiCard
-            title="Total Pegawai & Staf"
-            value={formatNumber(kpis.total_pegawai?.total)}
-            subtext="Tenaga kependidikan unit"
+            title="Total Tendik / Staf"
+            value={formatNumber(kpis.total_tendik?.total ?? Math.max(0, (kpis.total_pegawai?.total || 0) - (kpis.total_guru?.total || 0)))}
+            subtext={`Administrasi & teknis (Total SDM: ${formatNumber(kpis.total_pegawai?.total)})`}
             icon={UserCheck}
             tone="purple"
             tag="Tendik"
-            onClick={() => setActiveModal('total_pegawai')}
+            onClick={() => setActiveModal('total_tendik')}
           />
           <ModernKpiCard
             title="Total Rombel / Kelas"
@@ -1286,7 +1297,7 @@ export default function KepalaSekolahDashboardPage() {
               icon={Award}
               title="Verifikasi Prestasi"
               subtitle="Capaian & Penghargaan"
-              onClick={() => navigate('/dashboard/pemantauan')}
+              onClick={() => navigate('/dashboard/laporan-prestasi')}
               className="w-full sm:basis-[calc(50%_-_5px)] lg:basis-[calc(25%_-_7.5px)] grow"
             />
 
@@ -2077,6 +2088,7 @@ export default function KepalaSekolahDashboardPage() {
           type={activeModal}
           isOpen={Boolean(activeModal)}
           onClose={() => setActiveModal(null)}
+          initialUnitId={selectedUnitId || data?.context?.unit?.id || currentAuthUser?.unit_id || currentAuthUser?.education_unit_id}
         />
       </ModalErrorBoundary>
 

@@ -22,6 +22,7 @@ import { usePengaturanStore } from '../stores/pengaturanStore'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ActionDropdown from '../components/app/ActionDropdown'
+import CsvImportModal from '../components/master-data/CsvImportModal'
 import { educationUnitService } from '../services/educationUnitService'
 import { dashboardPemantauanService } from '../services/dashboardPemantauanService'
 
@@ -287,6 +288,54 @@ export default function NewsManagementPage() {
     } catch (e) {
       console.warn('LocalStorage save error:', e)
     }
+  }
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+
+  const handleExportNews = () => {
+    try {
+      const headers = ['ID', 'Judul', 'Kategori', 'Target Unit', 'Status', 'Tanggal Publikasi', 'Penulis']
+      const rows = filteredList.map((item) => [
+        `"${item.id || ''}"`,
+        `"${(item.judul || '').replace(/"/g, '""')}"`,
+        `"${(item.kategori || '').replace(/"/g, '""')}"`,
+        `"${(item.target_unit_name || item.target_unit || 'Seluruh Unit').replace(/"/g, '""')}"`,
+        `"${item.status || 'draft'}"`,
+        `"${item.tanggal_publikasi || item.created_at || '-'}"`,
+        `"${(item.penulis || '-').replace(/"/g, '""')}"`,
+      ])
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', `Daftar_Berita_Informasi_${new Date().toISOString().slice(0, 10)}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('Export news error:', e)
+    }
+  }
+
+  const handleImportNews = (rows) => {
+    if (!Array.isArray(rows) || rows.length === 0) return
+    const importedItems = rows.map((r, idx) => ({
+      id: 'news-imp-' + Date.now() + '-' + idx,
+      judul: r.judul || r.title || 'Informasi Baru',
+      kategori: r.kategori || r.category || 'Umum',
+      target_unit: r.target_unit || 'all',
+      target_unit_name: r.target_unit_name || 'Seluruh Unit',
+      status: r.status || 'published',
+      tanggal_publikasi: r.tanggal_publikasi || new Date().toISOString().slice(0, 10),
+      ringkasan: r.ringkasan || r.summary || (r.isi || '').slice(0, 100),
+      isi: r.isi || r.content || r.ringkasan || '',
+      penulis: r.penulis || user?.name || 'Administrator',
+    }))
+    const updated = [...importedItems, ...newsList]
+    saveNewsListToCache(updated)
+    setIsImportModalOpen(false)
   }
 
   // Filtered List based on Search & Role Scoping
@@ -592,7 +641,7 @@ export default function NewsManagementPage() {
               <HoverCardTrigger>
                 <button
                   type="button"
-                  onClick={() => alert('Fitur impor data berita dari file Excel/CSV')}
+                  onClick={() => setIsImportModalOpen(true)}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 text-sky-700 shadow-xs transition hover:scale-105 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300"
                 >
                   <Upload1 className="h-4 w-4" />
@@ -608,7 +657,7 @@ export default function NewsManagementPage() {
               <HoverCardTrigger>
                 <button
                   type="button"
-                  onClick={() => alert('Mengekspor daftar berita ke format Excel/PDF')}
+                  onClick={handleExportNews}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 shadow-xs transition hover:scale-105 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
                 >
                   <Download1 className="h-4 w-4" />
@@ -1274,6 +1323,20 @@ export default function NewsManagementPage() {
           </DialogFooter>
         </AlertDialog>
       </AnimatePresence>
+
+      <CsvImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        title="Impor Data Berita & Informasi"
+        templateColumns={[
+          { key: 'judul', label: 'Judul Berita', example: 'Penerimaan Santri Baru Gelombang 1' },
+          { key: 'kategori', label: 'Kategori (PPDB/Akademik/Prestasi/Kegiatan/Umum)', example: 'PPDB' },
+          { key: 'status', label: 'Status (published/draft)', example: 'published' },
+          { key: 'ringkasan', label: 'Ringkasan', example: 'Pendaftaran gelombang pertama resmi dibuka' },
+          { key: 'isi', label: 'Isi Berita', example: 'Pendaftaran dibuka secara daring maupun luring' },
+        ]}
+        onImport={handleImportNews}
+      />
       </motion.div>
     </PageContainer>
   )

@@ -42,6 +42,7 @@ import { useDaftarKelas } from '../hooks/useReferenceData'
 import { useAksiSiswa, useDaftarSiswa } from '../hooks/useStudents'
 import { educationUnitService } from '../services/educationUnitService'
 import { studentService } from '../services/studentService'
+import { studentMutationService } from '../services/studentMutationService'
 import PersonAvatar, { resolveAvatarUrl } from '../components/ui/PersonAvatar'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
 import { hasAnyRole } from '../auth/portalResolver'
@@ -70,6 +71,7 @@ import {
   Pencil,
   School,
   Save,
+  ArrowRightLeft,
 } from 'lucide-react'
 import { OverlayWrapper, Backdrop } from '../components/tailgrids/core/overlay'
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/tailgrids/core/dialog'
@@ -323,8 +325,10 @@ export default function StudentsPage() {
   const canExportStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.export')
   const [step, setStep] = useState(1)
 
+  const userUnitId = user?.unit_id || user?.education_unit_id || user?.employee?.unit_id || user?.metadata?.education_unit_id || user?.metadata?.unit_id || ''
+
   // Filters
-  const [unitFilter, setUnitFilter] = useState('')
+  const [unitFilter, setUnitFilter] = useState(() => (isKepalaSekolah && userUnitId ? String(userUnitId) : ''))
   const [kelasFilter, setKelasFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [searchInput, setSearchInput] = useState('')
@@ -375,6 +379,126 @@ export default function StudentsPage() {
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
   const [pendingSavePayload, setPendingSavePayload] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  // ── Two-Way Handshake Student Mutations (Pindah Unit) ──
+  const [showAjukanMutasiModal, setShowAjukanMutasiModal] = useState(false)
+  const [studentToMutate, setStudentToMutate] = useState(null)
+  const [mutasiForm, setMutasiForm] = useState({
+    unit_tujuan_id: '',
+    alasan: '',
+    catatan: '',
+  })
+  const [isSubmittingMutasi, setIsSubmittingMutasi] = useState(false)
+
+  // Incoming Mutations (Siswa Pindahan Masuk yang Menunggu Persetujuan TU)
+  const [showIncomingModal, setShowIncomingModal] = useState(false)
+  const [incomingMutations, setIncomingMutations] = useState([])
+  const [isLoadingIncoming, setIsLoadingIncoming] = useState(false)
+  const [selectedIncomingForApproval, setSelectedIncomingForApproval] = useState(null)
+  const [approvalKelasId, setApprovalKelasId] = useState('')
+  const [approvalCatatan, setApprovalCatatan] = useState('')
+  const [isProcessingApproval, setIsProcessingApproval] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
+
+  const fetchIncomingMutations = async () => {
+    try {
+      setIsLoadingIncoming(true)
+      const data = await studentMutationService.getIncoming()
+      setIncomingMutations(Array.isArray(data) ? data : (data?.data || []))
+    } catch {
+      // quiet fallback
+    } finally {
+      setIsLoadingIncoming(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchIncomingMutations()
+  }, [])
+
+  const handleOpenAjukanMutasi = (student) => {
+    setStudentToMutate(student)
+    setMutasiForm({
+      unit_tujuan_id: '',
+      alasan: '',
+      catatan: '',
+    })
+    setShowAjukanMutasiModal(true)
+  }
+
+  const handleSubmitAjukanMutasi = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    if (!mutasiForm.unit_tujuan_id) {
+      pushToast('Peringatan', 'Silakan pilih Unit Pendidikan Tujuan terlebih dahulu.', 'warning')
+      return
+    }
+    try {
+      setIsSubmittingMutasi(true)
+      await studentMutationService.requestMutasi({
+        student_id: studentToMutate.id,
+        unit_tujuan_id: mutasiForm.unit_tujuan_id,
+        jenis_mutasi: 'pindah_unit_internal',
+        alasan: mutasiForm.alasan,
+        catatan: mutasiForm.catatan,
+      })
+      pushToast('Berhasil', `Pengajuan pindah unit untuk ${studentToMutate.name || studentToMutate.full_name} berhasil dikirim ke antrean TU unit tujuan.`, 'success')
+      setShowAjukanMutasiModal(false)
+      setStudentToMutate(null)
+      refetch()
+    } catch (err) {
+      pushToast('Gagal', err?.response?.data?.message || 'Gagal mengajukan mutasi siswa.', 'error')
+    } finally {
+      setIsSubmittingMutasi(false)
+    }
+  }
+
+  const handleApproveIncoming = async () => {
+    if (!approvalKelasId) {
+      pushToast('Peringatan', 'TU wajib memilih kelas tujuan penempatan siswa.', 'warning')
+      return
+    }
+    try {
+      setIsProcessingApproval(true)
+      await studentMutationService.approveMutasi(selectedIncomingForApproval.id, {
+        kelas_tujuan_id: approvalKelasId,
+        catatan: approvalCatatan,
+      })
+      pushToast('Berhasil', 'Siswa berhasil disetujui, ditempatkan di kelas tujuan, dan diaktifkan di unit ini!', 'success')
+      setSelectedIncomingForApproval(null)
+      setApprovalKelasId('')
+      setApprovalCatatan('')
+      fetchIncomingMutations()
+      refetch()
+    } catch (err) {
+      pushToast('Gagal', err?.response?.data?.message || 'Gagal menyetujui mutasi siswa.', 'error')
+    } finally {
+      setIsProcessingApproval(false)
+    }
+  }
+
+  const handleRejectIncoming = async () => {
+    if (!rejectReason.trim()) {
+      pushToast('Peringatan', 'Silakan isi alasan penolakan mutasi.', 'warning')
+      return
+    }
+    try {
+      setIsProcessingApproval(true)
+      await studentMutationService.rejectMutasi(selectedIncomingForApproval.id, {
+        alasan_penolakan: rejectReason,
+      })
+      pushToast('Informasi', 'Pengajuan mutasi siswa ditolak dan dikembalikan ke unit asal.', 'info')
+      setShowRejectDialog(false)
+      setSelectedIncomingForApproval(null)
+      setRejectReason('')
+      fetchIncomingMutations()
+      refetch()
+    } catch (err) {
+      pushToast('Gagal', err?.response?.data?.message || 'Gagal menolak mutasi siswa.', 'error')
+    } finally {
+      setIsProcessingApproval(false)
+    }
+  }
 
   useEffect(() => {
     if (searchParams.get('action') !== 'add') return
@@ -488,14 +612,35 @@ export default function StudentsPage() {
 
     // Fallback if API classes direct match is empty
     if (filtered.length === 0) {
-      const studentClasses = Array.from(
-        new Set(
-          (daftarSiswaData?.data || [])
-            .map((s) => s.class_name || s.kelas || s.nama_kelas)
-            .filter(Boolean)
-        )
-      ).map((kName) => ({ id: kName, nama_kelas: kName, name: kName }))
+      const studentClassesMap = new Map()
+      ;(daftarSiswaData?.data || []).forEach((s) => {
+        let cId = ''
+        let cName = ''
+        if (s.kelas && typeof s.kelas === 'object') {
+          cId = s.kelas.id || s.kelas.nama_kelas || s.kelas.name || ''
+          cName = s.kelas.nama_kelas || s.kelas.name || s.kelas.nama || ''
+        } else if (typeof s.kelas === 'string' && s.kelas.trim()) {
+          cId = s.kelas.trim()
+          cName = s.kelas.trim()
+        }
+        if (!cName && s.class_name) {
+          cName = typeof s.class_name === 'string' ? s.class_name : (s.class_name?.name || s.class_name?.nama_kelas || '')
+          cId = cId || cName
+        }
+        if (!cName && s.nama_kelas) {
+          cName = typeof s.nama_kelas === 'string' ? s.nama_kelas : (s.nama_kelas?.name || s.nama_kelas?.nama_kelas || '')
+          cId = cId || cName
+        }
+        if (cName && !studentClassesMap.has(String(cId || cName))) {
+          studentClassesMap.set(String(cId || cName), {
+            id: String(cId || cName),
+            nama_kelas: String(cName),
+            name: String(cName),
+          })
+        }
+      })
 
+      const studentClasses = Array.from(studentClassesMap.values())
       if (studentClasses.length > 0) return studentClasses
     }
 
@@ -737,8 +882,8 @@ export default function StudentsPage() {
           nama: item.full_name || item.nama || '-',
           unit: meta.akademik?.unit_pendidikan || meta.unit_pendidikan || item.education_unit?.name || '-',
           unitId: item.unit_id || item.education_unit_id || item.education_unit?.id || '',
-          kelas: item.kelas?.nama_kelas || '-',
-          kelasId: item.kelas_id || item.class_id || item.kelas?.id || '',
+          kelas: (typeof item.kelas === 'object' ? (item.kelas?.nama_kelas || item.kelas?.name || item.kelas?.nama) : item.kelas) || item.class_name || item.nama_kelas || '-',
+          kelasId: item.kelas_id || item.class_id || (typeof item.kelas === 'object' ? item.kelas?.id : '') || '',
           orangTua: ortuObj,
           noHp: hpObj,
           status: statusText,
@@ -765,7 +910,7 @@ export default function StudentsPage() {
       const matchKelas =
         !kelasFilter ||
         String(item.kelasId) === String(kelasFilter) ||
-        item.kelas.toLowerCase().includes(kelasFilter.toLowerCase())
+        String(item.kelas || '').toLowerCase().includes(kelasFilter.toLowerCase())
       const matchStatus =
         !statusFilter ||
         item.status.toLowerCase() === statusFilter.toLowerCase()
@@ -789,7 +934,7 @@ export default function StudentsPage() {
           nisn: item.nisn || '-',
           nama: item.nama || item.full_name || '-',
           unit: item.unit || '-',
-          kelas: item.kelas || '-',
+          kelas: (typeof item.kelas === 'object' ? (item.kelas?.nama_kelas || item.kelas?.name || item.kelas?.nama) : item.kelas) || item.class_name || item.nama_kelas || '-',
           gender: item.jenis_kelamin === 'female' || item.gender === 'female' ? 'Perempuan' : 'Laki-laki',
           status: item.aktif || item.is_active ? 'Aktif' : 'Nonaktif',
           foto: resolveAvatarUrl(item) || '',
@@ -1073,7 +1218,7 @@ export default function StudentsPage() {
 
         {/* Breadcrumb Navigation (Identik dengan Halaman Employees) */}
         <div className="print:hidden">
-          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Data Siswa' }]} />
+          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Buku Induk Siswa' }]} />
         </div>
 
         {/* Header Halaman Modern Hero Card */}
@@ -1090,7 +1235,7 @@ export default function StudentsPage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                    Master Data Siswa Terpadu
+                    Buku Induk Siswa Terpadu
                   </h1>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                     <ShieldCheck className="h-3.5 w-3.5" />
@@ -1098,7 +1243,7 @@ export default function StudentsPage() {
                   </span>
                 </div>
                 <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
-                  Pengelolaan terpadu direktori peserta didik (TK, SD, SMP, SMA, Ponpes, Ma'had), status akademis, cetak kartu NISN, dan analisis kesiswaan.
+                  Pengelolaan resmi buku induk dan direktori peserta didik (TK, SD, SMP, SMA, Ponpes, Ma'had), biodata lengkap orang tua, status mutasi, cetak kartu NISN, dan arsip kesiswaan.
                 </p>
               </div>
             </div>
@@ -1106,7 +1251,7 @@ export default function StudentsPage() {
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
               <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
                 <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Direktori Siswa</span>
+                <span>Buku Induk Siswa</span>
               </div>
             </div>
           </div>
@@ -1258,6 +1403,31 @@ export default function StudentsPage() {
                 </div>
               )}
 
+              {/* Siswa Pindahan Masuk (Two-Way Handshake TU) */}
+              <div className="group relative inline-flex">
+                <button
+                  type="button"
+                  title="Siswa Pindahan Masuk (Menunggu Verifikasi & Persetujuan TU)"
+                  aria-label="Siswa Pindahan Masuk"
+                  className="relative flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-800 text-white border border-teal-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
+                  onClick={() => {
+                    fetchIncomingMutations()
+                    setShowIncomingModal(true)
+                  }}
+                >
+                  <ArrowRightLeft className="size-5 text-white" strokeWidth={2.2} />
+                  {incomingMutations.length > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white ring-2 ring-white animate-pulse">
+                      {incomingMutations.length}
+                    </span>
+                  )}
+                </button>
+                <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                  <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                  Pindahan Masuk ({incomingMutations.length})
+                </div>
+              </div>
+
               {/* Tambah Button (Vivid Emerald / Teal Squircle) */}
               {canCreateStudent && (
                 <div className="group relative inline-flex">
@@ -1293,11 +1463,19 @@ export default function StudentsPage() {
                 }}
               >
                 <option value="">Semua Unit Pendidikan</option>
-                {rawUnits.map((u) => {
-                  const val = u.id || u.nama_unit || u.name || u.nama
-                  const label = u.name || u.nama_unit || u.nama || u.code || val
+                {rawUnits.map((u, idx) => {
+                  const getStr = (val) => {
+                    if (val === null || val === undefined) return ''
+                    if (typeof val === 'string' || typeof val === 'number') return String(val)
+                    if (typeof val === 'object') return String(val.name || val.nama_unit || val.nama || val.id || '')
+                    return ''
+                  }
+                  const rawVal = u.id ?? u.nama_unit ?? u.name ?? u.nama
+                  const val = getStr(rawVal) || `unit-${idx}`
+                  const rawLabel = u.name ?? u.nama_unit ?? u.nama ?? u.code ?? val
+                  const label = getStr(rawLabel) || val
                   return (
-                    <option key={u.id || val} value={val}>
+                    <option key={`unit-opt-${val}-${idx}`} value={val}>
                       {label}
                     </option>
                   )
@@ -1311,10 +1489,18 @@ export default function StudentsPage() {
               >
                 <option value="">Semua Kelas</option>
                 {availableClasses.map((c, idx) => {
-                  const val = c.id || c.nama_kelas || c.name || c.nama
-                  const label = c.nama_kelas || c.name || c.nama || val
+                  const getStr = (val) => {
+                    if (val === null || val === undefined) return ''
+                    if (typeof val === 'string' || typeof val === 'number') return String(val)
+                    if (typeof val === 'object') return String(val.nama_kelas || val.name || val.nama || val.id || '')
+                    return ''
+                  }
+                  const rawVal = c?.id ?? c?.nama_kelas ?? c?.name ?? c?.nama
+                  const val = getStr(rawVal) || `class-${idx}`
+                  const rawLabel = c?.nama_kelas ?? c?.name ?? c?.nama ?? val
+                  const label = getStr(rawLabel) || val
                   return (
-                    <option key={c.id ? `class-${c.id}-${idx}` : `class-opt-${val}-${label}-${idx}`} value={val}>
+                    <option key={`class-opt-${val}-${idx}`} value={val}>
                       {label}
                     </option>
                   )
@@ -1421,6 +1607,11 @@ export default function StudentsPage() {
                               icon: <FaPrint className="h-4 w-4 text-emerald-600" />,
                               onClick: () => { setStudentToPrint(item); setShowCetakModal(true) },
                             },
+                            ...(canUpdateStudent ? [{
+                              label: 'Ajukan Pindah Unit',
+                              icon: <ArrowRightLeft className="h-4 w-4 text-teal-600" />,
+                              onClick: () => handleOpenAjukanMutasi(item),
+                            }] : []),
                           ]}
                         />
                       </div>
@@ -2597,6 +2788,477 @@ export default function StudentsPage() {
                           <span>Hapus Permanen</span>
                         </>
                       )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL AJUKAN PINDAH UNIT (TWO-WAY HANDSHAKE) */}
+        <AnimatePresence>
+          {showAjukanMutasiModal && studentToMutate && (
+            <div
+              className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-lg"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  <div className="h-1.5 w-full bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-600 shrink-0" />
+                  
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-700 text-white p-2.5 shadow-md shadow-emerald-500/30 border border-teal-300/30 shrink-0">
+                        <ArrowRightLeft className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Ajukan Pindah Unit</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60">
+                            Internal Yayasan
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Kirim permohonan mutasi ke TU Unit Pendidikan yang dituju
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAjukanMutasiModal(false)}
+                      className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-6 space-y-4 overflow-y-auto">
+                    {/* Ringkasan Siswa */}
+                    <div className="flex items-center gap-3.5 rounded-2xl bg-slate-50 p-3.5 border border-slate-200/70 dark:bg-slate-900/60 dark:border-slate-800">
+                      <PersonAvatar
+                        name={studentToMutate.name || studentToMutate.full_name}
+                        avatarUrl={resolveAvatarUrl(studentToMutate.foto_url || studentToMutate.avatar)}
+                        size="md"
+                        className="rounded-xl border border-white shadow-sm"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {studentToMutate.name || studentToMutate.full_name}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          NIS: {studentToMutate.nis || '-'} • Unit: {studentToMutate.unit || studentToMutate.unit_name || '-'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Pilih Unit Tujuan */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Unit Pendidikan Tujuan <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={mutasiForm.unit_tujuan_id}
+                        onChange={(e) => setMutasiForm((prev) => ({ ...prev, unit_tujuan_id: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        required
+                      >
+                        <option value="">-- Pilih Unit Pendidikan Tujuan --</option>
+                        {rawUnits
+                          .filter((u) => String(u.id) !== String(studentToMutate.unit_id || studentToMutate.education_unit_id))
+                          .map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.nama_unit || u.name || u.nama}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Alasan Pindah */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Alasan Pindah Unit
+                      </label>
+                      <input
+                        type="text"
+                        value={mutasiForm.alasan}
+                        onChange={(e) => setMutasiForm((prev) => ({ ...prev, alasan: e.target.value }))}
+                        placeholder="Contoh: Lulus jenjang TK naik ke SD, mutasi tempat tinggal, dll"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+
+                    {/* Catatan / Keterangan Berkas */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Catatan / Rekomendasi Berkas
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={mutasiForm.catatan}
+                        onChange={(e) => setMutasiForm((prev) => ({ ...prev, catatan: e.target.value }))}
+                        placeholder="Catatan untuk operator/TU unit tujuan..."
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+
+                    {/* Notice Card */}
+                    <div className="rounded-2xl border border-teal-200/80 bg-teal-50/70 p-3.5 dark:border-teal-900/50 dark:bg-teal-950/30">
+                      <div className="flex gap-2.5">
+                        <Info className="h-4 w-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+                        <p className="text-[11px] leading-relaxed text-teal-800 dark:text-teal-300 font-medium">
+                          <strong>Alur Dua Arah (Handshake):</strong> Status siswa akan menjadi <em>Proses Mutasi</em>. Data otomatis masuk ke antrean TU Unit Tujuan untuk diverifikasi dan ditentukan kelas tujuannya.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      disabled={isSubmittingMutasi}
+                      onClick={() => setShowAjukanMutasiModal(false)}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 px-4 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <X className="size-3.5" />
+                      <span>Batal</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isSubmittingMutasi || !mutasiForm.unit_tujuan_id}
+                      onClick={handleSubmitAjukanMutasi}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-teal-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-emerald-500/25"
+                    >
+                      {isSubmittingMutasi ? (
+                        <>
+                          <Sparkles className="size-3.5 animate-spin" />
+                          <span>Mengirim Pengajuan...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="size-3.5" />
+                          <span>Kirim Pengajuan</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL DAFTAR SISWA PINDAHAN MASUK (TU APPROVAL WORKFLOW) */}
+        <AnimatePresence>
+          {showIncomingModal && (
+            <div
+              className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-4xl"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  <div className="h-1.5 w-full bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-600 shrink-0" />
+
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-700 text-white p-2.5 shadow-md shadow-emerald-500/30 border border-teal-300/30 shrink-0">
+                        <ArrowRightLeft className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Daftar Siswa Pindahan Masuk</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60">
+                            Menunggu Persetujuan TU
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Verifikasi data siswa mutasi masuk dan tetapkan kelas tujuan di unit Anda
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowIncomingModal(false)}
+                      className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-6 overflow-y-auto max-h-[60vh]">
+                    {isLoadingIncoming ? (
+                      <div className="py-12 text-center text-xs text-slate-500">Memuat data permohonan mutasi...</div>
+                    ) : incomingMutations.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500 mb-2 opacity-80" />
+                        <h4 className="text-sm font-bold text-slate-800 dark:text-white">Tidak Ada Permohonan Pindahan Masuk</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Semua mutasi siswa masuk telah diverifikasi dan disetujui.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden">
+                        {incomingMutations.map((mutasi) => {
+                          const student = mutasi.student || {}
+                          return (
+                            <div key={mutasi.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 dark:hover:bg-slate-900/40 transition-colors">
+                              <div className="flex items-start gap-3 min-w-0">
+                                <PersonAvatar
+                                  name={student.nama_lengkap || student.nama || student.full_name || 'Siswa'}
+                                  avatarUrl={resolveAvatarUrl(student.foto_url || student.avatar)}
+                                  size="md"
+                                  className="rounded-xl border border-white shadow-sm shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                    {student.nama_lengkap || student.nama || student.full_name || '-'}
+                                  </h4>
+                                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                                    <span>NIS: <strong className="text-slate-700 dark:text-slate-200">{student.nis || '-'}</strong></span>
+                                    <span>•</span>
+                                    <span>Dari: <strong className="text-teal-700 dark:text-teal-400">{mutasi.unit_asal?.nama_unit || mutasi.unit_asal?.name || '-'}</strong></span>
+                                    {mutasi.kelas_asal && (
+                                      <>
+                                        <span>•</span>
+                                        <span>Kelas: {mutasi.kelas_asal.nama_kelas || mutasi.kelas_asal.name}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                  {mutasi.alasan && (
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 italic">
+                                      &ldquo;{mutasi.alasan}&rdquo;
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedIncomingForApproval(mutasi)
+                                    setApprovalKelasId('')
+                                    setApprovalCatatan('')
+                                  }}
+                                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+                                >
+                                  <CheckCircle2 className="size-3.5" />
+                                  <span>Verifikasi & Tetapkan Kelas</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedIncomingForApproval(mutasi)
+                                    setShowRejectDialog(true)
+                                    setRejectReason('')
+                                  }}
+                                  className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300 px-3 py-2 text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  <XCircle className="size-3.5" />
+                                  <span>Tolak</span>
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="modal-footer flex items-center justify-end border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      onClick={() => setShowIncomingModal(false)}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 px-4 py-2.5 text-xs font-extrabold transition-all cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* SUB-MODAL TU MENETAPKAN KELAS TUJUAN (APPROVE MUTASI) */}
+        <AnimatePresence>
+          {selectedIncomingForApproval && !showRejectDialog && (
+            <div
+              className="overlay modal fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-md"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white p-2.5 shadow-md shadow-emerald-500/30">
+                        <CheckCircle2 className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                          Tetapkan Kelas Tujuan Siswa
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {selectedIncomingForApproval.student?.nama_lengkap || selectedIncomingForApproval.student?.full_name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Pilih Kelas Penempatan di Unit Ini <span className="text-rose-500">*</span>
+                      </label>
+                      <select
+                        value={approvalKelasId}
+                        onChange={(e) => setApprovalKelasId(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        required
+                      >
+                        <option value="">-- Pilih Kelas Tujuan --</option>
+                        {rawClasses
+                          .filter((c) => !unitFilter || String(c.unit_pendidikan_id || c.unit_id) === String(unitFilter))
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.nama_kelas || c.name || `Kelas ${c.tingkat}`}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Catatan Persetujuan TU
+                      </label>
+                      <input
+                        type="text"
+                        value={approvalCatatan}
+                        onChange={(e) => setApprovalCatatan(e.target.value)}
+                        placeholder="Contoh: Berkas lengkap, ditempatkan di rombel A"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      disabled={isProcessingApproval}
+                      onClick={() => setSelectedIncomingForApproval(null)}
+                      className="rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-xs font-bold cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isProcessingApproval || !approvalKelasId}
+                      onClick={handleApproveIncoming}
+                      className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2 text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer"
+                    >
+                      {isProcessingApproval ? 'Memproses...' : 'Setujui & Simpan'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* SUB-MODAL TOLAK MUTASI */}
+        <AnimatePresence>
+          {showRejectDialog && selectedIncomingForApproval && (
+            <div
+              className="overlay modal fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-md"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-rose-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-red-500 to-rose-600 shrink-0" />
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white p-2.5 shadow-md shadow-rose-500/30">
+                        <XCircle className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                          Tolak Permohonan Mutasi
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {selectedIncomingForApproval.student?.nama_lengkap || selectedIncomingForApproval.student?.full_name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Alasan Penolakan <span className="text-rose-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        placeholder="Contoh: Kuota rombel penuh, persyaratan nilai/berkas belum lengkap..."
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      disabled={isProcessingApproval}
+                      onClick={() => setShowRejectDialog(false)}
+                      className="rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-xs font-bold cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isProcessingApproval || !rejectReason.trim()}
+                      onClick={handleRejectIncoming}
+                      className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-5 py-2 text-xs font-bold shadow-md disabled:opacity-50 cursor-pointer"
+                    >
+                      {isProcessingApproval ? 'Memproses...' : 'Konfirmasi Tolak'}
                     </button>
                   </div>
                 </div>

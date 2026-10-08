@@ -2074,7 +2074,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   <button
                     type="button"
                     onClick={expandAllGroups}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40 transition-colors"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                     <span>Buka Semua</span>
@@ -2083,7 +2083,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                   <button
                     type="button"
                     onClick={collapseAllGroups}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
                     <span>Tutup Semua</span>
@@ -2870,7 +2870,7 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                           key={val}
                           className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-2xl border cursor-pointer font-black text-xs transition-all ${
                             formData.kunci_jawaban === val
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
                               : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                           }`}
                         >
@@ -3285,9 +3285,9 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
                 )}
 
                 {viewingItem.tipe_soal === 'benar_salah' && (
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-2xl border border-blue-200 dark:border-blue-800 flex items-center justify-between text-xs">
-                    <span className="font-bold text-blue-900 dark:text-blue-200">Kunci Jawaban Benar/Salah:</span>
-                    <span className="px-3 py-1 bg-blue-600 text-white rounded-xl font-bold">{viewingItem.kunci_jawaban}</span>
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
+                    <span className="font-bold text-emerald-900 dark:text-emerald-200">Kunci Jawaban Benar/Salah:</span>
+                    <span className="px-3 py-1 bg-emerald-600 text-white rounded-xl font-bold">{viewingItem.kunci_jawaban}</span>
                   </div>
                 )}
 

@@ -1916,7 +1916,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                         <td className="py-3.5 px-4">
                           <PersonIdentityCell
                             src={item.wali_kelas?.photo_url || item.wali_kelas?.avatar_url || item.wali_kelas?.foto}
-                            name={item.wali_kelas?.nama_tampil || item.wali_kelas?.name || 'Belum diatur'}
+                            name={item.wali_kelas?.nama_tampil || item.wali_kelas?.nama_lengkap || item.wali_kelas?.name || 'Belum diatur'}
                             subtitle={item.wali_kelas?.niy ? `NIY ${item.wali_kelas.niy}` : 'Wali kelas'}
                           />
                         </td>

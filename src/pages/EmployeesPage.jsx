@@ -129,6 +129,7 @@ import { Download1, Upload1, Plus as PlusIcon } from '@tailgrids/icons'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/tailgrids/core/button'
 import { Badge } from '@/components/tailgrids/core/badge'
+import { Spinner } from '@/components/tailgrids/core/spinner'
 import {
   HoverCard,
   HoverCardContent,
@@ -242,7 +243,31 @@ function parseFromApi(item) {
     unit_id: item?.unit_id || '',
     unit_name: item?.unit?.name || '',
     jabatan_id: item?.jabatan_id || '',
-    jabatan_name: item?.position?.name || '',
+    jabatan_name: item?.position?.name || item?.role?.name || item?.user?.roles?.[0]?.name || (
+      item?.nama_lengkap?.toLowerCase().includes('guru bk') ? 'Guru BK' :
+      item?.nama_lengkap?.toLowerCase().includes('guru tahfizh') ? 'Guru Tahfizh' :
+      item?.nama_lengkap?.toLowerCase().includes('guru') ? 'Guru Mapel' :
+      item?.nama_lengkap?.toLowerCase().includes('wali kelas') ? 'Wali Kelas' :
+      item?.nama_lengkap?.toLowerCase().includes('musyrif') ? 'Musyrif' :
+      item?.nama_lengkap?.toLowerCase().includes('tata usaha') ? 'Tata Usaha' :
+      item?.nama_lengkap?.toLowerCase().includes('wakil kurikulum') ? 'Wakil Kurikulum' :
+      item?.nama_lengkap?.toLowerCase().includes('wakil kesiswaan') ? 'Wakil Kesiswaan' :
+      item?.nama_lengkap?.toLowerCase().includes('wakil kepala') ? 'Wakil Kepala Sekolah' :
+      item?.nama_lengkap?.toLowerCase().includes('kepala sekolah') ? 'Kepala Sekolah' :
+      item?.nama_lengkap?.toLowerCase().includes('divisi') ? 'Staf Divisi' :
+      '-'
+    ),
+    is_guru: Boolean(
+      item?.teacher ||
+      (Array.isArray(item?.teachings) && item.teachings.length > 0) ||
+      item?.is_guru ||
+      item?.status_pegawai?.toLowerCase().includes('guru') ||
+      item?.position?.name?.toLowerCase().includes('guru') ||
+      item?.position?.name?.toLowerCase().includes('pendidik') ||
+      item?.position?.name?.toLowerCase().includes('wali kelas') ||
+      item?.nama_lengkap?.toLowerCase().includes('guru') ||
+      item?.nama_lengkap?.toLowerCase().includes('wali kelas')
+    ),
     status_pegawai: item?.status_pegawai || '',
     tanggal_masuk: item?.tanggal_masuk ? item.tanggal_masuk.split('T')[0] : '',
     tanggal_keluar: item?.tanggal_keluar ? item.tanggal_keluar.split('T')[0] : '',
@@ -261,7 +286,21 @@ function parseFromApi(item) {
     role_id: item?.role_id || '',
     qr_token: item?.qr_token || meta.qr_token || '',
     qr_code: item?.qr_code || meta.qr_code || '',
-    teachings: item?.teachings || meta.teachings || [],
+    teachings: (() => {
+      const sourceTeachings = (Array.isArray(item?.teachings) && item.teachings.length > 0)
+        ? item.teachings
+        : (Array.isArray(meta.teachings) && meta.teachings.length > 0)
+          ? meta.teachings
+          : (Array.isArray(item?.teachings) ? item.teachings : [])
+
+      return sourceTeachings.map((t) => ({
+        ...t,
+        mapel: t.mapel || t.subject?.name || t.subject?.nama_mapel || t.metadata?.mapel || '',
+        kelas: t.kelas || t.classroom?.name || t.classroom?.nama_kelas || t.metadata?.kelas || '',
+        tahun: t.tahun || t.metadata?.tahun || '2025/2026',
+        semester: t.semester || t.metadata?.semester || 'Ganjil',
+      }))
+    })(),
     position_history: meta.position_history || [],
     certifications: meta.certifications || [],
     documents: meta.documents || [],
@@ -303,6 +342,7 @@ function makePayload(form, assignmentOnly = false) {
     kecamatan: form.kecamatan,
     kelurahan: form.kelurahan,
     kode_pos: form.kode_pos,
+    teachings: form.teachings || [],
     metadata: {
       teachings: form.teachings || [],
       position_history: form.position_history || [],
@@ -427,7 +467,7 @@ export default function EmployeesPage() {
   const isUnitPersonnelManager = isUnitAccessManager(userRoles) && !isGlobalPersonnelManager
   // Kepala Sekolah & Divisi Pendidikan: monitoring + input per unit
   const canUpdateEmployee = true
-  const canCreateEmployee = true
+  const canCreateEmployee = isGlobalPersonnelManager
   const canDeleteEmployee = isGlobalPersonnelManager
   const canExportEmployee = true
 
@@ -438,10 +478,20 @@ export default function EmployeesPage() {
     return position.includes('pengurus yayasan') || position.includes('ketua yayasan') || unit.includes('pengurus yayasan')
   }
 
+  const isGlobalUser = hasAnyRole(userRoles, [
+    'Super Admin', 'Superadmin', 'super_admin', 'super-admin',
+    'Admin', 'admin',
+    'Yayasan', 'Ketua Yayasan', 'ketua_yayasan',
+    'pengurus_yayasan', 'Pengurus Yayasan',
+    'Sekretaris Yayasan', 'sekretaris_yayasan',
+    'Bendahara Yayasan', 'bendahara_yayasan',
+  ])
+  const userUnitId = user?.unit_id || user?.education_unit_id || user?.employee?.unit_id || user?.metadata?.education_unit_id || user?.metadata?.unit_id || ''
+
   // Filter States
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 350)
-  const [selectedUnitFilter, setSelectedUnitFilter] = useState('')
+  const [selectedUnitFilter, setSelectedUnitFilter] = useState(() => (!isGlobalUser && userUnitId ? String(userUnitId) : ''))
   const [selectedJabatanFilter, setSelectedJabatanFilter] = useState('')
   const [selectedStatusPegawaiFilter, setSelectedStatusPegawaiFilter] = useState('')
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
@@ -649,17 +699,50 @@ export default function EmployeesPage() {
 
   const filteredItems = items
 
+  // Fetch full list of employees for drilldown modal when opened
+  const { data: modalEmployeesData, isLoading: isModalEmployeesLoading } = useQuery({
+    queryKey: ['modal-employees', statCardModal.isOpen, selectedUnitFilter],
+    queryFn: () =>
+      employeeService.getDaftar({
+        per_page: 500,
+        unit_id: selectedUnitFilter || undefined,
+      }),
+    enabled: statCardModal.isOpen,
+  })
+
+  const modalRawList = useMemo(() => {
+    const list = modalEmployeesData?.data || []
+    return Array.isArray(list) ? list.map(parseFromApi) : []
+  }, [modalEmployeesData?.data])
+
   const statModalItems = useMemo(() => {
     if (!statCardModal.isOpen) return []
+    const sourceList = modalRawList.length > 0 ? modalRawList : items
     let list = []
     if (statCardModal.type === 'total') {
-      list = items
+      list = sourceList
     } else if (statCardModal.type === 'pendidik') {
-      list = items.filter((i) => i.jabatan_name?.toLowerCase().includes('guru') || i.jabatan_name?.toLowerCase().includes('kepala'))
+      list = sourceList.filter((i) =>
+        i.is_guru ||
+        i.jabatan_name?.toLowerCase().includes('guru') ||
+        i.jabatan_name?.toLowerCase().includes('pendidik') ||
+        i.jabatan_name?.toLowerCase().includes('wali kelas') ||
+        i.status_pegawai?.toLowerCase().includes('guru') ||
+        i.nama_lengkap?.toLowerCase().includes('guru') ||
+        i.nama_lengkap?.toLowerCase().includes('wali kelas')
+      )
     } else if (statCardModal.type === 'tendik') {
-      list = items.filter((i) => !i.jabatan_name?.toLowerCase().includes('guru'))
+      list = sourceList.filter((i) =>
+        !i.is_guru &&
+        !i.jabatan_name?.toLowerCase().includes('guru') &&
+        !i.jabatan_name?.toLowerCase().includes('pendidik') &&
+        !i.jabatan_name?.toLowerCase().includes('wali kelas') &&
+        !i.status_pegawai?.toLowerCase().includes('guru') &&
+        !i.nama_lengkap?.toLowerCase().includes('guru') &&
+        !i.nama_lengkap?.toLowerCase().includes('wali kelas')
+      )
     } else if (statCardModal.type === 'aktif') {
-      list = items.filter((i) => i.status === 'Aktif')
+      list = sourceList.filter((i) => i.status === 'Aktif')
     }
     if (statCardSearch) {
       const q = statCardSearch.toLowerCase()
@@ -671,7 +754,7 @@ export default function EmployeesPage() {
       )
     }
     return list
-  }, [statCardModal, items, statCardSearch])
+  }, [statCardModal, modalRawList, items, statCardSearch])
 
   const { data: academicYearsData } = useQuery({
     queryKey: ['academic-years-dropdown'],
@@ -867,6 +950,8 @@ export default function EmployeesPage() {
     mutationFn: (payload) => employeeService.tambah(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-list'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-dashboard'] })
       pushNotification('Berhasil Disimpan', 'Data pegawai baru berhasil ditambahkan ke sistem.')
       closeFormModal()
     },
@@ -879,8 +964,13 @@ export default function EmployeesPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }) => employeeService.ubah({ id, payload }),
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-list'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-dashboard'] })
+      if (res?.data && detailEmployee && String(res.data.id) === String(detailEmployee.id)) {
+        setDetailEmployee(parseFromApi(res.data))
+      }
       pushNotification('Berhasil Diubah', 'Data pegawai berhasil diperbarui.')
       closeFormModal()
     },
@@ -895,6 +985,8 @@ export default function EmployeesPage() {
     mutationFn: (id) => employeeService.hapus(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-list'] })
+      queryClient.invalidateQueries({ queryKey: ['employees-dashboard'] })
       pushNotification('Berhasil Dihapus', 'Data pegawai berhasil dihapus dari sistem.')
       setDeleteTarget(null)
       setHasConfirmedDeleteCheck(false)
@@ -1072,6 +1164,28 @@ export default function EmployeesPage() {
     setNewTeaching({ mapel: '', kelas: '', tahun: '2025/2026', semester: 'Ganjil' })
   }
 
+  // Remove Teaching Assignment from Detail Pegawai
+  const handleRemoveTeaching = async (indexToRemove) => {
+    if (!isGlobalPersonnelManager) return
+    const updatedTeachings = (detailEmployee.teachings || []).filter((_, idx) => idx !== indexToRemove)
+    const updatedEmp = { ...detailEmployee, teachings: updatedTeachings }
+    setDetailEmployee(updatedEmp)
+
+    if (updatedTeachings.length === 0) {
+      try {
+        await employeeService.assignTeaching({ id: detailEmployee.id, teachings: [] })
+        queryClient.invalidateQueries({ queryKey: ['employees'] })
+        queryClient.invalidateQueries({ queryKey: ['employees-list'] })
+        queryClient.invalidateQueries({ queryKey: ['employees-dashboard'] })
+        pushNotification('Penugasan Dihapus', 'Seluruh penugasan mengajar berhasil dihapus.', 'info')
+      } catch (err) {
+        pushNotification('Gagal Menghapus', err?.message || 'Gagal menghapus penugasan.', 'error')
+      }
+    } else {
+      updateMutation.mutate({ id: detailEmployee.id, payload: makePayload(updatedEmp) })
+    }
+  }
+
   // Add Certification to Detail Pegawai
   const handleAddCert = () => {
     if (!isGlobalPersonnelManager) return
@@ -1109,7 +1223,7 @@ export default function EmployeesPage() {
     Boolean(selectedGenderFilter)
 
   const handleResetFilters = () => {
-    setSelectedUnitFilter('')
+    setSelectedUnitFilter(isGlobalUser ? '' : String(userUnitId || ''))
     setSelectedJabatanFilter('')
     setSelectedStatusPegawaiFilter('')
     setSelectedStatusFilter('')
@@ -1887,41 +2001,41 @@ export default function EmployeesPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <KpiTintedCard
             label="Total Pegawai ERP"
-            value={items.length}
+            value={employeeStats.total_employees ?? employeeStats.total_pegawai ?? data?.total ?? items.length}
             subtext="Seluruh direktori pegawai"
             icon={UsersRound}
             tone="emerald"
-            tag={`${items.length} Pegawai`}
+            tag={`${employeeStats.total_employees ?? employeeStats.total_pegawai ?? data?.total ?? items.length} Pegawai`}
             ctaText="Rincian Pegawai"
             onClick={() => setStatCardModal({ isOpen: true, type: 'total', title: 'Detail Data: Total Pegawai ERP', badge: 'SDM' })}
           />
           <KpiTintedCard
             label="Tenaga Pendidik / Guru"
-            value={items.filter((i) => i.jabatan_name?.toLowerCase().includes('guru') || i.jabatan_name?.toLowerCase().includes('kepala')).length}
+            value={employeeStats.total_teachers ?? employeeStats.total_guru ?? items.filter((i) => i.jabatan_name?.toLowerCase().includes('guru') || i.jabatan_name?.toLowerCase().includes('kepala')).length}
             subtext="Guru & Pengajar aktif"
             icon={Award}
             tone="blue"
-            tag={`${items.filter((i) => i.jabatan_name?.toLowerCase().includes('guru') || i.jabatan_name?.toLowerCase().includes('kepala')).length} Guru`}
+            tag={`${employeeStats.total_teachers ?? employeeStats.total_guru ?? items.filter((i) => i.jabatan_name?.toLowerCase().includes('guru') || i.jabatan_name?.toLowerCase().includes('kepala')).length} Guru`}
             ctaText="Komposisi Guru"
             onClick={() => setStatCardModal({ isOpen: true, type: 'pendidik', title: 'Detail Data: Tenaga Pendidik / Guru', badge: 'Pendidik' })}
           />
           <KpiTintedCard
-            label="Staf TU & Operator"
-            value={items.filter((i) => !i.jabatan_name?.toLowerCase().includes('guru')).length}
-            subtext="Administrasi & Teknis"
+            label="Tenaga Kependidikan / Tendik"
+            value={employeeStats.total_staff ?? employeeStats.total_tendik ?? employeeStats.total_tu_operator ?? Math.max(0, (employeeStats.total_pegawai || 0) - (employeeStats.total_guru || 0))}
+            subtext="Administrasi & operasional"
             icon={Building2}
             tone="purple"
-            tag={`${items.filter((i) => !i.jabatan_name?.toLowerCase().includes('guru')).length} Tendik`}
+            tag={`${employeeStats.total_staff ?? employeeStats.total_tendik ?? employeeStats.total_tu_operator ?? Math.max(0, (employeeStats.total_pegawai || 0) - (employeeStats.total_guru || 0))} Tendik`}
             ctaText="Staf & Tendik"
-            onClick={() => setStatCardModal({ isOpen: true, type: 'tendik', title: 'Detail Data: Staf TU & Operator', badge: 'Tendik' })}
+            onClick={() => setStatCardModal({ isOpen: true, type: 'tendik', title: 'Detail Data: Tenaga Kependidikan / Tendik', badge: 'Tendik' })}
           />
           <KpiTintedCard
             label="Status Aktif"
-            value={items.filter((i) => i.status === 'Aktif').length}
+            value={employeeStats.total_active ?? employeeStats.total_aktif ?? items.filter((i) => i.status === 'Aktif').length}
             subtext="Aktif Bekerja"
             icon={CheckCircle2}
             tone="amber"
-            tag={`${items.filter((i) => i.status === 'Aktif').length} Aktif`}
+            tag={`${employeeStats.total_active ?? employeeStats.total_aktif ?? items.filter((i) => i.status === 'Aktif').length} Aktif`}
             ctaText="Status Operasional"
             onClick={() => setStatCardModal({ isOpen: true, type: 'aktif', title: 'Detail Data: Pegawai Status Aktif', badge: 'Aktif' })}
           />
@@ -2227,7 +2341,7 @@ export default function EmployeesPage() {
           hasActiveFilters={Boolean(search || selectedUnitFilter || selectedJabatanFilter || selectedStatusPegawaiFilter || selectedStatusFilter)}
           onResetFilters={() => {
             setSearch('')
-            setSelectedUnitFilter('')
+            setSelectedUnitFilter(isGlobalUser ? '' : String(userUnitId || ''))
             setSelectedJabatanFilter('')
             setSelectedStatusPegawaiFilter('')
             setSelectedStatusFilter('')
@@ -2240,11 +2354,14 @@ export default function EmployeesPage() {
                 <select
                   value={selectedUnitFilter}
                   onChange={(e) => { setSelectedUnitFilter(e.target.value); setPage(1) }}
-                  className="h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                  disabled={!isGlobalUser}
+                  className={`h-10 appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${!isGlobalUser ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}`}
                 >
-                  <option value="">Semua Unit Kerja</option>
-                  {unitsList.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
+                  {isGlobalUser && <option value="">Semua Unit Kerja</option>}
+                  {unitsList
+                    .filter((u) => isGlobalUser || String(u.id) === String(userUnitId))
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -2299,7 +2416,7 @@ export default function EmployeesPage() {
                   size="xs"
                   onClick={() => {
                     setSearch('')
-                    setSelectedUnitFilter('')
+                    setSelectedUnitFilter(isGlobalUser ? '' : String(userUnitId || ''))
                     setSelectedJabatanFilter('')
                     setSelectedStatusPegawaiFilter('')
                     setSelectedStatusFilter('')
@@ -3327,7 +3444,7 @@ export default function EmployeesPage() {
                           />
                           <button
                             onClick={handleAddTeaching}
-                            className="rounded-lg bg-emerald-800 text-white text-xs font-bold py-1.5 hover:bg-emerald-900"
+                            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 px-3 transition-colors shadow-sm"
                           >
                             + Tambah Penugasan
                           </button>
@@ -3343,22 +3460,37 @@ export default function EmployeesPage() {
                             <th className="py-2.5 px-3">Kelas</th>
                             <th className="py-2.5 px-3">Tahun Ajaran</th>
                             <th className="py-2.5 px-3 text-center">Status</th>
+                            {isGlobalPersonnelManager && (
+                              <th className="py-2.5 px-3 text-center">Aksi</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {(detailEmployee.teachings || []).length === 0 ? (
                             <tr>
-                              <td colSpan={4} className="py-6 text-center text-slate-400">Belum ada penugasan mengajar</td>
+                              <td colSpan={isGlobalPersonnelManager ? 5 : 4} className="py-6 text-center text-slate-400">Belum ada penugasan mengajar</td>
                             </tr>
                           ) : (
                             detailEmployee.teachings.map((t, idx) => (
                               <tr key={idx} className="hover:bg-slate-50">
-                                <td className="py-2.5 px-3 font-bold text-slate-800">{t.mapel || t.subject?.name || 'Bahasa Arab'}</td>
-                                <td className="py-2.5 px-3 font-semibold">{t.kelas || t.classroom?.name || 'Kelas 5A'}</td>
-                                <td className="py-2.5 px-3">{t.tahun || '2025/2026'}</td>
+                                <td className="py-2.5 px-3 font-bold text-slate-800">{t.mapel || t.subject?.name || t.subject?.nama_mapel || t.metadata?.mapel || '-'}</td>
+                                <td className="py-2.5 px-3 font-semibold">{t.kelas || t.classroom?.name || t.classroom?.nama_kelas || t.metadata?.kelas || '-'}</td>
+                                <td className="py-2.5 px-3">{t.tahun || t.metadata?.tahun || '-'}</td>
                                 <td className="py-2.5 px-3 text-center">
                                   <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 font-bold">Aktif</span>
                                 </td>
+                                {isGlobalPersonnelManager && (
+                                  <td className="py-2.5 px-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTeaching(idx)}
+                                      title="Hapus Penugasan"
+                                      className="inline-flex items-center justify-center p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                )}
                               </tr>
                             ))
                           )}
@@ -3387,33 +3519,33 @@ export default function EmployeesPage() {
                 {activeDetailTab === 'Sertifikasi' && (
                   <div className="space-y-4">
                     {isGlobalPersonnelManager && (
-                      <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
-                        <h4 className="text-xs font-bold text-slate-800">Tambah Sertifikasi Baru</h4>
+                      <div className="p-4 rounded-xl border border-emerald-200/80 bg-emerald-50/40 dark:border-emerald-800/40 dark:bg-emerald-950/20 space-y-3">
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Tambah Sertifikasi Baru</h4>
                         <div className="grid grid-cols-4 gap-2">
                           <input
                             type="text"
                             placeholder="Nama Sertifikat"
                             value={newCert.nama}
                             onChange={(e) => setNewCert((p) => ({ ...p, nama: e.target.value }))}
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+                            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100"
                           />
                           <input
                             type="text"
                             placeholder="Penerbit"
                             value={newCert.penerbit}
                             onChange={(e) => setNewCert((p) => ({ ...p, penerbit: e.target.value }))}
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+                            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100"
                           />
                           <input
                             type="text"
                             placeholder="Tahun"
                             value={newCert.tahun}
                             onChange={(e) => setNewCert((p) => ({ ...p, tahun: e.target.value }))}
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+                            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100"
                           />
                           <button
                             onClick={handleAddCert}
-                            className="rounded-lg bg-blue-700 text-white text-xs font-bold py-1.5 hover:bg-blue-800"
+                            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 px-3 transition-colors shadow-sm"
                           >
                             + Tambah Sertifikat
                           </button>
@@ -3442,26 +3574,26 @@ export default function EmployeesPage() {
                 {activeDetailTab === 'Dokumen' && (
                   <div className="space-y-4">
                     {isGlobalPersonnelManager && (
-                      <div className="p-4 rounded-xl border border-purple-200 bg-purple-50/50 space-y-3">
-                        <h4 className="text-xs font-bold text-slate-800">Upload Dokumen Pegawai</h4>
+                      <div className="p-4 rounded-xl border border-emerald-200/80 bg-emerald-50/40 dark:border-emerald-800/40 dark:bg-emerald-950/20 space-y-3">
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Upload Dokumen Pegawai</h4>
                         <div className="grid grid-cols-3 gap-2">
                           <input
                             type="text"
                             placeholder="Nama Dokumen (KTP, SK, Ijazah)"
                             value={newDoc.nama}
                             onChange={(e) => setNewDoc((p) => ({ ...p, nama: e.target.value }))}
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+                            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100"
                           />
                           <input
                             type="text"
                             placeholder="Nama File (.pdf / .jpg)"
                             value={newDoc.file_name}
                             onChange={(e) => setNewDoc((p) => ({ ...p, file_name: e.target.value }))}
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs"
+                            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100"
                           />
                           <button
                             onClick={handleAddDoc}
-                            className="rounded-lg bg-purple-700 text-white text-xs font-bold py-1.5 hover:bg-purple-800"
+                            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-1.5 px-3 transition-colors shadow-sm"
                           >
                             + Simpan Dokumen
                           </button>
@@ -4489,7 +4621,7 @@ export default function EmployeesPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge color="success" size="sm">
-                  {statModalItems.length} Pegawai
+                  {isModalEmployeesLoading ? 'Memuat...' : `${statModalItems.length} Pegawai`}
                 </Badge>
                 <button
                   type="button"
@@ -4531,7 +4663,16 @@ export default function EmployeesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 print:divide-slate-300">
-                  {statModalItems.length === 0 ? (
+                  {isModalEmployeesLoading ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-slate-400">
+                        <div className="flex items-center justify-center gap-2">
+                          <Spinner size="sm" />
+                          <span>Memuat direktori pegawai...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : statModalItems.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="p-6 text-center text-slate-400 italic">
                         Tidak ada data pegawai yang sesuai.

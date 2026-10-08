@@ -34,6 +34,10 @@ export default function MultiRoleDashboardPage() {
     return <ParentDashboardPage />
   }
 
+  if (hasAnyRole(roles, ROLES.KEPALA_SEKOLAH) || permissions.includes('dashboard.kepala-sekolah.view')) {
+    return <Navigate to="/dashboard/kepala-sekolah" replace />
+  }
+
   if (isTeacherRole(roles)) {
     return <TeacherMonitoringDashboardPage />
   }

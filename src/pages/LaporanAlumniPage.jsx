@@ -1506,20 +1506,6 @@ export default function LaporanAlumniPage() {
 
                 <div className="flex items-center gap-2 flex-nowrap shrink-0 py-1">
                   <SquircleActionButton
-                    variant="import"
-                    label="Import Data"
-                    onClick={() => {
-                      const input = document.createElement('input')
-                      input.type = 'file'
-                      input.accept = '.csv, .xlsx, .xls'
-                      input.onchange = (e) => {
-                        const file = e.target.files?.[0]
-                        if (file) alert(`Berkas "${file.name}" siap di-import ke data alumni & kelulusan!`)
-                      }
-                      input.click()
-                    }}
-                  />
-                  <SquircleActionButton
                     variant="export"
                     label="Export CSV"
                     onClick={() => exportCsv('rekap-alumni-mutasi.csv', kolomCsv, hasilFilter)}

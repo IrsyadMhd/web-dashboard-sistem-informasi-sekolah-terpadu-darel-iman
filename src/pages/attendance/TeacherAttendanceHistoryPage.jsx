@@ -74,8 +74,20 @@ export default function TeacherAttendanceHistoryPage() {
     return filteredSessions.slice(start, start + perPage)
   }, [filteredSessions, currentPage])
 
-  const totalFinalized = sessions.filter((s) => s.status === 'finalized').length
-  const totalDraft = sessions.filter((s) => s.status === 'draft').length
+  const targetSessionsForStats = useMemo(() => {
+    if (!search) return sessions
+    const term = search.toLowerCase()
+    return sessions.filter((session) => {
+      const subjectName = (session.schedule?.subject_name || session.subject || '').toLowerCase()
+      const rombelName = (session.schedule?.class_name || session.rombel || '').toLowerCase()
+      const topic = (session.topic || '').toLowerCase()
+      return subjectName.includes(term) || rombelName.includes(term) || topic.includes(term)
+    })
+  }, [sessions, search])
+
+  const totalFinalized = targetSessionsForStats.filter((s) => s.status === 'finalized').length
+  const totalDraft = targetSessionsForStats.filter((s) => s.status === 'draft').length
+  const totalCount = targetSessionsForStats.length
 
   return (
     <div className="space-y-6">
@@ -109,7 +121,7 @@ export default function TeacherAttendanceHistoryPage() {
             <span className="text-xs font-semibold uppercase text-slate-500">Total Sesi Presensi</span>
             <History className="h-5 w-5 text-emerald-600" />
           </div>
-          <p className="mt-3 text-3xl font-black text-slate-900 dark:text-white">{sessions.length}</p>
+          <p className="mt-3 text-3xl font-black text-slate-900 dark:text-white">{totalCount}</p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">

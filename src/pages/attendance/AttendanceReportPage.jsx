@@ -348,31 +348,43 @@ export default function AttendanceReportPage() {
 
   // ── 4. Summary Overall Metrics & 5 Colored Cards ────────────────────────
   const overallSummary = useMemo(() => {
+    const isFiltered = Boolean(search) || selectedStatusFilter !== 'all'
     let present = 0, late = 0, permission = 0, sick = 0, absent = 0
-    timeFilteredRows.forEach((r) => {
-      const st = String(r.status_hadir || '').toLowerCase()
-      if (st === 'hadir') present += 1
-      else if (st === 'terlambat') late += 1
-      else if (st === 'izin') permission += 1
-      else if (st === 'sakit') sick += 1
-      else if (st === 'alpa') absent += 1
-    })
 
-    // Fallback compute from aggregated rombel if logs count is 0
-    if (present + late + permission + sick + absent === 0 && aggregatedReports.length > 0) {
-      aggregatedReports.forEach((r) => {
+    if (isFiltered) {
+      filteredReports.forEach((r) => {
         present += r.hadir
         late += r.terlambat
         permission += r.izin
         sick += r.sakit
         absent += r.alpa
       })
+    } else {
+      timeFilteredRows.forEach((r) => {
+        const st = String(r.status_hadir || '').toLowerCase()
+        if (st === 'hadir') present += 1
+        else if (st === 'terlambat') late += 1
+        else if (st === 'izin') permission += 1
+        else if (st === 'sakit') sick += 1
+        else if (st === 'alpa') absent += 1
+      })
+
+      // Fallback compute from aggregated rombel if logs count is 0
+      if (present + late + permission + sick + absent === 0 && aggregatedReports.length > 0) {
+        aggregatedReports.forEach((r) => {
+          present += r.hadir
+          late += r.terlambat
+          permission += r.izin
+          sick += r.sakit
+          absent += r.alpa
+        })
+      }
     }
 
     const total = present + late + permission + sick + absent || 1
 
     return { present, late, permission, sick, absent, total }
-  }, [timeFilteredRows, aggregatedReports])
+  }, [timeFilteredRows, aggregatedReports, filteredReports, search, selectedStatusFilter])
 
   const cards = useMemo(
     () => [

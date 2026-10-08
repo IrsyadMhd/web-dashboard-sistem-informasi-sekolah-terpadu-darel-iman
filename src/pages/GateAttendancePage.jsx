@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   QrCode,
@@ -237,6 +238,7 @@ function GateKpiCard({ icon: Icon, title, value, subtext, tag, tone = 'emerald',
 }
 
 export default function GateAttendancePage() {
+  const navigate = useNavigate()
   const storeUser = useAuthStore((state) => state.user)
   const localUser = (() => {
     try {
@@ -928,6 +930,14 @@ export default function GateAttendancePage() {
               icon={Settings}
               label="Pengaturan Jam per Unit"
               onClick={() => setShowScheduleModal(true)}
+            />
+
+            {/* Link to Unified Rekap & Scanner */}
+            <SquircleActionButton
+              variant="view"
+              icon={Users}
+              label="Rekap Absensi Gerbang"
+              onClick={() => navigate('/dashboard/rekap-absensi-gerbang')}
             />
           </div>
         </div>

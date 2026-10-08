@@ -145,18 +145,6 @@ export default function LaporanLmsPage() {
     })
   }
 
-  const handleImportData = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.csv, .xlsx, .xls'
-    input.onchange = (e) => {
-      const file = e.target.files?.[0]
-      if (file) {
-        alert(`Berkas "${file.name}" siap di-import ke log aktivitas LMS!`)
-      }
-    }
-    input.click()
-  }
 
   return (
     <PageContainer className="space-y-6 pb-12">
@@ -277,11 +265,6 @@ export default function LaporanLmsPage() {
             </div>
 
             <div className="flex items-center gap-2 flex-nowrap shrink-0 py-1">
-              <SquircleActionButton
-                variant="import"
-                label="Import Data"
-                onClick={handleImportData}
-              />
               <SquircleActionButton
                 variant="export"
                 label="Export CSV"

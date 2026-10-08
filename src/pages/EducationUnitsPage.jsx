@@ -14,8 +14,11 @@ import {
  Check,
  CheckCircle2,
  ChevronDown,
+ Clock,
  Compass,
+ Crosshair,
  Download,
+ ExternalLink,
  Eye,
  FileCheck,
  FileSpreadsheet,
@@ -25,6 +28,7 @@ import {
  Info,
  Mail,
  MapPin,
+ Moon,
  Pencil,
  Phone,
  Plus,
@@ -35,6 +39,7 @@ import {
  School,
  ShieldCheck,
  Sparkles,
+ Sun,
  Tag,
  Trash2,
  Upload,
@@ -103,6 +108,7 @@ const itemVariants = {
 import { useProvinsiList, useKotaOptions, useKecamatanOptions, useKelurahanOptions } from '../hooks/useWilayah'
 import { getProvinsiList, getKotaOptions, getKecamatanOptions, getKelurahanOptions } from '../components/siswa/wilayahData'
 import SearchableRegionInput from '../components/common/SearchableRegionInput'
+import InteractiveMapPicker from '../components/common/InteractiveMapPicker'
 import { getPostalCode, enrichKelurahanWithPostal } from '../utils/postalCodeHelper'
 import { Download1, Upload1 } from '@tailgrids/icons'
 import { Button } from '@/components/tailgrids/core/button'
@@ -146,6 +152,8 @@ function getUnitStyle(type) {
 function initialFormState() {
  return {
  id: null, code: '', name: '', unit_type: '', npsn: '', email: '', phone: '',
+ program_type: 'fullday', jam_masuk: '07:15', jam_pulang: '16:00', jam_kegiatan: '07:15 - 16:00 WIB',
+ latitude: '', longitude: '', radius_meter: 100,
  address: '', city: 'Padang', province: 'Sumatera Barat', district: '', subdistrict: '', postal_code: '',
  principal_name: '', principal_nip: '', established_year: new Date().getFullYear(),
  accreditation: 'A', sk_pendirian: '', tgl_sk: '', logo_url: '', is_active: true, description: '',
@@ -154,11 +162,19 @@ function initialFormState() {
 
 function parseFromApi(item) {
  const meta = item?.metadata || {}
+ const progType = item?.program_type || meta.program_type || (item?.level?.toUpperCase().includes('PONPES') || item?.level?.toUpperCase().includes('MAHAD') ? 'boarding' : 'fullday')
  return {
  id: item?.id || null,
  code: item?.code || '',
  name: item?.name || '',
  unit_type: item?.level || '',
+ program_type: progType,
+ jam_masuk: item?.jam_masuk || meta.jam_masuk || (progType === 'boarding' ? '04:00' : '07:15'),
+ jam_pulang: item?.jam_pulang || meta.jam_pulang || (progType === 'boarding' ? '21:00' : '16:00'),
+ jam_kegiatan: item?.jam_kegiatan || meta.jam_kegiatan || (progType === 'boarding' ? '24 Jam (Pengasuhan Asrama & Halaqah)' : '07:15 - 16:00 WIB'),
+ latitude: item?.latitude ?? meta.latitude ?? '',
+ longitude: item?.longitude ?? meta.longitude ?? '',
+ radius_meter: item?.radius_meter ?? meta.radius_meter ?? 100,
  npsn: meta.npsn || '',
  email: meta.email || '',
  phone: meta.phone || '',
@@ -187,10 +203,28 @@ function parseFromApi(item) {
 }
 
 function makePayload(form) {
+ const lat = form.latitude !== '' && form.latitude !== null && !isNaN(Number(form.latitude)) ? Number(form.latitude) : null
+ const lng = form.longitude !== '' && form.longitude !== null && !isNaN(Number(form.longitude)) ? Number(form.longitude) : null
+ const rad = form.radius_meter !== '' && form.radius_meter !== null && !isNaN(Number(form.radius_meter)) ? Number(form.radius_meter) : 100
+
  return {
  code: form.code, name: form.name, level: form.unit_type,
+ program_type: form.program_type || 'fullday',
+ jam_masuk: form.jam_masuk || null,
+ jam_pulang: form.jam_pulang || null,
+ jam_kegiatan: form.jam_kegiatan || null,
+ latitude: lat,
+ longitude: lng,
+ radius_meter: rad,
  description: form.description, is_active: form.is_active,
  metadata: {
+ program_type: form.program_type || 'fullday',
+ jam_masuk: form.jam_masuk || '',
+ jam_pulang: form.jam_pulang || '',
+ jam_kegiatan: form.jam_kegiatan || '',
+ latitude: lat,
+ longitude: lng,
+ radius_meter: rad,
  npsn: form.npsn, email: form.email, phone: form.phone,
  address: form.address, city: form.city, province: form.province,
  district: form.district, subdistrict: form.subdistrict,
@@ -479,6 +513,7 @@ export default function EducationUnitsPage() {
  const [importPreviewData, setImportPreviewData] = useState([])
  const [importedData, setImportedData] = useState([])
  const [isImporting, setIsImporting] = useState(false)
+ const [mapSearchTriggerKey, setMapSearchTriggerKey] = useState(null)
 
  // ── Modal 2 (Quick Add Employee) State & Queries ──────────────────────
  const [isAddEmployeeModalOpen, setIsAddEmployeeModalOpen] = useState(false)
@@ -833,7 +868,18 @@ export default function EducationUnitsPage() {
  }
  const openEditModal = unit => {
  setIsEditMode(true)
- setFormData(unit)
+ const progType = unit?.program_type || (unit?.unit_type?.toUpperCase().includes('PONPES') || unit?.unit_type?.toUpperCase().includes('MAHAD') ? 'boarding' : 'fullday')
+ setFormData({
+  ...initialFormState(),
+  ...unit,
+  program_type: progType,
+  jam_masuk: unit?.jam_masuk || (progType === 'boarding' ? '04:00' : '07:15'),
+  jam_pulang: unit?.jam_pulang || (progType === 'boarding' ? '21:00' : '16:00'),
+  jam_kegiatan: unit?.jam_kegiatan || (progType === 'boarding' ? '24 Jam (Pengasuhan Asrama & Halaqah)' : '07:15 - 16:00 WIB'),
+  latitude: unit?.latitude ?? '',
+  longitude: unit?.longitude ?? '',
+  radius_meter: unit?.radius_meter ?? 100,
+ })
  setCurrentStep(1)
  setFormAlert(null)
  setFormMutationAlert(null)
@@ -1098,14 +1144,26 @@ export default function EducationUnitsPage() {
  },
  {
  key: 'unit_type',
- label: 'Jenis',
+ label: 'Jenis & Program',
  className: 'hidden md:table-cell',
  render: (row) => {
  const style = getUnitStyle(row.unit_type)
+ const isBoarding = row.program_type === 'boarding'
  return (
- <span className={`inline-flex rounded-lg border px-2 py-1 text-[9px] font-bold ${style.bg} ${style.text} ${style.border}`}>
- {row.unit_type || '—'}
- </span>
+  <div className="flex flex-col gap-1 items-start">
+   <span className={`inline-flex rounded-lg border px-2 py-0.5 text-[9px] font-bold ${style.bg} ${style.text} ${style.border}`}>
+    {row.unit_type || '—'}
+   </span>
+   <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-extrabold border ${
+    isBoarding
+     ? 'bg-teal-50 text-teal-700 border-teal-200/80 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/60'
+     : 'bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60'
+   }`}>
+    {isBoarding ? <Moon className="size-2.5" /> : <Sun className="size-2.5" />}
+    {isBoarding ? 'Boarding' : 'Fullday'}
+    {row.jam_pulang && <span className="opacity-75 font-normal">({row.jam_pulang})</span>}
+   </span>
+  </div>
  )
  },
  },
@@ -1742,6 +1800,61 @@ export default function EducationUnitsPage() {
  </div>
  ))}
  </div>
+
+ {/* Model Program & Jadwal Kegiatan Card */}
+ <div className="rounded-xl border border-emerald-200/90 bg-emerald-50/50 p-3.5 dark:border-emerald-800/80 dark:bg-emerald-950/30 space-y-2">
+  <div className="flex items-center justify-between">
+   <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
+    <School className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+    Model Sistem Pembelajaran & Jam Operasional
+   </div>
+   <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border ${
+    detailUnit.program_type === 'boarding'
+     ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/80 dark:text-teal-300 dark:border-teal-700'
+     : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700'
+   }`}>
+    {detailUnit.program_type === 'boarding' ? <Moon className="size-3" /> : <Sun className="size-3" />}
+    {detailUnit.program_type === 'boarding' ? 'Boarding / Pesantren (24 Jam)' : 'Fullday School'}
+   </span>
+  </div>
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+   <div className="rounded-lg bg-white/80 p-2 border border-emerald-100 dark:bg-slate-800/80 dark:border-emerald-900/40">
+    <span className="text-[10px] font-semibold text-slate-400 block">Jam Masuk / KBM</span>
+    <span className="font-bold text-slate-800 dark:text-slate-100">{detailUnit.jam_masuk || (detailUnit.program_type === 'boarding' ? '04:00' : '07:15')} WIB</span>
+   </div>
+   <div className="rounded-lg bg-white/80 p-2 border border-emerald-100 dark:bg-slate-800/80 dark:border-emerald-900/40">
+    <span className="text-[10px] font-semibold text-slate-400 block">Jam Pulang Siswa/Santri</span>
+    <span className="font-bold text-slate-800 dark:text-slate-100">{detailUnit.jam_pulang || (detailUnit.program_type === 'boarding' ? '21:00' : '16:00')} WIB</span>
+   </div>
+   <div className="rounded-lg bg-white/80 p-2 border border-emerald-100 dark:bg-slate-800/80 dark:border-emerald-900/40">
+    <span className="text-[10px] font-semibold text-slate-400 block">Keterangan Kegiatan</span>
+    <span className="font-bold text-slate-800 dark:text-slate-100 truncate block">{detailUnit.jam_kegiatan || (detailUnit.program_type === 'boarding' ? '24 Jam Pengasuhan' : '07:15 - 16:00 WIB')}</span>
+   </div>
+  </div>
+ </div>
+
+ {/* Titik Peta & Geofencing Card */}
+ {(detailUnit.latitude || detailUnit.longitude) && (
+  <div className="rounded-xl border border-teal-200/90 bg-teal-50/50 p-3.5 dark:border-teal-800/80 dark:bg-teal-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   <div className="space-y-0.5">
+    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+     <MapPin className="size-4 text-teal-600 dark:text-teal-400 shrink-0" />
+     Titik Koordinat Map & Geofencing Presensi
+    </div>
+    <p className="text-[11px] font-mono text-slate-600 dark:text-slate-300">
+     Lat: <span className="font-bold">{detailUnit.latitude}</span>, Lng: <span className="font-bold">{detailUnit.longitude}</span> (Radius: {detailUnit.radius_meter || 100}m)
+    </p>
+   </div>
+   <a
+    href={`https://www.google.com/maps?q=${detailUnit.latitude},${detailUnit.longitude}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
+   >
+    <ExternalLink className="size-3.5" /> Buka Google Maps
+   </a>
+  </div>
+ )}
 
  {/* Alamat Lengkap */}
  <div className="rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-800/50">
@@ -2503,6 +2616,150 @@ export default function EducationUnitsPage() {
  </div>
  </div>
 
+ {/* Model Program & Jam Kegiatan Unit */}
+ <div className="space-y-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+  <div className="flex items-center justify-between">
+   <label className="block text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+    <School className="size-4 text-emerald-600 dark:text-emerald-400" />
+    Model Sistem Pembelajaran <span className="text-rose-500">*</span>
+   </label>
+   <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2.5 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-700/60">
+    Fullday vs Boarding
+   </span>
+  </div>
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   {/* Card Fullday */}
+   <div
+    onClick={() => {
+     setFormData(p => ({
+      ...p,
+      program_type: 'fullday',
+      jam_masuk: p.jam_masuk || '07:15',
+      jam_pulang: p.jam_pulang && p.jam_pulang !== '21:00' ? p.jam_pulang : '16:00',
+      jam_kegiatan: p.jam_kegiatan && !p.jam_kegiatan.includes('24 Jam') ? p.jam_kegiatan : '07:15 - 16:00 WIB',
+     }))
+    }}
+    className={`relative flex items-start gap-3 rounded-xl border-2 p-3 transition-all cursor-pointer ${
+     formData.program_type === 'fullday'
+      ? 'border-emerald-600 bg-white shadow-sm ring-2 ring-emerald-500/20 dark:bg-slate-800 dark:border-emerald-400'
+      : 'border-slate-200 bg-white/70 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60'
+    }`}
+   >
+    <div className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl ${
+     formData.program_type === 'fullday'
+      ? 'bg-emerald-600 text-white'
+      : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+    }`}>
+     <Sun className="size-5" />
+    </div>
+    <div className="min-w-0 flex-1">
+     <div className="flex items-center justify-between">
+      <p className="text-xs font-black text-slate-900 dark:text-white">Fullday School</p>
+      {formData.program_type === 'fullday' && (
+       <span className="size-2 rounded-full bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-900/50" />
+      )}
+     </div>
+     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+      Siswa pulang harian sore hari. Kemitraan KBM sekolah & pengasuhan rumah.
+     </p>
+    </div>
+   </div>
+
+   {/* Card Boarding */}
+   <div
+    onClick={() => {
+     setFormData(p => ({
+      ...p,
+      program_type: 'boarding',
+      jam_masuk: p.jam_masuk || '04:00',
+      jam_pulang: p.jam_pulang && p.jam_pulang !== '16:00' ? p.jam_pulang : '21:00',
+      jam_kegiatan: p.jam_kegiatan && !p.jam_kegiatan.includes('16:00') ? p.jam_kegiatan : '24 Jam (Pengasuhan Asrama & Halaqah)',
+     }))
+    }}
+    className={`relative flex items-start gap-3 rounded-xl border-2 p-3 transition-all cursor-pointer ${
+     formData.program_type === 'boarding'
+      ? 'border-teal-600 bg-white shadow-sm ring-2 ring-teal-500/20 dark:bg-slate-800 dark:border-teal-400'
+      : 'border-slate-200 bg-white/70 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60'
+    }`}
+   >
+    <div className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl ${
+     formData.program_type === 'boarding'
+      ? 'bg-teal-600 text-white'
+      : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+    }`}>
+     <Moon className="size-5" />
+    </div>
+    <div className="min-w-0 flex-1">
+     <div className="flex items-center justify-between">
+      <p className="text-xs font-black text-slate-900 dark:text-white">Boarding / Pesantren</p>
+      {formData.program_type === 'boarding' && (
+       <span className="size-2 rounded-full bg-teal-500 ring-4 ring-teal-100 dark:ring-teal-900/50" />
+      )}
+     </div>
+     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+      Santri mukim asrama 24 jam. Pengasuhan intensif, halaqah quran & musyrif.
+     </p>
+    </div>
+   </div>
+  </div>
+
+  {/* Jam Masuk, Jam Pulang, Jam Kegiatan */}
+  <div className="pt-3 border-t border-emerald-100 dark:border-emerald-900/40 grid grid-cols-1 sm:grid-cols-3 gap-3">
+   <div className="space-y-1">
+    <label htmlFor="jam_masuk" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+     Jam Masuk / Mulai
+    </label>
+    <div className="relative flex items-center">
+     <div className="pointer-events-none absolute left-3 flex items-center text-slate-400">
+      <Clock className="size-3.5" />
+     </div>
+     <input
+      id="jam_masuk"
+      type="time"
+      value={formData.jam_masuk}
+      onChange={e => setFormData(p => ({ ...p, jam_masuk: e.target.value }))}
+      className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 shadow-xs focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+     />
+    </div>
+   </div>
+
+   <div className="space-y-1">
+    <label htmlFor="jam_pulang" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+     Jam Pulang Siswa/Santri
+    </label>
+    <div className="relative flex items-center">
+     <div className="pointer-events-none absolute left-3 flex items-center text-slate-400">
+      <Clock className="size-3.5" />
+     </div>
+     <input
+      id="jam_pulang"
+      type="time"
+      value={formData.jam_pulang}
+      onChange={e => setFormData(p => ({ ...p, jam_pulang: e.target.value }))}
+      className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs font-semibold text-slate-800 shadow-xs focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+     />
+    </div>
+   </div>
+
+   <div className="space-y-1">
+    <label htmlFor="jam_kegiatan" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+     Keterangan Jam Kegiatan
+    </label>
+    <div className="relative flex items-center">
+     <input
+      id="jam_kegiatan"
+      type="text"
+      placeholder="07:15 - 16:00 WIB"
+      value={formData.jam_kegiatan}
+      onChange={e => setFormData(p => ({ ...p, jam_kegiatan: e.target.value }))}
+      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 shadow-xs focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+     />
+    </div>
+   </div>
+  </div>
+ </div>
+
  {/* Status switch card */}
  <div
  onClick={() => setFormData(p => ({ ...p, is_active: !p.is_active }))}
@@ -2600,24 +2857,37 @@ export default function EducationUnitsPage() {
 
  {/* Alamat Lengkap */}
  <div className="space-y-1.5">
- <label htmlFor="address" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
- Alamat Lengkap Unit
- </label>
- <div className="relative flex items-start">
- <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
- <MapPin className="size-4" />
- </div>
- <textarea
- id="address"
- name="address"
- rows={3}
- placeholder="Jl. Khatib Sulaiman No. 10..."
- value={formData.address}
- onChange={e => setFormData(p => ({ ...p, address: e.target.value }))}
- className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder-slate-400 shadow-xs focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 transition-colors"
- />
- </div>
- <p className="text-[11px] font-medium text-slate-400">Alamat lengkap lokasi fisik unit pendidikan</p>
+  <div className="flex items-center justify-between">
+   <label htmlFor="address" className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+    Alamat Lengkap Unit
+   </label>
+   <button
+    type="button"
+    onClick={() => setMapSearchTriggerKey(Date.now())}
+    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:text-emerald-300 px-2.5 py-1 text-[11px] font-bold border border-emerald-300/80 dark:border-emerald-700/80 transition-all cursor-pointer shadow-2xs"
+    title="Langsung arahkan pin peta ke alamat yang Anda ketik ini"
+   >
+    <Compass className="size-3 text-emerald-600 dark:text-emerald-400" />
+    Arahkan Pin ke Alamat
+   </button>
+  </div>
+  <div className="relative flex items-start">
+   <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
+    <MapPin className="size-4" />
+   </div>
+   <textarea
+    id="address"
+    name="address"
+    rows={3}
+    placeholder="Jl. Khatib Sulaiman No. 10..."
+    value={formData.address}
+    onChange={e => setFormData(p => ({ ...p, address: e.target.value }))}
+    className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder-slate-400 shadow-xs focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 transition-colors"
+   />
+  </div>
+  <p className="text-[11px] font-medium text-slate-400">
+   Alamat fisik unit pendidikan. Mengetik alamat akan otomatis mengarahkan titik pada peta (atau geser pin pada peta untuk mengisi otomatis alamat).
+  </p>
  </div>
 
  {/* Provinsi & Kota */}
@@ -2750,6 +3020,46 @@ export default function EducationUnitsPage() {
  </div>
  <p className="text-[11px] font-medium text-slate-400">Kode pos terisi otomatis saat memilih kelurahan / kecamatan (dapat disunting manual)</p>
  </div>
+
+ {/* Peta Interaktif & Penentuan Titik Koordinat Lokasi */}
+ <div className="space-y-4 rounded-2xl border-2 border-emerald-300/80 bg-white p-4 shadow-sm dark:border-emerald-700/80 dark:bg-slate-900/60">
+  <InteractiveMapPicker
+   latitude={formData.latitude}
+   longitude={formData.longitude}
+   radiusMeter={formData.radius_meter}
+   addressText={formData.address}
+   cityName={formData.city}
+   provinceName={formData.province}
+   triggerSearchKey={mapSearchTriggerKey}
+   onLocationChange={({ lat, lng }) => {
+    setFormData(p => ({
+     ...p,
+     latitude: lat,
+     longitude: lng,
+    }))
+   }}
+   onAddressDetected={(detected) => {
+    setFormData(p => {
+     const newProv = detected.province || p.province
+     const newCity = detected.city || p.city
+     const newDistrict = detected.district || p.district
+     const newSubdistrict = detected.subdistrict || p.subdistrict
+     const autoPostal = detected.postalCode || getPostalCode(newSubdistrict, newDistrict, newCity, newProv) || p.postal_code
+
+     return {
+      ...p,
+      address: detected.road || detected.displayName || p.address,
+      province: newProv,
+      city: newCity,
+      district: newDistrict,
+      subdistrict: newSubdistrict,
+      postal_code: autoPostal,
+     }
+    })
+   }}
+  />
+
+  </div>
  </div>
  )}
 
@@ -3138,6 +3448,28 @@ export default function EducationUnitsPage() {
                         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jenjang / Jenis</span>
                         <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                           {formData.unit_type}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Model Program</span>
+                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 capitalize">
+                        {formData.program_type === 'boarding' ? 'Boarding / Pesantren (24 Jam)' : 'Fullday School'}
+                      </span>
+                    </div>
+                    {formData.jam_pulang && (
+                      <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jam Pulang / Selesai</span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          {formData.jam_pulang} WIB {formData.jam_masuk ? `(Mulai: ${formData.jam_masuk})` : ''}
+                        </span>
+                      </div>
+                    )}
+                    {formData.latitude && formData.longitude && (
+                      <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Titik Peta & Radius</span>
+                        <span className="text-xs font-mono font-bold text-teal-700 dark:text-teal-400">
+                          {formData.latitude}, {formData.longitude} (R: {formData.radius_meter || 100}m)
                         </span>
                       </div>
                     )}

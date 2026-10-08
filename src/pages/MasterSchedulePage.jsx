@@ -342,14 +342,15 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   }, [authUser])
 
   const isGuru = useMemo(() => isTeacherRole(userRoles), [userRoles])
+  const isTu = useMemo(() => hasAnyRole(userRoles, ROLES.TATA_USAHA), [userRoles])
   const canManage = useMemo(() =>
     !isGuru && (
       isGlobalAccessManager(userRoles) ||
       hasAnyRole(userRoles, [...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI, ...ROLES.WAKA, ...ROLES.TATA_USAHA])
     ), [isGuru, userRoles])
 
-  // Resolusi unit_id guru dari profil user
-  const guruUnitId = useMemo(() => {
+  // Resolusi unit_id guru / TU dari profil user
+  const userUnitId = useMemo(() => {
     if (!authUser) return null
     const candidates = [
       authUser?.unit_id,
@@ -364,6 +365,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     ].filter(Boolean)
     return candidates.length > 0 ? String(candidates[0]) : null
   }, [authUser])
+  const guruUnitId = userUnitId
 
   // Resolusi employee_id guru dari profil user
   const guruEmployeeId = useMemo(() => {
@@ -484,12 +486,15 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     queryFn: scheduleService.getOptions,
   })
 
-  // Inisialisasi filter scope guru saat role sudah diketahui
+  // Inisialisasi filter scope guru atau TU saat role sudah diketahui
   useEffect(() => {
-    if (!isGuru) return
-    if (guruUnitId) setUnitFilter(guruUnitId)
-    if (guruEmployeeId) setTeacherFilter(guruEmployeeId)
-  }, [isGuru, guruUnitId, guruEmployeeId])
+    if (isGuru) {
+      if (guruUnitId) setUnitFilter(guruUnitId)
+      if (guruEmployeeId) setTeacherFilter(guruEmployeeId)
+    } else if (isTu) {
+      if (userUnitId) setUnitFilter(userUnitId)
+    }
+  }, [isGuru, isTu, guruUnitId, userUnitId, guruEmployeeId])
 
 
   // Fetch Units for dropdown filter & dependent form
@@ -684,6 +689,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     setIsDirty(false)
     setForm({
       ...emptyForm,
+      unit_pendidikan_id: (isGuru || isTu) && userUnitId ? userUnitId : (unitFilter || ''),
       academic_year_id: yearId,
       semester_id:
         activeSemester?.id ||
@@ -836,8 +842,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
   const resetFilters = () => {
     setSearch('')
-    // Untuk role guru: kembalikan ke scope unit & teacher-nya sendiri
-    setUnitFilter(isGuru && guruUnitId ? guruUnitId : '')
+    // Untuk role guru atau TU: kembalikan ke scope unit & teacher-nya sendiri
+    setUnitFilter((isGuru || isTu) && userUnitId ? userUnitId : '')
     setYearFilter('')
     setSemesterFilter('')
     setSubjectFilter('')
@@ -850,8 +856,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   }
 
   const activeFilterCount = [
-    // Untuk Guru: unitFilter & teacherFilter adalah scope wajib, bukan filter aktif yang bisa direset
-    !isGuru ? unitFilter : null,
+    // Untuk Guru & TU: unitFilter adalah scope wajib institusi tempat bertugas, bukan filter aktif yang bisa direset
+    !(isGuru || isTu) ? unitFilter : null,
     yearFilter,
     semesterFilter,
     subjectFilter,
@@ -1850,15 +1856,15 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
           {/* Baris 3: Filter Controls Horizontal */}
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full pt-3">
-            {/* Filter Unit: Terkunci untuk Guru, dropdown untuk manajemen */}
-            {isGuru ? (
-              /* Badge unit terkunci (read-only) untuk role Guru */
-              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0">
+            {/* Filter Unit: Terkunci untuk Guru & Tata Usaha, dropdown untuk manajemen yayasan/divisi */}
+            {(isGuru || isTu) ? (
+              /* Badge unit terkunci (read-only) untuk role Guru & Tata Usaha */
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3 py-2 text-xs font-bold text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0" title={isTu ? 'Unit Kerja Tata Usaha' : 'Unit Pendidik'}>
                 <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>
                   {unitOptions.find((u) => String(u.id) === String(unitFilter))?.name ||
                     unitOptions.find((u) => String(u.id) === String(unitFilter))?.nama ||
-                    'Unit Anda'}
+                    (isTu ? 'Unit Kerja TU' : 'Unit Anda')}
                 </span>
               </div>
             ) : (
@@ -2505,16 +2511,21 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   Unit Pendidikan
                 </label>
                 <select
+                  disabled={Boolean((isGuru || isTu) && userUnitId)}
                   value={form.unit_pendidikan_id}
                   onChange={(e) => handleFormChange('unit_pendidikan_id', e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827]"
+                  className={`h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
+                    (isGuru || isTu) && userUnitId ? 'opacity-75 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''
+                  }`}
                 >
-                  <option value="">Semua Unit (Lintas Unit)</option>
-                  {unitOptions.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name || item.nama}
-                    </option>
-                  ))}
+                  {!(isGuru || isTu) && <option value="">Semua Unit (Lintas Unit)</option>}
+                  {unitOptions
+                    .filter((item) => !(isGuru || isTu) || !userUnitId || String(item.id) === String(userUnitId))
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name || item.nama}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -2874,6 +2885,11 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         </div>
                         <button
                           type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleFormChange('employee_id', guru.id)
+                            setGuruPickerOpen(false)
+                          }}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                             isSelected
                               ? 'bg-[#0E5C44] text-white'

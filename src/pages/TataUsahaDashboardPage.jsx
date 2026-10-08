@@ -15,6 +15,8 @@ import {
   Sparkles,
   ShieldCheck,
   FileText,
+  GraduationCap,
+  QrCode,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -137,6 +139,12 @@ export default function TataUsahaDashboardPage() {
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
   const [activeModal, setActiveModal] = useState(null)
+  const [activeModalTab, setActiveModalTab] = useState(null)
+
+  const openKpiModal = (type, tab = null) => {
+    setActiveModal(type)
+    setActiveModalTab(tab)
+  }
 
   const fetchDashboard = async () => {
     setLoading(true)
@@ -205,6 +213,11 @@ export default function TataUsahaDashboardPage() {
                     <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
                     Pusat Administrasi &amp; Tata Usaha
                   </span>
+                  {context.unit?.nama && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700/80 px-3.5 py-1 text-xs font-black text-white shadow-sm border border-emerald-400/40">
+                      <Building2 className="h-3.5 w-3.5 text-emerald-200" /> Unit: {context.unit.nama}
+                    </span>
+                  )}
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
                     <CalendarDays className="h-3.5 w-3.5 text-emerald-600" /> {tahunAjaranLabel}
                   </span>
@@ -261,8 +274,14 @@ export default function TataUsahaDashboardPage() {
               <SquircleActionButton
                 variant="primary"
                 icon={CalendarCheck}
-                label="Absensi Siswa"
+                label="Presensi KBM & Kelas"
                 onClick={() => navigate('/dashboard/absensi-pembelajaran')}
+              />
+              <SquircleActionButton
+                variant="import"
+                icon={QrCode}
+                label="Absensi Gerbang (Scan)"
+                onClick={() => navigate('/dashboard/absensi-gerbang')}
               />
               <SquircleActionButton
                 variant="primary"
@@ -276,14 +295,21 @@ export default function TataUsahaDashboardPage() {
                 label="Cetak Laporan Siswa"
                 onClick={() => navigate('/dashboard/laporan-siswa')}
               />
+              <SquircleActionButton
+                variant="secondary"
+                icon={GraduationCap}
+                label="Kelola Alumni & Mutasi"
+                onClick={() => navigate('/dashboard/master/alumni')}
+              />
             </div>
           </div>
         </section>
 
+        {/* METRIK KPI UTAMA TATA USAHA */}
         <section className="space-y-3">
           <SectionHeader
-            title="Metrik Administrasi & Kelengkapan Data"
-            subtitle="Klik kartu untuk melihat rincian data dan perbandingan"
+            title="Metrik Administrasi & Presensi Unit Tata Usaha"
+            subtitle={`Ringkasan data siswa, pegawai, dan presensi gerbang${context.unit?.nama ? ` untuk unit ${context.unit.nama}` : ''}`}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <KpiCard
@@ -294,7 +320,7 @@ export default function TataUsahaDashboardPage() {
               colorScheme="emerald"
               badge="Siswa"
               badgeVariant="success"
-              onClick={() => setActiveModal('total_siswa')}
+              onClick={() => openKpiModal('total_siswa')}
             />
             <KpiCard
               title="Total Pegawai & Guru"
@@ -304,18 +330,41 @@ export default function TataUsahaDashboardPage() {
               colorScheme="blue"
               badge="SDM"
               badgeVariant="info"
-              onClick={() => setActiveModal('total_pegawai')}
+              onClick={() => openKpiModal('total_pegawai')}
             />
             <KpiCard
-              title="Absensi Terverifikasi Hari Ini"
-              value={formatNumber(kpis.absensi_hari_ini?.total)}
-              subtitle={`Hadir ${formatNumber(kpis.absensi_hari_ini?.siswa_hadir)} · Belum ${formatNumber(kpis.absensi_hari_ini?.siswa_belum_absen)} · Pegawai ${formatNumber(kpis.absensi_hari_ini?.pegawai_hadir)}`}
+              title="Siswa Hadir"
+              value={formatNumber(kpis.absensi_hari_ini?.siswa_hadir)}
+              subtitle={`Dari ${formatNumber(kpis.total_siswa?.total)} siswa unit`}
               icon={CheckCircle2}
               colorScheme="emerald"
-              badge="Presensi Gerbang"
+              badge="Hadir"
               badgeVariant="success"
-              onClick={() => setActiveModal('absensi_hari_ini')}
+              onClick={() => openKpiModal('absensi_hari_ini', 'siswa_hadir')}
             />
+            <KpiCard
+              title="Belum Absen"
+              value={formatNumber(kpis.absensi_hari_ini?.siswa_belum_absen)}
+              subtitle="Siswa belum presensi gerbang"
+              icon={AlertTriangle}
+              colorScheme="amber"
+              badge="Belum Absen"
+              badgeVariant="warning"
+              onClick={() => openKpiModal('absensi_hari_ini', 'siswa_belum_absen')}
+            />
+            <KpiCard
+              title="Guru Hadir"
+              value={formatNumber(kpis.absensi_hari_ini?.guru_hadir ?? kpis.absensi_hari_ini?.pegawai_hadir)}
+              subtitle={`Dari ${formatNumber(kpis.total_pegawai?.total)} pegawai & guru`}
+              icon={UserCheck}
+              colorScheme="indigo"
+              badge="Guru Hadir"
+              badgeVariant="info"
+              onClick={() => openKpiModal('absensi_hari_ini', 'pegawai')}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
             <KpiCard
               title="Siswa Belum Lengkap"
               value={formatNumber(kpis.siswa_incomplete?.total)}
@@ -324,7 +373,7 @@ export default function TataUsahaDashboardPage() {
               colorScheme="amber"
               badge="Perlu Diisi"
               badgeVariant="warning"
-              onClick={() => setActiveModal('siswa_incomplete')}
+              onClick={() => openKpiModal('siswa_incomplete')}
             />
             <KpiCard
               title="Pegawai Belum Lengkap"
@@ -334,7 +383,7 @@ export default function TataUsahaDashboardPage() {
               colorScheme="rose"
               badge="Perlu Diisi"
               badgeVariant="danger"
-              onClick={() => setActiveModal('pegawai_incomplete')}
+              onClick={() => openKpiModal('pegawai_incomplete')}
             />
           </div>
         </section>
@@ -355,7 +404,7 @@ export default function TataUsahaDashboardPage() {
                   variant="view"
                   icon={Users}
                   label="Lihat Detail Siswa"
-                  onClick={() => setActiveModal('total_siswa')}
+                  onClick={() => openKpiModal('total_siswa')}
                 />
               }
             >
@@ -373,7 +422,7 @@ export default function TataUsahaDashboardPage() {
                   variant="import"
                   icon={UserCheck}
                   label="Lihat Detail Pegawai"
-                  onClick={() => setActiveModal('total_pegawai')}
+                  onClick={() => openKpiModal('total_pegawai')}
                 />
               }
             >
@@ -391,7 +440,7 @@ export default function TataUsahaDashboardPage() {
                   variant="primary"
                   icon={CheckCircle2}
                   label="Lihat Detail Absensi"
-                  onClick={() => setActiveModal('absensi_hari_ini')}
+                  onClick={() => openKpiModal('absensi_hari_ini', 'siswa_hadir')}
                 />
               }
             >
@@ -409,7 +458,7 @@ export default function TataUsahaDashboardPage() {
                   variant="edit"
                   icon={AlertTriangle}
                   label="Lihat Siswa Belum Lengkap"
-                  onClick={() => setActiveModal('siswa_incomplete')}
+                  onClick={() => openKpiModal('siswa_incomplete')}
                 />
               }
             >
@@ -427,7 +476,7 @@ export default function TataUsahaDashboardPage() {
                   variant="delete"
                   icon={AlertTriangle}
                   label="Lihat Pegawai Belum Lengkap"
-                  onClick={() => setActiveModal('pegawai_incomplete')}
+                  onClick={() => openKpiModal('pegawai_incomplete')}
                 />
               }
             >
@@ -438,11 +487,13 @@ export default function TataUsahaDashboardPage() {
           </div>
         </section>
 
-        <ModalErrorBoundary onClose={() => setActiveModal(null)}>
+        <ModalErrorBoundary onClose={() => { setActiveModal(null); setActiveModalTab(null) }}>
           <TataUsahaKpiModal
             type={activeModal}
             isOpen={Boolean(activeModal)}
-            onClose={() => setActiveModal(null)}
+            initialTab={activeModalTab}
+            unitName={context.unit?.nama}
+            onClose={() => { setActiveModal(null); setActiveModalTab(null) }}
           />
         </ModalErrorBoundary>
       </div>

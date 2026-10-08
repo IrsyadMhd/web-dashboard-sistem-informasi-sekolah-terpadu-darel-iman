@@ -679,20 +679,6 @@ export default function LaporanPegawaiPage() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0 py-1">
-              <SquircleActionButton
-                variant="import"
-                label="Import Data"
-                onClick={() => {
-                  const input = document.createElement('input')
-                  input.type = 'file'
-                  input.accept = '.csv, .xlsx, .xls'
-                  input.onchange = (e) => {
-                    const file = e.target.files?.[0]
-                    if (file) alert(`Berkas "${file.name}" siap di-import ke data kepegawaian!`)
-                  }
-                  input.click()
-                }}
-              />
               <SquircleActionButton variant="export" label="Export CSV" onClick={() => exportCsv('rekap-pegawai.csv', kolomCsv, hasilFilter)} />
               <SquircleActionButton variant="view" icon={Printer} label="Cetak Data" onClick={() => { setPrintTargetRow(null); setIsPrintModalOpen(true); }} />
             </div>

@@ -81,14 +81,31 @@ export default function AcademicPage() {
         ]}
       />
 
-      {/* ── Header Surface (Brand Gradient) ── */}
-      <AppPageHeader
-        variant="brand"
-        icon={BookOpen}
-        eyebrow="AKADEMIK & LMS"
-        title="Modul Laporan Akademik Bulanan"
-        description="Kelola pembuatan, penyusunan, dan validasi laporan bulanan akademik unit pendidikan terpadu."
-      />
+      {/* ── Modern Hero Card ── */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/40 via-teal-400/30 to-transparent blur-3xl" />
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40">
+              <BookOpen className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Modul Laporan Akademik Bulanan
+                </h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Akademik & LMS
+                </span>
+              </div>
+              <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
+                Kelola pembuatan, penyusunan, dan validasi laporan bulanan akademik unit pendidikan terpadu.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ── KPI Summary Cards ── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -130,7 +147,7 @@ export default function AcademicPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Form Card Column (5 cols desktop) */}
         <div className="lg:col-span-5">
-          <div className="rounded-[18px] border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#1B2433]">
+          <div className="rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433]">
             <div className="mb-4 border-b border-slate-100 pb-3 dark:border-slate-800">
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="h-4.5 w-4.5 text-[#0E5C44] dark:text-[#3FBF75]" />
@@ -232,7 +249,7 @@ export default function AcademicPage() {
                 <button
                   type="submit"
                   disabled={aksiLaporan.tambah.isPending}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#0E5C44] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#083A2A] disabled:cursor-wait disabled:opacity-70 dark:bg-[#0E5C44] dark:hover:bg-[#1E8E5A]"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/25 transition active:scale-98 disabled:cursor-wait disabled:opacity-70 cursor-pointer"
                 >
                   {aksiLaporan.tambah.isPending ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -248,8 +265,8 @@ export default function AcademicPage() {
 
         {/* Table Column (7 cols desktop) */}
         <div className="lg:col-span-7">
-          <div className="rounded-[18px] border border-slate-200/80 bg-white shadow-sm overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]">
-            <div className="border-b border-slate-100 p-5 dark:border-slate-800 flex items-center justify-between">
+          <div className="rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 overflow-hidden dark:border-emerald-700/60 dark:bg-[#1B2433]">
+            <div className="border-b border-emerald-100 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-transparent p-5 dark:border-emerald-900/40 dark:from-emerald-950/40 dark:to-transparent flex items-center justify-between">
               <div>
                 <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                   <FileText className="h-4.5 w-4.5 text-[#0E5C44] dark:text-[#3FBF75]" />
