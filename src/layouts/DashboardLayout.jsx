@@ -93,6 +93,7 @@ export default function DashboardLayout() {
   const isDivisiPendidikan = hasRole('Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan', 'Pengawasan Akademik')
   const isPureMusyrif = isMusyrifRole(roles) && !hasRole('Guru', 'guru', 'Guru Mata Pelajaran', 'guru_mata_pelajaran', 'Guru PAI', 'Guru Tahfizh', 'Wali Kelas', 'walas', 'wali_kelas', 'Super Admin', 'Admin')
   const isMusyrifUser = isMusyrifRole(roles) || isPureMusyrif || hasRole('Musyrif', 'Musyrifah', 'musyrif', 'musyrifah', 'Pengasuh', 'Wali Asrama', 'Pembimbing')
+  const isGuruTahfizhScope = hasRole('Guru Tahfizh', 'guru_tahfizh', 'Musyrif', 'musyrif', 'Musyrifah', 'musyrifah', 'Musyrif / Musyrifah')
   const isStaffOrTeacherUser = hasFullMenuAccess || isTeacherRole(roles) || isTuOrKepsek(roles) || isDivisiPendidikan || isMusyrifUser || hasRole('Operator', 'Wali Kelas', 'Guru', 'Kepala Sekolah', 'TU', 'Tata Usaha')
   const isTeacherOnly =
     isTeacherRole(roles) &&
@@ -505,7 +506,7 @@ export default function DashboardLayout() {
       { to: '/dashboard/absensi-pembelajaran', label: 'Absensi Kelas & MaPel' },
       ...(isPesantrenUnit ? [{ to: '/dashboard/absensi-ibadah', label: 'Absensi Ibadah Santri' }] : []),
       { to: '/dashboard/absensi-ibadah-siswa', label: 'Absensi Ibadah Siswa' },
-      { to: '/dashboard/laporan-absensi', label: 'Rekap Presensi & Laporan' },
+      { to: '/dashboard/laporan-absensi', label: 'Laporan Absensi' },
     ] : [
       ...(isPesantrenUnit ? [{ to: '/dashboard/absensi-ibadah', label: 'Absensi Ibadah Santri' }] : []),
     ]),
@@ -550,6 +551,10 @@ export default function DashboardLayout() {
       if (isRestrictedFoundationOrPrincipal) return false
       return can('dashboard.musyrif.view', 'dashboard.guru-tahfizh.view') || isMusyrifRole(roles)
     }
+    if (to === '/dashboard/guru-tahfizh' || to.startsWith('/dashboard/guru-tahfizh') || to.includes('/guru-tahfizh')) {
+      if (!isGuruTahfizhScope && !hasFullMenuAccess) return false
+      return isGuruTahfizhScope || can('dashboard.guru-tahfizh.view')
+    }
     if (to === '/dashboard') return can('dashboard.view')
     if (to.startsWith('/dashboard/pemantauan')) return can('dashboard.pemantauan.lihat', 'teacher_monitoring.view')
     if (to.startsWith('/dashboard/monitoring-divisi')) {
@@ -589,9 +594,9 @@ export default function DashboardLayout() {
     }
     if (to.includes('/akademik/nilai-rapor') || to.includes('/lms/penilaian') || to.includes('/lms/rapor')) {
       if (isTeacherOnly) return false
+      if (isKepalaSekolah) return true
       if (hasRole(
         'Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan',
-        'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah',
         'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan'
       )) {
         return false
@@ -630,6 +635,10 @@ export default function DashboardLayout() {
     if (to.includes('/lms/materi-pembelajaran')) return can('pembelajaran.materi')
     if (to.includes('/lms/kisi-kisi')) return can('pembelajaran.kisi_kisi_ujian')
     if (to.includes('/lms/bank-soal')) return can('pembelajaran.bank_soal')
+    if (to.includes('/lms/ujian') || to.includes('/ujian-online')) {
+      return can('pembelajaran.kisi_kisi_ujian', 'cbt.manage', 'lms.view', 'lms.manage') ||
+        hasRole('Guru', 'guru', 'Wali Kelas', 'wali_kelas', 'Guru Mapel', 'TU', 'Tata Usaha', 'tata_usaha')
+    }
     if (to.includes('/jadwal-pelajaran')) return can('pembelajaran.jadwal_pelajaran')
     if (to.includes('/laporan-tahfizh')) {
       if ((isTeacherOnly || isGuruUser) && !hasFullMenuAccess) return false
@@ -818,6 +827,22 @@ export default function DashboardLayout() {
         can('foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data')
       )
     }
+    if (
+      to.includes('/master-quran-surah') ||
+      to.includes('/master-doa') ||
+      to.includes('/master-jadwal-sholat') ||
+      to.includes('/poin-penilaian-doa')
+    ) {
+      return (
+        hasRole(
+          'Super Admin', 'Admin', 'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator',
+          'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
+          'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', 'Kepala Bidang Pendidikan',
+          'Guru', 'Wali Kelas', 'Guru Tahfizh', 'Guru PAI', 'Siswa', 'Orang Tua'
+        ) ||
+        can('equran.view', 'tahfizh.view', 'prayer.schedule.view', 'prayer.assessment.view', 'sistem.master_data')
+      )
+    }
     if (to.includes('/profil-akun') || to.includes('/profil-saya') || to === '/dashboard/profil-akun') return true
     if (to.includes('/hak-akses')) return can('sistem.hak_akses', 'permission.manage', 'role.manage')
     if (to.includes('/koneksi-api-mobile')) {
@@ -842,6 +867,18 @@ export default function DashboardLayout() {
   const shouldHideFromGuru = (item, submenu = null) => {
     const to = submenu?.to || item?.to || ''
     if (hasFullMenuAccess) return false
+
+    // Sembunyikan Dashboard Guru Tahfizh untuk guru umum yang bukan Guru Tahfizh
+    if ((to === '/dashboard/guru-tahfizh' || to.includes('/guru-tahfizh')) && !isGuruTahfizhScope) {
+      return true
+    }
+
+    // [SAFE FIX: PRESERVE ACCESS FOR GURU TAHFIZH & SPECIALISTS]
+    const isTahfizhSpecialist = hasRole('Guru Tahfizh', 'guru_tahfizh', 'Musyrif', 'musyrif') || can('tahfizh.view', 'teacher.tahfizh.view', 'dashboard.guru-tahfizh.view')
+    if (isTahfizhSpecialist && (item?.key === 'mutabaah' || to.startsWith('/dashboard/tahfizh') || to.startsWith('/dashboard/mutabaah') || to === '/mutabaah')) {
+      return false
+    }
+
     if (
       (isTeacherOnly || isGuruUser) &&
       (
@@ -883,8 +920,20 @@ export default function DashboardLayout() {
 
   const shouldHideFromTataUsaha = (item, submenu = null) => {
     if (hasFullMenuAccess || !isTataUsaha) return false
-    if (item.key === 'portal-guru' || item.key === 'mutabaah') return true
-    if (submenu?.to === '/dashboard/mutabaah/rekap' || submenu?.to === '/dashboard/pengaturan') return true
+    const to = submenu?.to || item?.to || ''
+    if (to === '/dashboard/guru-tahfizh' || to.includes('/guru-tahfizh')) return true
+    if (item.key === 'portal-guru') return true
+
+    // [SAFE FIX: PRESERVE MUTABAAH REKAP & AGENDA ACCESS FOR TATA USAHA BASED ON PERMISSION]
+    const hasMutabaahAccess = can('mutabaah.recap.view', 'mutabaah.agenda.view', 'mutabaah.agenda.manage', 'mutabaah.dashboard.view', 'mutabaah.view')
+    if (
+      !hasMutabaahAccess && (
+        submenu?.to === '/dashboard/mutabaah/rekap' ||
+        submenu?.to === '/mutabaah/agenda'
+      )
+    ) return true
+
+    if (submenu?.to === '/dashboard/pengaturan') return true
     return item.key === 'master-data' && ['/dashboard/master-jabatan', '/dashboard/employees'].includes(submenu?.to)
   }
 
@@ -894,9 +943,47 @@ export default function DashboardLayout() {
       return true
     }
     if (hasFullMenuAccess || (!isKepalaSekolah && !isDivisiPendidikan)) return false
-    if (submenu?.to === '/dashboard/kelola-alumni' || submenu?.to === '/dashboard/students' || submenu?.to === '/dashboard/employees') return false
-    if (item.key === 'master-data' && !submenu) return false
-    if (item.key === 'master-data') return true
+
+    // Sembunyikan rute duplikat / spesifik yang tumpang tindih untuk Kepala Sekolah
+    if (to === '/dashboard/guru-tahfizh' || to.includes('/guru-tahfizh')) {
+      return true
+    }
+
+    // Sembunyikan rute Pengaturan & Konfigurasi Mobile untuk Kepala Sekolah (khusus Super Admin/Admin)
+    if (to === '/dashboard/pengaturan' || to === '/dashboard/koneksi-api-mobile') {
+      return true
+    }
+
+    // Sembunyikan rute master alumni yayasan, gunakan rute kelola-alumni unit
+    if (to === '/dashboard/master/alumni') {
+      return true
+    }
+
+    // Sembunyikan rute laporan lintas unit tingkat yayasan jika role bukan yayasan
+    if (to === '/dashboard/yayasan/laporan/lintas-unit' || to.includes('/laporan/lintas-unit')) {
+      return true
+    }
+
+    // Menu master yang dibolehkan untuk Kepala Sekolah & Divisi Pendidikan (lingkup unit madrasah)
+    const allowedMasterPaths = [
+      '/dashboard/master/siswa',
+      '/dashboard/students',
+      '/dashboard/master/pegawai',
+      '/dashboard/employees',
+      '/dashboard/master/kelas',
+      '/dashboard/classes',
+      '/dashboard/kelola-alumni',
+      '/dashboard/master/tahun-ajaran',
+      '/dashboard/master/mata-pelajaran',
+    ]
+
+    const modKey = item?.key || item?.id || ''
+    if (modKey === 'master-data') {
+      if (!submenu) return false
+      if (allowedMasterPaths.some((p) => to === p || to.startsWith(p + '/'))) return false
+      return true
+    }
+
     if (
       to === '/dashboard/students/unit-pendidikan' ||
       to === '/dashboard/yayasan/unit-pendidikan' ||
@@ -920,9 +1007,23 @@ export default function DashboardLayout() {
     if (hasFullMenuAccess) return false
     if (isMusyrifUser || isPureMusyrif) {
       const to = submenu?.to || item?.to || ''
-      if (item?.key === 'laporan') return true
+      if (item?.key === 'laporan' || item?.id === 'laporan') return true
       if (to === '/absensi/laporan' || to === '/dashboard/mutabaah/rekap') return true
     }
+    return false
+  }
+
+  const shouldHideSubmenu = (mod, sub) => {
+    const to = sub?.to || sub?.path || ''
+    // Sembunyikan Dashboard Guru Tahfizh jika bukan dalam scope Guru Tahfizh (termasuk untuk Super Admin)
+    if ((to === '/dashboard/guru-tahfizh' || to.includes('/guru-tahfizh')) && !isGuruTahfizhScope) {
+      return true
+    }
+    if (shouldHideFromGuru(mod, sub)) return true
+    if (shouldHideFromTataUsaha(mod, sub)) return true
+    if (shouldHideFromKepalaSekolah(mod, sub)) return true
+    if (shouldHideFromDivisiPendidikan(mod, sub)) return true
+    if (shouldHideFromMusyrif(mod, sub)) return true
     return false
   }
 
@@ -961,42 +1062,79 @@ const getSidebarIconBadgeClass = (key, idx) => {
   return sidebarIconStyles[key] || pastelPaletteCycle[idx % pastelPaletteCycle.length]
 }
 
+  const normalizePath = (to) => (to || '').split('?')[0].replace(/\/+$/, '') || '/'
+
   const dynamicSidebarMenu = useMemo(() => {
     if (!navData?.modules || !Array.isArray(navData.modules) || navData.modules.length === 0) {
       return []
     }
 
-    return navData.modules.map((mod) => {
-      const ModIcon = resolveSidebarIcon(mod.icon) || LayoutDashboard
-      const items = mod.items || []
+    const seenPaths = new Set()
+    const result = []
 
-      if (mod.id === 'dashboard' && items.length === 1) {
-        const first = items[0]
-        return {
+    for (const mod of navData.modules) {
+      const ModIcon = resolveSidebarIcon(mod.icon) || LayoutDashboard
+      const rawItems = mod.items || []
+
+      // 1. Filter items berdasarkan aturan role
+      const filteredItems = rawItems.filter((sub) => {
+        const itemObj = { to: sub.path, ...sub }
+        return !shouldHideSubmenu(mod, itemObj)
+      })
+
+      // 2. Deduplikasi rute yang duplikat
+      const uniqueItems = []
+      for (const sub of filteredItems) {
+        const norm = normalizePath(sub.path)
+        if (norm && !seenPaths.has(norm)) {
+          seenPaths.add(norm)
+          uniqueItems.push(sub)
+        }
+      }
+
+      if (uniqueItems.length === 0) {
+        continue
+      }
+
+      if (mod.id === 'dashboard' && uniqueItems.length === 1) {
+        const first = uniqueItems[0]
+        result.push({
           key: mod.id,
           label: first.name || mod.name,
           icon: resolveSidebarIcon(first.icon) || ModIcon,
           to: first.path,
-        }
+        })
+      } else {
+        result.push({
+          key: mod.id,
+          label: mod.name.toUpperCase(),
+          icon: ModIcon,
+          submenus: uniqueItems.map((sub) => ({
+            to: sub.path,
+            label: sub.id === 'mutabaah-tahfizh' ? setoranTahfizhMenuLabel : sub.name,
+            icon: resolveSidebarIcon(sub.icon),
+            action: sub.path?.includes('/kalender') ? 'calendar' : undefined,
+          })),
+        })
       }
+    }
 
-      return {
-        key: mod.id,
-        label: mod.name.toUpperCase(),
-        icon: ModIcon,
-        submenus: items.map((sub) => ({
-          to: sub.path,
-          label: sub.id === 'mutabaah-tahfizh' ? setoranTahfizhMenuLabel : sub.name,
-          icon: resolveSidebarIcon(sub.icon),
-          action: sub.path?.includes('/kalender') ? 'calendar' : undefined,
-        })),
-      }
-    })
-  }, [navData, setoranTahfizhMenuLabel])
+    return result
+  }, [
+    navData,
+    setoranTahfizhMenuLabel,
+    isKepalaSekolah,
+    isDivisiPendidikan,
+    isTataUsaha,
+    isTeacherOnly,
+    isGuruUser,
+    isMusyrifUser,
+    isPureMusyrif,
+    hasFullMenuAccess,
+    isPesantrenUnit
+  ])
 
   const sidebarMenu = dynamicSidebarMenu
-
-  const normalizePath = (to) => (to || '').split('?')[0].replace(/\/+$/, '') || '/'
 
   // Aktif jika path sama persis, ATAU target adalah "leaf" dalam grupnya
   // sehingga tidak ada dua submenu yang menyala bersamaan.
@@ -1795,7 +1933,7 @@ const getSidebarIconBadgeClass = (key, idx) => {
           ...(canViewStudents && !isPureStudent && !isPureParent
             ? [{
               to: '/dashboard/students',
-              label: 'Data Siswa',
+              label: 'Buku Induk Siswa',
               icon: Database,
             }]
             : []),
@@ -1824,7 +1962,9 @@ const getSidebarIconBadgeClass = (key, idx) => {
       />
 
       {/* Floating Action Button (FAB) for Mobile Quick Add */}
-      {!isPureStudent && !isPureParent && canCreateStudent && <FAB onClick={() => navigate('/dashboard/students?action=add')} label="Tambah Siswa" />}
+      {!isPureStudent && !isPureParent && canCreateStudent && (location.pathname.startsWith('/dashboard/students') || location.pathname.startsWith('/dashboard/master/siswa') || location.pathname.startsWith('/dashboard/yayasan/siswa')) && (
+        <FAB onClick={() => navigate('/dashboard/students?action=add')} label="Tambah Siswa" />
+      )}
 
       {/* Floating Chat Pop-Up & Melayang Button */}
       <FloatingChatWidget />
