@@ -78,6 +78,14 @@ export const ROLES = {
     'Waka Kurikulum', 'Wakil Kurikulum', 'waka_kurikulum',
     'Waka Kesiswaan', 'Wakil Kesiswaan', 'waka_kesiswaan',
   ],
+  WAKA_KURIKULUM: [
+    'Wakil Kepala Sekolah',
+    'Waka Kurikulum', 'Wakil Kurikulum', 'waka_kurikulum',
+  ],
+  WAKA_KESISWAAN: [
+    'Wakil Kepala Sekolah',
+    'Waka Kesiswaan', 'Wakil Kesiswaan', 'waka_kesiswaan',
+  ],
 
   /**
    * Tingkat 6 — Tenaga Kependidikan.
