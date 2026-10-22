@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import ActionDropdown from '../app/ActionDropdown'
+import { useToast } from '../app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Key,
@@ -30,9 +31,11 @@ import {
 import { hakAksesService } from '../../services/hakAksesService'
 import { employeeService } from '../../services/employeeService'
 import { studentService } from '../../services/studentService'
+import { educationUnitService } from '../../services/educationUnitService'
 import api from '../../services/api'
 import { useDebounce } from '../../hooks/useDebounce'
 import { Pagination } from '../tailgrids/core/pagination'
+import { usePengaturanStore, resolveFoundationName } from '../../stores/pengaturanStore'
 
 const DEFAULT_SYSTEM_ROLES = [
   'Super Admin',
@@ -49,7 +52,7 @@ const DEFAULT_SYSTEM_ROLES = [
 ]
 
 const STANDALONE_ADMIN_ROLES = ['Super Admin', 'Admin', 'Pengurus Yayasan', 'Divisi Pendidikan']
-const EMPLOYEE_ROLES = ['Guru', 'Pegawai', 'Wali Kelas', 'Musyrif', 'Tata Usaha', 'Kepala Sekolah']
+const EMPLOYEE_ROLES = ['Guru', 'Pegawai', 'Wali Kelas', 'Guru Tahfizh', 'Pembimbing', 'Musyrif', 'Tata Usaha', 'Kepala Sekolah']
 const STUDENT_ROLES = ['Siswa']
 const PARENT_ROLES = ['Orang Tua']
 
@@ -58,6 +61,7 @@ const emptyForm = {
   email: '',
   phone: '',
   role: '',
+  additional_roles: [],
   is_active: true,
   password: '',
   password_confirmation: '',
@@ -82,9 +86,21 @@ const getUserRoleName = (u) => {
 // MODAL CETAK KREDENSIAL AKUN & PASSWORD (WITH FILTERS)
 // ─────────────────────────────────────────────────────────────────
 function PrintCredentialsModal({ open, onClose, users = [] }) {
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const [filterUnit, setFilterUnit] = useState('semua')
   const [filterCategory, setFilterCategory] = useState('semua')
   const [printFormat, setPrintFormat] = useState('table') // 'table' | 'cards'
+
+  const { data: unitsData } = useQuery({
+    queryKey: ['education-units-list'],
+    queryFn: () => educationUnitService.getDaftar({ per_page: 100 }),
+    staleTime: 5 * 60 * 1000,
+  })
+  const educationUnits = useMemo(() => {
+    const list = unitsData?.data || unitsData || []
+    return Array.isArray(list) ? list : []
+  }, [unitsData])
 
   if (!open) return null
 
@@ -181,7 +197,7 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
               <div class="card-item">
                 <div class="card-header">
                   <div class="card-title">SLIP AKUN LOGIN SIMSIT</div>
-                  <div class="card-subtitle">Yayasan Dar El-Iman</div>
+                  <div class="card-subtitle">${foundationName}</div>
                 </div>
                 <div class="card-body">
                   <div class="row"><span>Nama:</span> <strong>${u.name}</strong></div>
@@ -242,9 +258,9 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
       </head>
       <body>
         <div class="header-kop">
-          <h2>YAYASAN DAR EL-IMAN PADANG</h2>
+          <h2>${foundationName.toUpperCase()}</h2>
           <h4>SISTEM MANAJEMEN SEKOLAH TERPADU (SIMSIT)</h4>
-          <p>Jl. Gajah Mada No. 28, Padang, Sumatera Barat • Telp: (0751) 123456 • Website: dareliman.sch.id</p>
+          <p>${pengaturan?.address || 'Padang, Sumatera Barat'} • Telp: ${pengaturan?.phone || '-'} • Website: ${pengaturan?.website || '-'}</p>
         </div>
 
         <div style="text-align: center; margin-bottom: 12px;">
@@ -353,12 +369,11 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
                 className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
               >
                 <option value="semua">-- Semua Unit Pendidikan --</option>
-                <option value="tkit">TKIT Dar El-Iman</option>
-                <option value="sdit">SDIT Dar El-Iman</option>
-                <option value="smpit">SMPIT Dar El-Iman</option>
-                <option value="smait">SMAIT Dar El-Iman</option>
-                <option value="ponpes">Pondok Pesantren</option>
-                <option value="mahad">Ma'had Aly</option>
+                {educationUnits.map((u) => (
+                  <option key={u.id} value={u.name?.toLowerCase()}>
+                    {u.name}
+                  </option>
+                ))}
                 <option value="yayasan">Yayasan / General</option>
               </select>
             </div>
@@ -430,7 +445,7 @@ function PrintCredentialsModal({ open, onClose, users = [] }) {
 
             <div className="max-h-48 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 font-sans text-slate-800 dark:text-slate-100 text-xs space-y-3">
               <div className="text-center border-b border-slate-200 dark:border-slate-700 pb-2">
-                <div className="font-black text-emerald-800 dark:text-emerald-400 text-sm">YAYASAN DAR EL-IMAN PADANG</div>
+                <div className="font-black text-emerald-800 dark:text-emerald-400 text-sm">{foundationName.toUpperCase()}</div>
                 <div className="font-bold text-slate-700 dark:text-slate-300 text-xs">LAPORAN KREDENSIAL AKUN LOGIN &amp; PASSWORD</div>
                 <div className="text-[10px] text-slate-500">Unit: {filterUnit.toUpperCase()} | Category: {filterCategory}</div>
               </div>
@@ -617,12 +632,18 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
     if (!open) return
     if (editing && user) {
       const userRoleName = getUserRoleName(user)
+      const userRolesList = Array.isArray(user.roles)
+        ? user.roles.map((r) => (typeof r === 'string' ? r : r?.name)).filter(Boolean)
+        : []
+      const extraRoles = userRolesList.filter((r) => r !== userRoleName)
+
       setForm({
         ...emptyForm,
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
         role: userRoleName || 'Guru',
+        additional_roles: extraRoles,
         is_active: Boolean(user.is_active ?? true),
         person_type: user.person_type || 'standalone',
         person_id: user.person_id || null,
@@ -944,7 +965,16 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
               <select
                 required
                 value={form.role}
-                onChange={(e) => change('role', e.target.value)}
+                onChange={(e) => {
+                  const newRole = e.target.value
+                  change('role', newRole)
+                  if (form.additional_roles?.includes(newRole)) {
+                    change(
+                      'additional_roles',
+                      form.additional_roles.filter((r) => r !== newRole)
+                    )
+                  }
+                }}
                 className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-emerald-600 cursor-pointer"
               >
                 <option value="">-- Pilih Role --</option>
@@ -955,6 +985,53 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
                 ))}
               </select>
             </label>
+
+            {/* Opsi Peran Tambahan untuk Pegawai/Guru */}
+            {(form.person_type === 'employee' || entityCategory === 'employee' || form.role === 'Guru') && (
+              <div className="sm:col-span-2 rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-3.5 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200">
+                    Tugas / Peran Tambahan (Modular Multi-Role)
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full">
+                    Opsional
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5">
+                  Pilih tugas rangkap untuk pegawai (misal: Guru Tahfizh, Pembimbing Mutaba'ah, Musyrif Asrama).
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {EMPLOYEE_ROLES.filter((r) => r !== form.role && !['Kepala Sekolah', 'Tata Usaha'].includes(r)).map((r) => {
+                    const isChecked = form.additional_roles?.includes(r)
+                    return (
+                      <label
+                        key={r}
+                        onClick={() => {
+                          const currentExtra = form.additional_roles || []
+                          const updated = currentExtra.includes(r)
+                            ? currentExtra.filter((item) => item !== r)
+                            : [...currentExtra, r]
+                          change('additional_roles', updated)
+                        }}
+                        className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-semibold cursor-pointer transition-all select-none ${
+                          isChecked
+                            ? 'border-emerald-500 bg-white dark:bg-slate-900 text-emerald-900 dark:text-emerald-200 shadow-2xs'
+                            : 'border-slate-200/80 bg-slate-50/50 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 hover:bg-white'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="size-3.5 rounded text-emerald-600 focus:ring-emerald-500 pointer-events-none"
+                        />
+                        <span className="truncate">{r}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {!roleOnly && !editing && (
               <>
@@ -1021,22 +1098,7 @@ function AccountModal({ open, user, roles = [], saving, onClose, onSave, roleOnl
   )
 }
 
-// ── TOAST NOTIFICATION HELPER ──────────────────────────────────────────────
-function useToast() {
-  const [toasts, setToasts] = useState([])
-  const add = (type, title, message) => {
-    const id = Date.now() + Math.random()
-    setToasts((p) => [...p, { id, type, title, message }])
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000)
-  }
-  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
-  return {
-    toasts,
-    dismiss,
-    success: (t, m) => add('success', t, m),
-    error: (t, m) => add('error', t, m),
-  }
-}
+
 
 // ── RESET PASSWORD MODAL ───────────────────────────────────────────────────
 function ResetPasswordModal({ isOpen, onClose, onConfirm, user, isSubmitting }) {
@@ -1209,7 +1271,9 @@ export default function UserAccountManagement({
   const [deleteTargetUser, setDeleteTargetUser] = useState(null)
   const [isResetting, setIsResetting] = useState(false)
 
-  const { toasts, dismiss, success: toastSuccess, error: toastError } = useToast()
+  const toast = useToast()
+  const toastSuccess = (title, message) => toast.success(title, message)
+  const toastError = (title, message) => toast.error(title, message)
 
   const { data = {}, isLoading } = useQuery({
     queryKey: ['hak-akses-users', debouncedSearch, page, unitId],
@@ -1281,30 +1345,7 @@ export default function UserAccountManagement({
 
   return (
     <div className="space-y-4">
-      {/* ── TOAST NOTIFICATIONS ──────────────────────────────────────────── */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`pointer-events-auto flex items-start gap-3 rounded-xl p-3.5 shadow-lg border backdrop-blur-md transition-all ${
-              t.type === 'success'
-                ? 'bg-emerald-600/95 text-white border-emerald-400'
-                : 'bg-rose-600/95 text-white border-rose-400'
-            }`}
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold leading-tight">{t.title}</p>
-              {t.message && <p className="mt-0.5 text-xs opacity-90 leading-snug">{t.message}</p>}
-            </div>
-            <button
-              onClick={() => dismiss(t.id)}
-              className="rounded-lg p-0.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
+
 
       {/* ── TAILGRIDS EMERALD DATATABLE CONTAINER ─────────────────────────── */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">

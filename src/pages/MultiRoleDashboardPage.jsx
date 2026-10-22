@@ -5,40 +5,44 @@ import { useAuthStore } from '../stores/authStore'
 import SuperAdminDashboardPage from './SuperAdminDashboardPage'
 import TeacherMonitoringDashboardPage from './TeacherMonitoringDashboardPage'
 import ParentDashboardPage from './ParentDashboardPage'
-import { ROLES, hasAnyRole, resolveDefaultPortal, isTeacherRole } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS, resolveDefaultPortal } from '../auth/portalResolver'
 
 export default function MultiRoleDashboardPage() {
   const user = useAuthStore((state) => state.user)
-  const roles = user?.roles || []
   const permissions = user?.permissions || []
+  const userLevel = getUserRoleLevel(user)
 
-  const isSuperAdminOrAdmin = hasAnyRole(roles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN])
-
-  if (isSuperAdminOrAdmin) {
+  // Tingkat 1: Super Admin & Admin Sistem
+  if (userLevel === ROLE_LEVELS.ADMIN_SISTEM) {
     return <SuperAdminDashboardPage />
   }
 
+  // Tingkat 2: Yayasan / Pimpinan
   const isFoundationUser =
-    hasAnyRole(roles, ['Yayasan', 'Ketua Yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan']) ||
+    userLevel === ROLE_LEVELS.PIMPINAN_YAYASAN ||
     permissions.includes('foundation.dashboard.view')
 
   if (isFoundationUser) {
     return <Navigate to="/dashboard/yayasan" replace />
   }
 
-  if (hasAnyRole(roles, ['Siswa', 'siswa', 'student'])) {
+  // Tingkat 8: Siswa
+  if (userLevel === ROLE_LEVELS.SISWA) {
     return <Navigate to="/portal-siswa" replace />
   }
 
-  if (hasAnyRole(roles, ['Orang Tua', 'Orangtua', 'Wali Murid', 'orang_tua', 'parent'])) {
+  // Tingkat 7: Orang Tua
+  if (userLevel === ROLE_LEVELS.ORANG_TUA) {
     return <ParentDashboardPage />
   }
 
-  if (hasAnyRole(roles, ROLES.KEPALA_SEKOLAH) || permissions.includes('dashboard.kepala-sekolah.view')) {
+  // Tingkat 4: Kepala Sekolah
+  if (userLevel === ROLE_LEVELS.KEPALA_SEKOLAH || permissions.includes('dashboard.kepala-sekolah.view')) {
     return <Navigate to="/dashboard/kepala-sekolah" replace />
   }
 
-  if (isTeacherRole(roles)) {
+  // Tingkat 5: Tenaga Pendidik / Guru
+  if (userLevel === ROLE_LEVELS.GURU) {
     return <TeacherMonitoringDashboardPage />
   }
 

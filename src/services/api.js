@@ -16,10 +16,11 @@ api.interceptors.request.use((config) => {
     }
   }
 
+  const explicitAuth = config.headers?.Authorization || config.headers?.authorization
   const token = localStorage.getItem('school_erp_token') || sessionStorage.getItem('school_erp_token')
   const url = config.url || ''
 
-  if (token && typeof token === 'string') {
+  if (!explicitAuth && token && typeof token === 'string') {
     // Only check validity for protected endpoints (avoid infinite loop on login)
     if (!url.includes('/login') && !url.includes('/auth/')) {
       const validity = checkSessionValidity({ token })

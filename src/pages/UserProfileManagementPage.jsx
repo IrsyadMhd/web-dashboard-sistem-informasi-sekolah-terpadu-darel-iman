@@ -18,7 +18,7 @@ import AppBreadcrumb from '@/components/app/AppBreadcrumb'
 import { useAuthStore } from '../stores/authStore'
 import { Badge } from '@/components/tailgrids/core/badge'
 import { Alert, AlertContent, AlertDescription, AlertIndicator, AlertTitle } from '@/components/tailgrids/core/alert'
-import { hasAnyRole } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 
 import UserProfileCard from '../components/auth/UserProfileCard'
 import ChangePasswordCard from '../components/auth/ChangePasswordCard'
@@ -56,22 +56,16 @@ export default function UserProfileManagementPage() {
 
   const primaryRole = userRoles[0] || (typeof user?.role === 'string' ? user?.role : user?.role?.name) || 'Pegawai'
 
+  const userLevel = useMemo(() => getUserRoleLevel(user), [user])
   const canEditUnitAndRole = useMemo(() => {
     if (!user) return false
     if (user.is_super_admin || user.is_admin || user.id === 1) return true
-    return hasAnyRole(userRoles, [
-      'Super Admin', 'SuperAdmin', 'super_admin', 'superadmin',
-      'Admin', 'admin', 'administrator',
-      'Pengurus Yayasan', 'Yayasan', 'Ketua Yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan',
-      'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek',
-      'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan',
-      'Operator', 'operator', 'TU', 'Tata Usaha', 'tata_usaha'
-    ])
-  }, [userRoles, user])
+    return userLevel <= ROLE_LEVELS.PIMPINAN_YAYASAN // Level 1 s/d 5 (Super Admin, Admin, TU/Operator, Kepsek, Yayasan)
+  }, [user, userLevel])
 
   const isParent = useMemo(() => {
-    return hasAnyRole(userRoles, ['Orang Tua', 'orang_tua', 'orang-tua', 'orangtua', 'wali murid', 'parent'])
-  }, [userRoles])
+    return userLevel === ROLE_LEVELS.ORANG_TUA // Level 8
+  }, [userLevel])
 
   const [searchParams] = useSearchParams()
   const tabFromUrl = searchParams.get('tab')
@@ -197,8 +191,13 @@ export default function UserProfileManagementPage() {
         </motion.div>
 
         {/* 2. Tabs Bar (Restored Previous Multi-Color Pastel Squircle Button Style) */}
-        <motion.nav variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+        <motion.nav
+          variants={itemVariants}
+          role="tablist"
+          aria-label="Navigasi Pengaturan Profil"
+          className="rounded-[18px] border border-slate-200/80 bg-white p-3.5 shadow-xs dark:border-slate-800 dark:bg-[#1B2433] overflow-x-auto no-scrollbar"
+        >
+          <div className="flex items-center sm:flex-wrap gap-2 sm:gap-2.5 min-w-max sm:min-w-0">
             {tabs.map((tab) => {
               const IconComp = tab.icon
               const isActive = activeTab === tab.id
@@ -206,10 +205,12 @@ export default function UserProfileManagementPage() {
                 <motion.button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={isActive}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer ${
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-extrabold transition-all duration-200 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 select-none ${
                     isActive ? tab.activeColor : tab.inactiveColor
                   }`}
                 >

@@ -36,7 +36,13 @@ export const siteSettingService = {
   async update(values, files = {}) {
     const payload = new FormData()
     Object.entries(values).forEach(([key, value]) => {
-      payload.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : (value ?? ''))
+      if (typeof value === 'boolean') {
+        payload.append(key, value ? '1' : '0')
+      } else if (value !== null && typeof value === 'object' && !(value instanceof File) && !(value instanceof Blob)) {
+        payload.append(key, JSON.stringify(value))
+      } else {
+        payload.append(key, value ?? '')
+      }
     })
     if (files.logo) payload.append('logo', files.logo)
     if (files.favicon) payload.append('favicon', files.favicon)

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppModal from '../components/app/AppModal'
+import AppTabs from '../components/app/AppTabs'
+import { useToast } from '../components/app'
 import {
   AppWindow,
   CheckCircle2,
@@ -38,10 +40,19 @@ import {
   Download,
   MapPin,
   AlertCircle,
+  CreditCard,
+  Eye,
+  EyeOff,
+  Languages,
+  Code2,
+  Copy,
+  FileJson,
+  Check,
 } from 'lucide-react'
 import {
   defaultPengaturan,
   usePengaturanStore,
+  defaultLabels,
   INITIAL_FAQS,
   INITIAL_MANUALS,
 } from '../stores/pengaturanStore'
@@ -56,7 +67,7 @@ import {
 } from '../components/tailgrids/core/select'
 import { Checkbox } from '../components/tailgrids/core/checkbox'
 import { Label } from '../components/tailgrids/core/label'
-import { Button } from '../components/tailgrids/core/button'
+import { Button } from '../components/ui/button'
 
 const colorFields = [
   ['sidebar_color', 'Warna Latar Sidebar'],
@@ -108,67 +119,7 @@ const presetThemes = [
   },
 ]
 
-function useToast() {
-  const [toasts, setToasts] = useState([])
-  const add = (type, title, message) => {
-    const id = Date.now() + Math.random()
-    setToasts((p) => [...p, { id, type, title, message }])
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4000)
-  }
-  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
-  return {
-    toasts,
-    dismiss,
-    success: (t, m) => add('success', t, m),
-    error: (t, m) => add('error', t, m),
-    warning: (t, m) => add('warning', t, m),
-    info: (t, m) => add('info', t, m),
-  }
-}
 
-function ToastStack({ toasts, onDismiss }) {
-  return (
-    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
-      <AnimatePresence>
-        {toasts.map((t) => (
-          <motion.div
-            key={t.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-              t.type === 'success'
-                ? 'border-emerald-300 bg-emerald-50/95 text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/90 dark:text-emerald-100'
-                : t.type === 'error'
-                ? 'border-rose-300 bg-rose-50/95 text-rose-900 dark:border-rose-700/60 dark:bg-rose-950/90 dark:text-rose-100'
-                : t.type === 'warning'
-                ? 'border-amber-300 bg-amber-50/95 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/90 dark:text-amber-100'
-                : 'border-blue-300 bg-blue-50/95 text-blue-900 dark:border-blue-700/60 dark:bg-blue-950/90 dark:text-blue-100'
-            }`}
-          >
-            <div className="shrink-0 mt-0.5">
-              {t.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
-              {t.type === 'error' && <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
-              {t.type === 'warning' && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
-              {t.type === 'info' && <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h5 className="text-xs font-bold leading-tight">{t.title}</h5>
-              {t.message && <p className="text-[11px] opacity-85 mt-0.5 leading-snug">{t.message}</p>}
-            </div>
-            <button
-              type="button"
-              onClick={() => onDismiss(t.id)}
-              className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs p-0.5 cursor-pointer"
-            >
-              ✕
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 function HarmonizedActionModal({ isOpen, onClose, onConfirm, title, desc, confirmLabel, variant = 'danger' }) {
   if (!isOpen) return null
@@ -285,6 +236,7 @@ export default function PengaturanPage() {
     return [
       { id: 'identitas', label: 'Identitas Sekolah & Aplikasi', icon: Image },
       { id: 'tema', label: 'Style & Tema Website', icon: Palette },
+      { id: 'labels', label: 'Kustomisasi Label (JSON)', icon: Languages },
       { id: 'bantuan_faq', label: 'Kelola Bantuan & FAQ', icon: LifeBuoy },
       { id: 'operasional', label: 'Operasional & Kebijakan', icon: Sliders },
     ]
@@ -295,12 +247,227 @@ export default function PengaturanPage() {
   const [files, setFiles] = useState({})
   const [previews, setPreviews] = useState({})
   const [saving, setSaving] = useState(false)
+  const [showMapboxToken, setShowMapboxToken] = useState(false)
   const [statusModal, setStatusModal] = useState({
     isOpen: false,
     type: 'success',
     title: '',
     message: '',
   })
+
+  // Labels Customization States
+  const [labelsSubTab, setLabelsSubTab] = useState('terminology') // 'terminology' | 'categories' | 'json'
+  const [activeLabelCategory, setActiveLabelCategory] = useState('terminology')
+  const [rawJsonText, setRawJsonText] = useState('')
+  const [jsonError, setJsonError] = useState(null)
+  const [copiedJson, setCopiedJson] = useState(false)
+
+  // Sync rawJsonText when form.custom_labels updates
+  useEffect(() => {
+    if (form.custom_labels) {
+      setRawJsonText(JSON.stringify(form.custom_labels, null, 2))
+    } else {
+      setRawJsonText(JSON.stringify(defaultLabels, null, 2))
+    }
+  }, [form.custom_labels])
+
+  const handleUpdateLabel = (category, key, value) => {
+    const currentLabels = form.custom_labels || defaultLabels
+    const catObj = currentLabels[category] || {}
+    const updated = {
+      ...currentLabels,
+      [category]: {
+        ...catObj,
+        [key]: value,
+      },
+    }
+    update('custom_labels', updated)
+    setRawJsonText(JSON.stringify(updated, null, 2))
+  }
+
+  const handleApplyTerminologyPreset = (presetKey) => {
+    let presetTerminology = {}
+    if (presetKey === 'pesantren') {
+      presetTerminology = {
+        siswa: 'Santri',
+        siswa_plural: 'Santriwan / Santriwati',
+        guru: 'Ustadz / Asatidz',
+        guru_plural: 'Dewan Asatidz & Pembina',
+        kelas: 'Halaqah / Rombel',
+        sekolah: 'Pondok Pesantren',
+        yayasan: 'Yayasan Pondok Pesantren',
+        kepala_sekolah: "Mudir / Pimpinan Ma'had",
+        wali_kelas: 'Musyrif / Musyrifah',
+        asrama: 'Kobong / Asrama',
+        musyrif: 'Musyrif Asrama',
+        mata_pelajaran: 'Mata Pelajaran / Kitab',
+        halaqah: "Halaqah Al-Qur'an",
+      }
+    } else if (presetKey === 'madrasah') {
+      presetTerminology = {
+        siswa: 'Peserta Didik',
+        siswa_plural: 'Peserta Didik',
+        guru: 'Tenaga Pendidik',
+        guru_plural: 'Dewan Guru & Tenaga Kependidikan',
+        kelas: 'Rombongan Belajar',
+        sekolah: 'Madrasah',
+        yayasan: 'Yayasan Pendidikan',
+        kepala_sekolah: 'Kepala Madrasah',
+        wali_kelas: 'Wali Kelas',
+        asrama: 'Asrama Boarding',
+        musyrif: 'Pembina Asrama',
+        mata_pelajaran: 'Mata Pelajaran',
+        halaqah: 'Kelas Tahfizh',
+      }
+    } else {
+      presetTerminology = {
+        siswa: 'Siswa',
+        siswa_plural: 'Siswa / Santri',
+        guru: 'Guru',
+        guru_plural: 'Guru & Pendidik',
+        kelas: 'Kelas / Rombel',
+        sekolah: 'Sekolah / Madrasah',
+        yayasan: 'Yayasan',
+        kepala_sekolah: 'Kepala Sekolah',
+        wali_kelas: 'Wali Kelas',
+        asrama: 'Asrama / Pondok',
+        musyrif: 'Musyrif / Pembina',
+        mata_pelajaran: 'Mata Pelajaran',
+        halaqah: 'Halaqah Tahfizh',
+      }
+    }
+
+    let presetUjian = {}
+    if (presetKey === 'pesantren') {
+      presetUjian = {
+        jenis_uh: 'Ikhtibar Dauri (Harian)',
+        jenis_pts: 'Ikhtibar Nisfus Sanah',
+        jenis_pas: 'Ikhtibar Nihayatus Sanah',
+        singkatan_uh: 'Dauri',
+        singkatan_pts: 'Nisfus Sanah',
+        singkatan_pas: 'Nihayah',
+      }
+    } else if (presetKey === 'madrasah') {
+      presetUjian = {
+        jenis_uh: 'Asesmen Sumatif Lingkup Materi (ASLM)',
+        jenis_pts: 'Asesmen Sumatif Tengah Semester (AStS)',
+        jenis_pas: 'Asesmen Sumatif Akhir Semester (ASAS)',
+        singkatan_uh: 'ASLM',
+        singkatan_pts: 'AStS',
+        singkatan_pas: 'ASAS',
+      }
+    } else {
+      presetUjian = {
+        jenis_uh: 'Ulangan Harian (UH)',
+        jenis_pts: 'Penilaian Tengah Semester (PTS)',
+        jenis_pas: 'Penilaian Akhir Semester (PAS)',
+        singkatan_uh: 'UH',
+        singkatan_pts: 'PTS',
+        singkatan_pas: 'PAS',
+      }
+    }
+
+    const currentLabels = form.custom_labels || defaultLabels
+    const updated = {
+      ...currentLabels,
+      terminology: {
+        ...currentLabels.terminology,
+        ...presetTerminology,
+      },
+      ujian: {
+        ...(currentLabels.ujian || defaultLabels.ujian),
+        ...presetUjian,
+      },
+    }
+    update('custom_labels', updated)
+    setRawJsonText(JSON.stringify(updated, null, 2))
+    setStatusModal({
+      isOpen: true,
+      type: 'info',
+      title: 'Preset Diterapkan',
+      message: `Terminologi institusi disesuaikan ke mode "${
+        presetKey === 'pesantren' ? 'Pondok Pesantren' : presetKey === 'madrasah' ? 'Madrasah (Kemenag)' : 'Sekolah Umum'
+      }". Klik "Simpan Pengaturan" di atas untuk menyimpan ke server.`,
+    })
+  }
+
+  const handleRawJsonChange = (text) => {
+    setRawJsonText(text)
+    try {
+      const parsed = JSON.parse(text)
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        update('custom_labels', parsed)
+        setJsonError(null)
+      } else {
+        setJsonError('Format JSON harus berupa objek (Object).')
+      }
+    } catch (e) {
+      setJsonError(`Sintaks JSON belum valid: ${e.message}`)
+    }
+  }
+
+  const handleCopyJson = () => {
+    const text = rawJsonText || JSON.stringify(form.custom_labels || defaultLabels, null, 2)
+    navigator.clipboard?.writeText(text)
+    setCopiedJson(true)
+    setTimeout(() => setCopiedJson(false), 2000)
+  }
+
+  const handleDownloadJson = () => {
+    const text = JSON.stringify(form.custom_labels || defaultLabels, null, 2)
+    const blob = new Blob([text], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `simsit-labels-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleUploadJson = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result)
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          update('custom_labels', parsed)
+          setRawJsonText(JSON.stringify(parsed, null, 2))
+          setJsonError(null)
+          setStatusModal({
+            isOpen: true,
+            type: 'success',
+            title: 'File JSON Berhasil Dimuat',
+            message: `Kamus label dari file "${file.name}" berhasil diimpor. Klik "Simpan Pengaturan" untuk menerapkan secara permanen.`,
+          })
+        } else {
+          throw new Error('File JSON tidak berisi objek valid.')
+        }
+      } catch (err) {
+        setStatusModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Gagal Membaca JSON',
+          message: `File JSON tidak valid: ${err.message}`,
+        })
+      }
+    }
+    reader.readAsText(file)
+    event.target.value = ''
+  }
+
+  const handleResetLabels = () => {
+    update('custom_labels', defaultLabels)
+    setRawJsonText(JSON.stringify(defaultLabels, null, 2))
+    setJsonError(null)
+    setStatusModal({
+      isOpen: true,
+      type: 'info',
+      title: 'Label Dikembalikan ke Default',
+      message: 'Kamus label telah direset ke teks bawaan sistem. Klik "Simpan Pengaturan" untuk menyimpan ke server.',
+    })
+  }
 
   // FAQ Modal & Editing States
   const [isFaqModalOpen, setIsFaqModalOpen] = useState(false)
@@ -393,15 +560,17 @@ export default function PengaturanPage() {
       remove_favicon: true,
       custom_faqs: INITIAL_FAQS,
       custom_manuals: INITIAL_MANUALS,
+      custom_labels: defaultLabels,
     })
     setFiles({})
     setPreviews({})
+    setRawJsonText(JSON.stringify(defaultLabels, null, 2))
     previewSettings(defaultPengaturan)
     setStatusModal({
       isOpen: true,
       type: 'info',
       title: 'Reset Berhasil',
-      message: 'Pengaturan tampilan & tema telah dikembalikan ke warna semula (Zamrud Klasik).',
+      message: 'Pengaturan tampilan, tema, dan label telah dikembalikan ke bawaan sistem.',
     })
   }
 
@@ -421,7 +590,9 @@ export default function PengaturanPage() {
       })
     } catch (error) {
       const errors = error?.response?.data?.errors
-      const message = errors ? Object.values(errors).flat()[0] : 'Pengaturan belum dapat disimpan.'
+      const message = errors 
+        ? Object.values(errors).flat()[0] 
+        : (error?.response?.data?.message || error?.message || 'Pengaturan belum dapat disimpan.')
       setStatusModal({
         isOpen: true,
         type: 'error',
@@ -673,7 +844,7 @@ export default function PengaturanPage() {
                 </span>
               </div>
               <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
-                Konfigurasi terpusat identitas sekolah, style & tema website, konten Bantuan & FAQ, serta preferensi operasional SIMSIT Darel Iman.
+                Konfigurasi terpusat identitas sekolah, style & tema website, konten Bantuan & FAQ, serta preferensi operasional SIMSIT.
               </p>
             </div>
           </div>
@@ -707,38 +878,16 @@ export default function PengaturanPage() {
       </div>
 
       {/* 3. Main Configuration Workspace Grid */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <section className="overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+      <div className={`grid gap-6 ${activeTab === 'identitas' || activeTab === 'tema' ? 'lg:grid-cols-[1fr_340px]' : 'grid-cols-1'}`}>
+        <section className="w-full overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
           {/* Navigation Tabs Bar */}
           <div className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-3 sm:p-4">
-            <div className="flex items-center gap-2 overflow-x-auto rounded-2xl bg-slate-100/90 p-1.5 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 backdrop-blur-xs">
-              {tabs.map(({ id, label, icon: Icon }) => {
-                const isActive = activeTab === id
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setActiveTab(id)}
-                    className={`flex shrink-0 items-center gap-2.5 rounded-xl px-4 py-2.5 text-xs transition-all duration-200 cursor-pointer ${
-                      isActive
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black shadow-md shadow-emerald-600/25 scale-[1.01]'
-                        : 'font-bold text-slate-600 hover:bg-white/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-white'
-                    }`}
-                  >
-                    <div
-                      className={`flex h-6 w-6 items-center justify-center rounded-lg ${
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-slate-200/70 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                    </div>
-                    <span>{label}</span>
-                  </button>
-                )
-              })}
-            </div>
+            <AppTabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              ariaLabel="Kategori pengaturan sistem"
+            />
           </div>
 
           <div className="p-6">
@@ -768,7 +917,7 @@ export default function PengaturanPage() {
                     value={form.school_name}
                     onChange={(v) => update('school_name', v)}
                     icon={Building}
-                    placeholder="Contoh: YAYASAN DAR EL - IMAN"
+                    placeholder="Contoh: Yayasan Pendidikan Islam"
                   />
                   <Field
                     label="Singkatan / Logo Teks (fallback)"
@@ -799,6 +948,20 @@ export default function PengaturanPage() {
                     placeholder="Contoh: AHU-0012345.AH.01.04.2005"
                   />
                   <Field
+                    label="Website Resmi Lembaga"
+                    value={form.website || ''}
+                    onChange={(v) => update('website', v)}
+                    icon={Globe}
+                    placeholder="Contoh: https://dareliman.or.id"
+                  />
+                  <Field
+                    label="Email Resmi Lembaga"
+                    value={form.email || ''}
+                    onChange={(v) => update('email', v)}
+                    icon={Mail}
+                    placeholder="Contoh: sekretariat@dareliman.or.id"
+                  />
+                  <Field
                     label="Slogan / Motto Lembaga"
                     value={form.motto || ''}
                     onChange={(v) => update('motto', v)}
@@ -811,6 +974,140 @@ export default function PengaturanPage() {
                     onChange={(v) => update('footer_text', v)}
                     placeholder="Contoh: Jl. Pendidikan No. 1, Kota Padang"
                   />
+
+                  {/* Informasi Rekening Bank Lembaga */}
+                  <div className="md:col-span-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs mb-3">
+                      <CreditCard className="h-4 w-4 text-emerald-600" />
+                      <span>Informasi Rekening Bank Pembayaran Lembaga (Portal Tagihan & Kwitansi)</span>
+                    </div>
+                  </div>
+                  <Field
+                    label="Nama Bank"
+                    value={form.bank_name || ''}
+                    onChange={(v) => update('bank_name', v)}
+                    placeholder="Contoh: Bank Syariah Indonesia (BSI)"
+                  />
+                  <Field
+                    label="Nomor Rekening Bank"
+                    value={form.bank_account_number || ''}
+                    onChange={(v) => update('bank_account_number', v)}
+                    placeholder="Contoh: 777-1234-567"
+                  />
+                  <div className="md:col-span-2">
+                    <Field
+                      label="Atas Nama Rekening Bank"
+                      value={form.bank_account_name || ''}
+                      onChange={(v) => update('bank_account_name', v)}
+                      placeholder="Contoh: Yayasan Dar El-Iman Padang"
+                    />
+                  </div>
+                  <Field
+                    label="Kode Biller / Institusi BSI Virtual Account"
+                    value={form.bsi_va_prefix || ''}
+                    onChange={(v) => update('bsi_va_prefix', v)}
+                    placeholder="Contoh: 9023 (Kode Kerjasama BSI)"
+                  />
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Format Formula Nomor VA BSI Siswa
+                    </label>
+                    <select
+                      value={form.bsi_va_format || '{PREFIX}{NIS}'}
+                      onChange={(e) => update('bsi_va_format', e.target.value)}
+                      className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    >
+                      <option value="{PREFIX}{NIS}">Kode Biller + NIS Siswa (Contoh: 9023 + NIS)</option>
+                      <option value="{PREFIX}{UNIT_CODE}{NIS}">Kode Biller + Kode Unit + NIS Siswa (Contoh: 9023 + 01 + NIS)</option>
+                    </select>
+                  </div>
+
+                  {/* Konfigurasi Cetak Kartu Pelajar & Pegawai */}
+                  <div className="md:col-span-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs mb-3">
+                      <FileText className="h-4 w-4 text-emerald-600" />
+                      <span>Konfigurasi Cetak Kartu Identitas (Pelajar & Pegawai)</span>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Field
+                      label="Motto / Catatan Kaki Kartu"
+                      value={form.card_footer_motto || ''}
+                      onChange={(v) => update('card_footer_motto', v)}
+                      placeholder="Contoh: Berakhlak Mulia, Cerdas, dan Mandiri"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Tata Tertib Belakang Kartu Pelajar / Siswa (Gunakan enter untuk baris baru)
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={form.card_rules_student || ''}
+                      onChange={(e) => update('card_rules_student', e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 shadow-2xs focus:border-emerald-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      placeholder="1. Kartu ini adalah kartu identitas resmi..."
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Tata Tertib Belakang Kartu Pegawai / Guru (Gunakan enter untuk baris baru)
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={form.card_rules_employee || ''}
+                      onChange={(e) => update('card_rules_employee', e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 shadow-2xs focus:border-emerald-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      placeholder="1. Kartu ini adalah tanda pengenal resmi pegawai..."
+                    />
+                  </div>
+
+                  {/* Konfigurasi Integrasi Peta Digital (Mapbox) */}
+                  <div className="md:col-span-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200 text-xs mb-1">
+                      <MapPin className="h-4 w-4 text-emerald-600" />
+                      <span>Konfigurasi Integrasi Peta Digital (Mapbox Access Token)</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">
+                      Token Mapbox resmi digunakan untuk merender layer peta interaktif, reverse-geocoding koordinat GPS, dan pencarian alamat siswa, pegawai, & unit pendidikan.
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Mapbox Public Token (Mulai dengan 'pk.')
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowMapboxToken(!showMapboxToken)}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer"
+                        >
+                          {showMapboxToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          <span>{showMapboxToken ? 'Sembunyikan Token' : 'Lihat Token Lengkap'}</span>
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showMapboxToken ? 'text' : 'password'}
+                          value={form.mapbox_token || ''}
+                          onChange={(e) => update('mapbox_token', e.target.value)}
+                          placeholder="pk.eyJ1Ijoi..."
+                          className="w-full rounded-xl border border-slate-200 bg-white p-3 pr-10 font-mono text-xs text-slate-900 shadow-2xs focus:border-emerald-500 focus:outline-hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                          <KeyRound className="h-4 w-4" />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                        <span>Status: {form.mapbox_token ? '✓ Token Terkonfigurasi' : 'Belum Dikonfigurasi (Menggunakan Fallback OSM)'}</span>
+                        {form.mapbox_token && !form.mapbox_token.startsWith('pk.') && (
+                          <span className="text-amber-600 font-semibold">Peringatan: Token Mapbox standar biasanya diawali dengan 'pk.'</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <AssetUpload
                     label="Logo Resmi Sekolah (PNG / SVG)"
                     accept="image/png,image/jpeg,image/webp,image/svg+xml"
@@ -1070,7 +1367,411 @@ export default function PengaturanPage() {
               </div>
             )}
 
-            {/* TAB 3: KELOLA BANTUAN & FAQ */}
+            {/* TAB 3: KUSTOMISASI LABEL & TERMINOLOGI (JSON) */}
+            {activeTab === 'labels' && (
+              <div className="space-y-8 w-full">
+                {/* 1. Header Banner */}
+                <div className="w-full rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/90 via-teal-50/60 to-emerald-50/90 p-5 sm:p-6 text-xs dark:border-emerald-900/60 dark:bg-emerald-950/30 shadow-2xs">
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 w-full">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+                        <Languages className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                            Kustomisasi Label & Bahasa (Format JSON)
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/15 px-3 py-1 text-[11px] font-black text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Akses Khusus Super Admin & Admin
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-4xl">
+                          Ubah istilah lembaga (misal: <strong className="font-bold text-emerald-800 dark:text-emerald-300">Siswa ➔ Santri</strong>, <strong className="font-bold text-emerald-800 dark:text-emerald-300">Guru ➔ Ustadz</strong>, <strong className="font-bold text-emerald-800 dark:text-emerald-300">Kelas ➔ Halaqah</strong>) atau sesuaikan seluruh teks antarmuka melalui formulir visual maupun langsung mengedit struktur kode JSON.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap self-start xl:self-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={handleResetLabels}
+                        className="rounded-xl border border-slate-300/80 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 shadow-2xs cursor-pointer transition-all shrink-0"
+                        title="Kembalikan semua label ke teks bawaan default"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Reset Bawaan</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={handleDownloadJson}
+                        className="rounded-xl border border-emerald-300/90 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-2xs cursor-pointer transition-all shrink-0"
+                        title="Unduh seluruh kamus label ke file JSON"
+                      >
+                        <Download className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>Unduh JSON</span>
+                      </Button>
+                      <label className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm shadow-emerald-600/30 transition-all cursor-pointer shrink-0">
+                        <Upload className="h-3.5 w-3.5" />
+                        <span>Impor File JSON</span>
+                        <input
+                          type="file"
+                          accept=".json,application/json"
+                          className="hidden"
+                          onChange={handleUploadJson}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Sub-Tabs Bar */}
+                <div className="flex items-center gap-3 border-b border-emerald-500/20 pb-3 pt-1 overflow-x-auto w-full">
+                  <button
+                    type="button"
+                    onClick={() => setLabelsSubTab('terminology')}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4.5 py-2.5 text-xs font-extrabold transition-all cursor-pointer shrink-0 ${
+                      labelsSubTab === 'terminology'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <span>Terminologi Lembaga & Preset</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLabelsSubTab('categories')}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4.5 py-2.5 text-xs font-extrabold transition-all cursor-pointer shrink-0 ${
+                      labelsSubTab === 'categories'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    <Layers className="h-4 w-4" />
+                    <span>Kategori Label Lengkap</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRawJsonText(JSON.stringify(form.custom_labels || defaultLabels, null, 2))
+                      setLabelsSubTab('json')
+                    }}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4.5 py-2.5 text-xs font-extrabold transition-all cursor-pointer shrink-0 ${
+                      labelsSubTab === 'json'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    <Code2 className="h-4 w-4" />
+                    <span>Editor Kode JSON Langsung</span>
+                  </button>
+                </div>
+
+                {/* 3. Sub-Tab Content: 1. TERMINOLOGY & PRESETS */}
+                {labelsSubTab === 'terminology' && (
+                  <div className="space-y-8">
+                    {/* Presets Cards */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3.5">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Preset Terminologi Cepat (1-Klik Terapkan)
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          Pilih gaya istilah sesuai jenis institusi Anda
+                        </span>
+                      </div>
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        <button
+                          type="button"
+                          onClick={() => handleApplyTerminologyPreset('umum')}
+                          className="flex flex-col text-left rounded-2xl border-2 border-emerald-200/90 bg-white p-5 hover:border-emerald-500 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800 transition-all duration-200 cursor-pointer group"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-black text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                              Sekolah Umum (Default)
+                            </span>
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300 shrink-0">
+                              Standar
+                            </span>
+                          </div>
+                          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Siswa, Guru, Kelas, Sekolah, Kepala Sekolah, Wali Kelas.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleApplyTerminologyPreset('pesantren')}
+                          className="flex flex-col text-left rounded-2xl border-2 border-teal-200/90 bg-gradient-to-br from-white to-teal-50/50 p-5 hover:border-teal-500 hover:shadow-lg dark:border-teal-900/60 dark:bg-slate-800 transition-all duration-200 cursor-pointer group"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-black text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400">
+                              Pondok Pesantren / Islamic Boarding
+                            </span>
+                            <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-700 dark:bg-teal-900/60 dark:text-teal-300 shrink-0">
+                              Populer
+                            </span>
+                          </div>
+                          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Santri, Ustadz / Asatidz, Halaqah, Pondok Pesantren, Mudir, Musyrif.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleApplyTerminologyPreset('madrasah')}
+                          className="flex flex-col text-left rounded-2xl border-2 border-cyan-200/90 bg-white p-5 hover:border-cyan-500 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800 transition-all duration-200 cursor-pointer group sm:col-span-2 lg:col-span-1"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-black text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400">
+                              Madrasah (Kemenag)
+                            </span>
+                            <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-300 shrink-0">
+                              Kemenag
+                            </span>
+                          </div>
+                          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Peserta Didik, Pendidik, Rombongan Belajar, Madrasah, Kepala Madrasah.
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Field Grid for Terminology */}
+                    <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800">
+                      <div className="mb-4">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Sesuaikan Istilah Mandiri (Terminology Fields)
+                        </span>
+                        <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                          Teks di bawah akan langsung digunakan sebagai sebutan baku pada judul tabel, kartu identitas, dan tombol aksi.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 w-full">
+                        <Field
+                          label="Istilah Siswa (Tunggal)"
+                          value={form.custom_labels?.terminology?.siswa || 'Siswa'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'siswa', v)}
+                          placeholder="Contoh: Siswa / Santri / Murid"
+                        />
+                        <Field
+                          label="Istilah Siswa (Jamak)"
+                          value={form.custom_labels?.terminology?.siswa_plural || 'Siswa / Santri'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'siswa_plural', v)}
+                          placeholder="Contoh: Siswa / Santriwan & Santriwati"
+                        />
+                        <Field
+                          label="Istilah Guru (Tunggal)"
+                          value={form.custom_labels?.terminology?.guru || 'Guru'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'guru', v)}
+                          placeholder="Contoh: Guru / Pendidik / Ustadz"
+                        />
+                        <Field
+                          label="Istilah Guru (Jamak)"
+                          value={form.custom_labels?.terminology?.guru_plural || 'Guru & Pendidik'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'guru_plural', v)}
+                          placeholder="Contoh: Dewan Guru / Dewan Asatidz"
+                        />
+                        <Field
+                          label="Istilah Kelas / Rombel"
+                          value={form.custom_labels?.terminology?.kelas || 'Kelas / Rombel'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'kelas', v)}
+                          placeholder="Contoh: Kelas / Halaqah / Rombel"
+                        />
+                        <Field
+                          label="Istilah Lembaga / Sekolah"
+                          value={form.custom_labels?.terminology?.sekolah || 'Sekolah / Madrasah'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'sekolah', v)}
+                          placeholder="Contoh: Sekolah / Pesantren / Madrasah"
+                        />
+                        <Field
+                          label="Istilah Kepala Sekolah"
+                          value={form.custom_labels?.terminology?.kepala_sekolah || 'Kepala Sekolah'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'kepala_sekolah', v)}
+                          placeholder="Contoh: Kepala Sekolah / Mudir"
+                        />
+                        <Field
+                          label="Istilah Wali Kelas"
+                          value={form.custom_labels?.terminology?.wali_kelas || 'Wali Kelas'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'wali_kelas', v)}
+                          placeholder="Contoh: Wali Kelas / Musyrif Kamar"
+                        />
+                        <Field
+                          label="Istilah Asrama / Pondok"
+                          value={form.custom_labels?.terminology?.asrama || 'Asrama / Pondok'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'asrama', v)}
+                          placeholder="Contoh: Asrama / Kobong / Ma'had"
+                        />
+                        <Field
+                          label="Istilah Pembina / Musyrif"
+                          value={form.custom_labels?.terminology?.musyrif || 'Musyrif / Pembina'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'musyrif', v)}
+                          placeholder="Contoh: Pembina / Musyrif"
+                        />
+                        <Field
+                          label="Istilah Mata Pelajaran"
+                          value={form.custom_labels?.terminology?.mata_pelajaran || 'Mata Pelajaran'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'mata_pelajaran', v)}
+                          placeholder="Contoh: Mata Pelajaran / Kitab"
+                        />
+                        <Field
+                          label="Istilah Halaqah Tahfizh"
+                          value={form.custom_labels?.terminology?.halaqah || 'Halaqah Tahfizh'}
+                          onChange={(v) => handleUpdateLabel('terminology', 'halaqah', v)}
+                          placeholder="Contoh: Halaqah / Kelompok Tahfizh"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Sub-Tab Content: 2. COMPLETE CATEGORIES */}
+                {labelsSubTab === 'categories' && (
+                  <div className="space-y-6">
+                    {/* Category Selector Pills */}
+                    <div className="flex items-center gap-2.5 flex-wrap p-2 bg-slate-100/80 dark:bg-slate-800/70 rounded-2xl border border-slate-200/90 dark:border-slate-700/70">
+                      {[
+                        { id: 'common', label: 'Tombol & Aksi Umum' },
+                        { id: 'navigation', label: 'Menu & Navigasi' },
+                        { id: 'students', label: 'Data Siswa / Santri' },
+                        { id: 'employees', label: 'Data Guru & Pegawai' },
+                        { id: 'attendance', label: 'Presensi Terpadu' },
+                        { id: 'tahfizh', label: 'Tahfizh Al-Qur\'an' },
+                        { id: 'mutabaah', label: 'Mutaba\'ah Yaumiyyah' },
+                        { id: 'ujian', label: 'Ujian & Kisi-Kisi LMS' },
+                      ].map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setActiveLabelCategory(cat.id)}
+                          className={`rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
+                            activeLabelCategory === cat.id
+                              ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                              : 'bg-white text-slate-700 hover:bg-slate-200/70 dark:bg-slate-800 dark:text-slate-300 shadow-2xs'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Fields for the selected category */}
+                    <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-5 sm:p-6 dark:border-slate-800 dark:bg-slate-900/70 shadow-xs">
+                      <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 w-full">
+                        {Object.entries(
+                          (form.custom_labels && form.custom_labels[activeLabelCategory]) ||
+                            defaultLabels[activeLabelCategory] ||
+                            {}
+                        ).map(([k, v]) => (
+                          <Field
+                            key={k}
+                            label={`[${k}]`}
+                            value={String(v ?? '')}
+                            onChange={(val) => handleUpdateLabel(activeLabelCategory, k, val)}
+                            placeholder={`Label untuk ${k}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Sub-Tab Content: 3. RAW JSON EDITOR */}
+                {labelsSubTab === 'json' && (
+                  <div className="space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Editor Kode JSON Langsung
+                        </h4>
+                        <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                          Setiap perubahan teks JSON akan divalidasi dan langsung disinkronkan ke formulir antarmuka.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => {
+                            try {
+                              const parsed = JSON.parse(rawJsonText)
+                              setRawJsonText(JSON.stringify(parsed, null, 2))
+                              setJsonError(null)
+                            } catch (e) {
+                              setJsonError(`Tidak dapat merapikan format: ${e.message}`)
+                            }
+                          }}
+                          className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 shadow-2xs cursor-pointer transition-all"
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>Rapikan JSON</span>
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          onClick={handleCopyJson}
+                          className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 shadow-2xs cursor-pointer transition-all"
+                        >
+                          {copiedJson ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              <span className="text-emerald-600">Disalin!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5 text-slate-500" />
+                              <span>Salin JSON</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {jsonError && (
+                      <div className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200 shadow-xs">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
+                        <span>{jsonError}</span>
+                      </div>
+                    )}
+
+                    <div className="relative rounded-2xl border-2 border-slate-800 bg-slate-950 p-2 shadow-inner">
+                      <div className="flex items-center justify-between border-b border-slate-800/80 px-4 py-2.5 text-[11px] font-mono text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <FileJson className="h-4 w-4 text-emerald-400" />
+                          <span className="text-emerald-400 font-bold">labels.json</span>
+                        </div>
+                        <span className={jsonError ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                          {jsonError ? '● Syntax Error' : '● Valid JSON'}
+                        </span>
+                      </div>
+                      <textarea
+                        value={rawJsonText}
+                        onChange={(e) => handleRawJsonChange(e.target.value)}
+                        rows={18}
+                        className="w-full bg-transparent p-4 sm:p-5 font-mono text-xs sm:text-[13px] text-emerald-300 placeholder-slate-600 focus:outline-hidden leading-relaxed resize-y selection:bg-emerald-900 selection:text-white min-h-[460px]"
+                        placeholder="Masukkan objek JSON konfigurasi label di sini..."
+                        spellCheck={false}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 4: KELOLA BANTUAN & FAQ */}
             {activeTab === 'bantuan_faq' && (
               <div className="space-y-8">
                 {/* FAQ SECTION */}
@@ -1234,7 +1935,7 @@ export default function PengaturanPage() {
 
                 <div className="grid gap-5 md:grid-cols-2">
                   <Select
-                    value={form.tahun_ajaran_aktif || '2025/2026'}
+                    value={form.tahun_ajaran_aktif || '2026/2027'}
                     onChange={(v) => update('tahun_ajaran_aktif', String(v))}
                   >
                     <SelectLabel>Tahun Ajaran Aktif (Default)</SelectLabel>
@@ -1300,73 +2001,75 @@ export default function PengaturanPage() {
           </div>
         </section>
 
-        {/* Live Preview Panel Sidebar */}
-        <aside className="h-fit rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
-          <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Pratinjau Live Layout</span>
-          </h3>
-          <p className="mb-4 mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-            Perubahan gaya header, sidebar, dan warna akan langsung tercermin pada simulasi di bawah ini secara otomatis.
-          </p>
-          <div
-            style={previewStyle}
-            className="overflow-hidden rounded-2xl border border-slate-200 bg-[var(--preview-body)] shadow-inner"
-          >
-            <div className={`flex h-56 ${form.sidebar_position === 'right' ? 'flex-row-reverse' : ''}`}>
-              <div
-                className="w-28 p-2.5 text-slate-800 relative overflow-hidden border-r border-slate-200 transition-colors"
-                style={{
-                  background:
-                    form.sidebar_style === 'light'
-                      ? '#FFFFFF'
-                      : form.sidebar_style === 'gradient'
-                      ? `linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%)`
-                      : form.sidebar_color,
-                  color: '#334155',
-                }}
-              >
-                <div className="mb-4 flex items-center gap-1.5">
-                  {previewLogo ? (
-                    <img src={previewLogo} className="h-6 w-6 rounded object-contain" alt="" />
-                  ) : (
-                    <span className="flex h-6 w-6 items-center justify-center rounded bg-[var(--preview-accent)] text-[8px] font-black text-white">
-                      {form.logo_text || 'YDE'}
-                    </span>
-                  )}
-                  <span className="truncate text-[7px] font-bold">{form.school_name || 'SIMSIT'}</span>
-                </div>
-                {[1, 2, 3, 4, 5].map((item) => (
-                  <div
-                    key={item}
-                    className={`mb-2 h-4 rounded-lg ${
-                      item === 1 ? 'bg-[var(--preview-accent)]' : 'bg-current opacity-15'
-                    }`}
-                  />
-                ))}
-              </div>
-              <div className="flex-1">
+        {/* Live Preview Panel Sidebar - only active for identitas & tema */}
+        {(activeTab === 'identitas' || activeTab === 'tema') && (
+          <aside className="h-fit rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+            <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Pratinjau Live Layout</span>
+            </h3>
+            <p className="mb-4 mt-1 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Perubahan gaya header, sidebar, dan warna akan langsung tercermin pada simulasi di bawah ini secara otomatis.
+            </p>
+            <div
+              style={previewStyle}
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-[var(--preview-body)] shadow-inner"
+            >
+              <div className={`flex h-56 ${form.sidebar_position === 'right' ? 'flex-row-reverse' : ''}`}>
                 <div
-                  className="h-10 border-b border-black/5 flex items-center justify-between px-3"
+                  className="w-28 p-2.5 text-slate-800 relative overflow-hidden border-r border-slate-200 transition-colors"
                   style={{
-                    backgroundColor:
-                      form.header_style === 'transparent' ? 'transparent' : form.header_color,
+                    background:
+                      form.sidebar_style === 'light'
+                        ? '#FFFFFF'
+                        : form.sidebar_style === 'gradient'
+                        ? `linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%)`
+                        : form.sidebar_color,
+                    color: '#334155',
                   }}
                 >
-                  <div className="h-3 w-16 rounded bg-slate-300/60 dark:bg-slate-700/60" />
-                  <div className="h-5 w-5 rounded-full bg-emerald-500" />
+                  <div className="mb-4 flex items-center gap-1.5">
+                    {previewLogo ? (
+                      <img src={previewLogo} className="h-6 w-6 rounded object-contain" alt="" />
+                    ) : (
+                      <span className="flex h-6 w-6 items-center justify-center rounded bg-[var(--preview-accent)] text-[8px] font-black text-white">
+                        {form.logo_text || 'YDE'}
+                      </span>
+                    )}
+                    <span className="truncate text-[7px] font-bold">{form.school_name || 'SIMSIT'}</span>
+                  </div>
+                  {[1, 2, 3, 4, 5].map((item) => (
+                    <div
+                      key={item}
+                      className={`mb-2 h-4 rounded-lg ${
+                        item === 1 ? 'bg-[var(--preview-accent)]' : 'bg-current opacity-15'
+                      }`}
+                    />
+                  ))}
                 </div>
-                <div className="p-3 space-y-2">
-                  <div className="h-8 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/50" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="h-16 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200/50" />
-                    <div className="h-16 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200/50" />
+                <div className="flex-1">
+                  <div
+                    className="h-10 border-b border-black/5 flex items-center justify-between px-3"
+                    style={{
+                      backgroundColor:
+                        form.header_style === 'transparent' ? 'transparent' : form.header_color,
+                    }}
+                  >
+                    <div className="h-3 w-16 rounded bg-slate-300/60 dark:bg-slate-700/60" />
+                    <div className="h-5 w-5 rounded-full bg-emerald-500" />
+                  </div>
+                  <div className="p-3 space-y-2">
+                    <div className="h-8 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/50" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="h-16 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200/50" />
+                      <div className="h-16 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200/50" />
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
 
       {/* MODAL EDIT & TAMBAH FAQ */}
@@ -1622,18 +2325,17 @@ export default function PengaturanPage() {
         variant={confirmModal.variant}
       />
 
-      {/* Toast Notification Stack */}
-      <ToastStack toasts={toast.toasts} onDismiss={toast.dismiss} />
+
     </form>
   )
 }
 
 function Field({ label, value = '', onChange, icon: Icon, isTextarea = false, ...props }) {
   return (
-    <label className="space-y-2 text-xs font-bold text-slate-700 dark:text-slate-200">
-      <div className="flex items-center gap-1.5">
-        {Icon && <Icon className="h-3.5 w-3.5 text-emerald-600" />}
-        <span>{label}</span>
+    <div className="block space-y-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+      <div className="flex items-center gap-1.5 min-w-0">
+        {Icon && <Icon className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
+        <span className="truncate">{label}</span>
       </div>
       {isTextarea ? (
         <textarea
@@ -1641,17 +2343,17 @@ function Field({ label, value = '', onChange, icon: Icon, isTextarea = false, ..
           {...props}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-medium outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900"
+          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs font-medium outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 leading-relaxed"
         />
       ) : (
         <input
           {...props}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-medium outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 disabled:opacity-60"
+          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 disabled:opacity-60 shadow-2xs"
         />
       )}
-    </label>
+    </div>
   )
 }
 

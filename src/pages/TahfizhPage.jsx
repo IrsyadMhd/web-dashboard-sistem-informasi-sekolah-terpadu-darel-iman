@@ -56,6 +56,7 @@ import AppBadge from '../components/app/AppBadge'
 import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
 import AppErrorState from '../components/app/AppErrorState'
+import { useToast } from '../components/app'
 import TahfizhSubNav from '../components/tahfizh/TahfizhSubNav'
 
 // TailGrids Core Components
@@ -196,75 +197,7 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
   )
 }
 
-// ── SEMANTIC TOAST STACK (§L Tailgrids_Pengaturan_Halaman) ───────────────────
-const TOAST_TONE_LABEL = { success: 'Berhasil', warning: 'Perhatian', error: 'Gagal' }
 
-function ToastStack({ items, onDismiss }) {
-  if (!items?.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none print:hidden" aria-live="polite" aria-atomic="true">
-      {items.map((n) => {
-        const isDanger = n.type === 'error'
-        const isWarning = n.type === 'warning'
-        const isSuccess = !isDanger && !isWarning
-        return (
-          <div
-            key={n.id}
-            className={cn(
-              'relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]',
-              isSuccess && 'border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50',
-              isDanger && 'border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50',
-              isWarning && 'border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50'
-            )}
-          >
-            <div className={cn(
-              'absolute top-0 left-0 right-0 h-1',
-              isSuccess && 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
-              isDanger && 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-700',
-              isWarning && 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600'
-            )} />
-            <div className="flex items-start gap-3 mt-0.5">
-              <div className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
-                isSuccess && 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30',
-                isDanger && 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30',
-                isWarning && 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30'
-              )}>
-                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                {isDanger && <X className="size-5" strokeWidth={2.3} />}
-                {isWarning && <Clock className="size-5" strokeWidth={2.3} />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">{TOAST_TONE_LABEL[n.type] || 'Info'}</h4>
-                  <span className={cn(
-                    'inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border',
-                    isSuccess && 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80',
-                    isDanger && 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
-                    isWarning && 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80'
-                  )}>
-                    {TOAST_TONE_LABEL[n.type] || 'Info'}
-                  </span>
-                </div>
-                {n.message && (
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{n.message}</p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                aria-label="Tutup notifikasi"
-              >
-                <X className="size-4" strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 export default function TahfizhPage() {
   const breadcrumbItems = [
@@ -406,8 +339,13 @@ export default function TahfizhPage() {
   const [summaryParentNotes, setSummaryParentNotes] = useState('')
   const [studentProgress, setStudentProgress] = useState(null)
 
-  // Toast Notification State
-  const [notification, setNotification] = useState(null)
+  // Global Toast Notification
+  const toast = useToast()
+  const setNotification = (n) => {
+    if (!n) return
+    const tone = n.type === 'error' ? 'error' : n.type === 'warning' ? 'warning' : 'success'
+    toast(n.message || n.title || 'Notifikasi', tone)
+  }
 
   // Confirmation Save Dialog State
   const [showSaveConfirm, setShowSaveConfirm] = useState(false)
@@ -516,13 +454,7 @@ export default function TahfizhPage() {
   const audioChunksRef = useRef([])
   const timerIntervalRef = useRef(null)
 
-  // Clear notification timer
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => setNotification(null), 4500)
-      return () => clearTimeout(timer)
-    }
-  }, [notification])
+
 
   // Fetch Master Data Kelas & Qur'an pada mount (Scoped to teacher/musyrif assigned classes if restricted)
   useEffect(() => {
@@ -655,6 +587,7 @@ export default function TahfizhPage() {
         const mappedDays = sheetData.days.map((dayItem) => {
           const log = dayItem.log || {}
           return {
+            id: log.id || null,
             record_date: dayItem.record_date,
             day_name: dayItem.day_name,
             day_index: dayItem.day_index,
@@ -673,6 +606,8 @@ export default function TahfizhPage() {
             signature_teacher: log.signature_teacher || '',
             signature_parent: log.signature_parent || '',
             isSaved: !!log.id,
+            logs: dayItem.logs || (dayItem.log ? [dayItem.log] : []),
+            total_logs: dayItem.total_logs || (dayItem.log ? 1 : 0),
           }
         })
         setWeeklySheet(mappedDays)
@@ -899,6 +834,23 @@ export default function TahfizhPage() {
       let targetRowIndex = weeklySheet.findIndex((r) => !r.hafalan_surah_number)
       if (targetRowIndex === -1) targetRowIndex = 0
 
+      if (data.is_first_hafalan || !data.next_surah_number) {
+        // Setoran pertama: guru memilih surah serta ayat awal dan ayat akhir secara manual
+        setModalSurah(null)
+        setModalAyahStart(1)
+        setModalAyahEnd(1)
+        setModalBarisCount(1)
+        setIsAyahStartLocked(false)
+        setModalMurajaahRequired(false)
+        setSelectedRowIndex(targetRowIndex)
+        setShowQuranModal(true)
+        setNotification({
+          type: 'info',
+          message: 'Setoran Perdana: Silakan pilih Surah, Ayat Awal, dan Ayat Akhir untuk santri ini.',
+        })
+        return
+      }
+
       const targetSurah = quranSurahs.find((s) => Number(s.nomor) === Number(data.next_surah_number)) || quranSurahs[0]
       const nextAyahStart = Number(data.next_ayah_start || 1)
       const nextAyahEnd = Math.min(nextAyahStart + 9, targetSurah ? targetSurah.jumlah_ayat : 7)
@@ -1063,6 +1015,7 @@ export default function TahfizhPage() {
       const row = weeklySheet[index]
       try {
         const payload = {
+          id: row.id || null,
           student_id: selectedStudentId,
           class_id: selectedClassId,
           record_date: row.record_date,
@@ -1079,11 +1032,6 @@ export default function TahfizhPage() {
           murajaah_required_surah_name: row.murajaah_required_surah_name || null,
           murajaah_required_ayah_start: row.murajaah_required_ayah_start ? Number(row.murajaah_required_ayah_start) : null,
           murajaah_required_ayah_end: row.murajaah_required_ayah_end ? Number(row.murajaah_required_ayah_end) : null,
-          murajaah_required: !!row.murajaah_required,
-          murajaah_required_surah_number: row.murajaah_required_surah_number ? Number(row.murajaah_required_surah_number) : null,
-          murajaah_required_surah_name: row.murajaah_required_surah_name || null,
-          murajaah_required_ayah_start: row.murajaah_required_ayah_start ? Number(row.murajaah_required_ayah_start) : null,
-          murajaah_required_ayah_end: row.murajaah_required_ayah_end ? Number(row.murajaah_required_ayah_end) : null,
           murajaah_text: row.murajaah_text,
           murajaah_lembar: Number(row.murajaah_lembar) || 0,
           audio_url: row.audio_url,
@@ -1093,8 +1041,11 @@ export default function TahfizhPage() {
           signature_parent: row.signature_parent || 'Ortu Verified',
         }
 
-        await tahfizhService.saveDailyLog(payload)
+        const res = await tahfizhService.saveDailyLog(payload)
         const updated = [...weeklySheet]
+        if (res?.data?.id) {
+          updated[index].id = res.data.id
+        }
         updated[index].isSaved = true
         updated[index].isModified = false
         setWeeklySheet(updated)
@@ -1115,6 +1066,7 @@ export default function TahfizhPage() {
       try {
         const savePromises = weeklySheet.map((row) => {
           const payload = {
+            id: row.id || null,
             student_id: selectedStudentId,
             class_id: selectedClassId,
             record_date: row.record_date,
@@ -1267,9 +1219,15 @@ export default function TahfizhPage() {
     })
   }, [students])
 
-  const bestStudent = useMemo(() => {
-    return topStudentsRanked.length > 0 ? topStudentsRanked[0] : null
+  const hasAnySetoran = useMemo(() => {
+    return topStudentsRanked.some(
+      (st) => Number(st.total_ayats_memorized || st.total_ayat || 0) > 0
+    )
   }, [topStudentsRanked])
+
+  const bestStudent = useMemo(() => {
+    return hasAnySetoran && topStudentsRanked.length > 0 ? topStudentsRanked[0] : null
+  }, [hasAnySetoran, topStudentsRanked])
 
   // Export CSV Data Rekap Tahfizh
   const handleExportCsv = () => {
@@ -1483,214 +1441,255 @@ export default function TahfizhPage() {
 
           <ModernKpiCard
             title="Sisa Belum Dihafal"
-            tag="TARGET SISA"
+            tag={studentProgress?.target_juz ? `TARGET ${studentProgress.target_juz.toUpperCase()}` : 'TARGET SISA'}
             tone="amber"
             icon={Clock}
-            value={`${(studentProgress?.remaining_ayats || 6236).toLocaleString('id-ID')} Ayat`}
-            subtext={`Sisa ${studentProgress?.remaining_surahs || 114} Surah Lagi`}
+            value={`${(studentProgress?.remaining_ayats ?? (studentProgress?.total_quran_ayats || 564)).toLocaleString('id-ID')} Ayat`}
+            subtext={`Sisa ${studentProgress?.remaining_surahs ?? (studentProgress?.total_quran_surahs || 37)} Surah Menuju ${studentProgress?.target_juz || 'Target'}`}
           />
 
           <ModernKpiCard
             title="Persentase Target"
-            tag="TARGET 30 JUZ"
+            tag={studentProgress?.target_juz ? `PROGRES ${studentProgress.target_juz.toUpperCase()}` : 'PROGRES TARGET'}
             tone="blue"
             icon={Award}
             value={`${studentProgress?.progress_percentage || 0}%`}
-            subtext="Dari Total 6.236 Ayat Al-Qur'an"
+            subtext={`Dari Target ${Number(studentProgress?.total_quran_ayats || 564).toLocaleString('id-ID')} Ayat`}
           />
 
           <ModernKpiCard
-            title="Progres 30 Juz"
-            tag="STATUS TARGET"
+            title="Standar Kurikulum"
+            tag="KURIKULUM ROMBEL"
             tone="purple"
             icon={Sparkles}
           >
-            <div className="space-y-2 mt-0.5">
-              <div className="flex justify-between items-center text-xs font-bold text-slate-700 dark:text-slate-200">
-                <span>Progres Keseluruhan</span>
-                <span className="text-purple-600 dark:text-purple-400 font-extrabold">{studentProgress?.progress_percentage || 0}%</span>
+            <div className="space-y-1.5 mt-0.5">
+              <div className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
+                {studentProgress?.target_name || 'Target Kurikulum Rombel'}
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                 <div
                   className="bg-gradient-to-r from-emerald-500 via-teal-500 to-purple-600 h-full rounded-full transition-all duration-500"
                   style={{ width: `${studentProgress?.progress_percentage || 0}%` }}
                 />
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">Target Lengkap 114 Surah</p>
+              <div className="flex justify-between items-center text-[10px] text-slate-500 font-medium">
+                <span>Cakupan: {studentProgress?.target_juz || 'Juz 30'}</span>
+                <span className="text-purple-600 dark:text-purple-400 font-extrabold">{studentProgress?.progress_percentage || 0}%</span>
+              </div>
             </div>
           </ModernKpiCard>
         </motion.div>
 
-      {/* Toast Notification Stack (§L) */}
-      {notification && (
-        <ToastStack
-          items={[{ id: 'tahfizh-toast', type: notification.type, message: notification.message }]}
-          onDismiss={() => setNotification(null)}
-        />
-      )}
+
 
       {/* 🏆 CARD KELOMPOK: PERINGKAT HAFALAN TERBANYAK & SISWA TERBAIK PEKAN INI */}
       {(isGuru || isMusyrif || isSuperAdminOrAdmin) && students.length > 0 && (
-        <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card 1: ⭐ Siswa Terbaik / Hafiz Teladan Pekan Ini */}
-          <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] flex flex-col justify-between gap-4">
-            <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl dark:bg-amber-400/15" />
-            <div className="flex items-center justify-between gap-3 border-b border-emerald-200/90 pb-3.5 dark:border-emerald-800/60">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white shadow-sm border border-amber-300/40">
-                  <Crown className="size-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Siswa Terbaik / Hafiz Teladan Pekan Ini</h3>
-                  <p className="text-[11px] text-slate-500 font-medium dark:text-slate-400">
-                    Siswa dengan capaian hafalan Al-Qur'an tertinggi di rombel ini.
-                  </p>
-                </div>
-              </div>
-              <AppBadge variant="warning" size="sm">Top #1 Rombel</AppBadge>
-            </div>
-
-            {bestStudent ? (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/90 p-4 rounded-2xl border border-amber-200/60 shadow-sm dark:bg-slate-900/80 dark:border-amber-900/40">
-                <div className="flex items-center gap-3.5">
-                  <div className="relative">
-                    <Avatar size="xl" status="online">
-                      <AvatarFallback className="bg-amber-100 text-amber-900 font-black text-lg dark:bg-amber-950 dark:text-amber-200">
-                        {getStudentName(bestStudent).charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -top-2 -right-1 p-1 bg-amber-500 text-white rounded-full shadow-md">
-                      <Award className="w-3.5 h-3.5" />
-                    </div>
+        <motion.div variants={itemVariants}>
+          {!hasAnySetoran ? (
+            <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+                <div className="flex items-center gap-4">
+                  <div className="size-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-md">
+                    <Sparkles className="size-6 text-amber-300" />
                   </div>
-
                   <div>
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>{getStudentName(bestStudent)}</span>
-                    </div>
-                    <div className="text-xs text-slate-500 font-medium mt-0.5">
-                      NIS: {getStudentNis(bestStudent)} · Rombel: {currentClassObj?.nama_kelas || 'Kelas'}
-                    </div>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <Badge color="success" size="sm">
-                        Predikat: Mumtaz (A)
-                      </Badge>
-                      <Badge color="cyan" size="sm">
-                        Progres: {bestStudent.progress_percentage || 0}%
-                      </Badge>
-                    </div>
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                      Belum Ada Setoran Hafalan Tercatat di Rombel Ini
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium dark:text-slate-400 mt-0.5">
+                      Peringkat hafalan terbanyak dan Santri Teladan akan otomatis dihitung dan ditampilkan setelah ustadz/ustadzah mencatat setoran perdana santri.
+                    </p>
                   </div>
                 </div>
-
-                <div className="flex flex-col items-end gap-2 text-right shrink-0">
-                  <div className="text-xs text-slate-500 font-semibold">Total Capaian:</div>
-                  <div className="text-lg font-black text-emerald-900 dark:text-emerald-300">
-                    {Number(bestStudent.total_ayats_memorized || bestStudent.total_ayat || 0).toLocaleString('id-ID')}{' '}
-                    <span className="text-xs font-bold text-emerald-600">Ayat</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MasterActionButton variant="view" icon={Eye} onClick={() => handleOpenDetailProgressModal(bestStudent)}>
-                      <span>Pencapaian & Progres</span>
-                      <ArrowRight className="size-3.5" />
-                    </MasterActionButton>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tableEl = document.querySelector('table')
+                    tableEl?.scrollIntoView({ behavior: 'smooth' })
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-700/20 transition shrink-0"
+                >
+                  <BookOpen className="size-4" />
+                  <span>Input Setoran Santri</span>
+                </button>
               </div>
-            ) : (
-              <div className="p-6 text-center text-slate-400 text-xs font-medium">Belum ada siswa terdaftar di rombel ini.</div>
-            )}
-          </Card>
-
-          {/* Card 2: 🏆 Urutan Siswa Hafalan Terbanyak (Top Leaderboard) */}
-          <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] flex flex-col justify-between gap-4">
-            <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
-            <div className="flex items-center justify-between gap-3 border-b border-emerald-200/90 pb-3.5 dark:border-emerald-800/60">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
-                  <TrendingUp className="size-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Urutan Siswa Hafalan Terbanyak</h3>
-                  <p className="text-[11px] text-slate-500 font-medium dark:text-slate-400">
-                    Peringkat 5 siswa dengan hafalan terbanyak di {currentClassObj?.nama_kelas || 'Rombel'}.
-                  </p>
-                </div>
-              </div>
-
-              <AppBadge variant="success" size="sm">
-                Leaderboard Rombel
-              </AppBadge>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Card 1: ⭐ Siswa Terbaik / Hafiz Teladan Pekan Ini */}
+              <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] flex flex-col justify-between gap-4">
+                <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-amber-400/10 blur-2xl dark:bg-amber-400/15" />
+                <div className="flex items-center justify-between gap-3 border-b border-emerald-200/90 pb-3.5 dark:border-emerald-800/60">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white shadow-sm border border-amber-300/40">
+                      <Crown className="size-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Siswa Terbaik / Hafiz Teladan Pekan Ini</h3>
+                      <p className="text-[11px] text-slate-500 font-medium dark:text-slate-400">
+                        Siswa dengan capaian hafalan Al-Qur'an tertinggi di rombel ini.
+                      </p>
+                    </div>
+                  </div>
+                  <AppBadge variant="warning" size="sm">Top #1 Rombel</AppBadge>
+                </div>
 
-            <div className="space-y-2.5">
-              {topStudentsRanked.slice(0, 5).map((st, rIdx) => {
-                const sId = st.id || st.student_id
-                const ayatCount = Number(st.total_ayats_memorized || st.total_ayat || 0)
-                const surahCount = Number(st.total_surahs_memorized || st.total_surah || 0)
-                const isSelected = sId === selectedStudentId
-
-                const rankBg =
-                  rIdx === 0
-                    ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200'
-                    : rIdx === 1
-                    ? 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200'
-                    : rIdx === 2
-                    ? 'bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950 dark:text-orange-200'
-                    : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400'
-
-                return (
-                  <div
-                    key={sId}
-                    onClick={() => handleOpenDetailProgressModal(st)}
-                    className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
-                      isSelected ? 'bg-sky-50/80 border-sky-300 dark:bg-sky-950/40' : 'bg-slate-50/50 border-slate-200/60 dark:bg-slate-900/40 dark:border-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`w-7 h-7 rounded-xl font-black text-xs flex items-center justify-center border shrink-0 ${rankBg}`}>
-                        #{rIdx + 1}
-                      </span>
-
-                      <Avatar size="xs" status={isSelected ? 'online' : 'offline'}>
-                        <AvatarFallback className="bg-emerald-100 text-emerald-900 font-extrabold text-[10px] dark:bg-emerald-950 dark:text-emerald-200">
-                          {getStudentName(st).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div className="min-w-0">
-                        <div className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
-                          {getStudentName(st)}
+                {bestStudent ? (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/90 p-4 rounded-2xl border border-amber-200/60 shadow-sm dark:bg-slate-900/80 dark:border-amber-900/40">
+                    <div className="flex items-center gap-3.5">
+                      <div className="relative">
+                        <Avatar size="xl" status="online">
+                          <AvatarFallback className="bg-amber-100 text-amber-900 font-black text-lg dark:bg-amber-950 dark:text-amber-200">
+                            {getStudentName(bestStudent).charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -top-2 -right-1 p-1 bg-amber-500 text-white rounded-full shadow-md">
+                          <Award className="w-3.5 h-3.5" />
                         </div>
-                        <div className="text-[11px] text-slate-500">
-                          NIS: {getStudentNis(st)}
+                      </div>
+
+                      <div>
+                        <div className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>{getStudentName(bestStudent)}</span>
+                        </div>
+                        <div className="text-xs text-slate-500 font-medium mt-0.5">
+                          NIS: {getStudentNis(bestStudent)} · Rombel: {currentClassObj?.nama_kelas || 'Kelas'}
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <Badge
+                            color={
+                              Number(bestStudent.progress_percentage || 0) >= 80
+                                ? 'success'
+                                : Number(bestStudent.progress_percentage || 0) >= 50
+                                ? 'cyan'
+                                : 'warning'
+                            }
+                            size="sm"
+                          >
+                            Predikat: {Number(bestStudent.progress_percentage || 0) >= 80 ? 'Mumtaz (A)' : Number(bestStudent.progress_percentage || 0) >= 50 ? 'Jayyid Jiddan (B)' : 'Jayyid (C)'}
+                          </Badge>
+                          <Badge color="cyan" size="sm">
+                            Progres: {bestStudent.progress_percentage || 0}%
+                          </Badge>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
-                        <div className="text-xs font-black text-emerald-900 dark:text-emerald-400">
-                          {ayatCount.toLocaleString('id-ID')} <span className="text-[10px] text-emerald-600 font-bold">Ayat</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-medium">
-                          {surahCount} Surah
-                        </div>
+                    <div className="flex flex-col items-end gap-2 text-right shrink-0">
+                      <div className="text-xs text-slate-500 font-semibold">Total Capaian:</div>
+                      <div className="text-lg font-black text-emerald-900 dark:text-emerald-300">
+                        {Number(bestStudent.total_ayats_memorized || bestStudent.total_ayat || 0).toLocaleString('id-ID')}{' '}
+                        <span className="text-xs font-bold text-emerald-600">Ayat</span>
                       </div>
-
-                      <MasterActionIconButton
-                        variant="view"
-                        label="Lihat Detail Pencapaian & Progres"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleOpenDetailProgressModal(st)
-                        }}
-                      />
+                      <div className="flex items-center gap-2">
+                        <MasterActionButton variant="view" icon={Eye} onClick={() => handleOpenDetailProgressModal(bestStudent)}>
+                          <span>Pencapaian & Progres</span>
+                          <ArrowRight className="size-3.5" />
+                        </MasterActionButton>
+                      </div>
                     </div>
                   </div>
-                )
-              })}
+                ) : (
+                  <div className="p-6 text-center text-slate-400 text-xs font-medium">Belum ada siswa terdaftar di rombel ini.</div>
+                )}
+              </Card>
+
+              {/* Card 2: 🏆 Urutan Siswa Hafalan Terbanyak (Top Leaderboard) */}
+              <Card className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] flex flex-col justify-between gap-4">
+                <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+                <div className="flex items-center justify-between gap-3 border-b border-emerald-200/90 pb-3.5 dark:border-emerald-800/60">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm border border-emerald-300/40">
+                      <TrendingUp className="size-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">Urutan Siswa Hafalan Terbanyak</h3>
+                      <p className="text-[11px] text-slate-500 font-medium dark:text-slate-400">
+                        Peringkat 5 siswa dengan hafalan terbanyak di {currentClassObj?.nama_kelas || 'Rombel'}.
+                      </p>
+                    </div>
+                  </div>
+
+                  <AppBadge variant="success" size="sm">
+                    Leaderboard Rombel
+                  </AppBadge>
+                </div>
+
+                <div className="space-y-2.5">
+                  {topStudentsRanked
+                    .filter((st) => Number(st.total_ayats_memorized || st.total_ayat || 0) > 0)
+                    .slice(0, 5)
+                    .map((st, rIdx) => {
+                      const sId = st.id || st.student_id
+                      const ayatCount = Number(st.total_ayats_memorized || st.total_ayat || 0)
+                      const surahCount = Number(st.total_surahs_memorized || st.total_surah || 0)
+                      const isSelected = sId === selectedStudentId
+
+                      const rankBg =
+                        rIdx === 0
+                          ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200'
+                          : rIdx === 1
+                          ? 'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200'
+                          : rIdx === 2
+                          ? 'bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950 dark:text-orange-200'
+                          : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400'
+
+                      return (
+                        <div
+                          key={sId}
+                          onClick={() => handleOpenDetailProgressModal(st)}
+                          className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+                            isSelected ? 'bg-sky-50/80 border-sky-300 dark:bg-sky-950/40' : 'bg-slate-50/50 border-slate-200/60 dark:bg-slate-900/40 dark:border-slate-800'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className={`w-7 h-7 rounded-xl font-black text-xs flex items-center justify-center border shrink-0 ${rankBg}`}>
+                              #{rIdx + 1}
+                            </span>
+
+                            <Avatar size="xs" status={isSelected ? 'online' : 'offline'}>
+                              <AvatarFallback className="bg-emerald-100 text-emerald-900 font-extrabold text-[10px] dark:bg-emerald-950 dark:text-emerald-200">
+                                {getStudentName(st).charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+
+                            <div className="min-w-0">
+                              <div className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
+                                {getStudentName(st)}
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                NIS: {getStudentNis(st)}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="text-right">
+                              <div className="text-xs font-black text-emerald-900 dark:text-emerald-400">
+                                {ayatCount.toLocaleString('id-ID')} <span className="text-[10px] text-emerald-600 font-bold">Ayat</span>
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-medium">
+                                {surahCount} Surah
+                              </div>
+                            </div>
+
+                            <MasterActionIconButton
+                              variant="view"
+                              label="Lihat Detail Pencapaian & Progres"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenDetailProgressModal(st)
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </Card>
             </div>
-          </Card>
+          )}
         </motion.div>
       )}
 
@@ -3118,13 +3117,15 @@ export default function TahfizhPage() {
                   </div>
                   <div>
                     <div className="font-extrabold text-sm text-emerald-900 dark:text-white flex items-center gap-2">
-                      <span>Detail Hafalan Aktif: {currentStudentObj.last_surah_memorized || 'Surah Al-Qur\'an'}</span>
-                      <Badge color="emerald" size="sm">
-                        Juz {getJuzFromSurah(currentStudentObj.last_surah_number || 78)}
-                      </Badge>
+                      <span>Detail Hafalan Aktif: {currentStudentObj.last_surah_memorized || '-'}</span>
+                      {currentStudentObj.last_surah_number ? (
+                        <Badge color="emerald" size="sm">
+                          Juz {getJuzFromSurah(currentStudentObj.last_surah_number)}
+                        </Badge>
+                      ) : null}
                     </div>
                     <div className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                      Rentang Ayat: {currentStudentObj.last_ayah_range || 'Ayat 1 - 10'} · Total Baris: {currentStudentObj.total_baris || 15} Baris · Total Ayat: {currentStudentObj.total_ayats_memorized || 0} Ayat
+                      Rentang Ayat: {currentStudentObj.last_ayah_range || '-'} · Total Baris: {currentStudentObj.total_baris != null ? currentStudentObj.total_baris : 0} Baris · Total Ayat: {currentStudentObj.total_ayats_memorized || 0} Ayat
                     </div>
                   </div>
                 </div>

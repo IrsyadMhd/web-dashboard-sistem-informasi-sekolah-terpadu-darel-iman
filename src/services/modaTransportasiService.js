@@ -18,22 +18,24 @@ export const modaTransportasiService = {
       const { data } = await api.get('/master/moda-transportasi/dropdown')
       return data
     } catch (e) {
-      return { data: FALLBACK_MODA_TRANSPORTASI }
+      console.warn('Gagal memuat moda transportasi dari server:', e)
+      return { data: [] }
     }
   },
   getDropdown: async () => {
     try {
       const { data } = await api.get('/master/moda-transportasi/dropdown')
       const items = data?.data || []
-      if (Array.isArray(items) && items.length > 0) {
+      if (Array.isArray(items)) {
         return items.map((item) => ({
           value: item.name || item.value,
           label: item.name || item.label,
         }))
       }
+      return []
     } catch (e) {
-      // Quiet fallback
+      console.warn('Gagal memuat dropdown moda transportasi dari server:', e)
+      return []
     }
-    return FALLBACK_MODA_TRANSPORTASI
   },
 }

@@ -16,8 +16,10 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { dashboardPemantauanService } from '../../services/dashboardPemantauanService'
+import { educationUnitService } from '../../services/educationUnitService'
 import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
+import { useToast } from '../../components/app'
 import api from '../../services/api'
 import {
   MasterBadge,
@@ -68,67 +70,7 @@ function formatFullDate(value) {
   return Number.isNaN(date.getTime()) ? 'Terbaru' : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function useToast() {
-  const [toasts, setToasts] = useState([])
-  const add = (type, title, message) => {
-    const id = Date.now() + Math.random()
-    setToasts((p) => [...p, { id, type, title, message }])
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 4000)
-  }
-  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
-  return {
-    toasts,
-    dismiss,
-    success: (t, m) => add('success', t, m),
-    error: (t, m) => add('error', t, m),
-    warning: (t, m) => add('warning', t, m),
-    info: (t, m) => add('info', t, m),
-  }
-}
 
-function ToastStack({ toasts, onDismiss }) {
-  return (
-    <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
-      <AnimatePresence>
-        {toasts.map((t) => (
-          <motion.div
-            key={t.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-              t.type === 'success'
-                ? 'border-emerald-300 bg-emerald-50/95 text-emerald-900 dark:border-emerald-700/60 dark:bg-emerald-950/90 dark:text-emerald-100'
-                : t.type === 'error'
-                ? 'border-rose-300 bg-rose-50/95 text-rose-900 dark:border-rose-700/60 dark:bg-rose-950/90 dark:text-rose-100'
-                : t.type === 'warning'
-                ? 'border-amber-300 bg-amber-50/95 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/90 dark:text-amber-100'
-                : 'border-blue-300 bg-blue-50/95 text-blue-900 dark:border-blue-700/60 dark:bg-blue-950/90 dark:text-blue-100'
-            }`}
-          >
-            <div className="shrink-0 mt-0.5">
-              {t.type === 'success' && <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
-              {t.type === 'error' && <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400" />}
-              {t.type === 'warning' && <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
-              {t.type === 'info' && <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h5 className="text-xs font-bold leading-tight">{t.title}</h5>
-              {t.message && <p className="text-[11px] opacity-85 mt-0.5 leading-snug">{t.message}</p>}
-            </div>
-            <button
-              type="button"
-              onClick={() => onDismiss(t.id)}
-              className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs p-0.5 cursor-pointer"
-            >
-              ✕
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 export function FoundationInformationPage() {
   const toast = useToast()
@@ -148,6 +90,7 @@ export function FoundationInformationPage() {
   const [selectedInfo, setSelectedInfo] = useState(null)
   const [isManageModalOpen, setIsManageModalOpen] = useState(false)
   const [isSubmittingInfo, setIsSubmittingInfo] = useState(false)
+  const [educationUnits, setEducationUnits] = useState([])
   const [infoForm, setInfoForm] = useState({
     judul: '',
     kategori: 'Pengumuman',
@@ -156,6 +99,15 @@ export function FoundationInformationPage() {
     target_unit: 'all',
     status: 'Dipublikasikan',
   })
+
+  useEffect(() => {
+    educationUnitService.getDaftar({ per_page: 100 })
+      .then((res) => {
+        const list = res?.data || res || []
+        if (Array.isArray(list)) setEducationUnits(list)
+      })
+      .catch(() => {})
+  }, [])
 
   const fetchInformation = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -743,12 +695,11 @@ export function FoundationInformationPage() {
                       className="w-full h-11 px-3.5 rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                     >
                       <option value="all">Seluruh Unit (Yayasan)</option>
-                      <option value="TKIT">TKIT Dar El-Iman</option>
-                      <option value="SDIT 01">SDIT 01 Dar El-Iman</option>
-                      <option value="SDIT 02">SDIT 02 Dar El-Iman</option>
-                      <option value="SMPIT">SMPIT Dar El-Iman</option>
-                      <option value="SMAIT">SMAIT Dar El-Iman</option>
-                      <option value="Pesantren">Ma'had & Pesantren</option>
+                      {educationUnits.map((u) => (
+                        <option key={u.id} value={u.name || u.code}>
+                          {u.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -830,7 +781,6 @@ export function FoundationInformationPage() {
         )}
       </AnimatePresence>
 
-      <ToastStack toasts={toast.toasts} onDismiss={toast.dismiss} />
     </MasterDataPage>
   )
 }

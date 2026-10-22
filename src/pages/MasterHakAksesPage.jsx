@@ -48,18 +48,19 @@ import UserAccountManagement from '../components/auth/UserAccountManagement'
 import {
   ROLES,
   hasAnyRole,
-  isGlobalAccessManager,
-  isUnitAccessManager,
   getTierForRole,
   canEditRole,
   getEditableTiers,
+  getUserRoleLevel,
+  ROLE_LEVELS,
 } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
-import { ActionDropdown } from '../components/app'
-import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import { ActionDropdown, useToast } from '../components/app'
+import { printCleanTable, downloadPdfTable, resolveFoundationName } from '../utils/printHelper'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 import { handleApiExport, downloadFileFromApi } from '../utils/exportUtils'
 import {
   SquircleActionButton,
@@ -308,89 +309,7 @@ function ModernKpiCard({ label, value, subtext, tag, variant = 'emerald', icon: 
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TOAST NOTIFICATION STACK (ZERO SWEETALERT2)
-// ─────────────────────────────────────────────────────────────────────────────
-function ToastStack({ items, onDismiss }) {
-  return (
-    <div
-      aria-live="polite"
-      aria-atomic="true"
-      className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full"
-    >
-      <AnimatePresence>
-        {items.map((n) => {
-          const isSuccess = n.type === 'success'
-          const isDanger = n.type === 'danger' || n.type === 'error'
-          const isWarning = n.type === 'warning'
-          const isInfo = n.type === 'info'
 
-          return (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, y: 16, scale: 0.94 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.94 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-              className={cn(
-                'pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md',
-                isSuccess && 'border-emerald-300 bg-white/95 text-emerald-950 shadow-emerald-900/10 dark:border-emerald-800 dark:bg-slate-900/95 dark:text-emerald-100',
-                isDanger && 'border-rose-300 bg-white/95 text-rose-950 shadow-rose-900/10 dark:border-rose-800 dark:bg-slate-900/95 dark:text-rose-100',
-                isWarning && 'border-amber-300 bg-white/95 text-amber-950 shadow-amber-900/10 dark:border-amber-800 dark:bg-slate-900/95 dark:text-amber-100',
-                isInfo && 'border-sky-300 bg-white/95 text-sky-950 shadow-sky-900/10 dark:border-sky-800 dark:bg-slate-900/95 dark:text-sky-100'
-              )}
-            >
-              <div
-                className={cn(
-                  'flex size-8 shrink-0 items-center justify-center rounded-xl text-white shadow-xs',
-                  isSuccess && 'bg-gradient-to-br from-emerald-500 to-teal-700',
-                  isDanger && 'bg-gradient-to-br from-rose-500 to-red-700',
-                  isWarning && 'bg-gradient-to-br from-amber-500 to-orange-600',
-                  isInfo && 'bg-gradient-to-br from-sky-500 to-blue-700'
-                )}
-              >
-                {isSuccess && <CheckCircle2 className="size-4.5" strokeWidth={2.3} />}
-                {isDanger && <XCircle className="size-4.5" strokeWidth={2.3} />}
-                {isWarning && <AlertTriangle className="size-4.5" strokeWidth={2.3} />}
-                {isInfo && <Info className="size-4.5" strokeWidth={2.3} />}
-              </div>
-
-              <div className="flex-1 min-w-0 pt-0.5">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-black leading-tight">{n.title}</p>
-                  <span
-                    className={cn(
-                      'rounded-full px-1.5 py-0.2 text-[9px] font-black uppercase tracking-wider',
-                      isSuccess && 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300',
-                      isDanger && 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300',
-                      isWarning && 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300',
-                      isInfo && 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300'
-                    )}
-                  >
-                    {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Peringatan' : 'Info'}
-                  </span>
-                </div>
-                {n.message && (
-                  <p className="mt-1 text-[11px] font-medium leading-normal text-slate-600 dark:text-slate-300">
-                    {n.message}
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X className="size-3.5" />
-              </button>
-            </motion.div>
-          )
-        })}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HALAMAN UTAMA MASTER HAK AKSES & ROLE
@@ -398,12 +317,15 @@ function ToastStack({ items, onDismiss }) {
 export default function MasterHakAksesPage() {
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const userRoles = useMemo(() => user?.roles || (user?.role ? [user.role] : []), [user])
 
-  const isSuperAdmin = hasAnyRole(userRoles, ROLES.SUPER_ADMIN)
-  const canManageGlobalAccess = isSuperAdmin || isGlobalAccessManager(userRoles)
-  const canManageUnitAccess = isUnitAccessManager(userRoles)
-  const canManageAccess = isSuperAdmin || canManageGlobalAccess || canManageUnitAccess
+  const userLevel = getUserRoleLevel(user)
+  const isSuperAdmin = userLevel === ROLE_LEVELS.SUPER_ADMIN // Level 1
+  const canManageGlobalAccess = userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
+  const canManageUnitAccess = userLevel === ROLE_LEVELS.OPERATOR || userLevel === ROLE_LEVELS.KEPALA_SEKOLAH // Level 3-4: Operator, Kepsek & Divisi
+  const canManageAccess = userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH // Level 1 s/d 4
 
   const [activeTab, setActiveTab] = useState(canManageGlobalAccess ? 'roles' : 'pegawai')
   const [roleCategoryFilter, setRoleCategoryFilter] = useState('semua')
@@ -413,14 +335,10 @@ export default function MasterHakAksesPage() {
   const [selectedUnitId, setSelectedUnitId] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
-  // Toast Notification Stack State
-  const [notifications, setNotifications] = useState([])
+  // Toast Notifications
+  const toast = useToast()
   const notify = (title, message = '', type = 'success') => {
-    const id = Date.now() + Math.random().toString(36).substring(2, 6)
-    setNotifications((prev) => [...prev, { id, title, message, type }])
-    setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id))
-    }, 4000)
+    toast(title, message, type)
   }
 
   // Modals state
@@ -547,6 +465,7 @@ export default function MasterHakAksesPage() {
       queryClient.invalidateQueries(['hak-akses-roles'])
       queryClient.invalidateQueries(['hak-akses-roles-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
+      queryClient.invalidateQueries(['navigation-modules'])
       setIsRoleModalOpen(false)
       notify('Berhasil!', res?.message || 'Role baru berhasil ditambahkan.', 'success')
     },
@@ -560,6 +479,7 @@ export default function MasterHakAksesPage() {
     onSuccess: (res) => {
       queryClient.invalidateQueries(['hak-akses-roles'])
       queryClient.invalidateQueries(['hak-akses-roles-all'])
+      queryClient.invalidateQueries(['navigation-modules'])
       setIsRoleModalOpen(false)
       setSelectedRole(null)
       notify('Berhasil!', res?.message || 'Perubahan matriks role berhasil disimpan.', 'success')
@@ -575,6 +495,7 @@ export default function MasterHakAksesPage() {
       queryClient.invalidateQueries(['hak-akses-roles'])
       queryClient.invalidateQueries(['hak-akses-roles-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
+      queryClient.invalidateQueries(['navigation-modules'])
       setDeleteTargetRole(null)
       notify('Terhapus!', res?.message || 'Role berhasil dihapus.', 'success')
     },
@@ -589,6 +510,7 @@ export default function MasterHakAksesPage() {
       queryClient.invalidateQueries(['hak-akses-permissions'])
       queryClient.invalidateQueries(['hak-akses-permissions-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
+      queryClient.invalidateQueries(['navigation-modules'])
       setIsPermModalOpen(false)
       notify('Berhasil!', res?.message || 'Izin akses baru berhasil ditambahkan.', 'success')
     },
@@ -603,6 +525,7 @@ export default function MasterHakAksesPage() {
       queryClient.invalidateQueries(['hak-akses-permissions'])
       queryClient.invalidateQueries(['hak-akses-permissions-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
+      queryClient.invalidateQueries(['navigation-modules'])
       setDeleteTargetPerm(null)
       notify('Terhapus!', 'Izin akses berhasil dihapus.', 'success')
     },
@@ -618,6 +541,7 @@ export default function MasterHakAksesPage() {
       queryClient.invalidateQueries(['hak-akses-roles'])
       queryClient.invalidateQueries(['hak-akses-roles-all'])
       queryClient.invalidateQueries(['hak-akses-stats'])
+      queryClient.invalidateQueries(['navigation-modules'])
       setIsPegawaiModalOpen(false)
       setSelectedEmployee(null)
       notify('Berhasil!', res?.message || 'Hak akses pegawai berhasil diperbarui.', 'success')
@@ -709,7 +633,7 @@ export default function MasterHakAksesPage() {
     {
       key: 'pegawai',
       label: 'Akses Pegawai',
-      count: stats.total_pegawai_unit || 300,
+      count: metaPegawai.total !== undefined ? metaPegawai.total : (stats.total_pegawai_unit ?? 0),
       icon: Users,
       description: 'Penugasan role dan otoritas akun staf yayasan',
     },
@@ -792,7 +716,7 @@ export default function MasterHakAksesPage() {
     if (isPdf) {
       downloadPdfTable({
         title: printTitle,
-        subtitle: 'Sistem Manajemen Sekolah Terpadu - Yayasan Dar El-Iman Padang',
+        subtitle: `Sistem Manajemen Sekolah Terpadu - ${foundationName}`,
         columns,
         rows,
         filename: `rekap_hak_akses_${activeTab}.pdf`,
@@ -800,7 +724,7 @@ export default function MasterHakAksesPage() {
     } else {
       printCleanTable({
         title: printTitle,
-        subtitle: 'Sistem Manajemen Sekolah Terpadu - Yayasan Dar El-Iman Padang',
+        subtitle: `Sistem Manajemen Sekolah Terpadu - ${foundationName}`,
         columns,
         rows,
       })
@@ -809,7 +733,6 @@ export default function MasterHakAksesPage() {
 
   return (
     <PageContainer maxW="7xl">
-      <ToastStack items={notifications} onDismiss={(id) => setNotifications((n) => n.filter((x) => x.id !== id))} />
 
       {/* Print Option Modal */}
       <PrintOptionModal
@@ -862,7 +785,7 @@ export default function MasterHakAksesPage() {
               <div className="flex items-center gap-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-emerald-200/80 dark:border-emerald-800/60 px-3 py-1.5 shadow-2xs">
                 <Shield className="size-4 text-emerald-700 dark:text-emerald-400" />
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                  {stats.total_role ?? 30} Role Terdaftar
+                  {stats.total_role ?? 0} Role Terdaftar
                 </span>
               </div>
             </div>
@@ -873,7 +796,7 @@ export default function MasterHakAksesPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
           <ModernKpiCard
             label="Total Role Sistem"
-            value={stats.total_role ?? 30}
+            value={stats.total_role ?? 0}
             subtext="Kelompok peran terdaftar"
             tag="RBAC"
             variant="emerald"
@@ -881,7 +804,7 @@ export default function MasterHakAksesPage() {
           />
           <ModernKpiCard
             label="Izin Akses (Permissions)"
-            value={stats.total_permission ?? 381}
+            value={stats.total_permission ?? 0}
             subtext="Modul & aksi terproteksi"
             tag="Aksi"
             variant="teal"
@@ -889,7 +812,7 @@ export default function MasterHakAksesPage() {
           />
           <ModernKpiCard
             label="Pegawai Tercover"
-            value={stats.total_pegawai_unit ?? 300}
+            value={metaPegawai.total !== undefined ? metaPegawai.total : (stats.total_pegawai_unit ?? 0)}
             subtext="Civitas staf & guru yayasan"
             tag="Civitas"
             variant="blue"
@@ -957,7 +880,7 @@ export default function MasterHakAksesPage() {
           <AppDataTable
             title="Akses Pegawai"
             description="Penetapan peran, otoritas akun, dan hak akses staf civitas sekolah."
-            badge={`${metaPegawai.total || listPegawai.length} pegawai`}
+            badge={`${metaPegawai.total !== undefined ? metaPegawai.total : listPegawai.length} pegawai`}
             icon={Users}
             actions={
               <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
@@ -1036,11 +959,11 @@ export default function MasterHakAksesPage() {
             hasActiveFilters={hasActiveFilters}
             isLoading={isLoadingPegawai}
             isEmpty={!isLoadingPegawai && listPegawai.length === 0}
-            emptyTitle="Data Pegawai Tidak Ditemukan"
-            emptyDescription="Coba sesuaikan kata kunci pencarian atau opsi filter aktif."
+            emptyTitle={hasActiveFilters ? "Data Pegawai Tidak Ditemukan" : "Belum Ada Data Pegawai"}
+            emptyDescription={hasActiveFilters ? "Coba sesuaikan kata kunci pencarian atau opsi filter aktif." : "Belum ada data pegawai yang terdaftar dalam sistem. Kelola data pegawai di menu Master Pegawai."}
             page={page}
             totalPages={metaPegawai.last_page || 1}
-            totalItems={metaPegawai.total || listPegawai.length}
+            totalItems={metaPegawai.total !== undefined ? metaPegawai.total : listPegawai.length}
             itemsPerPage={metaPegawai.per_page || 15}
             onPageChange={setPage}
             serverControlled
@@ -1293,6 +1216,11 @@ export default function MasterHakAksesPage() {
                           {/* Tier & Cakupan */}
                           <td className="px-4 py-3.5 text-center">
                             <div className="flex flex-col items-center gap-1">
+                              {role.level ? (
+                                <span className="rounded-full px-2 py-0.5 text-[9px] font-black border bg-emerald-100/90 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700">
+                                  Tingkat {role.level}
+                                </span>
+                              ) : null}
                               {tier ? (
                                 <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-black border', colors.bg, colors.text, colors.border)}>
                                   {tier.label}
@@ -1830,6 +1758,7 @@ function RoleFormModal({
 }) {
   const isEdit = Boolean(initialData?.id && !String(initialData.id).startsWith('default-'))
   const [name, setName] = useState('')
+  const [level, setLevel] = useState(5)
   const [selectedPerms, setSelectedPerms] = useState([])
   const [searchPerm, setSearchPerm] = useState('')
   const [expandedModuls, setExpandedModuls] = useState({})
@@ -1838,12 +1767,14 @@ function RoleFormModal({
     if (isOpen) {
       if (initialData) {
         setName(initialData.name || '')
+        setLevel(initialData.level ?? 5)
         const currentPerms = (initialData.permissions || []).map((p) =>
           typeof p === 'string' ? p : p.name
         )
         setSelectedPerms(currentPerms)
       } else {
         setName('')
+        setLevel(5)
         setSelectedPerms([])
       }
       setSearchPerm('')
@@ -1883,6 +1814,7 @@ function RoleFormModal({
     if (!name.trim()) return
     onSubmit({
       name: name.trim(),
+      level: Number(level) || 5,
       permissions: selectedPerms,
     })
   }
@@ -1978,6 +1910,34 @@ function RoleFormModal({
                     className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                   />
                 </div>
+              </div>
+
+              {/* Tingkat Hierarki Tata Kelola (Level 1-9) */}
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Tingkat Tata Kelola (Level 1–9) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={level}
+                    onChange={(e) => setLevel(Number(e.target.value))}
+                    disabled={initialData?.name === 'Super Admin'}
+                    className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-60"
+                  >
+                    <option value={1}>Tingkat 1 — Super Admin & Admin (IT & System Admin)</option>
+                    <option value={2}>Tingkat 2 — Pimpinan & Badan Hukum Yayasan</option>
+                    <option value={3}>Tingkat 3 — Operator & Tata Usaha (Pelaksana Administrasi)</option>
+                    <option value={4}>Tingkat 4 — Kepala Sekolah & Divisi Pendidikan (Pimpinan Satuan)</option>
+                    <option value={5}>Tingkat 5 — Tenaga Pendidik / Guru & Pembimbing</option>
+                    <option value={6}>Tingkat 6 — Musyrif Asrama / Kepengasuhan</option>
+                    <option value={7}>Tingkat 7 — Orang Tua / Wali Murid</option>
+                    <option value={8}>Tingkat 8 — Siswa / Peserta Didik</option>
+                    <option value={9}>Tingkat 9 — Alumni Lembaga</option>
+                  </select>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  Hierarki tata kelola menentukan prioritas wewenang dan batasan akses sistem terpadu.
+                </p>
               </div>
 
               {/* Header Pemilihan Permissions */}
@@ -2268,18 +2228,30 @@ function PegawaiRoleModal({
   isSubmitting = false,
 }) {
   const [roleName, setRoleName] = useState('')
+  const [additionalRoles, setAdditionalRoles] = useState([])
   const [selectedPerms, setSelectedPerms] = useState([])
   const [password, setPassword] = useState('')
 
+  const empLevel = getUserRoleLevel(employee?.user || employee?.roles || employee?.primary_role)
   const isProtectedEmployee =
-    employee?.primary_role === 'Super Admin' ||
-    employee?.primary_role === 'Admin' ||
+    empLevel <= ROLE_LEVELS.ADMIN || // Level 1 & 2
     employee?.is_super_admin
 
   React.useEffect(() => {
     if (isOpen && employee) {
       const initialRole = getSmartDefaultRole(employee, availableRoles)
       setRoleName(initialRole)
+
+      const existingRoles = Array.isArray(employee.roles)
+        ? employee.roles
+        : typeof employee.roles?.toArray === 'function'
+        ? employee.roles.toArray()
+        : []
+      const extraRoles = existingRoles.filter(
+        (r) => r !== initialRole && availableRoles.includes(r)
+      )
+      setAdditionalRoles(extraRoles)
+
       setSelectedPerms(
         (employee.direct_permissions || []).filter((permission) => allPermissions.includes(permission))
       )
@@ -2289,12 +2261,19 @@ function PegawaiRoleModal({
 
   if (!isOpen || !employee) return null
 
+  const handleToggleAdditionalRole = (r) => {
+    setAdditionalRoles((prev) =>
+      prev.includes(r) ? prev.filter((item) => item !== r) : [...prev, r]
+    )
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     onSubmit({
       employeeId: employee.id,
       payload: {
         role_name: roleName,
+        additional_roles: additionalRoles.filter((r) => r !== roleName),
         permissions: selectedPerms,
         ...(password.trim() ? { password: password.trim() } : {}),
       },
@@ -2307,6 +2286,10 @@ function PegawaiRoleModal({
     .slice(0, 2)
     .join('')
     .toUpperCase()
+
+  const optionalRoles = availableRoles.filter(
+    (r) => r !== roleName && !['Super Admin', 'Admin'].includes(r)
+  )
 
   return (
     <div
@@ -2430,7 +2413,11 @@ function PegawaiRoleModal({
                 <select
                   disabled={isProtectedEmployee}
                   value={roleName}
-                  onChange={(e) => setRoleName(e.target.value)}
+                  onChange={(e) => {
+                    const newRole = e.target.value
+                    setRoleName(newRole)
+                    setAdditionalRoles((prev) => prev.filter((r) => r !== newRole))
+                  }}
                   className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-60"
                 >
                   {availableRoles.map((r) => (
@@ -2440,6 +2427,48 @@ function PegawaiRoleModal({
                   ))}
                 </select>
               </div>
+
+              {/* Pilihan Tugas / Peran Tambahan (Modular Multi-Role) */}
+              {!isProtectedEmployee && optionalRoles.length > 0 && (
+                <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/40 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-emerald-950 dark:text-emerald-200">
+                      Tugas / Peran Tambahan (Opsional)
+                    </label>
+                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
+                      Modular RBAC
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3 leading-relaxed">
+                    Centang peran di bawah jika pegawai merangkap tugas (misal: Guru Mapel yang juga Guru Tahfizh, Pembimbing Mutaba'ah, atau Musyrif Asrama).
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {optionalRoles.map((r) => {
+                      const isChecked = additionalRoles.includes(r)
+                      return (
+                        <label
+                          key={r}
+                          onClick={() => handleToggleAdditionalRole(r)}
+                          className={cn(
+                            'flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all select-none',
+                            isChecked
+                              ? 'border-emerald-500 bg-white text-emerald-900 shadow-xs dark:border-emerald-600 dark:bg-slate-900 dark:text-emerald-200'
+                              : 'border-slate-200/80 bg-slate-50/60 text-slate-700 hover:bg-white dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300'
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}} // handled by parent label click
+                            className="size-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none"
+                          />
+                          <span className="truncate">{r}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30 shrink-0">

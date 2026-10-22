@@ -78,16 +78,25 @@ export default function LaporanAkademikPage() {
     load()
   }, [load])
 
+  const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'passed' | 'remedial'
+
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows
+    let result = rows
+    if (statusFilter === 'passed') {
+      result = result.filter((r) => Boolean(r.is_passed))
+    } else if (statusFilter === 'remedial') {
+      result = result.filter((r) => !r.is_passed)
+    }
+
+    if (!search.trim()) return result
     const q = search.toLowerCase()
-    return rows.filter((r) => {
+    return result.filter((r) => {
       const name = (r.student?.full_name || r.student?.nama || '').toLowerCase()
       const nis = (r.student?.nis || '').toLowerCase()
       const mapel = (r.subject?.name || '').toLowerCase()
       return name.includes(q) || nis.includes(q) || mapel.includes(q)
     })
-  }, [rows, search])
+  }, [rows, search, statusFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / perPage))
   const paginatedRows = useMemo(() => {
@@ -97,8 +106,8 @@ export default function LaporanAkademikPage() {
 
   const stats = useMemo(() => {
     const values = rows.map((row) => Number(row.final_score || 0))
-    const passed = rows.filter((row) => row.is_passed).length
-    const avg = values.length ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : 0
+    const avg = values.length ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : '—'
+    const passed = rows.filter((row) => Boolean(row.is_passed)).length
     return {
       total: rows.length,
       avg,
@@ -222,6 +231,11 @@ export default function LaporanAkademikPage() {
           subtitle="Tercatat dalam sistem"
           variant="info"
           delay={0}
+          active={statusFilter === 'all'}
+          onClick={() => {
+            setStatusFilter('all')
+            setCurrentPage(1)
+          }}
         />
         <MasterStatCard
           icon={Sparkles}
@@ -235,24 +249,70 @@ export default function LaporanAkademikPage() {
           icon={CheckCircle2}
           label="Siswa Tuntas"
           value={stats.passed}
-          subtitle="Mencapai KKM"
+          subtitle={stats.total > 0 ? `${stats.passed} dari ${stats.total} entri (${((stats.passed / stats.total) * 100).toFixed(1)}%)` : 'Belum ada data'}
           variant="success"
           delay={100}
+          active={statusFilter === 'passed'}
+          onClick={() => {
+            setStatusFilter(statusFilter === 'passed' ? 'all' : 'passed')
+            setCurrentPage(1)
+          }}
         />
         <MasterStatCard
           icon={AlertTriangle}
           label="Perlu Remedial"
           value={stats.remedial}
-          subtitle="Belum mencapai KKM"
+          subtitle={stats.total > 0 ? `${stats.remedial} dari ${stats.total} entri (${((stats.remedial / stats.total) * 100).toFixed(1)}%)` : 'Belum ada data'}
           variant="danger"
           delay={150}
+          active={statusFilter === 'remedial'}
+          onClick={() => {
+            setStatusFilter(statusFilter === 'remedial' ? 'all' : 'remedial')
+            setCurrentPage(1)
+          }}
         />
       </MasterStatsGrid>
 
+      {/* KPI Definition & Drilldown Transparency Banner */}
+      <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-white p-4 text-xs dark:border-emerald-800/60 dark:bg-[#13221f] dark:from-[#13221f] dark:to-[#1B2433]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-emerald-600 px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
+                Formula KPI Ketuntasan
+              </span>
+              <span className="font-bold text-slate-800 dark:text-slate-100">
+                Tingkat Kelulusan KKM: {stats.total > 0 ? `${((stats.passed / stats.total) * 100).toFixed(1)}%` : '—'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              <strong className="text-slate-700 dark:text-slate-200">Rumus:</strong> (Siswa Nilai Akhir &ge; KKM / Total Catatan Leger) &times; 100% • <strong className="text-slate-700 dark:text-slate-200">Pembilang:</strong> {stats.passed} catatan tuntas • <strong className="text-slate-700 dark:text-slate-200">Penyebut:</strong> {stats.total} catatan total • <strong className="text-slate-700 dark:text-slate-200">Batas KKM:</strong> 75.0 (Skala 100).
+            </p>
+          </div>
+          {statusFilter !== 'all' && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="rounded-lg bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300/80">
+                Filter Aktif: {statusFilter === 'passed' ? 'Siswa Tuntas' : 'Perlu Remedial'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('all')
+                  setCurrentPage(1)
+                }}
+                className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer"
+              >
+                Reset Filter
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* TAILGRIDS EMERALD DATATABLE CONTAINER */}
-      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header Terstruktur 3-Baris */}
-        <div className="p-4 sm:p-6 space-y-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20">
+        <div className="p-4 sm:p-6 space-y-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Leger Nilai Siswa</h2>

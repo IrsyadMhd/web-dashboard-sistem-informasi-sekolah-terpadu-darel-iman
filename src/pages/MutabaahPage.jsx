@@ -8,11 +8,12 @@ import Swal from '@/components/tailgrids/compat/swal-tailgrids'
 import { useLocation, useSearchParams, Navigate } from 'react-router-dom'
 import { mutabaahService } from '../services/mutabaahService'
 import { useAuthStore } from '../stores/authStore'
-import { isParentRole } from '../auth/portalResolver'
+import { isParentRole, isStudentRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import MutabaahEnterprisePage from './MutabaahEnterprisePage'
 import MutabaahDailySpreadsheet from './MutabaahDailySpreadsheet'
 import MutabaahAnalyticsPage from './MutabaahAnalyticsPage'
 import MutabaahFamilyPortal from './MutabaahFamilyPortal'
+import { printOfficialMutabaahSheet } from '../utils/printHelper'
 import { Button } from '@/components/tailgrids/core/button'
 import {
   Dialog,
@@ -29,7 +30,9 @@ import {
   MasterStatCard,
   MasterStatsGrid,
 } from '../components/master-data'
+import { Tabs } from '../components/ui/tabs'
 import './MutabaahPage.css'
+
 
 const statusMeta = {
   baik: { label: 'Baik', icon: Check, className: 'good' },
@@ -81,8 +84,8 @@ export default function MutabaahPage() {
     'assign-mentor': 'supervisor-assignments',
   }[view]
 
-  if (isParentRole(roles)) return <Navigate to="/portal-orangtua" replace />
-  if (roles.includes('Siswa')) return <MutabaahFamilyPortal mode="student" />
+  if (isParentRole(roles) || getUserRoleLevel(roles) === ROLE_LEVELS.ORANG_TUA) return <Navigate to="/portal-orangtua?tab=mutabaah" replace />
+  if (isStudentRole(roles) || getUserRoleLevel(roles) === ROLE_LEVELS.SISWA) return <Navigate to="/portal-siswa" replace />
   if (!view || view === 'dashboard' || view === 'rekap' || view === 'evaluasi') return <MutabaahAnalyticsPage view={view || 'dashboard'} />
   if (view === 'parents') return <MutabaahFamilyPortal mode="parent" />
   if (enterpriseResource) return <MutabaahEnterprisePage resource={enterpriseResource} />
@@ -118,7 +121,8 @@ function LegacyMutabaahPage() {
   const [filterJenis, setFilterJenis] = useState('')
   const [showMore, setShowMore] = useState(false)
   const weekDays = useMemo(() => getWeekDays(date), [date])
-  const canManage = Boolean(options.can_manage_agenda) || roles.includes('Super Admin') || roles.some((r) => /tata usaha|\btu\b/i.test(r)) || permissions.includes('mutabaah.agenda.manage')
+  const userLevel = getUserRoleLevel(user)
+  const canManage = Boolean(options.can_manage_agenda) || userLevel === ROLE_LEVELS.SUPER_ADMIN || userLevel === ROLE_LEVELS.OPERATOR || permissions.includes('mutabaah.agenda.manage')
   const setTab = (nextTab) => {
     setTabState(nextTab)
     setSearchParams(nextTab === 'agenda' ? { tab: 'agenda' } : {})
@@ -189,6 +193,16 @@ function LegacyMutabaahPage() {
     ...Object.fromEntries(weekDays.flatMap((day) => (weekData[day]?.agendas || []).map((agenda) => [`${day}:${agenda.id}`, status]))),
   }))
 
+  const handlePrintMutabaahSheet = () => {
+    printOfficialMutabaahSheet({
+      student: selectedStudent || {},
+      unit: selectedStudent?.jenis_unit || selectedStudent?.unit,
+      dateFrom: weekDays?.[0] || date,
+      teacherNotes: note,
+      homeroomTeacher: { name: selectedStudent?.homeroom_teacher || 'Wali Kelas' },
+    })
+  }
+
   const saveDaily = async () => {
     const completedDays = weekDays.filter((day) => {
       const agendasForDay = weekData[day]?.agendas || []
@@ -250,10 +264,15 @@ function LegacyMutabaahPage() {
     <div className="mutabaah-page">
       <header className="mutabaah-title">
         <div><span className="eyebrow">Pembinaan Siswa</span><h1>Mutaba’ah Yaumiyyah</h1><p>Monitoring pembiasaan dan ibadah harian siswa berdasarkan jenis unit pendidikan.</p></div>
-        <div className="mutabaah-tabs">
-          <button className={tab === 'input' ? 'active' : ''} onClick={() => setTab('input')}><BookHeart size={17} /> Input Harian</button>
-          {canManage && <button className={tab === 'agenda' ? 'active' : ''} onClick={() => setTab('agenda')}><ListChecks size={17} /> Rincian Agenda TU</button>}
-        </div>
+        <Tabs
+          tabs={[
+            { id: 'input', label: 'Input Harian', icon: BookHeart },
+            ...(canManage ? [{ id: 'agenda', label: 'Rincian Agenda TU', icon: ListChecks }] : []),
+          ]}
+          activeTab={tab}
+          onChange={setTab}
+          ariaLabel="Navigasi Mutabaah"
+        />
       </header>
 
       {tab === 'input' ? (
@@ -289,14 +308,37 @@ function LegacyMutabaahPage() {
                 </tbody></table></div>
               )}
               {!!daily?.agendas?.length && <button className="more-agenda" onClick={() => setShowMore((value) => !value)}>{showMore ? <ChevronUp size={16} /> : <ChevronDown size={16} />} {showMore ? 'Tampilkan lebih sedikit' : `11 – ${daily.agendas.length}`}</button>}
-              {!!daily?.agendas?.length && <section className="signature-panel"><h3>Paraf</h3><div className="signature-grid">{weekDays.map((day, index) => <div className="signature-day" key={day}><span>Ustadz</span><span>Ortu</span><div className={index === 0 ? 'signed' : ''}>{index === 0 ? 'Fajar' : '........'}</div><div className={index === 0 ? 'signed' : ''}>{index === 0 ? 'Ortu' : '........'}</div></div>)}</div></section>}
+              {!!daily?.agendas?.length && (
+                <section className="signature-panel">
+                  <h3>Paraf</h3>
+                  <div className="signature-grid">
+                    {weekDays.map((day) => {
+                      const mentorName = weekData[day]?.daily_note?.mentor?.name
+                      const hasMentorSign = Boolean(mentorName || weekData[day]?.daily_note?.mentor_id)
+                      const isParentSigned = Boolean(weekData[day]?.daily_note?.parent_verified || weekData[day]?.daily_note?.parent_signature)
+                      return (
+                        <div className="signature-day" key={day}>
+                          <span>Ustadz</span>
+                          <span>Ortu</span>
+                          <div className={hasMentorSign ? 'signed' : ''} title={mentorName || 'Belum diparaf'}>
+                            {mentorName ? mentorName.split(' ')[0] : (hasMentorSign ? 'Diparaf' : '-')}
+                          </div>
+                          <div className={isParentSigned ? 'signed' : ''} title={isParentSigned ? 'Tervalidasi orang tua' : 'Belum diparaf orang tua'}>
+                            {isParentSigned ? 'Ortu' : '-'}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
             </section>
 
             <aside className="mutabaah-side">
               <section className="info-card"><h3>Informasi Siswa</h3><div className="student-profile"><div className="avatar">{selectedStudent?.name?.split(' ').map((v) => v[0]).slice(0, 2).join('')}</div><div><b>{selectedStudent?.name || '-'}</b><span>NIS: {selectedStudent?.nis || '-'}</span><span>Kelas: {selectedStudent?.class_name || '-'}</span><span>Rombel: {selectedStudent?.rombel_name || selectedStudent?.class_name || '-'}</span><em>Wali Kelas: {selectedStudent?.homeroom_teacher || '-'}</em></div></div></section>
               <section className="info-card"><h3>Ringkasan Hari Ini</h3><div className="summary-grid">{Object.entries(statusMeta).map(([key, meta]) => <div className={`summary-pill ${meta.className}`} key={key}><span>{meta.label}</span><b>{summary[key]}</b><small>{daily?.agendas?.length ? Math.round((summary[key] / daily.agendas.length) * 100) : 0}%</small></div>)}</div></section>
               <section className="info-card"><h3>Catatan Hari Ini</h3><textarea className="daily-note" maxLength={255} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Tulis evaluasi dan tindak lanjut untuk siswa..." /><small>{note.length} / 255</small></section>
-              <section className="info-card quick-actions"><h3>Aksi Cepat</h3><button onClick={() => Swal.fire({ icon: 'info', title: 'Salin data', text: 'Pilih hari sebelumnya lalu gunakan status sebagai acuan.' })}><Copy /> Salin dari Hari Sebelumnya</button><button onClick={() => setAll('baik')}><CalendarDays /> Isi Mingguan</button><button onClick={() => window.print()}><Printer /> Cetak Lembar Mutaba’ah</button><button onClick={() => window.print()}><FileDown /> Export PDF</button><button onClick={() => Swal.fire({ icon: 'info', title: 'Export Excel', text: 'Data mingguan siap diekspor dari menu laporan.' })}><FileSpreadsheet /> Export Excel</button></section>
+              <section className="info-card quick-actions"><h3>Aksi Cepat</h3><button onClick={() => Swal.fire({ icon: 'info', title: 'Salin data', text: 'Pilih hari sebelumnya lalu gunakan status sebagai acuan.' })}><Copy /> Salin dari Hari Sebelumnya</button><button onClick={() => setAll('baik')}><CalendarDays /> Isi Mingguan</button><button onClick={handlePrintMutabaahSheet}><Printer /> Cetak Lembar Mutaba’ah</button><button onClick={handlePrintMutabaahSheet}><FileDown /> Export PDF</button><button onClick={() => Swal.fire({ icon: 'info', title: 'Export Excel', text: 'Data mingguan siap diekspor dari menu laporan.' })}><FileSpreadsheet /> Export Excel</button></section>
             </aside>
           </div>
         </>
@@ -439,7 +481,7 @@ function MutabaahOverviewPage({ view }) {
 
   if (view === 'evaluasi') {
     return (
-      <MasterDataPage className="education-unit-page mutabaah-page" hideBreadcrumb>
+      <MasterDataPage className="mutabaah-page" hideBreadcrumb>
         {/* 📊 KPI CARDS GRID */}
         <MasterStatsGrid>
           <MasterStatCard icon={BookHeart} label="Target Aktif" value={kpis?.total_students ? `${kpis.total_students} Siswa` : '100%'} description="Dipantau Periode Ini" variant="info" delay={40} />

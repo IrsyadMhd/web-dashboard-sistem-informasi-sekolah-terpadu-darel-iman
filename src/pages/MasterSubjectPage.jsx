@@ -41,13 +41,13 @@ import { subjectService } from '../services/subjectService'
 import { masterKurikulumService } from '../services/masterKurikulumService'
 import { educationUnitService } from '../services/educationUnitService'
 import { getUnitJenjang } from './MasterCapaianPembelajaranPage'
-import { ActionDropdown } from '../components/app'
-import { Checkbox } from '@/components/tailgrids/core/checkbox'
+import { ActionDropdown, useToast } from '../components/app'
+import { Checkbox } from '../components/ui/checkbox'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
 import { useAuthStore } from '../stores/authStore'
-import { isGlobalAccessManager } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { downloadFileFromApi } from '../utils/exportUtils'
 import {
@@ -163,104 +163,6 @@ function ModernKpiCard({
   )
 }
 
-// ── 2. TOAST NOTIFICATION STACK ──────────────────────────────────────────────
-function ToastStack({ items = [], onDismiss }) {
-  return (
-    <div
-      aria-live="polite"
-      aria-atomic="true"
-      className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none"
-    >
-      <AnimatePresence>
-        {items.map((n) => {
-          const isSuccess = n.type === 'success'
-          const isDanger = n.type === 'danger' || n.type === 'error'
-          const isWarning = n.type === 'warning'
-          const isInfo = n.type === 'info'
-
-          return (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                'pointer-events-auto relative overflow-hidden rounded-2xl border p-4 shadow-xl backdrop-blur-md',
-                isSuccess && 'border-emerald-200 bg-white/95 text-emerald-950 dark:border-emerald-800 dark:bg-[#182232]/95 dark:text-emerald-200',
-                isDanger && 'border-rose-200 bg-white/95 text-rose-950 dark:border-rose-800 dark:bg-[#182232]/95 dark:text-rose-200',
-                isWarning && 'border-amber-200 bg-white/95 text-amber-950 dark:border-amber-800 dark:bg-[#182232]/95 dark:text-amber-200',
-                isInfo && 'border-sky-200 bg-white/95 text-sky-950 dark:border-sky-800 dark:bg-[#182232]/95 dark:text-sky-200'
-              )}
-            >
-              {/* Top accent border */}
-              <div
-                className={cn(
-                  'absolute top-0 left-0 right-0 h-1',
-                  isSuccess && 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
-                  isDanger && 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-700',
-                  isWarning && 'bg-gradient-to-r from-amber-500 to-orange-600',
-                  isInfo && 'bg-gradient-to-r from-sky-500 to-blue-600'
-                )}
-              />
-
-              <div className="flex items-start gap-3">
-                <div
-                  className={cn(
-                    'flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
-                    isSuccess && 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/25',
-                    isDanger && 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/25',
-                    isWarning && 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/25',
-                    isInfo && 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/25'
-                  )}
-                >
-                  {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                  {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
-                  {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
-                  {isInfo && <Info className="size-5" strokeWidth={2.3} />}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                      {n.title}
-                    </h4>
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border',
-                        isSuccess && 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80',
-                        isDanger && 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
-                        isWarning && 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80',
-                        isInfo && 'bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80'
-                      )}
-                    >
-                      {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
-                    </span>
-                  </div>
-                  {n.message && (
-                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                      {n.message}
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onDismiss(n.id)}
-                  className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                  aria-label="Tutup notifikasi"
-                >
-                  <X className="size-4" strokeWidth={2.2} />
-                </button>
-              </div>
-            </motion.div>
-          )
-        })}
-      </AnimatePresence>
-    </div>
-  )
-}
-
 // ── 3. KOMPONEN UTAMA HALAMAN MASTER MATA PELAJARAN ──────────────────────────
 export default function MasterSubjectPage({
   embedded = false,
@@ -297,16 +199,9 @@ export default function MasterSubjectPage({
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false)
   const [importFile, setImportFile] = useState(null)
-  const [notifications, setNotifications] = useState([])
-
-  // Toast Helper
-  const notify = (title, message = '', type = 'success') => {
-    const id = Date.now() + Math.random().toString(36).slice(2, 6)
-    setNotifications((prev) => [...prev.slice(-3), { id, title, message, type }])
-    setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id))
-    }, 4000)
-  }
+  // Toast Helper (Global)
+  const toast = useToast()
+  const notify = (title, message = '', type = 'success') => toast(title, message, type)
 
   // Form State
   const [formData, setFormData] = useState({
@@ -340,10 +235,12 @@ export default function MasterSubjectPage({
     return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
   }, [user])
 
+  const userLevel = useMemo(() => getUserRoleLevel(user), [user])
+
   const canViewAllUnits = useMemo(() => {
     if (!user || userRoles.length === 0) return false
-    return isGlobalAccessManager(userRoles)
-  }, [user, userRoles])
+    return userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
+  }, [user, userRoles, userLevel])
 
   // Queries
   const { data: unitDropdown = [] } = useQuery({
@@ -852,11 +749,6 @@ export default function MasterSubjectPage({
 
   return (
     <PageContainer maxW="7xl">
-      {/* Toast Notification Stack */}
-      <ToastStack
-        items={notifications}
-        onDismiss={(id) => setNotifications((prev) => prev.filter((n) => n.id !== id))}
-      />
 
       {/* Print Option Modal */}
       <PrintOptionModal
@@ -1149,12 +1041,14 @@ export default function MasterSubjectPage({
                   return (
                     <tr
                       key={row.id}
+                      onClick={() => handleOpenDetail(row)}
+                      title="Klik baris untuk melihat detail mata pelajaran"
                       className={cn(
-                        'transition-colors hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20',
+                        'transition-colors hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer',
                         isSelected && 'bg-emerald-50/60 dark:bg-emerald-950/30'
                       )}
                     >
-                      <td className="px-3 py-3.5 text-center">
+                      <td className="px-3 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-center">
                           <Checkbox
                             size="sm"
@@ -1235,7 +1129,7 @@ export default function MasterSubjectPage({
                           <span>{row.status ? 'Aktif' : 'Nonaktif'}</span>
                         </span>
                       </td>
-                      <td className="px-2 py-3.5 text-center">
+                      <td className="px-2 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <span className="inline-flex justify-center">
                           <ActionDropdown
                             onView={() => handleOpenDetail(row)}

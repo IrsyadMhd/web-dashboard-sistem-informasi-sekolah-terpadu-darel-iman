@@ -44,4 +44,22 @@ export const tahfizhService = {
     const res = await api.get('/tahfizh/report', { params })
     return res.data
   },
+
+  // Ambil Top 5 Santri teratas (Unik & Tervalidasi)
+  getTopStudents: async (params = {}) => {
+    const res = await api.get('/tahfizh/top-students', { params })
+    return res.data
+  },
+
+  // Ambil Top 5 Unit Pendidikan
+  getTopUnits: async (params = {}) => {
+    const res = await api.get('/tahfizh/top-units', { params })
+    return res.data
+  },
+
+  // Ambil ringkasan pemantauan tahfizh
+  getMonitoringOverview: async (params = {}) => {
+    const res = await api.get('/tahfizh/monitoring', { params })
+    return res.data
+  },
 }

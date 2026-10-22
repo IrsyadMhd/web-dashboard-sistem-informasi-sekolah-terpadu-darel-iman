@@ -348,7 +348,7 @@ export default function AttendanceReportPage() {
 
   // ── 4. Summary Overall Metrics & 5 Colored Cards ────────────────────────
   const overallSummary = useMemo(() => {
-    const isFiltered = Boolean(search) || selectedStatusFilter !== 'all'
+    const isFiltered = Boolean(search) || selectedStatusFilter !== 'all' || Boolean(selectedUnitId) || Boolean(selectedClassId)
     let present = 0, late = 0, permission = 0, sick = 0, absent = 0
 
     if (isFiltered) {
@@ -381,10 +381,10 @@ export default function AttendanceReportPage() {
       }
     }
 
-    const total = present + late + permission + sick + absent || 1
+    const total = present + late + permission + sick + absent
 
     return { present, late, permission, sick, absent, total }
-  }, [timeFilteredRows, aggregatedReports, filteredReports, search, selectedStatusFilter])
+  }, [timeFilteredRows, aggregatedReports, filteredReports, search, selectedStatusFilter, selectedUnitId, selectedClassId])
 
   const cards = useMemo(
     () => [
@@ -394,7 +394,7 @@ export default function AttendanceReportPage() {
         value: overallSummary.present,
         icon: UserCheck,
         tone: 'emerald',
-        percent: (overallSummary.present / overallSummary.total) * 100,
+        percent: overallSummary.total > 0 ? (overallSummary.present / overallSummary.total) * 100 : null,
       },
       {
         label: 'Terlambat',
@@ -402,7 +402,7 @@ export default function AttendanceReportPage() {
         value: overallSummary.late,
         icon: Clock,
         tone: 'violet',
-        percent: (overallSummary.late / overallSummary.total) * 100,
+        percent: overallSummary.total > 0 ? (overallSummary.late / overallSummary.total) * 100 : null,
       },
       {
         label: 'Izin',
@@ -410,7 +410,7 @@ export default function AttendanceReportPage() {
         value: overallSummary.permission,
         icon: ClipboardCheck,
         tone: 'sky',
-        percent: (overallSummary.permission / overallSummary.total) * 100,
+        percent: overallSummary.total > 0 ? (overallSummary.permission / overallSummary.total) * 100 : null,
       },
       {
         label: 'Sakit',
@@ -418,7 +418,7 @@ export default function AttendanceReportPage() {
         value: overallSummary.sick,
         icon: Stethoscope,
         tone: 'amber',
-        percent: (overallSummary.sick / overallSummary.total) * 100,
+        percent: overallSummary.total > 0 ? (overallSummary.sick / overallSummary.total) * 100 : null,
       },
       {
         label: 'Alpha',
@@ -426,7 +426,7 @@ export default function AttendanceReportPage() {
         value: overallSummary.absent,
         icon: UserX,
         tone: 'rose',
-        percent: (overallSummary.absent / overallSummary.total) * 100,
+        percent: overallSummary.total > 0 ? (overallSummary.absent / overallSummary.total) * 100 : null,
       },
     ],
     [overallSummary]
@@ -537,6 +537,12 @@ export default function AttendanceReportPage() {
   const modalRows = useMemo(() => {
     if (!cardModal.isOpen) return []
     let list = timeFilteredRows
+    if (selectedUnitId) {
+      list = list.filter((r) => String(r.jadwal_pelajaran?.kelas?.unit_pendidikan_id || r.siswa?.unit_pendidikan_id || r.unit_id || '') === String(selectedUnitId))
+    }
+    if (selectedClassId) {
+      list = list.filter((r) => String(r.jadwal_pelajaran?.class_id || r.siswa?.kelas_id || r.class_id || '') === String(selectedClassId))
+    }
     if (cardModal.statusKey && cardModal.statusKey !== 'semua') {
       list = list.filter((r) => String(r.status_hadir || '').toLowerCase() === cardModal.statusKey)
     }
@@ -550,7 +556,7 @@ export default function AttendanceReportPage() {
       })
     }
     return list
-  }, [timeFilteredRows, cardModal.isOpen, cardModal.statusKey, cardModal.searchQuery])
+  }, [timeFilteredRows, cardModal.isOpen, cardModal.statusKey, cardModal.searchQuery, selectedUnitId, selectedClassId])
 
   const modalTotalPages = Math.max(1, Math.ceil(modalRows.length / MODAL_PAGE_SIZE))
   const paginatedModalRows = useMemo(() => {
@@ -655,7 +661,7 @@ export default function AttendanceReportPage() {
                   <Icon className="size-5 sm:size-6" />
                 </div>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${style.badge}`}>
-                  {percent.toFixed(1)}%
+                  {percent !== null && percent !== undefined ? `${percent.toFixed(1)}%` : '—'}
                 </span>
               </div>
               <div>
@@ -665,7 +671,7 @@ export default function AttendanceReportPage() {
                 </strong>
               </div>
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 group-hover:text-emerald-700 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
-                <span>dari total data</span>
+                <span>{overallSummary.total > 0 ? `${formatAngka(value)} dari ${formatAngka(overallSummary.total)} data` : 'Belum ada data'}</span>
                 <span className="inline-flex items-center gap-0.5 text-emerald-700 dark:text-emerald-400 font-bold group-hover:translate-x-0.5 transition-transform">
                   Detail &rarr;
                 </span>

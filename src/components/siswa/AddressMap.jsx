@@ -1,45 +1,59 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { FaMapMarkerAlt, FaCrosshairs, FaSearchLocation, FaSpinner, FaCheckCircle } from 'react-icons/fa'
+import {
+  getMapboxToken,
+  getMapTileConfig,
+  searchAddressGeocoding,
+  reverseGeocodeCoords,
+} from '../../utils/mapboxHelper'
 
 /**
- * AddressMap — Interactive map for address location selection using Leaflet CDN & OpenStreetMap Reverse Geocoding.
+ * AddressMap — Interactive map for address location selection using Mapbox (with OpenStreetMap fallback).
  * Automatically fetches Road Name, Province, City/Kabupaten, Kecamatan, and Kelurahan when pin is moved or clicked.
  */
 export default function AddressMap({ latitude, longitude, onLocationChange, onAddressSelect }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markerRef = useRef(null)
+  const tileLayerRef = useRef(null)
+  const [mapboxToken, setMapboxToken] = useState('')
   const [isLoaded, setIsLoaded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [isGeocoding, setIsGeocoding] = useState(false)
   const [lastDetectedAddress, setLastDetectedAddress] = useState('')
 
+  // Ambil token Mapbox dinamis dari database
+  useEffect(() => {
+    let isMounted = true
+    getMapboxToken().then((token) => {
+      if (isMounted && token) {
+        setMapboxToken(token)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   const defaultLat = latitude ? parseFloat(latitude) : -0.9471
   const defaultLng = longitude ? parseFloat(longitude) : 100.4172
 
-  // Reverse Geocoding via Nominatim
+  // Reverse Geocoding via Mapbox (fallback Nominatim OSM)
   const performReverseGeocode = useCallback(async (lat, lng) => {
     onLocationChange?.(lat, lng)
     setIsGeocoding(true)
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
-      )
-      const data = await response.json()
-      if (data && data.address) {
-        const addr = data.address
-        const road = addr.road || addr.pedestrian || addr.footway || addr.path || addr.suburb || ''
-        const houseNumber = addr.house_number ? ` No. ${addr.house_number}` : ''
-        const fullRoadName = road ? `${road}${houseNumber}` : (data.display_name?.split(',')[0] || '')
-        
-        const provinsi = addr.state || ''
-        const kota = addr.city || addr.town || addr.county || addr.city_district || addr.regency || ''
-        const kecamatan = addr.subdistrict || addr.city_district || addr.suburb || ''
-        const kelurahan = addr.village || addr.suburb || addr.neighbourhood || addr.quarter || ''
-        const postcode = addr.postcode || ''
+      const data = await reverseGeocodeCoords(lat, lng, mapboxToken)
+      if (data) {
+        const fullRoadName = data.road || ''
+        const provinsi = data.province || ''
+        const kota = data.city || ''
+        const kecamatan = data.district || ''
+        const kelurahan = data.subdistrict || ''
+        const postcode = data.postalCode || ''
 
-        const addressSummary = [fullRoadName, kelurahan, kecamatan, kota, provinsi].filter(Boolean).join(', ')
+        const addressSummary = data.summary || [fullRoadName, kelurahan, kecamatan, kota, provinsi].filter(Boolean).join(', ')
         setLastDetectedAddress(addressSummary)
 
         onAddressSelect?.({
@@ -51,7 +65,7 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
           kecamatan,
           kelurahan,
           postcode,
-          displayName: data.display_name || ''
+          displayName: data.displayName || addressSummary
         })
       }
     } catch (err) {
@@ -59,7 +73,7 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
     } finally {
       setIsGeocoding(false)
     }
-  }, [onLocationChange, onAddressSelect])
+  }, [onLocationChange, onAddressSelect, mapboxToken])
 
   // Dynamically inject Leaflet CDN CSS & JS
   useEffect(() => {
@@ -114,10 +128,14 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
       scrollWheelZoom: true,
     })
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
+    const tileCfg = getMapTileConfig(mapboxToken)
+    const tileLayer = L.tileLayer(tileCfg.url, {
+      attribution: tileCfg.attribution,
+      maxZoom: tileCfg.maxZoom,
+      tileSize: tileCfg.tileSize,
+      zoomOffset: tileCfg.zoomOffset,
     }).addTo(map)
+    tileLayerRef.current = tileLayer
 
     const marker = L.marker([initialLat, initialLng], { draggable: true }).addTo(map)
 
@@ -142,6 +160,23 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
       markerRef.current = null
     }
   }, [isLoaded, performReverseGeocode])
+
+  // Update tile layer dynamically if mapboxToken is resolved after map load
+  useEffect(() => {
+    if (mapInstanceRef.current && mapboxToken && window.L) {
+      if (tileLayerRef.current) {
+        mapInstanceRef.current.removeLayer(tileLayerRef.current)
+      }
+      const tileCfg = getMapTileConfig(mapboxToken)
+      const newLayer = window.L.tileLayer(tileCfg.url, {
+        attribution: tileCfg.attribution,
+        maxZoom: tileCfg.maxZoom,
+        tileSize: tileCfg.tileSize,
+        zoomOffset: tileCfg.zoomOffset,
+      }).addTo(mapInstanceRef.current)
+      tileLayerRef.current = newLayer
+    }
+  }, [mapboxToken])
 
   // Update marker when lat/lng props change externally
   useEffect(() => {
@@ -181,13 +216,10 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
     if (!searchQuery.trim()) return
     setIsSearching(true)
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=id`
-      )
-      const data = await response.json()
-      if (data && data.length > 0) {
-        const parsedLat = parseFloat(data[0].lat)
-        const parsedLng = parseFloat(data[0].lon)
+      const data = await searchAddressGeocoding(searchQuery, mapboxToken)
+      if (data) {
+        const parsedLat = data.lat
+        const parsedLng = data.lng
         if (mapInstanceRef.current && markerRef.current) {
           markerRef.current.setLatLng([parsedLat, parsedLng])
           mapInstanceRef.current.setView([parsedLat, parsedLng], 16)
@@ -202,7 +234,7 @@ export default function AddressMap({ latitude, longitude, onLocationChange, onAd
     } finally {
       setIsSearching(false)
     }
-  }, [searchQuery, performReverseGeocode])
+  }, [searchQuery, performReverseGeocode, mapboxToken])
 
   return (
     <div className="space-y-3">

@@ -72,20 +72,10 @@ import { useAuthStore } from '../stores/authStore'
 import { worshipAttendanceService } from '../services/worshipAttendanceService'
 import { studentService } from '../services/studentService'
 import { kelasService } from '../services/kelasService'
+import { educationUnitService } from '../services/educationUnitService'
 import { SquircleActionButton, PrintOptionModal } from '@/components/master-data'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
-
-// Helper Toast Notifications
-function useToast() {
-  const [toasts, setToasts] = useState([])
-  const add = (type, title, message) => {
-    const id = Date.now()
-    setToasts((p) => [...p, { id, type, title, message }])
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000)
-  }
-  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
-  return { toasts, dismiss, success: (t, m) => add('success', t, m), error: (t, m) => add('error', t, m), warning: (t, m) => add('warning', t, m), info: (t, m) => add('info', t, m) }
-}
+import { useToast } from '../components/app'
 
 export default function StudentWorshipAttendancePage() {
   const authUser = useAuthStore((s) => s.user) || (() => {
@@ -97,7 +87,7 @@ export default function StudentWorshipAttendancePage() {
     }
   })()
 
-  const userRole = authUser?.role || authUser?.roles?.[0] || 'Kepala Sekolah'
+  const userRole = authUser?.role || authUser?.roles?.[0] || 'User'
   
   // Resolve exact logged in user unit name dynamically
   const userUnitName =
@@ -129,9 +119,20 @@ export default function StudentWorshipAttendancePage() {
 
   // Dynamic class options based on database rombel
   const [availableClasses, setAvailableClasses] = useState([])
+  const [educationUnits, setEducationUnits] = useState([])
 
   useEffect(() => {
     let active = true
+
+    educationUnitService
+      .getDaftar({ per_page: 100 })
+      .then((res) => {
+        const raw = res?.data?.data || res?.data || []
+        if (active && Array.isArray(raw)) {
+          setEducationUnits(raw)
+        }
+      })
+      .catch(() => {})
 
     worshipAttendanceService
       .getSessions({ date })
@@ -241,7 +242,11 @@ export default function StudentWorshipAttendancePage() {
     location_name: 'Masjid Utama Sekolah',
   })
 
-  const { toasts, dismiss, success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo } = useToast()
+  const toast = useToast()
+  const toastSuccess = (title, message) => toast.success(title, message)
+  const toastError = (title, message) => toast.error(title, message)
+  const toastWarning = (title, message) => toast.warning(title, message)
+  const toastInfo = (title, message) => toast.info(title, message)
 
   // Format Dynamic Day & Date Display (Indonesian Locale)
   const formattedDayName = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(now)
@@ -637,7 +642,7 @@ export default function StudentWorshipAttendancePage() {
       scheduled_start_at: templateForm.start_time,
       scheduled_end_at: templateForm.end_time,
       status: 'upcoming',
-      location_name: templateForm.location_name || 'Musholla Sekolah',
+      location_name: templateForm.location_name || '-',
       template: {
         id: `tmpl-${Date.now()}`,
         nama: templateForm.nama,
@@ -763,31 +768,7 @@ export default function StudentWorshipAttendancePage() {
           <AppBreadcrumb items={[{ label: 'Absensi & Ibadah', href: '/dashboard' }, { label: 'Absensi Ibadah Siswa' }]} />
         </motion.div>
       
-      {/* ── TOAST NOTIFICATIONS ──────────────────────────────────────────── */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`flex items-start gap-3 rounded-xl p-3.5 shadow-lg border backdrop-blur-md transition-all ${
-              t.type === 'success'
-                ? 'bg-emerald-600/95 text-white border-emerald-400'
-                : t.type === 'error'
-                ? 'bg-rose-600/95 text-white border-rose-400'
-                : t.type === 'warning'
-                ? 'bg-amber-600/95 text-white border-amber-400'
-                : 'bg-sky-600/95 text-white border-sky-400'
-            }`}
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold">{t.title}</p>
-              <p className="text-[11px] opacity-90 mt-0.5">{t.message}</p>
-            </div>
-            <button onClick={() => dismiss(t.id)} className="text-white/80 hover:text-white">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
-      </div>
+
 
       {/* ── TOP SECTION CONTAINER (HEADER HERO & CARDS LANDING AREA) ──────── */}
       <motion.header variants={itemVariants} className="space-y-5">
@@ -1279,13 +1260,18 @@ export default function StudentWorshipAttendancePage() {
                   value={filterUnit}
                   disabled={!isSuperOrYayasan}
                   onChange={(e) => setFilterUnit(e.target.value)}
-                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:bg-slate-100 dark:disabled:bg-slate-800/80"
+                  className="w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 disabled:bg-slate-100 dark:disabled:bg-slate-800/80 cursor-pointer"
                 >
                   {isSuperOrYayasan && <option value="ALL">Semua Unit Pendidikan</option>}
-                  <option value={userUnitName}>{userUnitName}</option>
-                  {userUnitName !== 'SDIT 1 Dar el-Iman - 50 Kota' && <option value="SDIT 1 Dar el-Iman - 50 Kota">SDIT 1 Dar el-Iman - 50 Kota</option>}
-                  {userUnitName !== 'SMP Terpadu' && <option value="SMP Terpadu">SMP Terpadu</option>}
-                  {userUnitName !== 'SMA Terpadu' && <option value="SMA Terpadu">SMA Terpadu</option>}
+                  {educationUnits.length > 0 ? (
+                    educationUnits.map((u) => (
+                      <option key={u.id} value={u.name}>
+                        {u.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={userUnitName}>{userUnitName}</option>
+                  )}
                 </select>
 
                 {/* Dynamic Classes Selector Adapted to Active Unit Level */}

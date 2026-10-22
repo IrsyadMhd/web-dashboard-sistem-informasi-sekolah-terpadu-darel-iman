@@ -297,7 +297,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
   }
 
   const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || ''
-  const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'YAYASAN DAR EL - IMAN'
+  const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'Yayasan Pendidikan Islam'
   const namaAplikasi = pengaturan?.application_name || 'Sistem Manajemen Sekolah Terpadu'
 
   return (
@@ -310,7 +310,7 @@ export default function LoginCard({ onNavigate, onLoginSuccess }) {
             <img
               src={logoUrl}
               onError={(e) => { e.target.src = '/logo.png' }}
-              alt="Logo Yayasan Dar El-Iman"
+              alt={`Logo ${namaSekolah || 'Yayasan'}`}
               className="w-16 h-16 sm:w-20 sm:h-20 object-contain mx-auto rounded-2xl bg-white p-1.5 shadow-xl border border-white/20"
             />
           ) : (

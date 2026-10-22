@@ -65,6 +65,8 @@ import {
 } from '../components/master-data'
 import { Button } from '@/components/tailgrids/core/button'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import AppTabs from '../components/app/AppTabs'
+import { useToast } from '../components/app'
 
 
 
@@ -87,97 +89,53 @@ function getAttendancePill(status) {
   }
 }
 
-// ─── Toast Container ──────────────────────────────────────────────────────
-function ToastContainer({ toasts, onDismiss }) {
-  return (
-    <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none" aria-live="polite">
-      {toasts.map((t) => {
-        const colors = {
-          success: 'border-emerald-200 bg-white text-emerald-800 dark:bg-[#1B2433] dark:border-emerald-800 dark:text-emerald-300',
-          error: 'border-rose-200 bg-white text-rose-800 dark:bg-[#1B2433] dark:border-rose-800 dark:text-rose-300',
-          warning: 'border-amber-200 bg-white text-amber-800 dark:bg-[#1B2433] dark:border-amber-800 dark:text-amber-300',
-          info: 'border-blue-200 bg-white text-blue-800 dark:bg-[#1B2433] dark:border-blue-800 dark:text-blue-300',
-        }
-        const icons = { success: CheckCircle2, error: XCircle, warning: AlertCircle, info: Info }
-        const IconComp = icons[t.type] || icons.info
-        return (
-          <div
-            key={t.id}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-sm transition-all animate-in slide-in-from-right-5 fade-in duration-300 max-w-xs ${colors[t.type] || colors.info}`}
-          >
-            <IconComp className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-              {t.title && <p className="text-xs font-bold">{t.title}</p>}
-              <p className="text-xs font-medium opacity-80">{t.message}</p>
-            </div>
-            <button onClick={() => onDismiss(t.id)} className="shrink-0 rounded-lg p-0.5 opacity-60 hover:opacity-100">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function useToast() {
-  const [toasts, setToasts] = useState([])
-  const add = (type, title, message) => {
-    const id = Date.now()
-    setToasts((p) => [...p, { id, type, title, message }])
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000)
-  }
-  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
-  return { toasts, dismiss, success: (t, m) => add('success', t, m), error: (t, m) => add('error', t, m), warning: (t, m) => add('warning', t, m), info: (t, m) => add('info', t, m) }
-}
-
 // ─── KPI TINTED CARD COMPONENT (DECLARED OUTSIDE TO PREVENT RE-ANIMATION ON 1S CLOCK TICK) ───
 function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
   const tones = {
     blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
+      card: 'border-blue-200/80 bg-blue-50/60 hover:border-blue-300 dark:border-blue-900/50 dark:bg-blue-950/30',
       title: 'text-blue-700 dark:text-blue-400',
       icon: 'text-blue-500',
       val: 'text-blue-600 dark:text-blue-300',
       sub: 'text-blue-600/70 dark:text-blue-400/70',
     },
     emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
+      card: 'border-emerald-200/80 bg-emerald-50/60 hover:border-emerald-300 dark:border-emerald-900/50 dark:bg-emerald-950/30',
       title: 'text-emerald-700 dark:text-emerald-400',
       icon: 'text-emerald-500',
       val: 'text-emerald-600 dark:text-emerald-300',
       sub: 'text-emerald-600/70 dark:text-emerald-400/70',
     },
     sky: {
-      card: 'border-sky-100 bg-sky-50/50 hover:border-sky-200 dark:border-sky-950/50 dark:bg-sky-950/20',
+      card: 'border-sky-200/80 bg-sky-50/60 hover:border-sky-300 dark:border-sky-900/50 dark:bg-sky-950/30',
       title: 'text-sky-700 dark:text-sky-400',
       icon: 'text-sky-500',
       val: 'text-sky-600 dark:text-sky-300',
       sub: 'text-sky-600/70 dark:text-sky-400/70',
     },
     amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
+      card: 'border-amber-200/80 bg-amber-50/60 hover:border-amber-300 dark:border-amber-900/50 dark:bg-amber-950/30',
       title: 'text-amber-700 dark:text-amber-400',
       icon: 'text-amber-500',
       val: 'text-amber-600 dark:text-amber-300',
       sub: 'text-amber-600/70 dark:text-amber-400/70',
     },
     rose: {
-      card: 'border-rose-100 bg-rose-50/50 hover:border-rose-200 dark:border-rose-950/50 dark:bg-rose-950/20',
+      card: 'border-rose-200/80 bg-rose-50/60 hover:border-rose-300 dark:border-rose-900/50 dark:bg-rose-950/30',
       title: 'text-rose-700 dark:text-rose-400',
       icon: 'text-rose-500',
       val: 'text-rose-600 dark:text-rose-300',
       sub: 'text-rose-600/70 dark:text-rose-400/70',
     },
     purple: {
-      card: 'border-purple-100 bg-purple-50/50 hover:border-purple-200 dark:border-purple-950/50 dark:bg-purple-950/20',
+      card: 'border-purple-200/80 bg-purple-50/60 hover:border-purple-300 dark:border-purple-900/50 dark:bg-purple-950/30',
       title: 'text-purple-700 dark:text-purple-400',
       icon: 'text-purple-500',
       val: 'text-purple-600 dark:text-purple-300',
       sub: 'text-purple-600/70 dark:text-purple-400/70',
     },
     teal: {
-      card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
+      card: 'border-teal-200/80 bg-teal-50/60 hover:border-teal-300 dark:border-teal-900/50 dark:bg-teal-950/30',
       title: 'text-teal-700 dark:text-teal-400',
       icon: 'text-teal-500',
       val: 'text-teal-600 dark:text-teal-300',
@@ -305,7 +263,11 @@ export default function WorshipAttendancePage() {
   const [filterKamar, setFilterKamar] = useState('')
   const [filterKelompok, setFilterKelompok] = useState('')
 
-  const { toasts, dismiss, success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo } = useToast()
+  const toast = useToast()
+  const toastSuccess = (title, message) => toast.success(title, message)
+  const toastError = (title, message) => toast.error(title, message)
+  const toastWarning = (title, message) => toast.warning(title, message)
+  const toastInfo = (title, message) => toast.info(title, message)
 
   const handleOpenEditSessionModal = (session) => {
     setEditSessionForm({
@@ -547,19 +509,19 @@ export default function WorshipAttendancePage() {
   }, [filteredDetails, currentPage, perPage])
 
   // ── Stats calculation ────────────────────────────────────────────────────
-  const totalSantriCount = 128
-  const countBerjamaah = activeDetails.filter((d) => d.attendance_status === 'hadir_berjamaah').length || 98
-  const countMunfarid = activeDetails.filter((d) => d.attendance_status === 'hadir_sendiri').length || 12
-  const countTerlambat = activeDetails.filter((d) => d.attendance_status === 'terlambat').length || 15
-  const countTidakHadir = activeDetails.filter((d) => d.attendance_status === 'tidak_hadir').length || 3
-  const countHaid = activeDetails.filter((d) => ['haid', 'uzur_syarii'].includes(d.attendance_status)).length || 5
-  const countBelumVerifikasi = totalSantriCount - (countBerjamaah + countMunfarid + countTerlambat + countTidakHadir + countHaid)
+  const totalSantriCount = activeDetails.length
+  const countBerjamaah = activeDetails.filter((d) => d.attendance_status === 'hadir_berjamaah').length
+  const countMunfarid = activeDetails.filter((d) => d.attendance_status === 'hadir_sendiri').length
+  const countTerlambat = activeDetails.filter((d) => d.attendance_status === 'terlambat').length
+  const countTidakHadir = activeDetails.filter((d) => d.attendance_status === 'tidak_hadir').length
+  const countHaid = activeDetails.filter((d) => ['haid', 'uzur_syarii'].includes(d.attendance_status)).length
+  const countBelumVerifikasi = Math.max(0, totalSantriCount - (countBerjamaah + countMunfarid + countTerlambat + countTidakHadir + countHaid))
 
-  const pctBerjamaah = ((countBerjamaah / totalSantriCount) * 100).toFixed(1)
-  const pctMunfarid = ((countMunfarid / totalSantriCount) * 100).toFixed(1)
-  const pctTerlambat = ((countTerlambat / totalSantriCount) * 100).toFixed(1)
-  const pctTidakHadir = ((countTidakHadir / totalSantriCount) * 100).toFixed(1)
-  const pctHaid = ((countHaid / totalSantriCount) * 100).toFixed(1)
+  const pctBerjamaah = totalSantriCount > 0 ? ((countBerjamaah / totalSantriCount) * 100).toFixed(1) : '0.0'
+  const pctMunfarid = totalSantriCount > 0 ? ((countMunfarid / totalSantriCount) * 100).toFixed(1) : '0.0'
+  const pctTerlambat = totalSantriCount > 0 ? ((countTerlambat / totalSantriCount) * 100).toFixed(1) : '0.0'
+  const pctTidakHadir = totalSantriCount > 0 ? ((countTidakHadir / totalSantriCount) * 100).toFixed(1) : '0.0'
+  const pctHaid = totalSantriCount > 0 ? ((countHaid / totalSantriCount) * 100).toFixed(1) : '0.0'
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -577,8 +539,7 @@ export default function WorshipAttendancePage() {
 
 
   return (
-    <MasterDataPage className="education-unit-page academic-year-page" hideBreadcrumb>
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+    <MasterDataPage className="space-y-6" hideBreadcrumb>
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
 
       {/* BREADCRUMB NAV */}
@@ -687,32 +648,15 @@ export default function WorshipAttendancePage() {
 
       {/* ── MASTER TAB SWITCHER (Rapi & Sejajar) ─────────────────────────── */}
       <div className="my-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('sessions')}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-              activeTab === 'sessions'
-                ? 'bg-emerald-700 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
-            }`}
-          >
-            <CalendarDays className="h-4 w-4" />
-            Sesi Harian Ibadah ({date})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('templates')}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all ${
-              activeTab === 'templates'
-                ? 'bg-emerald-700 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Sparkles className="h-4 w-4" />
-            Template & Konfigurasi Jadwal
-          </button>
-        </div>
+        <AppTabs
+          tabs={[
+            { id: 'sessions', label: `Sesi Harian Ibadah (${date})`, icon: CalendarDays },
+            { id: 'templates', label: 'Template & Konfigurasi Jadwal', icon: Sparkles },
+          ]}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="Navigasi presensi ibadah"
+        />
       </div>
 
       {activeTab === 'sessions' && (
@@ -1325,27 +1269,27 @@ export default function WorshipAttendancePage() {
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />
                       <span className="text-slate-600 dark:text-slate-300">Berjamaah</span>
-                      <span className="font-bold text-slate-800 dark:text-white">98 ({pctBerjamaah}%)</span>
+                      <span className="font-bold text-slate-800 dark:text-white">{countBerjamaah} ({pctBerjamaah}%)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-sky-500" />
                       <span className="text-slate-600 dark:text-slate-300">Munfarid</span>
-                      <span className="font-bold text-slate-800 dark:text-white">12 ({pctMunfarid}%)</span>
+                      <span className="font-bold text-slate-800 dark:text-white">{countMunfarid} ({pctMunfarid}%)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-amber-500" />
                       <span className="text-slate-600 dark:text-slate-300">Terlambat</span>
-                      <span className="font-bold text-slate-800 dark:text-white">15 ({pctTerlambat}%)</span>
+                      <span className="font-bold text-slate-800 dark:text-white">{countTerlambat} ({pctTerlambat}%)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-rose-500" />
                       <span className="text-slate-600 dark:text-slate-300">Tidak Hadir</span>
-                      <span className="font-bold text-slate-800 dark:text-white">3 ({pctTidakHadir}%)</span>
+                      <span className="font-bold text-slate-800 dark:text-white">{countTidakHadir} ({pctTidakHadir}%)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-purple-500" />
                       <span className="text-slate-600 dark:text-slate-300">Haid / Uzur</span>
-                      <span className="font-bold text-slate-800 dark:text-white">5 ({pctHaid}%)</span>
+                      <span className="font-bold text-slate-800 dark:text-white">{countHaid} ({pctHaid}%)</span>
                     </div>
                   </div>
                 </div>
@@ -1369,49 +1313,55 @@ export default function WorshipAttendancePage() {
                 </h4>
 
                 <div className="space-y-3 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100 dark:before:bg-slate-800">
-                  {/* Log 1: Sesi dibuka */}
                   <div className="flex items-start gap-3 relative z-10">
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                       <Check className="h-3.5 w-3.5" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Sesi dibuka</p>
-                      <p className="text-[10px] text-slate-400">04:30 WIB | Oleh Ust. Ahmad Fadli</p>
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Sesi {sessionDetail?.template?.nama || 'Ibadah'}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {sessionDetail?.scheduled_start_at ? `${sessionDetail.scheduled_start_at} WIB` : 'Sesi aktif'} {sessionDetail?.location_name ? `| ${sessionDetail.location_name}` : ''}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Log 2: Presensi pertama */}
-                  <div className="flex items-start gap-3 relative z-10">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                      <User className="h-3.5 w-3.5" />
+                  {activeDetails.filter((d) => d.attendance_status && d.attendance_status !== 'belum_verifikasi').slice(0, 3).map((item, idx) => (
+                    <div key={item.id || idx} className="flex items-start gap-3 relative z-10">
+                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                        item.attendance_status === 'hadir_berjamaah' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' :
+                        item.attendance_status === 'terlambat' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' :
+                        'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
+                      }`}>
+                        <User className="h-3.5 w-3.5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                          {item.student?.nama_lengkap || item.student_name || 'Santri'}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {item.verified_at ? `${item.verified_at.slice(11, 16)} WIB | ` : ''}Status: {statusConfig[item.attendance_status]?.label || item.attendance_status}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Presensi pertama</p>
-                      <p className="text-[10px] text-slate-400">04:50 WIB | Ahmad Fauzi</p>
-                    </div>
-                  </div>
+                  ))}
 
-                  {/* Log 3: Status terlambat */}
-                  <div className="flex items-start gap-3 relative z-10">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-                      <AlertCircle className="h-3.5 w-3.5" />
+                  {activeDetails.filter((d) => d.attendance_status && d.attendance_status !== 'belum_verifikasi').length === 0 && (
+                    <div className="py-2 text-center text-[11px] text-slate-400">
+                      Belum ada verifikasi presensi santri pada sesi ini.
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Status terlambat</p>
-                      <p className="text-[10px] text-slate-400">05:20 WIB | Siti Nurhaliza</p>
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Log 4: Sesi ditutup */}
-                  <div className="flex items-start gap-3 relative z-10">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                      <Lock className="h-3.5 w-3.5" />
+                  {(sessionDetail?.status === 'selesai' || sessionDetail?.status === 'ditutup') && (
+                    <div className="flex items-start gap-3 relative z-10">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <Lock className="h-3.5 w-3.5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Sesi ditutup</p>
+                        <p className="text-[10px] text-slate-400">Status sesi: {sessionDetail?.status}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Sesi ditutup</p>
-                      <p className="text-[10px] text-slate-400">05:35 WIB | Oleh Ust. Ahmad Fadli</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <button

@@ -1,3 +1,4 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -33,6 +34,8 @@ import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useDebounce } from '../hooks/useDebounce'
 import { Pagination } from '../components/tailgrids/core/pagination'
+import { printCleanTable, resolveFoundationName } from '../utils/printHelper'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 import {
   MasterActionButton,
   MasterDataPage,
@@ -228,6 +231,8 @@ const emptySurah = {
 
 export default function MasterQuranSurahPage() {
   const [surahs, setSurahs] = useState([])
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [search, setSearch] = useState('')
@@ -236,13 +241,10 @@ export default function MasterQuranSurahPage() {
   const [perPage, setPerPage] = useState(10)
 
   // Toast notifications state
-  const [toasts, setToasts] = useState([])
+  const toast = useToast()
   const pushToast = (type, title, message = '') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, type, title, message }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    const tone = type === 'error' || type === 'danger' ? 'error' : type === 'warning' ? 'warning' : 'success'
+    toast(message ? `${title}: ${message}` : title, tone)
   }
 
   // Delete modal state
@@ -291,8 +293,12 @@ export default function MasterQuranSurahPage() {
       await fetchSurahs()
       pushToast('success', 'Sync Berhasil', res?.message || '114 Surah berhasil disinkronkan ke database!')
     } catch (e) {
-      console.error(e)
-      pushToast('error', 'Gagal Melakukan Sync', 'Gagal melakukan sinkronisasi data dengan EQuran.id')
+      console.error('EQuran Sync Error:', e)
+      const errorMsg =
+        e?.response?.data?.message ||
+        e?.message ||
+        'Gagal melakukan sinkronisasi data dengan EQuran.id. Silakan periksa koneksi internet atau hak akses Anda.'
+      pushToast('error', 'Gagal Melakukan Sync', errorMsg)
     } finally {
       setSyncing(false)
     }
@@ -536,7 +542,7 @@ export default function MasterQuranSurahPage() {
         </div>
       </div>
 
-      <MasterDataPage className="education-unit-page quran-master-page space-y-6" hideBreadcrumb>
+      <MasterDataPage className="quran-master-page space-y-6" hideBreadcrumb>
       {/* Summary Cards Grid (ModernKpiCard with MODERN_CARD_TONES & Ambient Glow) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         <ModernKpiCard
@@ -581,9 +587,9 @@ export default function MasterQuranSurahPage() {
       </div>
 
       {/* Outer Container Datatable Emerald Zamrud Modern */}
-      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header 3-Baris Terstruktur */}
-        <div className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent space-y-3.5">
+        <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent space-y-3.5">
           {/* Baris 1: Judul, Subtitle, Count Pill, & 4 Soft Pastel Squircle Action Buttons */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -626,7 +632,23 @@ export default function MasterQuranSurahPage() {
                   type="button"
                   title="Cetak Katalog Surah"
                   aria-label="Cetak Katalog Surah"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    const rows = (filteredSurahs || []).map((s, idx) => [
+                      s.nomor || idx + 1,
+                      s.nama_latin || '-',
+                      s.nama || '-',
+                      s.arti || '-',
+                      s.tempat_turun || '-',
+                      `${s.jumlah_ayat || 0} Ayat`,
+                    ])
+                    printCleanTable({
+                      title: 'KATALOG SURAH AL-QURAN',
+                      subtitle: `Data Master Al-Quran Terpadu ${foundationName}`,
+                      headers: ['No', 'Nama Surah', 'Nama Arab', 'Arti', 'Tempat Turun', 'Jumlah Ayat'],
+                      rows,
+                      orientation: 'portrait',
+                    })
+                  }}
                   className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                 >
                   <Printer className="size-5 text-white" strokeWidth={2.2} />
@@ -1175,57 +1197,7 @@ export default function MasterQuranSurahPage() {
         isSubmitting={isDeleting}
       />
 
-      {/* Toast Notification Stack */}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-              className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-                toast.type === 'error'
-                  ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                  : toast.type === 'warning'
-                  ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
-                  : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-              }`}
-            >
-              <div
-                className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                  toast.type === 'error'
-                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                    : toast.type === 'warning'
-                    ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                    : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                }`}
-              >
-                {toast.type === 'error' ? (
-                  <AlertTriangle className="size-4.5" />
-                ) : toast.type === 'warning' ? (
-                  <AlertTriangle className="size-4.5" />
-                ) : (
-                  <Check className="size-4.5" />
-                )}
-              </div>
-              <div className="flex-1 pt-0.5">
-                <p className="text-xs font-bold leading-tight">{toast.title}</p>
-                {toast.message && (
-                  <p className="mt-0.5 text-[11px] opacity-80 leading-normal">{toast.message}</p>
-                )}
-              </div>
-              <button
-                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="size-3.5" />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+
     </MasterDataPage>
     </PageContainer>
   )

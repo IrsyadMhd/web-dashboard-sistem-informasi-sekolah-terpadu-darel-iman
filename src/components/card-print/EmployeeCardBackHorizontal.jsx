@@ -1,27 +1,59 @@
 import React from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { getCardLogoUrl } from '../../utils/cardLogoHelper'
+import { resolveFoundationName } from '../../utils/printHelper'
+import { usePengaturanStore } from '../../stores/pengaturanStore'
 
 export default function EmployeeCardBackHorizontal({
   employee,
   template = 'green',
-  pengaturan = {},
+  pengaturan: propPengaturan = {},
   qrPayload,
   isPrint = false,
   frameStyle = 'standard',
   showPattern = true,
   showWave = true,
   backTitle = 'KETENTUAN KARTU PEGAWAI',
-  backRules = '1. Kartu ini adalah milik resmi Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi SIMSIT.',
-  backAddress = 'Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: (0751) 123456 | Website: dareliman.or.id',
+  backRules,
+  backAddress,
   backShowQr = true,
 }) {
   if (!employee) return null
 
-  const schoolName = pengaturan.school_name || 'YAYASAN DAR EL-IMAN'
-  const appName = pengaturan.application_name || 'ISLAMIC SCHOOL'
+  const storePengaturan = usePengaturanStore((state) => state.pengaturan)
+  const pengaturan =
+    propPengaturan && Object.keys(propPengaturan).length > 0
+      ? propPengaturan
+      : (storePengaturan || {})
+
+  const schoolName =
+    pengaturan?.foundation_name ||
+    pengaturan?.nama_yayasan ||
+    resolveFoundationName(
+      pengaturan?.school_name ||
+      pengaturan?.institution_name ||
+      pengaturan?.nama_yayasan ||
+      pengaturan?.yayasan
+    ) ||
+    pengaturan?.school_name ||
+    pengaturan?.institution_name ||
+    'Yayasan'
+
+  const appName = pengaturan?.application_name || pengaturan?.app_name || 'SIMSIT'
   const logoUrl = getCardLogoUrl(pengaturan, employee)
-  const rulesList = (backRules || '').split('\n').filter((r) => r.trim().length > 0)
+
+  const defaultBackRules = `1. Kartu ini adalah milik resmi ${schoolName}.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi SIMSIT.`
+  const resolvedRulesText = backRules
+    ? backRules.replace(/Yayasan\s+Dar\s*el-?Iman/gi, schoolName)
+    : defaultBackRules
+  const rulesList = (resolvedRulesText || '').split('\n').filter((r) => r.trim().length > 0)
+
+  const defaultBackAddress = [
+    pengaturan?.address,
+    pengaturan?.phone ? `Telp: ${pengaturan.phone}` : null,
+    pengaturan?.website ? `Website: ${pengaturan.website}` : null,
+  ].filter(Boolean).join('\n') || (pengaturan?.address || '')
+  const resolvedAddressText = backAddress || defaultBackAddress
 
   return (
     <article
@@ -47,7 +79,7 @@ export default function EmployeeCardBackHorizontal({
               }}
             />
           ) : null}
-          <b style={{ display: logoUrl ? 'none' : 'inline-block' }}>{pengaturan.logo_text || 'YDE'}</b>
+          <b style={{ display: logoUrl ? 'none' : 'inline-block' }}>{pengaturan?.logo_text || 'YDE'}</b>
         </span>
         <strong>{schoolName}</strong>
         <small>{appName}</small>
@@ -93,7 +125,7 @@ export default function EmployeeCardBackHorizontal({
       {/* Footer */}
       <footer>
         <b className="text-[10px] font-normal leading-tight">
-          {(backAddress || 'Jl. Gajah Mada No. 28 Padang').split('\n').map((line, idx) => (
+          {(resolvedAddressText || pengaturan?.address || '-').split('\n').map((line, idx) => (
             <span key={idx}>
               {idx > 0 && <br />}
               {line}
@@ -103,7 +135,7 @@ export default function EmployeeCardBackHorizontal({
         <span>
           TAHUN AJARAN
           <br />
-          2025/2026
+          {employee?.academic_year || employee?.tahun_ajaran || pengaturan?.tahun_ajaran_aktif || '2026/2027'}
         </span>
       </footer>
     </article>

@@ -20,9 +20,17 @@ import { usePengaturanStore } from '../../stores/pengaturanStore'
 import PersonAvatar from '../ui/PersonAvatar'
 
 function getStudentUnitAddress(data, pengaturan) {
-  const phoneText = pengaturan?.phone || pengaturan?.telepon || '(0751) 123456'
-  const webText = pengaturan?.website || 'dareliman.or.id'
-  return `Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: ${phoneText} | Website: ${webText}`
+  const unitObj = data?.raw?.unit || (typeof data?.unit === 'object' && data?.unit !== null ? data.unit : null)
+  const addressText = unitObj?.address || unitObj?.alamat || (pengaturan?.address ? `${pengaturan.address}${pengaturan.city ? `, ${pengaturan.city}` : ''}` : '')
+  const phoneText = unitObj?.phone || unitObj?.telepon || pengaturan?.phone || pengaturan?.telepon || ''
+  const webText = unitObj?.website || pengaturan?.website || ''
+  const lines = []
+  if (addressText) lines.push(addressText)
+  const contactParts = []
+  if (phoneText) contactParts.push(`Telp: ${phoneText}`)
+  if (webText) contactParts.push(`Website: ${webText}`)
+  if (contactParts.length > 0) lines.push(contactParts.join(' | '))
+  return lines.join('\n')
 }
 
 const THEMES = [
@@ -100,6 +108,26 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
   const [cardConfig, setCardConfig] = useState(DEFAULT_CONFIG)
   const [selectedStudent, setSelectedStudent] = useState(() => normalizeStudent(student))
 
+  const data = useMemo(() => {
+    const meta = selectedStudent?.raw?.metadata || {}
+    return {
+      id: selectedStudent?.id,
+      nis: selectedStudent?.nis || '-',
+      nisn: selectedStudent?.nisn || meta.nisn || '-',
+      nama: selectedStudent?.nama || '-',
+      unit: selectedStudent?.unit || '-',
+      kelas: selectedStudent?.kelas || '-',
+      rombel: selectedStudent?.rombel || '-',
+      status: selectedStudent?.status || 'Aktif',
+      tahunAjaran: meta.tahun_ajaran_berjalan || meta.akademik?.tahun_ajaran || '-',
+      tanggalLahir: selectedStudent?.tanggalLahir || selectedStudent?.raw?.birth_date || '-',
+      golonganDarah: selectedStudent?.golonganDarah || '-',
+      foto: selectedStudent?.foto || meta.foto_url || '',
+      educationUnitId: selectedStudent?.raw?.unit_id || null,
+      raw: selectedStudent?.raw,
+    }
+  }, [selectedStudent])
+
   const handleModalPhotoChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -135,10 +163,10 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
   const [cardSide, setCardSide] = useState('front') // 'front' | 'back'
   const [backTitle, setBackTitle] = useState('TATA TERTIB SISWA')
   const [backRules, setBackRules] = useState(
-    '1. Kartu ini adalah kartu identitas resmi siswa Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam KBM sekolah.\n3. Apabila menemukan kartu ini, harap mengembalikan ke piket sekolah.\n4. QR Code digunakan untuk absensi gerbang & verifikasi SIMSIT.'
+    () => pengaturan?.card_rules_student || ''
   )
   const [backAddress, setBackAddress] = useState(
-    'Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: (0751) 123456 | Website: dareliman.or.id'
+    () => getStudentUnitAddress(data, pengaturan)
   )
   const [backShowQr, setBackShowQr] = useState(true)
   const [printSides, setPrintSides] = useState('both') // 'both' | 'front' | 'back'
@@ -148,8 +176,21 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
   const [photoShape, setPhotoShape] = useState('rounded') // 'circle' | 'rounded' | 'square' | 'shield'
   const [showPattern, setShowPattern] = useState(true)
   const [showWave, setShowWave] = useState(true)
-  const [headerMotto, setHeaderMotto] = useState('Berilmu, Berakhlak, Beramal')
-  const [footerMotto, setFooterMotto] = useState('Sekolah Unggulan\nBerbasis Al-Qur\'an')
+  const [headerMotto, setHeaderMotto] = useState(
+    () => pengaturan?.motto || 'Berilmu, Berakhlak, Beramal'
+  )
+  const [footerMotto, setFooterMotto] = useState(
+    () => pengaturan?.card_footer_motto || 'Sekolah Unggulan\nBerbasis Al-Qur\'an'
+  )
+
+  useEffect(() => {
+    if (pengaturan?.card_rules_student && !backRules) {
+      setBackRules(pengaturan.card_rules_student)
+    }
+    if (!backAddress) {
+      setBackAddress(getStudentUnitAddress(data, pengaturan))
+    }
+  }, [pengaturan, data])
 
   const {
     orientation, templateColor: themeId, showPhoto, showQr, showLogo,
@@ -158,25 +199,6 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
   } = cardConfig
   const updateConfig = (key, value) => setCardConfig((current) => ({ ...current, [key]: value }))
   const theme = THEMES.find((item) => item.id === themeId) || THEMES[0]
-
-  const data = useMemo(() => {
-    const meta = selectedStudent?.raw?.metadata || {}
-    return {
-      id: selectedStudent?.id,
-      nis: selectedStudent?.nis || '-',
-      nisn: selectedStudent?.nisn || meta.nisn || '-',
-      nama: selectedStudent?.nama || '-',
-      unit: selectedStudent?.unit || '-',
-      kelas: selectedStudent?.kelas || '-',
-      rombel: selectedStudent?.rombel || '-',
-      status: selectedStudent?.status || 'Aktif',
-      tahunAjaran: meta.tahun_ajaran_berjalan || meta.akademik?.tahun_ajaran || '-',
-      tanggalLahir: selectedStudent?.tanggalLahir || selectedStudent?.raw?.birth_date || '-',
-      golonganDarah: selectedStudent?.golonganDarah || '-',
-      foto: selectedStudent?.foto || meta.foto_url || '',
-      educationUnitId: selectedStudent?.raw?.unit_id || null,
-    }
-  }, [selectedStudent])
 
   useEffect(() => {
     setSelectedStudent(normalizeStudent(student))
@@ -260,13 +282,21 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
 
   if (!student) return null
 
-  const sekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'YAYASAN DAR EL-IMAN'
+  const sekolah = pengaturan?.school_name || pengaturan?.namaSekolah || ''
   const logo = pengaturan?.logo_url || pengaturan?.logoUrl || ''
   const brandTitle = sekolah
-    .replace(/^YAYASAN\s*/i, '')
-    .replace(/\s*-\s*/g, '-')
-    .trim()
-  const initials = data.nama.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase()
+    ? sekolah
+        .replace(/^YAYASAN\s*/i, '')
+        .replace(/\s*-\s*/g, '-')
+        .trim()
+    : ''
+  const initials = (data?.nama || '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase() || 'S'
   const formatDate = (value) => {
     if (!value || value === '-') return '-'
     const parsed = new Date(value)
@@ -370,12 +400,10 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
     setPhotoShape('rounded')
     setShowPattern(true)
     setShowWave(true)
-    setHeaderMotto('Berilmu, Berakhlak, Beramal')
-    setFooterMotto('Generasi Beriman, Berilmu,\nBerakhlak Mulia')
+    setHeaderMotto(pengaturan?.motto || 'Berilmu, Berakhlak, Beramal')
+    setFooterMotto(pengaturan?.card_footer_motto || 'Sekolah Unggulan\nBerbasis Al-Qur\'an')
     setBackTitle('TATA TERTIB SISWA')
-    setBackRules(
-      '1. Kartu ini adalah kartu identitas resmi siswa Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam KBM sekolah.\n3. Apabila menemukan kartu ini, harap mengembalikan ke piket sekolah.\n4. QR Code digunakan untuk absensi gerbang & verifikasi SIMSIT.'
-    )
+    setBackRules(pengaturan?.card_rules_student || '')
     if (selectedStudent) {
       setBackAddress(getStudentUnitAddress(data, pengaturan))
     }
@@ -425,11 +453,11 @@ export default function CetakKartuSiswaModal({ student, onClose, showSettings = 
                   </select>
                   {selectedStudent && (
                     <div className="mt-2 flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/70 p-3">
-                      <PersonAvatar src={data.foto} name={data.nama} size="table" className="border-emerald-200" />
-                      <span className="min-w-0">
-                        <strong className="block truncate text-xs text-slate-800">{data.nama}</strong>
-                        <small className="block truncate text-[9px] text-slate-500">NIS {data.nis} · NISN {data.nisn}</small>
-                        <small className="block truncate text-[9px] font-semibold text-emerald-700">{data.unit} · Kelas {data.kelas} · {data.status}</small>
+                      <PersonAvatar src={data.foto} name={data.nama} size="table" className="border-emerald-200 shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        <strong className="block text-xs font-bold text-slate-800 leading-snug line-clamp-2" title={data.nama}>{data.nama}</strong>
+                        <small className="block truncate text-[9.5px] text-slate-500 font-medium">NIS {data.nis} · NISN {data.nisn}</small>
+                        <small className="block truncate text-[9.5px] font-semibold text-emerald-700">{data.unit} · Kelas {data.kelas} · {data.status}</small>
                       </span>
                     </div>
                   )}

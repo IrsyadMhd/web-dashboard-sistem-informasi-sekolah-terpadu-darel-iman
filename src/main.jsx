@@ -10,6 +10,12 @@ document.documentElement.classList.toggle('dark', savedTheme === 'dark')
 document.body.classList.toggle('dark', savedTheme === 'dark')
 document.documentElement.style.colorScheme = savedTheme === 'dark' ? 'dark' : 'light'
 
+// Tangani kegagalan lazy dynamic import Vite saat HMR atau restart dev server
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload()
+})
+
+
 if (import.meta.env.PROD) {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

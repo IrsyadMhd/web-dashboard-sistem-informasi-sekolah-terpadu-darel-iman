@@ -21,31 +21,59 @@ import { useAuthStore } from '../../stores/authStore'
 import { resolveUnitDetails, isCentralOrYayasanRole } from '../../utils/printHelper'
 import { PrintHeader } from '../common/PrintHeader'
 
+/**
+ * @param {Object} props
+ * @param {boolean} [props.isOpen]
+ * @param {boolean} [props.open]
+ * @param {() => void} [props.onClose]
+ * @param {Function} [props.onPrint]
+ * @param {Function} [props.onDownload]
+ * @param {Function} [props.onDownloadPdf]
+ * @param {Function} [props.onExportExcel]
+ * @param {string} [props.title]
+ * @param {string} [props.subtitle]
+ * @param {Array<any>} [props.teachersList]
+ * @param {string} [props.selectedTeacherId]
+ * @param {Function} [props.onTeacherChange]
+ * @param {any} [props.activeUnit]
+ * @param {Array<any>} [props.columnsList]
+ * @param {any} [props.selectedColumns]
+ * @param {Function} [props.onToggleColumn]
+ * @param {Function} [props.onSelectAllColumns]
+ * @param {Function} [props.onClearAllColumns]
+ * @param {boolean} [props.defaultPreview]
+ * @param {Array<any>} [props.previewHeaders]
+ * @param {Array<any>} [props.previewRows]
+ * @param {Array<any>} [props.reportTypes]
+ * @param {any} [props.selectedReportType]
+ * @param {Function} [props.onReportTypeChange]
+ * @param {any} [props.children]
+ */
 export function PrintOptionModal({
-  isOpen,
-  open,
-  onClose,
-  onPrint,
-  onDownload,
-  onDownloadPdf,
-  onExportExcel,
+  isOpen = false,
+  open = false,
+  onClose = () => {},
+  onPrint = undefined,
+  onDownload = undefined,
+  onDownloadPdf = undefined,
+  onExportExcel = undefined,
   title = 'Laporan',
   subtitle = '',
   teachersList = [],
   selectedTeacherId = '',
-  onTeacherChange,
+  onTeacherChange = undefined,
   activeUnit = null,
   columnsList = [],
-  selectedColumns = null,
-  onToggleColumn = null,
-  onSelectAllColumns = null,
-  onClearAllColumns = null,
+  selectedColumns = undefined,
+  onToggleColumn = undefined,
+  onSelectAllColumns = undefined,
+  onClearAllColumns = undefined,
   defaultPreview = false,
-  previewHeaders = null,
-  previewRows = null,
-  reportTypes = null,
-  selectedReportType = null,
-  onReportTypeChange = null,
+  previewHeaders = undefined,
+  previewRows = undefined,
+  reportTypes = undefined,
+  selectedReportType = undefined,
+  onReportTypeChange = undefined,
   children = null,
 }) {
   const isModalOpen = isOpen ?? open ?? false

@@ -2,17 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import PropTypes from 'prop-types'
 import {
   Award,
-  Building2,
-  ChevronRight,
-  FileSpreadsheet,
   GraduationCap,
-  Printer,
   RefreshCw,
   Search,
-  Sparkles,
   TrendingUp,
   UserCheck,
-  Users,
   UsersRound,
 } from 'lucide-react'
 import api from '../../services/api'
@@ -21,7 +15,6 @@ import { Button } from '../ui/button'
 import { MasterBadge, PrintOptionModal, SquircleActionButton } from '../master-data'
 import { PersonIdentityCell } from '../ui/PersonIdentityCell'
 import { printCleanTable, downloadPdfTable } from '../../utils/printHelper'
-import KpiDetailDrawer from '../KpiDetailDrawer'
 import { FoundationExportModal } from './FoundationExportModal'
 
 const CONFIGS = {
@@ -132,9 +125,6 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
   const [mobilityFilter, setMobilityFilter] = useState('all') // 'all' | 'masuk' | 'keluar' | 'proses'
   const [showExport, setShowExport] = useState(false)
   const [showPrintModal, setShowPrintModal] = useState(false)
-
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState(null)
-  const [selectedDetailType, setSelectedDetailType] = useState('pegawai')
 
   const fetchData = useCallback(async () => {
     if (!type || !isOpen) return
@@ -557,7 +547,7 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
           )}
 
           {/* Data Content Table */}
-          <div className="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800">
+          <div className="overflow-x-auto rounded-2xl border-2 border-emerald-300 dark:border-emerald-700/80 shadow-xs">
             {loading ? (
               <div className="p-8 text-center text-xs text-slate-400 animate-pulse">Memuat data KPI...</div>
             ) : error ? (
@@ -566,7 +556,7 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
               <div className="p-8 text-center text-xs text-slate-400 italic">Belum ada data sesuai filter pencarian.</div>
             ) : (
               <table className="w-full text-xs text-left text-slate-700 dark:text-slate-200">
-                <thead className="bg-slate-100/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold uppercase text-[10px] tracking-wider">
+                <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-100 font-extrabold uppercase text-[10px] tracking-wider">
                   {type === 'peningkatan' && (
                     <tr>
                       <th className="px-3 py-3 text-center w-10">No</th>
@@ -623,7 +613,7 @@ export function FoundationUnitKpiModal({ type, isOpen, onClose, units = [] }) {
                     </tr>
                   )}
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {filteredItems.map((item, idx) => {
                     const mob = type === 'siswa_mobility' ? getMobilityStatus(item) : null
                     const isKeluar = mob?.key === 'keluar'

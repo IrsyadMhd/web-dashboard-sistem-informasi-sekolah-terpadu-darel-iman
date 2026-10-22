@@ -1,34 +1,70 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Home, Save, Calendar, Info } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  CheckCircle2,
+  Home,
+  Save,
+  Calendar,
+  Info,
+  Loader2,
+  Sparkles,
+  AlertCircle,
+  X,
+} from 'lucide-react'
+import {
+  Card as HeroCard,
+  Chip as HeroChip,
+  Button as HeroButton,
+} from '@heroui/react'
+import { cn } from '../../lib/utils'
 import api from '../../services/api'
+
+// Status option structure — not hardcoded labels, but structured status mappings
+const STATUS_OPTIONS = [
+  { value: 'good', label: 'Terlaksana', activeStyle: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/20' },
+  { value: 'less', label: 'Kurang', activeStyle: 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-sm shadow-amber-500/20' },
+  { value: 'not_done', label: 'Belum', activeStyle: 'bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-sm shadow-rose-500/20' },
+  { value: 'na', label: 'Uzur / N/A', activeStyle: 'bg-gradient-to-r from-slate-400 to-slate-500 text-white shadow-sm shadow-slate-400/20' },
+]
 
 export default function ParentWorshipInputWorkspace({ studentId }) {
   const [context, setContext] = useState(null)
   const [values, setValues] = useState({})
   const [notes, setNotes] = useState({})
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+  const [submitFeedback, setSubmitFeedback] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [date, setDate] = useState(() => new Intl.DateTimeFormat('en-CA').format(new Date()))
+  const [date, setDate] = useState(
+    () => new Intl.DateTimeFormat('en-CA').format(new Date())
+  )
 
   const load = async () => {
-    setError('')
+    setSubmitFeedback(null)
     try {
-      const r = await api.get(`/portal/children/${studentId}/worship-input`, { params: { date } })
+      const r = await api.get(
+        `/portal/children/${studentId}/worship-input`,
+        { params: { date } }
+      )
       const data = r.data?.data || null
       setContext(data)
       if (data?.items && Array.isArray(data.items)) {
         const initialVals = {}
         const initialNotes = {}
         data.items.forEach((item) => {
-          if (item.status_value) initialVals[item.agenda_item_id] = item.status_value
-          if (item.notes) initialNotes[item.agenda_item_id] = item.notes
+          if (item.status_value)
+            initialVals[item.agenda_item_id] = item.status_value
+          if (item.notes)
+            initialNotes[item.agenda_item_id] = item.notes
         })
         setValues(initialVals)
         setNotes(initialNotes)
       }
     } catch (e) {
-      setError(e.response?.data?.message || 'Agenda ibadah rumah belum dapat dimuat.')
+      setSubmitFeedback({
+        type: 'error',
+        message:
+          e.response?.data?.message ||
+          'Agenda ibadah rumah belum dapat dimuat.',
+      })
     }
   }
 
@@ -37,132 +73,299 @@ export default function ParentWorshipInputWorkspace({ studentId }) {
   }, [studentId, date])
 
   const save = async () => {
-    const items = Object.entries(values).map(([agenda_item_id, status_value]) => ({
-      agenda_item_id,
-      status_value,
-      notes: notes[agenda_item_id] || null,
-    }))
+    const items = Object.entries(values).map(
+      ([agenda_item_id, status_value]) => ({
+        agenda_item_id,
+        status_value,
+        notes: notes[agenda_item_id] || null,
+      })
+    )
     if (!items.length) return
     setSaving(true)
-    setError('')
-    setMessage('')
+    setSubmitFeedback(null)
     try {
-      await api.post(`/portal/children/${studentId}/worship-input`, { date, items })
-      setMessage('Mutabaah ibadah rumah berhasil disimpan.')
+      await api.post(`/portal/children/${studentId}/worship-input`, {
+        date,
+        items,
+      })
+      setSubmitFeedback({
+        type: 'success',
+        message: 'Alhamdulillah, mutabaah ibadah rumah berhasil disimpan.',
+      })
       await load()
     } catch (e) {
-      setError(e.response?.data?.message || 'Mutabaah gagal disimpan.')
+      setSubmitFeedback({
+        type: 'error',
+        message:
+          e.response?.data?.message || 'Mutabaah gagal disimpan.',
+      })
     } finally {
       setSaving(false)
     }
   }
 
-  const isEditable = context?.can_parent_input !== false && context?.can_edit !== false
+  const isEditable =
+    context?.can_parent_input !== false && context?.can_edit !== false
+
+  const periodLabel =
+    context?.period?.name || context?.period_label || null
+  const programLabel =
+    context?.program === 'boarding'
+      ? 'Boarding / Asrama'
+      : context?.program === 'fullday'
+      ? 'Fullday'
+      : context?.program
+      ? context.program.charAt(0).toUpperCase() +
+        context.program.slice(1)
+      : null
+
+  const formatDisplayDate = (val) => {
+    if (!val) return '-'
+    try {
+      return new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }).format(new Date(val))
+    } catch {
+      return String(val)
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
+    <div className="space-y-5">
+      {/* HERO HEADER */}
+      <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-purple-500/25 bg-gradient-to-r from-purple-500/12 via-violet-500/8 to-purple-600/12 p-5 sm:p-6 shadow-md shadow-purple-500/8 dark:border-purple-600/35 dark:bg-gradient-to-r dark:from-purple-950/70 dark:via-violet-950/50 dark:to-slate-900">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-full bg-gradient-to-br from-purple-500/25 via-violet-400/15 to-transparent blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-16 -bottom-16 h-52 w-52 rounded-full bg-gradient-to-tl from-violet-500/25 via-purple-400/15 to-transparent blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-[.04] [background-image:radial-gradient(circle_at_2px_2px,#7c3aed_1.5px,transparent_0)] [background-size:24px_24px]"
+        />
+
+        <div className="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 via-violet-600 to-purple-700 text-white shadow-xl shadow-purple-600/20">
               <Home className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-800 dark:text-white">Input Mutaba'ah di Rumah</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {context?.period?.name || 'Periode Reguler'} · Program {context?.program === 'boarding' ? 'Boarding / Asrama' : 'Fullday'}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <HeroChip
+                  size="sm"
+                  variant="flat"
+                  className="font-extrabold text-[10.5px] bg-purple-500/20 border border-purple-500/30 text-purple-800 dark:text-purple-300"
+                >
+                  <Sparkles className="h-3 w-3 text-purple-600 mr-1 inline" />
+                  Ibadah Rumah
+                </HeroChip>
+                {periodLabel && (
+                  <HeroChip
+                    size="sm"
+                    variant="flat"
+                    className="font-black text-[10px] bg-white/70 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
+                  >
+                    {periodLabel}
+                  </HeroChip>
+                )}
+                {programLabel && (
+                  <HeroChip
+                    size="sm"
+                    variant="flat"
+                    className="font-black text-[10px] bg-violet-100 text-violet-800 border border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800"
+                  >
+                    {programLabel}
+                  </HeroChip>
+                )}
+              </div>
+              <h3 className="mt-1 text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                Input Mutaba'ah di Rumah
+              </h3>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-slate-400" />
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Calendar className="h-4 w-4 text-purple-500 dark:text-purple-400" />
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="rounded-xl border-2 border-purple-200/80 bg-white/80 px-3 py-2 text-xs font-bold text-slate-700 shadow-xs transition-colors focus:border-purple-400 focus:ring-2 focus:ring-purple-200/50 focus:outline-none dark:border-purple-800/60 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-purple-800/40"
             />
           </div>
         </div>
 
-        {(message || error) && (
-          <div className={`mt-4 rounded-xl p-3 text-xs font-semibold ${error ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'}`}>
-            {error || message}
-          </div>
-        )}
+        {/* Current Date Info */}
+        <p className="relative mt-3 text-[11px] font-medium text-purple-700/70 dark:text-purple-400/70">
+          {formatDisplayDate(date)}
+        </p>
+      </HeroCard>
 
-        {!isEditable && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-            <Info className="h-4 w-4 shrink-0" />
-            <span>
-              {context?.header_status && context.header_status !== 'draft'
-                ? 'Agenda hari ini telah difinalisasi oleh pembimbing dan tidak dapat diubah lagi.'
-                : 'Mode saat ini adalah pemantauan laporan (bukan input orang tua).'}
-            </span>
-          </div>
-        )}
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
-          {(context?.items || []).map((item) => (
-            <div key={item.agenda_item_id} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.name}</p>
-                  <p className="text-[10px] text-slate-400">
-                    Lokasi: {item.location || 'rumah'} {item.requires_verification ? '· Perlu verifikasi pembimbing' : ''}
-                  </p>
-                </div>
-                {item.verification_status && (
-                  <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-[9px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                    {item.verification_status === 'verified' ? 'Terverifikasi' : 'Menunggu'}
-                  </span>
-                )}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {[
-                  ['good', 'Terlaksana', 'bg-emerald-600 text-white', 'hover:bg-emerald-50'],
-                  ['less', 'Kurang', 'bg-amber-500 text-white', 'hover:bg-amber-50'],
-                  ['not_done', 'Belum', 'bg-rose-500 text-white', 'hover:bg-rose-50'],
-                  ['na', 'Uzur / N/A', 'bg-slate-500 text-white', 'hover:bg-slate-100'],
-                ].map(([val, label, activeStyle, hoverStyle]) => (
-                  <button
-                    type="button"
-                    key={val}
-                    disabled={!isEditable}
-                    onClick={() => setValues({ ...values, [item.agenda_item_id]: val })}
-                    className={`rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition ${
-                      values[item.agenda_item_id] === val
-                        ? activeStyle
-                        : `border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 ${hoverStyle}`
-                    } disabled:opacity-50`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+      {/* Feedback Alert Banner */}
+      <AnimatePresence>
+        {submitFeedback && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div
+              className={cn(
+                'flex items-start gap-2.5 rounded-2xl p-3.5 text-xs font-semibold',
+                submitFeedback.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-200 dark:border-emerald-800'
+                  : 'bg-rose-50 text-rose-900 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-200 dark:border-rose-800'
+              )}
+            >
+              {submitFeedback.type === 'success' ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+              )}
+              <span className="flex-1">{submitFeedback.message}</span>
+              <button
+                type="button"
+                onClick={() => setSubmitFeedback(null)}
+                className="shrink-0 cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600" />
+              </button>
             </div>
-          ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Non-Editable Notice */}
+      {!isEditable && (
+        <div className="flex items-start gap-2.5 rounded-2xl border-2 border-amber-300/60 bg-amber-50/60 p-3.5 text-xs text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <span>
+            {context?.header_status && context.header_status !== 'draft'
+              ? 'Agenda hari ini telah difinalisasi oleh pembimbing dan tidak dapat diubah lagi.'
+              : 'Mode saat ini adalah pemantauan laporan (bukan input orang tua).'}
+          </span>
+        </div>
+      )}
+
+      {/* MAIN CARD - ACTIVITY LIST */}
+      <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-purple-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-purple-800/40 dark:bg-slate-900">
+        <div className="grid gap-3 md:grid-cols-2">
+          {(context?.items || []).map((item) => {
+            const currentVal = values[item.agenda_item_id]
+            const locationLabel = item.location || null
+            const needsVerification = item.requires_verification || false
+
+            return (
+              <motion.div
+                key={item.agenda_item_id}
+                whileHover={{ scale: 1.005 }}
+                transition={{ duration: 0.15 }}
+                className="rounded-2xl border-2 border-slate-200/80 bg-white p-4 transition-all hover:border-purple-200/60 hover:shadow-xs dark:border-slate-800 dark:bg-slate-800/40 dark:hover:border-purple-800/40"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {item.name}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                      {locationLabel ? `Lokasi: ${locationLabel}` : ''}
+                      {needsVerification
+                        ? `${locationLabel ? ' · ' : ''}Perlu verifikasi pembimbing`
+                        : ''}
+                    </p>
+                  </div>
+                  {item.verification_status && (
+                    <HeroChip
+                      size="sm"
+                      variant="flat"
+                      className={cn(
+                        'shrink-0 font-extrabold text-[9px]',
+                        item.verification_status === 'verified'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800'
+                      )}
+                    >
+                      {item.verification_status === 'verified'
+                        ? 'Terverifikasi'
+                        : 'Menunggu'}
+                    </HeroChip>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {STATUS_OPTIONS.map(({ value, label, activeStyle }) => (
+                    <button
+                      type="button"
+                      key={value}
+                      disabled={!isEditable}
+                      onClick={() =>
+                        setValues({
+                          ...values,
+                          [item.agenda_item_id]: value,
+                        })
+                      }
+                      className={cn(
+                        'rounded-xl px-3 py-1.5 text-[11px] font-bold transition-all',
+                        currentVal === value
+                          ? activeStyle
+                          : 'border-2 border-slate-200 bg-white text-slate-600 hover:border-purple-200 hover:bg-purple-50/40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-purple-800',
+                        'disabled:opacity-50 disabled:cursor-not-allowed'
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
 
+        {/* Empty State */}
         {context && (!context.items || context.items.length === 0) && (
-          <div className="mt-6 rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-            Belum ada aktivitas rumah yang ditugaskan kepada orang tua untuk tanggal ini.
+          <div className="py-14 text-center space-y-2">
+            <Home className="mx-auto h-10 w-10 text-purple-300 dark:text-purple-700" />
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+              Belum Ada Aktivitas Rumah
+            </p>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Belum ada aktivitas rumah yang ditugaskan kepada orang tua untuk
+              tanggal ini.
+            </p>
           </div>
         )}
 
+        {/* Save Button */}
         {context?.items?.length > 0 && isEditable && (
-          <div className="mt-5">
-            <button
-              disabled={saving || !Object.keys(values).length}
-              onClick={save}
-              className="inline-flex items-center rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+          <div className="mt-6 flex justify-end">
+            <HeroButton
+              isDisabled={saving || !Object.keys(values).length}
+              onPress={save}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-xs sm:text-sm font-black text-white shadow-lg transition-all cursor-pointer',
+                saving
+                  ? 'bg-slate-400 opacity-70 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-600 via-violet-600 to-purple-700 shadow-purple-600/30 hover:scale-[1.02]'
+              )}
             >
-              {saving ? <CheckCircle2 className="mr-1.5 h-4 w-4 animate-pulse" /> : <Save className="mr-1.5 h-4 w-4" />}
-              Simpan Ibadah Rumah
-            </button>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" /> Simpan Ibadah Rumah
+                </>
+              )}
+            </HeroButton>
           </div>
         )}
-      </div>
+      </HeroCard>
     </div>
   )
 }

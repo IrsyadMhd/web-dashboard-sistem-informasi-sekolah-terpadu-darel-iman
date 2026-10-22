@@ -550,7 +550,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
       {!(embedded || hideBreadcrumb) && (
         <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Media Pembelajaran' }]} />
       )}
-      <div className="education-unit-page lms-media-page space-y-6">
+      <div className="lms-media-page space-y-6">
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
         <PrintOptionModal
           isOpen={isPrintModalOpen}
@@ -814,8 +814,8 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
 
       {/* DATA TABLE CONTAINER */}
       <motion.div variants={itemVariants}>
-      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]" aria-labelledby="media-table-title">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]" aria-labelledby="media-table-title">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
           <div>
             <h2 id="media-table-title" className="text-base font-extrabold text-slate-900 dark:text-white">Data Media Pembelajaran</h2>
             <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Daftar berkas dan sumber media pembelajaran terpadu.</p>
@@ -836,7 +836,7 @@ export default function LmsMediaPage({ embedded = false, hideBreadcrumb = false,
                 <th className="w-[12%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
               {loading ? (
                 Array.from({ length: 5 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">

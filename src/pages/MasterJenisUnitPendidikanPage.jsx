@@ -56,6 +56,7 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
 import ActionDropdown from '../components/app/ActionDropdown'
 import AppBadge from '../components/app/AppBadge'
+import { useToast } from '../components/app'
 import { MasterStatusBadge, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { usePengaturanStore } from '../stores/pengaturanStore'
@@ -192,59 +193,7 @@ function ModernKpiCard({
   )
 }
 
-// ── TOAST NOTIFICATION STACK ──────────────────────────────────────────────────
-function ToastStack({ toasts, onDismiss }) {
-  return (
-    <aside
-      aria-label="Notifikasi sistem"
-      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0"
-    >
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-              toast.type === 'error'
-                ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-            }`}
-          >
-            <div
-              className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                toast.type === 'error'
-                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-              }`}
-            >
-              {toast.type === 'error' ? (
-                <AlertTriangle className="size-4" strokeWidth={2.2} />
-              ) : (
-                <CheckCircle2 className="size-4" strokeWidth={2.2} />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.title}</p>
-              {toast.message && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{toast.message}</p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => onDismiss(toast.id)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 transition-colors cursor-pointer"
-            >
-              <X className="size-4" />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </aside>
-  )
-}
+
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -296,15 +245,10 @@ export default function MasterJenisUnitPendidikanPage() {
   const [kpiModalSearch, setKpiModalSearch] = useState('')
 
   // Toast Notifications
-  const [toasts, setToasts] = useState([])
+  const toast = useToast()
   const pushToast = (title, message = '', type = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setToasts((prev) => [...prev, { id, title, message, type }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4500)
+    toast(title, message, type)
   }
-  const dismissToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id))
 
   // Main Query
   const {
@@ -1760,8 +1704,7 @@ export default function MasterJenisUnitPendidikanPage() {
         )}
       </AnimatePresence>
 
-      {/* Toast Notification Stack */}
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
     </PageContainer>
   )
 }

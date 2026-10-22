@@ -33,6 +33,7 @@ import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
 import AppDataTable from '../components/app/AppDataTable'
+import AppSkeleton from '../components/app/AppSkeleton'
 import { ActionDropdown } from '../components/app'
 import ConfirmDialog from '../components/app/ConfirmDialog'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
@@ -43,6 +44,7 @@ import {
   SquircleActionButton,
 } from '../components/master-data'
 import { exportCsv } from '../components/reports/ReportKit'
+import { businessOptionService } from '../services/businessOptionService'
 
 import { Button } from '../components/tailgrids/core/button'
 import { Spinner } from '../components/tailgrids/core/spinner'
@@ -566,7 +568,7 @@ export default function KelolaAlumniPage() {
     setError(null)
     try {
       const [alumniRes, statsRes, unitsRes] = await Promise.allSettled([
-        alumniService.getAlumniList({ per_page: 200 }),
+        alumniService.getAlumniList({ all: true }),
         alumniService.getAlumniStats(),
         api.get('/education-units'),
       ])
@@ -669,11 +671,46 @@ export default function KelolaAlumniPage() {
     return targetUnitClasses.filter((k) => String(k.tingkat || k.level || k.grade) === String(pindahUnitForm.tingkat))
   }, [targetUnitClasses, pindahUnitForm.tingkat])
 
+  // Dynamic graduation years available in database records and backend stats
+  const availableYears = useMemo(() => {
+    const baseYears = stats?.available_years || ['2026', '2025', '2024', '2023']
+    const yearSet = new Set(baseYears)
+    alumniList.forEach((item) => {
+      const meta = item.metadata || {}
+      const y = meta.tahun_lulus || meta.tahun_mutasi || item.tahun_masuk
+      if (y && String(y).length === 4) {
+        yearSet.add(String(y))
+      }
+    })
+    return Array.from(yearSet).sort((a, b) => b.localeCompare(a))
+  }, [alumniList, stats?.available_years])
+
+  // Scoped Alumni List according to selected unit & graduation year (for 100% synchronized KPI cards, charts, and drill-downs)
+  const scopedAlumniList = useMemo(() => {
+    return alumniList.filter((item) => {
+      // 1. Unit filter
+      if (selectedUnit && selectedUnit !== 'all') {
+        const uId = String(item.unit_id || item.education_unit_id || item.education_unit?.id || item.unit?.id || '')
+        const uAsal = String(item.metadata?.unit_asal_id || '')
+        if (uId !== String(selectedUnit) && uAsal !== String(selectedUnit)) return false
+      }
+
+      // 2. Tahun Lulus / Mutasi filter
+      if (tahunLulusFilter && tahunLulusFilter !== 'all') {
+        const meta = item.metadata || {}
+        const year = String(meta.tahun_lulus || item.tahun_lulus || meta.tahun_mutasi || item.tahun_masuk || item.tahun_ajaran || '')
+        if (year !== String(tahunLulusFilter) && !year.includes(String(tahunLulusFilter))) return false
+      }
+
+      return true
+    })
+  }, [alumniList, selectedUnit, tahunLulusFilter])
+
   // Synchronized Category Lists for KPI Cards & Drill-Down Modals
   const categoryLists = useMemo(() => {
-    const totalList = alumniList
+    const totalList = scopedAlumniList
 
-    const lanjutStudiList = alumniList.filter((item) => {
+    const lanjutStudiList = scopedAlumniList.filter((item) => {
       const meta = item.metadata || {}
       const isMutasi =
         meta.mutasi_type === 'masuk_unit_baru' ||
@@ -687,7 +724,7 @@ export default function KelolaAlumniPage() {
       return !isMutasi
     })
 
-    const pindahUnitList = alumniList.filter((item) => {
+    const pindahUnitList = scopedAlumniList.filter((item) => {
       const meta = item.metadata || {}
       return (
         meta.mutasi_type === 'masuk_unit_baru' ||
@@ -697,7 +734,7 @@ export default function KelolaAlumniPage() {
       )
     })
 
-    const pindahKeluarList = alumniList.filter((item) => {
+    const pindahKeluarList = scopedAlumniList.filter((item) => {
       const meta = item.metadata || {}
       return (
         meta.mutasi_type === 'keluar' ||
@@ -707,7 +744,7 @@ export default function KelolaAlumniPage() {
       )
     })
 
-    const mutasiList = alumniList.filter((item) => {
+    const mutasiList = scopedAlumniList.filter((item) => {
       const meta = item.metadata || {}
       return (
         meta.mutasi_type === 'masuk_unit_baru' ||
@@ -728,7 +765,7 @@ export default function KelolaAlumniPage() {
       pindah_keluar: pindahKeluarList,
       mutasi: mutasiList,
     }
-  }, [alumniList])
+  }, [scopedAlumniList])
 
   const counts = useMemo(() => ({
     all: categoryLists.total.length,
@@ -785,7 +822,8 @@ export default function KelolaAlumniPage() {
         perguruanText.includes(search.toLowerCase())
 
       const unitId = String(item.unit_id || item.education_unit_id || item.education_unit?.id || item.unit?.id || '')
-      const unitMatch = selectedUnit === 'all' || !selectedUnit || unitId === String(selectedUnit)
+      const uAsal = String(metadata.unit_asal_id || '')
+      const unitMatch = selectedUnit === 'all' || !selectedUnit || unitId === String(selectedUnit) || uAsal === String(selectedUnit)
 
       const statusText = (
         metadata.status_lanjutan ||
@@ -809,7 +847,7 @@ export default function KelolaAlumniPage() {
         }
       }
 
-      const year = String(metadata.tahun_lulus || item.tahun_lulus || item.tahun_masuk || item.tahun_ajaran || '')
+      const year = String(metadata.tahun_lulus || item.tahun_lulus || metadata.tahun_mutasi || item.tahun_masuk || item.tahun_ajaran || '')
       const yearMatch = tahunLulusFilter === 'all' || !tahunLulusFilter || year === String(tahunLulusFilter) || year.includes(String(tahunLulusFilter))
 
       return searchMatch && unitMatch && statusMatch && yearMatch
@@ -823,60 +861,86 @@ export default function KelolaAlumniPage() {
     return filteredList.slice(start, start + perPage)
   }, [filteredList, page, perPage])
 
-  // Data Grafik 1: Perbandingan Perpindahan per Tahun
+  // Data Grafik 1: Perbandingan Perpindahan per Tahun (Murni Agregasi Dinamis Aktual)
   const perpindahanChartData = useMemo(() => {
-    const years = ['2022', '2023', '2024', '2025', '2026']
-    const yearMap = {}
-    years.forEach((y) => {
-      yearMap[y] = { year: y, internal: 0, keluar: 0 }
-    })
+    const mutasiItems = categoryLists.mutasi
+    if (!mutasiItems || mutasiItems.length === 0) {
+      return []
+    }
 
-    alumniList.forEach((item) => {
+    const yearMap = new Map()
+
+    mutasiItems.forEach((item) => {
       const meta = item.metadata || {}
-      const year = String(meta.tahun_lulus || item.tahun_masuk || '2026')
-      if (!yearMap[year]) {
-        yearMap[year] = { year, internal: 0, keluar: 0 }
+      let year = null
+      if (meta.tahun_mutasi) {
+        year = String(meta.tahun_mutasi)
+      } else if (meta.tgl_mutasi) {
+        year = String(meta.tgl_mutasi).slice(0, 4)
+      } else if (meta.tahun_lulus) {
+        year = String(meta.tahun_lulus)
+      } else if (item.tahun_masuk) {
+        year = String(item.tahun_masuk)
+      } else if (item.created_at) {
+        year = String(item.created_at).slice(0, 4)
+      } else {
+        year = String(new Date().getFullYear())
       }
-      if (meta.mutasi_type === 'masuk_unit_baru') {
-        yearMap[year].internal += 1
-      } else if (meta.mutasi_type === 'keluar') {
-        yearMap[year].keluar += 1
+
+      if (!yearMap.has(year)) {
+        yearMap.set(year, { year, internal: 0, keluar: 0 })
+      }
+
+      const record = yearMap.get(year)
+      if (
+        meta.mutasi_type === 'keluar' ||
+        item.status === 'pindah_keluar' ||
+        (meta.status_lanjutan || '').toLowerCase().includes('keluar') ||
+        (meta.status_lanjutan || '').toLowerCase().includes('sekolah lain')
+      ) {
+        record.keluar += 1
+      } else {
+        record.internal += 1
       }
     })
 
-    return Object.values(yearMap).map((d) => ({
-      ...d,
-      internal: d.internal || (d.year === '2024' ? 12 : d.year === '2025' ? 18 : d.year === '2026' ? 15 : 8),
-      keluar: d.keluar || (d.year === '2024' ? 4 : d.year === '2025' ? 7 : d.year === '2026' ? 5 : 3),
-    }))
-  }, [alumniList])
+    return Array.from(yearMap.values()).sort((a, b) => a.year.localeCompare(b.year))
+  }, [categoryLists.mutasi])
 
-  // Data Grafik 2: Total Alumni Menurut Tahun
+  // Data Grafik 2: Total Alumni Menurut Tahun (Murni Agregasi Dinamis Aktual)
   const alumniChartData = useMemo(() => {
-    const years = ['2022', '2023', '2024', '2025', '2026']
-    const yearMap = {}
-    years.forEach((y) => {
-      yearMap[y] = { year: y, total: 0 }
-    })
+    const alumniItems = categoryLists.lanjut_studi
+    if (!alumniItems || alumniItems.length === 0) {
+      return []
+    }
 
-    alumniList.forEach((item) => {
+    const yearMap = new Map()
+
+    alumniItems.forEach((item) => {
       const meta = item.metadata || {}
-      const year = String(meta.tahun_lulus || item.tahun_masuk || '2026')
-      if (!yearMap[year]) {
-        yearMap[year] = { year, total: 0 }
+      let year = null
+      if (meta.tahun_lulus) {
+        year = String(meta.tahun_lulus)
+      } else if (item.tahun_lulus) {
+        year = String(item.tahun_lulus)
+      } else if (item.tahun_masuk) {
+        year = String(item.tahun_masuk)
+      } else if (item.created_at) {
+        year = String(item.created_at).slice(0, 4)
+      } else {
+        year = String(new Date().getFullYear())
       }
-      yearMap[year].total += 1
+
+      if (!yearMap.has(year)) {
+        yearMap.set(year, { year, total: 0 })
+      }
+
+      const record = yearMap.get(year)
+      record.total += 1
     })
 
-    let count = 0
-    return Object.values(yearMap).map((d) => {
-      count = (d.total || 0) + (d.year === '2022' ? 35 : d.year === '2023' ? 48 : d.year === '2024' ? 62 : d.year === '2025' ? 75 : 88)
-      return {
-        year: d.year,
-        total: count,
-      }
-    })
-  }, [alumniList])
+    return Array.from(yearMap.values()).sort((a, b) => a.year.localeCompare(b.year))
+  }, [categoryLists.lanjut_studi])
 
   const handleResetFilter = () => {
     setSearch('')
@@ -898,7 +962,7 @@ export default function KelolaAlumniPage() {
         NISN: item.nisn || '-',
         'Unit Asal': item.education_unit?.name || item.unit?.name || 'Unit Utama',
         'Tahun Lulus': meta.tahun_lulus || item.tahun_masuk || '-',
-        'Status Studi / Karir': meta.status_lanjutan || 'Kuliah',
+        'Status Studi / Karir': meta.status_lanjutan || '-',
         'Perguruan Tinggi / Sekolah Tujuan': meta.perguruan_tinggi || meta.tujuan_kelulusan || '-',
         'Pekerjaan / Instansi': meta.pekerjaan || '-',
         'Status Mutasi / Keaktifan':
@@ -1030,6 +1094,18 @@ export default function KelolaAlumniPage() {
     catatan: '',
   })
 
+  const [alumniStatusOptions, setAlumniStatusOptions] = useState([])
+
+  useEffect(() => {
+    let isMounted = true
+    businessOptionService.getDropdown('alumni_status').then((res) => {
+      if (isMounted && Array.isArray(res?.data)) {
+        setAlumniStatusOptions(res.data.map((item) => item.name || item.value || item))
+      }
+    }).catch(() => {})
+    return () => { isMounted = false }
+  }, [])
+
   // Detail Modal State
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedAlumniDetail, setSelectedAlumniDetail] = useState(null)
@@ -1043,7 +1119,7 @@ export default function KelolaAlumniPage() {
     setSelectedAlumni(alumni)
     const meta = alumni.metadata || {}
     setTujuanForm({
-      status_lanjutan: meta.status_lanjutan || alumni.status_lanjutan || 'Kuliah',
+      status_lanjutan: meta.status_lanjutan || alumni.status_lanjutan || '',
       perguruan_tinggi: meta.perguruan_tinggi || meta.tujuan_kelulusan || alumni.perguruan_tinggi || '',
       jurusan: meta.jurusan || meta.prodi || '',
       pekerjaan: meta.pekerjaan || alumni.pekerjaan || '',
@@ -1150,7 +1226,7 @@ export default function KelolaAlumniPage() {
       nis: alumni.nis || '',
       nisn: alumni.nisn || '',
       unit_id: alumni.unit_id || alumni.education_unit?.id || (units[0]?.id || ''),
-      status_lanjutan: meta.status_lanjutan || 'Kuliah',
+      status_lanjutan: meta.status_lanjutan || '',
       perguruan_tinggi: meta.perguruan_tinggi || meta.tujuan_kelulusan || '',
       pekerjaan: meta.pekerjaan || '',
       tahun_lulus: meta.tahun_lulus || alumni.tahun_masuk || new Date().getFullYear().toString(),
@@ -1304,7 +1380,7 @@ export default function KelolaAlumniPage() {
 
   return (
     <PageContainer className="space-y-6 pb-12">
-      <MasterDataPage hideBreadcrumb className="education-unit-page student-master-page">
+      <MasterDataPage hideBreadcrumb>
         {/* App Breadcrumb Navigation (Identik dengan StudentsPage) */}
         <div className="print:hidden">
           <AppBreadcrumb
@@ -1587,10 +1663,10 @@ export default function KelolaAlumniPage() {
           <Alert variant="warning" className="mb-6">
             <AlertTitle className="flex items-center gap-2 font-semibold">
               <AlertCircle className="w-4 h-4 text-amber-600" />
-              Perhatian
+              Peringatan Pengambilan Data
             </AlertTitle>
             <AlertDescription className="text-xs mt-1">
-              Gagal memuat data dari server. Menampilkan data fallback simulasi lokal.
+              {error}
             </AlertDescription>
           </Alert>
         )}
@@ -1680,29 +1756,78 @@ export default function KelolaAlumniPage() {
                   <ArrowRightLeft className="w-4.5 h-4.5 text-amber-500" />
                   Perbandingan Perpindahan Siswa Per Tahun
                 </span>
-                <AppBadge variant="warning">Mutasi Siswa</AppBadge>
+                <AppBadge variant={loading ? 'gray' : error ? 'danger' : counts.mutasi > 0 ? 'warning' : 'gray'}>
+                  {loading ? 'Memuat...' : error ? 'Gagal' : `${counts.mutasi} Mutasi`}
+                </AppBadge>
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
                 Grafik perbandingan mutasi internal unit vs pindah keluar ke sekolah lain per tahun ajaran
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4 pb-5">
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={perpindahanChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid stroke="#edf1f5" vertical={false} className="dark:stroke-slate-800" />
-                    <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '8px', fontSize: '12px' }} />
-                    <Bar dataKey="internal" name="Mutasi Internal Unit" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={24} />
-                    <Bar dataKey="keluar" name="Pindah Keluar Sekolah" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={24} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {loading ? (
+                <div className="h-64 flex items-center justify-center p-2">
+                  <AppSkeleton variant="card" className="h-56 w-full" />
+                </div>
+              ) : error ? (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200/60 dark:border-rose-900/40">
+                    <AlertCircle className="size-6" />
+                  </div>
+                  <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Gagal Memuat Data Perpindahan</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px]">{error}</p>
+                </div>
+              ) : perpindahanChartData.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 mb-3 border border-amber-200/60 dark:border-amber-900/40">
+                    <ArrowRightLeft className="size-6 opacity-60" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Belum ada data perpindahan siswa
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px]">
+                    Tidak ada rekaman mutasi internal antar unit maupun pindah keluar pada filter ini.
+                  </p>
+                </div>
+              ) : (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={perpindahanChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid stroke="#edf1f5" vertical={false} className="dark:stroke-slate-800" />
+                      <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                      <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload?.length) return null
+                          const totalTahun = payload.reduce((sum, p) => sum + (Number(p.value) || 0), 0)
+                          return (
+                            <div className="rounded-xl border border-slate-800 bg-slate-900/95 p-3 text-white shadow-xl backdrop-blur-sm">
+                              <p className="text-xs font-bold text-amber-400 mb-1.5">Tahun {label}</p>
+                              {payload.map((p) => {
+                                const val = Number(p.value) || 0
+                                const pct = totalTahun > 0 ? ((val / totalTahun) * 100).toFixed(1) : '0.0'
+                                return (
+                                  <p key={p.dataKey} className="text-xs font-medium flex items-center justify-between gap-4 py-0.5">
+                                    <span style={{ color: p.color }}>{p.name}:</span>
+                                    <span className="font-extrabold tabular-nums">{val} siswa ({pct}%)</span>
+                                  </p>
+                                )
+                              })}
+                              <div className="mt-1.5 pt-1.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                                <span>Total Mutasi Tahun Ini:</span>
+                                <span className="font-bold text-white">{totalTahun} siswa</span>
+                              </div>
+                            </div>
+                          )
+                        }}
+                      />
+                      <Legend wrapperStyle={{ paddingTop: '8px', fontSize: '12px' }} />
+                      <Bar dataKey="internal" name="Mutasi Internal Unit" fill="#f59e0b" radius={[6, 6, 0, 0]} barSize={24} />
+                      <Bar dataKey="keluar" name="Pindah Keluar Sekolah" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1714,41 +1839,85 @@ export default function KelolaAlumniPage() {
                   <GraduationCap className="w-4.5 h-4.5 text-emerald-600" />
                   Total Alumni Menurut Tahun Kelulusan
                 </span>
-                <AppBadge variant="success">Trend Kelulusan</AppBadge>
+                <AppBadge variant={loading ? 'gray' : error ? 'danger' : counts.alumni > 0 ? 'success' : 'gray'}>
+                  {loading ? 'Memuat...' : error ? 'Gagal' : `${counts.alumni} Lulus`}
+                </AppBadge>
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
                 Pertumbuhan total alumni yang terdaftar lulus menurut tahun kelulusan
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4 pb-5">
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={alumniChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="alumniGradientArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#edf1f5" vertical={false} className="dark:stroke-slate-800" />
-                    <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '8px', fontSize: '12px' }} />
-                    <Area
-                      type="monotone"
-                      dataKey="total"
-                      name="Total Alumni Lulus"
-                      stroke="#10b981"
-                      strokeWidth={2.5}
-                      fill="url(#alumniGradientArea)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              {loading ? (
+                <div className="h-64 flex items-center justify-center p-2">
+                  <AppSkeleton variant="card" className="h-56 w-full" />
+                </div>
+              ) : error ? (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200/60 dark:border-rose-900/40">
+                    <AlertCircle className="size-6" />
+                  </div>
+                  <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Gagal Memuat Data Kelulusan</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px]">{error}</p>
+                </div>
+              ) : alumniChartData.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mb-3 border border-emerald-200/60 dark:border-emerald-900/40">
+                    <GraduationCap className="size-6 opacity-60" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Belum ada data kelulusan alumni
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[260px]">
+                    Tidak ada rekaman alumni yang terdaftar lulus pada filter ini.
+                  </p>
+                </div>
+              ) : (
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={alumniChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="alumniGradientArea" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="#edf1f5" vertical={false} className="dark:stroke-slate-800" />
+                      <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                      <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload?.length) return null
+                          const val = Number(payload[0]?.value) || 0
+                          const totalSemua = counts.alumni
+                          const pct = totalSemua > 0 ? ((val / totalSemua) * 100).toFixed(1) : '0.0'
+                          return (
+                            <div className="rounded-xl border border-slate-800 bg-slate-900/95 p-3 text-white shadow-xl backdrop-blur-sm">
+                              <p className="text-xs font-bold text-emerald-400 mb-1">Tahun Kelulusan {label}</p>
+                              <p className="text-xs font-extrabold flex items-center justify-between gap-4">
+                                <span>Total Alumni Lulus:</span>
+                                <span className="text-emerald-300 tabular-nums">{val} siswa</span>
+                              </p>
+                              <p className="text-[11px] text-slate-400 mt-1 pt-1 border-t border-slate-800">
+                                Proporsi: {pct}% dari seluruh {totalSemua} alumni lulus
+                              </p>
+                            </div>
+                          )
+                        }}
+                      />
+                      <Legend wrapperStyle={{ paddingTop: '8px', fontSize: '12px' }} />
+                      <Area
+                        type="monotone"
+                        dataKey="total"
+                        name="Total Alumni Lulus"
+                        stroke="#10b981"
+                        strokeWidth={2.5}
+                        fill="url(#alumniGradientArea)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1882,10 +2051,9 @@ export default function KelolaAlumniPage() {
                 onChange={(e) => { setTahunLulusFilter(e.target.value); setPage(1) }}
               >
                 <option value="all">Semua Tahun Lulus</option>
-                <option value="2026">2026</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-                <option value="2023">2023</option>
+                {availableYears.map((yr) => (
+                  <option key={yr} value={yr}>{yr}</option>
+                ))}
               </MasterFilterSelect>
             </>
           }
@@ -3188,7 +3356,7 @@ export default function KelolaAlumniPage() {
                                     (meta.status_lanjutan || '').toLowerCase().includes('kerja') ? 'warning' :
                                     'success'
                                   }>
-                                    {meta.status_lanjutan || row.status_lanjutan || 'Kuliah'}
+                                    {meta.status_lanjutan || row.status_lanjutan || '-'}
                                   </AppBadge>
                                 </td>
                                 <td className="py-2.5 px-3 font-semibold text-emerald-800 dark:text-emerald-300">
@@ -3321,7 +3489,7 @@ export default function KelolaAlumniPage() {
                   <div className="space-y-2 text-xs">
                     <div>
                       <span className="text-slate-400 block text-[10px] font-semibold">Status Kelanjutan</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{selectedAlumniDetail.metadata?.status_lanjutan || selectedAlumniDetail.status_lanjutan || 'Kuliah'}</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{selectedAlumniDetail.metadata?.status_lanjutan || selectedAlumniDetail.status_lanjutan || '-'}</span>
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[10px] font-semibold">Perguruan Tinggi / PTN / Sekolah Tujuan</span>
@@ -3398,12 +3566,18 @@ export default function KelolaAlumniPage() {
                     onChange={(e) => setTujuanForm({ ...tujuanForm, status_lanjutan: e.target.value })}
                     className="w-full h-10 text-xs font-semibold rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 px-3 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20"
                   >
-                    <option value="Kuliah">Kuliah (PTN / PTS / Universitas)</option>
-                    <option value="Bekerja">Bekerja / Karir Instansi</option>
-                    <option value="Pesantren">Pesantren / Ma'had Aly</option>
-                    <option value="Sekolah Lanjutan">Sekolah Lanjutan (SMA/SMK/MA)</option>
-                    <option value="Wirausaha">Wirausaha / Usaha Mandiri</option>
-                    <option value="Lainnya">Lainnya</option>
+                    <option value="">-- Pilih Status Lanjutan --</option>
+                    {alumniStatusOptions.length === 0 && (
+                      <option value="" disabled>
+                        (Belum ada data opsi — kelola di Pengaturan Opsi Bisnis)
+                      </option>
+                    )}
+                    {tujuanForm.status_lanjutan && !alumniStatusOptions.includes(tujuanForm.status_lanjutan) && (
+                      <option value={tujuanForm.status_lanjutan}>{tujuanForm.status_lanjutan} (Data Historis)</option>
+                    )}
+                    {alumniStatusOptions.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
 

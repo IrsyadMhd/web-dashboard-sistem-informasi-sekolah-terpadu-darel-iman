@@ -1,22 +1,60 @@
-import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeCanvas } from 'qrcode.react'
 import {
-  Activity, AlertCircle, Award, BookOpenCheck, CalendarCheck, CalendarDays, Camera,
-  CheckCircle2, ClipboardList, Clock3, Download, Droplets, Eye, EyeOff, FileText, GraduationCap,
-  HeartPulse, Home, IdCard, KeyRound, Loader2, LockKeyhole, Mail, MapPin, MessageCircle, Phone, QrCode, School,
-  ShieldCheck, Sparkles, Trophy, UserRound, UsersRound,
+  Activity,
+  AlertCircle,
+  Award,
+  BookOpenCheck,
+  CalendarCheck,
+  CalendarDays,
+  Camera,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  Download,
+  Droplets,
+  Eye,
+  EyeOff,
+  FileText,
+  GraduationCap,
+  HeartPulse,
+  Home,
+  IdCard,
+  KeyRound,
+  Layers,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Phone,
+  QrCode,
+  School,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  User,
+  UserRound,
+  UsersRound,
+  X,
 } from 'lucide-react'
+import {
+  Card as HeroCard,
+  Chip as HeroChip,
+  Button as HeroButton,
+  Modal as HeroModal,
+  Tooltip as HeroTooltip,
+} from '@heroui/react'
 import { Modal } from '../ui/modal'
 import { EmptyState } from '../ui/empty-state'
 import PersonAvatar from '../../components/ui/PersonAvatar'
 import api from '../../services/api'
 import { familyPortalService } from '../../services/familyPortalService'
-
 import CetakKartuSiswaModal from '../siswa/CetakKartuSiswaModal'
 
-const card = 'rounded-[18px] border border-slate-200/80 bg-white shadow-[0_16px_40px_-28px_rgba(15,23,42,.45)] dark:border-slate-800 dark:bg-slate-900'
 const valueOf = (source, keys, fallback = '-') => {
+  if (!source) return fallback
   for (const key of keys) {
     const value = key.split('.').reduce((item, part) => item?.[part], source)
     if (value !== undefined && value !== null && value !== '') {
@@ -28,29 +66,185 @@ const valueOf = (source, keys, fallback = '-') => {
   }
   return fallback
 }
-const displayDate = (value) => value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date(value)) : '-'
-const asList = (value) => Array.isArray(value) ? value : value && typeof value === 'object' ? Object.values(value) : []
 
-function SectionTitle({ icon: Icon, title, description }) {
-  return <div className="mb-5 flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"><Icon className="h-5 w-5" /></span><div><h2 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h2>{description && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</p>}</div></div>
+const displayDate = (value) => {
+  if (!value) return '-'
+  try {
+    return new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date(value))
+  } catch {
+    return String(value)
+  }
 }
 
-function InfoGrid({ items }) {
-  return <div className="grid gap-x-6 sm:grid-cols-2">{items.map(({ label, value, icon: Icon }) => <div key={label} className="flex min-h-[74px] gap-3 border-b border-slate-100 py-3.5 last:border-b-0 dark:border-slate-800"><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-300">{Icon ? <Icon className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}</span><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-slate-400">{label}</p><p className="mt-1 break-words text-sm font-semibold text-slate-800 dark:text-slate-100">{value ?? '-'}</p></div></div>)}</div>
+const asList = (value) => {
+  if (Array.isArray(value)) return value
+  if (value && typeof value === 'object') return Object.values(value)
+  return []
 }
 
-function KpiCard({ icon: Icon, label, value, subtitle, progress = 0, tone = 'emerald' }) {
-  const colors = { emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950', blue: 'bg-blue-50 text-blue-700 dark:bg-blue-950', amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950', violet: 'bg-violet-50 text-violet-700 dark:bg-violet-950' }
-  const bars = { emerald: 'bg-emerald-500', blue: 'bg-blue-500', amber: 'bg-amber-500', violet: 'bg-violet-500' }
-  return <motion.article whileHover={{ y: -3 }} transition={{ duration: .18 }} className={`${card} p-4`}><div className="flex items-start justify-between gap-3"><span className={`flex h-10 w-10 items-center justify-center rounded-xl ${colors[tone]}`}><Icon className="h-5 w-5" /></span><span className="text-xl font-black text-slate-900 dark:text-white">{value}</span></div><p className="mt-4 text-xs font-bold text-slate-700 dark:text-slate-200">{label}</p><p className="mt-1 text-[11px] text-slate-400">{subtitle}</p><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${bars[tone]}`} style={{ width: `${Math.max(0, Math.min(100, Number(progress) || 0))}%` }} /></div></motion.article>
+function SectionHeader({ icon: Icon, title, description, badge }) {
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100/80 pb-4 dark:border-emerald-900/40">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/20">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
+            {title}
+          </h3>
+          {description && (
+            <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
+      {badge && (
+        <HeroChip
+          size="sm"
+          variant="flat"
+          color="success"
+          className="font-bold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+        >
+          {badge}
+        </HeroChip>
+      )}
+    </div>
+  )
 }
 
-function Timeline({ items, emptyTitle }) {
-  if (!items.length) return <EmptyState icon={<Clock3 className="h-7 w-7" />} title={emptyTitle} description="Informasi ini belum tersedia pada data siswa." />
-  return <div className="relative ml-2 space-y-5 border-l border-emerald-200 pl-6 dark:border-emerald-900">{items.map((item, index) => <div key={item.id || index} className="relative"><span className="absolute -left-[31px] top-1 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-950" /><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="text-sm font-bold text-slate-800 dark:text-slate-100">{item.school || item.sekolah || item.title || item.judul || item.activity || 'Aktivitas siswa'}</p><p className="mt-1 text-xs text-slate-500">{item.level || item.jenjang || item.description || item.keterangan || item.subject || ''}</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{item.year || item.tahun || item.date || item.waktu || item.status || '-'}</span></div></div>)}</div>
+function InfoTilesGrid({ items }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map(({ label, value, icon: Icon }) => (
+        <div
+          key={label}
+          className="group flex items-start gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/60 p-3.5 transition-all duration-200 hover:border-emerald-300 hover:bg-emerald-50/30 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-emerald-700/60 dark:hover:bg-emerald-950/20"
+        >
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-2xs border border-slate-200/60 group-hover:bg-emerald-600 group-hover:text-white transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-400">
+            {Icon ? <Icon className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              {label}
+            </p>
+            <p className="mt-0.5 break-words text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+              {value ?? '-'}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
-export default function StudentProfileWorkspace({ student = {}, dashboard = {}, readOnly = true, onPhotoUpdated }) {
+function HeroKpiCard({ icon: Icon, label, value, subtitle, progress = 0, tone = 'emerald' }) {
+  const themes = {
+    emerald: {
+      border: 'border-emerald-500/25 dark:border-emerald-700/40',
+      iconBg: 'bg-emerald-500 text-white shadow-emerald-500/20',
+      bar: 'from-emerald-500 to-teal-500',
+      glow: 'from-emerald-500/10 via-teal-500/5',
+      badge: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+    },
+    blue: {
+      border: 'border-blue-500/25 dark:border-blue-700/40',
+      iconBg: 'bg-blue-600 text-white shadow-blue-500/20',
+      bar: 'from-blue-500 to-indigo-600',
+      glow: 'from-blue-500/10 via-indigo-500/5',
+      badge: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800',
+    },
+    amber: {
+      border: 'border-amber-500/25 dark:border-amber-700/40',
+      iconBg: 'bg-amber-500 text-white shadow-amber-500/20',
+      bar: 'from-amber-500 to-orange-500',
+      glow: 'from-amber-500/10 via-orange-500/5',
+      badge: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+    },
+    violet: {
+      border: 'border-violet-500/25 dark:border-violet-700/40',
+      iconBg: 'bg-violet-600 text-white shadow-violet-500/20',
+      bar: 'from-violet-500 to-purple-600',
+      glow: 'from-violet-500/10 via-purple-500/5',
+      badge: 'bg-violet-50 text-violet-800 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800',
+    },
+  }
+
+  const t = themes[tone] || themes.emerald
+
+  return (
+    <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.18 }}>
+      <HeroCard
+        className={`relative overflow-hidden rounded-[22px] border-2 ${t.border} bg-white p-4.5 sm:p-5 shadow-xs transition-all hover:shadow-md dark:bg-slate-900`}
+      >
+        <div aria-hidden="true" className={`pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br ${t.glow} to-transparent blur-xl`} />
+        <div className="relative flex items-center justify-between gap-3">
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${t.iconBg} shadow-md`}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+            {value ?? '-'}
+          </span>
+        </div>
+        <p className="relative mt-3.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+          {label}
+        </p>
+        <p className="relative mt-0.5 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+          {subtitle}
+        </p>
+        <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div
+            className={`h-full rounded-full bg-gradient-to-r ${t.bar} transition-all duration-500`}
+            style={{ width: `${Math.max(0, Math.min(100, Number(progress) || 0))}%` }}
+          />
+        </div>
+      </HeroCard>
+    </motion.div>
+  )
+}
+
+function TimelineList({ items, emptyTitle }) {
+  if (!items.length) {
+    return (
+      <EmptyState
+        icon={<Clock3 className="h-7 w-7 text-emerald-500" />}
+        title={emptyTitle}
+        description="Informasi ini belum tersedia pada data siswa."
+      />
+    )
+  }
+
+  return (
+    <div className="relative ml-2 space-y-4 border-l-2 border-emerald-200 pl-6 dark:border-emerald-800/80">
+      {items.map((item, index) => (
+        <div key={item.id || index} className="relative">
+          <span className="absolute -left-[31px] top-1 h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-950" />
+          <div className="flex flex-wrap items-start justify-between gap-2 rounded-xl bg-slate-50/80 p-3.5 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+                {item.school || item.sekolah || item.title || item.judul || item.activity || 'Aktivitas siswa'}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                {item.level || item.jenjang || item.description || item.keterangan || item.subject || ''}
+              </p>
+            </div>
+            <span className="rounded-full bg-emerald-100/80 px-2.5 py-1 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              {item.year || item.tahun || item.date || item.waktu || item.status || '-'}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default function StudentProfileWorkspace({
+  student = {},
+  dashboard = {},
+  readOnly = true,
+  onPhotoUpdated,
+}) {
   const fileInputRef = useRef(null)
   const meta = student.metadata || {}
   const initialPhoto = student.photo || student.photo_url || student.avatar_url || student.photo_thumb || meta.photo || meta.foto_url || meta.foto || ''
@@ -61,10 +255,11 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
   useEffect(() => {
     setCustomPhoto(initialPhoto)
   }, [initialPhoto])
+
   const [qrOpen, setQrOpen] = useState(false)
   const [qrToken, setQrToken] = useState('')
   const [qrError, setQrError] = useState('')
-  const [detail, setDetail] = useState(null)
+  const [detailModal, setDetailModal] = useState(null)
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0]
@@ -84,7 +279,6 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
       return
     }
 
-    // Instant local preview
     const reader = new FileReader()
     reader.onload = (event) => {
       const dataUrl = event.target?.result
@@ -127,6 +321,7 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
       }
     }
   }
+
   const parents = asList(student.parents)
   const father = parents.find((item) => /ayah|father/i.test(item.pivot?.relationship_type || item.relationship_type || '')) || meta.ayah || {}
   const mother = parents.find((item) => /ibu|mother/i.test(item.pivot?.relationship_type || item.relationship_type || '')) || meta.ibu || {}
@@ -161,7 +356,7 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
           }
         })
         .catch(() => {
-          // Keep defaultToken fallback so QR Code Canvas is ALWAYS rendered!
+          // Keep defaultToken fallback so QR Code Canvas is ALWAYS rendered
         })
     }
 
@@ -169,126 +364,635 @@ export default function StudentProfileWorkspace({ student = {}, dashboard = {}, 
   }, [student?.id, student?.nis, student?.nisn, student?.full_name, student?.nama_lengkap])
 
   const personal = [
-    { label: 'Nama Lengkap', value: name, icon: UserRound }, { label: 'Nama Panggilan', value: valueOf(meta, ['nama_panggilan', 'nickname']), icon: UserRound },
-    { label: 'NIS', value: student.nis || '-', icon: IdCard }, { label: 'NIK', value: valueOf(student, ['nik', 'metadata.nik']), icon: IdCard },
-    { label: 'Tempat Lahir', value: student.birth_place || '-', icon: MapPin }, { label: 'Tanggal Lahir', value: displayDate(student.birth_date), icon: CalendarDays },
+    { label: 'Nama Lengkap', value: name, icon: UserRound },
+    { label: 'Nama Panggilan', value: valueOf(meta, ['nama_panggilan', 'nickname']), icon: UserRound },
+    { label: 'NIS', value: student.nis || '-', icon: IdCard },
+    { label: 'NIK', value: valueOf(student, ['nik', 'metadata.nik']), icon: IdCard },
+    { label: 'Tempat Lahir', value: student.birth_place || '-', icon: MapPin },
+    { label: 'Tanggal Lahir', value: displayDate(student.birth_date), icon: CalendarDays },
     { label: 'Jenis Kelamin', value: student.gender === 'male' ? 'Laki-laki' : student.gender === 'female' ? 'Perempuan' : valueOf(student, ['gender', 'jenis_kelamin']), icon: UsersRound },
-    { label: 'Agama', value: valueOf(student, ['religion', 'metadata.agama'], 'Islam'), icon: ShieldCheck }, { label: 'Kewarganegaraan', value: valueOf(meta, ['kewarganegaraan', 'citizenship']), icon: Home },
-    { label: 'Golongan Darah', value: valueOf(meta, ['golongan_darah', 'blood_type']), icon: Droplets }, { label: 'Bahasa', value: valueOf(meta, ['bahasa', 'language']), icon: MessageCircle },
-    { label: 'Anak Ke', value: valueOf(meta, ['anak_ke', 'birth_order']), icon: UsersRound }, { label: 'Status Anak', value: valueOf(meta, ['status_anak', 'child_status']), icon: CheckCircle2 },
-    { label: 'Alamat', value: student.address || '-', icon: MapPin }, { label: 'RT / RW', value: `${valueOf(meta, ['rt'])} / ${valueOf(meta, ['rw'])}`, icon: MapPin },
-    { label: 'Kelurahan', value: valueOf(meta, ['kelurahan', 'village']), icon: MapPin }, { label: 'Kecamatan', value: valueOf(meta, ['kecamatan', 'district']), icon: MapPin },
-    { label: 'Kota', value: valueOf(meta, ['kota', 'city']), icon: MapPin }, { label: 'Provinsi', value: valueOf(meta, ['provinsi', 'province']), icon: MapPin },
-    { label: 'Kode Pos', value: valueOf(meta, ['kode_pos', 'postal_code']), icon: MapPin }, { label: 'Email', value: valueOf(student, ['email', 'user.email', 'metadata.email']), icon: Mail },
-    { label: 'Nomor HP', value: valueOf(student, ['phone', 'metadata.nomor_hp', 'metadata.phone']), icon: Phone }, { label: 'Status', value: status, icon: CheckCircle2 },
+    { label: 'Agama', value: valueOf(student, ['religion', 'metadata.agama'], 'Islam'), icon: ShieldCheck },
+    { label: 'Kewarganegaraan', value: valueOf(meta, ['kewarganegaraan', 'citizenship']), icon: Home },
+    { label: 'Golongan Darah', value: valueOf(meta, ['golongan_darah', 'blood_type']), icon: Droplets },
+    { label: 'Bahasa', value: valueOf(meta, ['bahasa', 'language']), icon: MessageCircle },
+    { label: 'Anak Ke', value: valueOf(meta, ['anak_ke', 'birth_order']), icon: UsersRound },
+    { label: 'Status Anak', value: valueOf(meta, ['status_anak', 'child_status']), icon: CheckCircle2 },
+    { label: 'Alamat', value: student.address || '-', icon: MapPin },
+    { label: 'RT / RW', value: `${valueOf(meta, ['rt'])} / ${valueOf(meta, ['rw'])}`, icon: MapPin },
+    { label: 'Kelurahan', value: valueOf(meta, ['kelurahan', 'village']), icon: MapPin },
+    { label: 'Kecamatan', value: valueOf(meta, ['kecamatan', 'district']), icon: MapPin },
+    { label: 'Kota / Kab.', value: valueOf(meta, ['kota', 'city']), icon: MapPin },
+    { label: 'Provinsi', value: valueOf(meta, ['provinsi', 'province']), icon: MapPin },
+    { label: 'Kode Pos', value: valueOf(meta, ['kode_pos', 'postal_code']), icon: MapPin },
+    { label: 'Email', value: valueOf(student, ['email', 'user.email', 'metadata.email']), icon: Mail },
+    { label: 'Nomor HP', value: valueOf(student, ['phone', 'metadata.nomor_hp', 'metadata.phone']), icon: Phone },
+    { label: 'Status Siswa', value: status, icon: CheckCircle2 },
   ]
+
   const parentItems = (data) => [
-    { label: 'Nama', value: valueOf(data, ['nama_lengkap', 'name', 'full_name', 'nama']), icon: UserRound }, { label: 'NIK', value: valueOf(data, ['nik']), icon: IdCard },
-    { label: 'Pekerjaan', value: valueOf(data, ['occupation', 'pekerjaan']), icon: ClipboardList }, { label: 'Pendidikan', value: valueOf(data, ['education', 'pendidikan']), icon: GraduationCap },
-    { label: 'Nomor HP', value: valueOf(data, ['phone', 'phone_number', 'nomor_hp']), icon: Phone }, { label: 'Email', value: valueOf(data, ['email']), icon: Mail },
-    { label: 'Alamat', value: valueOf(data, ['address', 'alamat']), icon: MapPin },
+    { label: 'Nama', value: valueOf(data, ['nama_lengkap', 'name', 'full_name', 'nama']), icon: UserRound },
+    { label: 'NIK', value: valueOf(data, ['nik']), icon: IdCard },
+    { label: 'Pekerjaan', value: valueOf(data, ['occupation', 'pekerjaan']), icon: ClipboardList },
+    { label: 'Pendidikan', value: valueOf(data, ['education', 'pendidikan']), icon: GraduationCap },
+    { label: 'Nomor HP / WA', value: valueOf(data, ['phone', 'phone_number', 'nomor_hp']), icon: Phone },
+    { label: 'Email', value: valueOf(data, ['email']), icon: Mail },
+    { label: 'Alamat Tinggal', value: valueOf(data, ['address', 'alamat']), icon: MapPin },
   ]
+
   const academic = [
-    { label: 'Unit Pendidikan', value: unitName, icon: School }, { label: 'Jenjang', value: valueOf(student, ['jenjang', 'education_unit.jenjang', 'metadata.jenjang']), icon: GraduationCap },
-    { label: 'Kelas', value: className, icon: School }, { label: 'Rombel', value: valueOf(student, ['kelas.rombel', 'metadata.rombel']), icon: UsersRound },
-    { label: 'NISN', value: student.nisn || '-', icon: IdCard }, { label: 'Status Akademik', value: valueOf(student, ['academic_status', 'metadata.status_akademik'], status), icon: CheckCircle2 },
-    { label: 'Tanggal Masuk', value: displayDate(valueOf(student, ['entry_date', 'metadata.tanggal_masuk'], null)), icon: CalendarCheck }, { label: 'Tanggal Keluar', value: displayDate(valueOf(student, ['exit_date', 'metadata.tanggal_keluar'], null)), icon: CalendarCheck },
-    { label: 'Wali Kelas', value: waliKelas, icon: UserRound }, { label: 'Guru BK / Musyrif', value: guruBk, icon: UserRound },
+    { label: 'Unit Pendidikan', value: unitName, icon: School },
+    { label: 'Jenjang Pendidikan', value: valueOf(student, ['jenjang', 'education_unit.jenjang', 'metadata.jenjang']), icon: GraduationCap },
+    { label: 'Kelas', value: className, icon: School },
+    { label: 'Rombel', value: valueOf(student, ['kelas.rombel', 'metadata.rombel']), icon: UsersRound },
+    { label: 'NISN', value: student.nisn || '-', icon: IdCard },
+    { label: 'Status Akademik', value: valueOf(student, ['academic_status', 'metadata.status_akademik'], status), icon: CheckCircle2 },
+    { label: 'Tanggal Masuk', value: displayDate(valueOf(student, ['entry_date', 'metadata.tanggal_masuk'], null)), icon: CalendarCheck },
+    { label: 'Tanggal Keluar', value: displayDate(valueOf(student, ['exit_date', 'metadata.tanggal_keluar'], null)), icon: CalendarCheck },
+    { label: 'Wali Kelas', value: waliKelas, icon: UserRound },
+    { label: 'Guru BK / Musyrif', value: guruBk, icon: UserRound },
     ...(asrama !== '-' ? [{ label: 'Asrama & Musyrif', value: `${asrama} (${guruBk})`, icon: Home }] : []),
-    { label: 'Status Siswa', value: status, icon: ShieldCheck },
+    { label: 'Status Keaktifan', value: status, icon: ShieldCheck },
   ]
+
   const health = [
-    { label: 'Golongan Darah', value: valueOf(meta, ['golongan_darah', 'kesehatan.golongan_darah']), icon: Droplets }, { label: 'Alergi', value: valueOf(meta, ['alergi', 'kesehatan.alergi']), icon: AlertCircle },
-    { label: 'Riwayat Penyakit', value: valueOf(meta, ['riwayat_penyakit', 'kesehatan.riwayat_penyakit']), icon: HeartPulse }, { label: 'Vaksin', value: valueOf(meta, ['vaksin', 'kesehatan.vaksin']), icon: ShieldCheck },
-    { label: 'Tinggi', value: valueOf(meta, ['tinggi_badan', 'kesehatan.tinggi']), icon: Activity }, { label: 'Berat', value: valueOf(meta, ['berat_badan', 'kesehatan.berat']), icon: Activity },
+    { label: 'Golongan Darah', value: valueOf(meta, ['golongan_darah', 'kesehatan.golongan_darah']), icon: Droplets },
+    { label: 'Alergi', value: valueOf(meta, ['alergi', 'kesehatan.alergi']), icon: AlertCircle },
+    { label: 'Riwayat Penyakit', value: valueOf(meta, ['riwayat_penyakit', 'kesehatan.riwayat_penyakit']), icon: HeartPulse },
+    { label: 'Vaksinasi Terakhir', value: valueOf(meta, ['vaksin', 'kesehatan.vaksin']), icon: ShieldCheck },
+    { label: 'Tinggi Badan', value: valueOf(meta, ['tinggi_badan', 'kesehatan.tinggi']) !== '-' ? `${valueOf(meta, ['tinggi_badan', 'kesehatan.tinggi'])} cm` : '-', icon: Activity },
+    { label: 'Berat Badan', value: valueOf(meta, ['berat_badan', 'kesehatan.berat']) !== '-' ? `${valueOf(meta, ['berat_badan', 'kesehatan.berat'])} kg` : '-', icon: Activity },
   ]
 
-  return <div className="space-y-5">
-    <section className={`${card} relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-5 dark:from-emerald-950/70 dark:via-slate-900 dark:to-slate-900 sm:p-7`}>
-      <div aria-hidden="true" className="absolute inset-0 opacity-[.06] [background-image:radial-gradient(circle_at_2px_2px,#0E5C44_1.5px,transparent_0)] [background-size:24px_24px]" />
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center">
-        <div className="flex flex-1 flex-col items-center gap-5 sm:flex-row sm:items-center">
-          <div className="flex flex-col items-center gap-2 shrink-0">
-            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()} title="Klik untuk mengubah foto siswa">
-              <PersonAvatar
-                src={customPhoto || student.photo_url || student.avatar_url || photo}
-                name={name}
-                size="detail"
-                className="h-28 w-28 rounded-[24px] border-4 border-white shadow-xl dark:border-slate-800 transition duration-200 group-hover:scale-[1.02] group-hover:brightness-90"
-              />
-              <button
-                type="button"
-                onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
-                disabled={uploadingPhoto}
-                className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#0E5C44] text-white shadow-lg ring-2 ring-white dark:ring-slate-900 transition hover:scale-110 cursor-pointer disabled:opacity-75"
-                title="Ubah Foto Siswa"
+  return (
+    <div className="space-y-6">
+      {/* 1. HERO PROFILE CARD CONTAINER */}
+      <HeroCard className="relative overflow-hidden rounded-[24px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-7 shadow-lg shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+        {/* Dual Multi-tone Ambient Glow */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-gradient-to-br from-emerald-500/35 via-teal-400/25 to-transparent blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 -bottom-20 h-72 w-72 rounded-full bg-gradient-to-tl from-teal-500/35 via-emerald-400/25 to-transparent blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-[.06] [background-image:radial-gradient(circle_at_2px_2px,#059669_1.5px,transparent_0)] [background-size:24px_24px]"
+        />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center justify-between">
+          {/* Avatar & Identitas */}
+          <div className="flex flex-1 flex-col items-center gap-5 sm:flex-row sm:items-center">
+            {/* Foto Siswa & Tombol Kamera */}
+            <div className="flex flex-col items-center gap-2.5 shrink-0">
+              <div
+                className="relative group cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+                title="Klik untuk mengubah foto siswa"
               >
-                {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-              </button>
+                <div className="rounded-[26px] p-1 bg-gradient-to-br from-emerald-400 via-teal-300 to-emerald-600 shadow-xl shadow-emerald-900/20">
+                  <PersonAvatar
+                    src={customPhoto || student.photo_url || student.avatar_url || photo}
+                    name={name}
+                    size="detail"
+                    className="h-28 w-28 rounded-[24px] border-4 border-white dark:border-slate-900 transition-all duration-300 group-hover:scale-[1.02] group-hover:brightness-95 object-cover"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!uploadingPhoto) fileInputRef.current?.click()
+                  }}
+                  disabled={uploadingPhoto}
+                  className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-lg ring-2 ring-white dark:ring-slate-900 transition-all hover:scale-110 cursor-pointer disabled:opacity-75"
+                  title="Ubah Foto Siswa"
+                >
+                  {uploadingPhoto ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+
+              <HeroButton
+                size="sm"
+                variant="flat"
+                color="success"
+                onPress={() => !uploadingPhoto && fileInputRef.current?.click()}
+                isDisabled={uploadingPhoto}
+                className="h-7 rounded-full border border-emerald-300/80 bg-white/90 px-3 text-[11px] font-black text-emerald-800 shadow-2xs hover:bg-emerald-50 dark:border-emerald-700/60 dark:bg-slate-800/90 dark:text-emerald-300 cursor-pointer"
+              >
+                {uploadingPhoto ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin mr-1 text-emerald-700" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-3 w-3 mr-1 text-emerald-700 dark:text-emerald-300" />
+                    <span>Ubah Foto</span>
+                  </>
+                )}
+              </HeroButton>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/jpg"
+                className="hidden"
+                onChange={handlePhotoUpload}
+                disabled={uploadingPhoto}
+              />
             </div>
-            <button
-              type="button"
-              onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
-              disabled={uploadingPhoto}
-              className="flex items-center gap-1.5 rounded-full border border-emerald-300 bg-white/90 px-3 py-1 text-[11px] font-bold text-emerald-800 shadow-xs hover:bg-emerald-50 transition cursor-pointer dark:border-emerald-800 dark:bg-slate-800 dark:text-emerald-300 disabled:opacity-75"
-            >
-              {uploadingPhoto ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-700 dark:text-emerald-400" />
-                  <span>Menyimpan...</span>
-                </>
-              ) : (
-                <>
-                  <Camera className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
-                  <span>Ubah Foto</span>
-                </>
-              )}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/jpg"
-              className="hidden"
-              onChange={handlePhotoUpload}
-              disabled={uploadingPhoto}
-            />
+
+            {/* Detail Siswa & Chips */}
+            <div className="text-center sm:text-left min-w-0">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                  {name}
+                </h1>
+                <HeroChip
+                  size="sm"
+                  variant="solid"
+                  color={status === 'Aktif' ? 'success' : 'danger'}
+                  className="font-extrabold text-[11px] shadow-2xs"
+                >
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-white mr-1.5 animate-pulse" />
+                  {status}
+                </HeroChip>
+                <HeroChip
+                  size="sm"
+                  variant="flat"
+                  className="font-extrabold text-[11px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300"
+                >
+                  <Sparkles className="h-3 w-3 text-emerald-600 mr-1 inline" />
+                  Profil Ananda Terverifikasi
+                </HeroChip>
+              </div>
+
+              <p className="mt-2 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300">
+                NIS: <b className="font-mono text-emerald-800 dark:text-emerald-300">{student.nis || '-'}</b> · NISN: <b className="font-mono text-teal-800 dark:text-teal-300">{student.nisn || '-'}</b>
+              </p>
+
+              {/* Lencana Konteks Pendidikan */}
+              <div className="mt-3 flex flex-wrap justify-center gap-1.5 text-[11px] font-bold text-slate-700 sm:justify-start dark:text-slate-300">
+                {unitName && (
+                  <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-200/80 bg-white/85 px-3 py-1 shadow-2xs dark:border-emerald-800/80 dark:bg-slate-800">
+                    <School className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>{unitName}</span>
+                  </span>
+                )}
+                {className && (
+                  <span className="inline-flex items-center gap-1 rounded-xl border border-teal-200/80 bg-white/85 px-3 py-1 shadow-2xs dark:border-teal-800/80 dark:bg-slate-800">
+                    <Layers className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
+                    <span>{className}</span>
+                  </span>
+                )}
+                {dashboard.academic_context?.academic_year && (
+                  <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200/80 bg-white/85 px-3 py-1 shadow-2xs dark:border-slate-700 dark:bg-slate-800">
+                    <CalendarDays className="h-3.5 w-3.5 text-slate-500" />
+                    <span>TA {dashboard.academic_context.academic_year}</span>
+                  </span>
+                )}
+                {dashboard.academic_context?.semester && (
+                  <span className="inline-flex items-center gap-1 rounded-xl border border-slate-200/80 bg-white/85 px-3 py-1 shadow-2xs dark:border-slate-700 dark:bg-slate-800">
+                    <span>{dashboard.academic_context.semester}</span>
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="text-center sm:text-left"><div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start"><h1 className="text-2xl font-black text-slate-950 dark:text-white">{name}</h1><span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">{status}</span></div><p className="mt-2 text-sm font-semibold text-slate-600 dark:text-slate-300">NIS {student.nis || '-'} · NISN {student.nisn || '-'}</p><div className="mt-3 flex flex-wrap justify-center gap-2 text-[11px] font-semibold text-slate-600 sm:justify-start dark:text-slate-300"><span className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm dark:bg-slate-800">{unitName}</span><span className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm dark:bg-slate-800">{className}</span><span className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm dark:bg-slate-800">{dashboard.academic_context?.academic_year || '-'}</span><span className="rounded-full bg-white/80 px-3 py-1.5 shadow-sm dark:bg-slate-800">{dashboard.academic_context?.semester || '-'}</span></div></div>
+
+          {/* Action Buttons: Kartu Siswa & QR Siswa */}
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start lg:justify-end shrink-0">
+            <HeroButton
+              size="md"
+              onPress={() => setShowCardModal(true)}
+              className="flex min-h-12 items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 px-4.5 py-3 text-left text-white shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] hover:shadow-xl cursor-pointer"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white">
+                <IdCard className="h-5 w-5" />
+              </div>
+              <div className="leading-tight">
+                <b className="block text-xs font-black">Kartu Siswa (Pelajar)</b>
+                <small className="text-[10px] text-emerald-100 font-medium">Buka format cetak resmi</small>
+              </div>
+            </HeroButton>
+
+            <HeroButton
+              size="md"
+              variant="bordered"
+              onPress={() => setQrOpen(true)}
+              className="flex min-h-12 items-center gap-3 rounded-2xl border-2 border-emerald-400/80 bg-white/90 px-4.5 py-3 text-left shadow-sm transition-all hover:scale-[1.02] hover:border-emerald-500 hover:bg-emerald-50/50 dark:border-emerald-700 dark:bg-slate-800/90 cursor-pointer"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                <QrCode className="h-5 w-5" />
+              </div>
+              <div className="leading-tight">
+                <b className="block text-xs font-black text-slate-900 dark:text-white">QR Presensi Siswa</b>
+                <small className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Scan gerbang & kartu</small>
+              </div>
+            </HeroButton>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start lg:justify-end">
-          <button type="button" onClick={() => setShowCardModal(true)} className="flex min-h-11 items-center gap-3 rounded-2xl border border-emerald-300 bg-[#0E5C44] px-4 py-3 text-left text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#0b4835]">
-            <IdCard className="h-7 w-7 text-emerald-200" />
-            <span><b className="block text-xs">Kartu Siswa (Pelajar)</b><small className="text-[10px] text-emerald-100">Menampilkan kartu siswa</small></span>
-          </button>
-          <button type="button" onClick={() => setQrOpen(true)} className="flex min-h-11 items-center gap-3 rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 text-left shadow-lg transition hover:-translate-y-0.5 dark:border-emerald-900 dark:bg-slate-800">
-            <QrCode className="h-7 w-7 text-emerald-700 dark:text-emerald-300" />
-            <span><b className="block text-xs">QR Kartu Siswa</b><small className="text-[10px] text-slate-500">Klik untuk melihat QR</small></span>
-          </button>
+
+        {/* Readonly Banner Notice */}
+        <div className="relative mt-5 border-t border-emerald-200/70 pt-3.5 text-[11px] font-medium text-slate-600 dark:border-emerald-800/60 dark:text-slate-300 flex items-center justify-between flex-wrap gap-2">
+          <span>
+            {readOnly
+              ? 'Biodata terverifikasi resmi oleh Tata Usaha dan ditampilkan dalam mode baca-saja.'
+              : 'Perubahan kontak darurat dan identitas resmi mengikuti proses verifikasi operator sekolah.'}
+          </span>
+          <span className="font-bold text-emerald-800 dark:text-emerald-300">
+            Sistem Manajemen Sekolah Terpadu
+          </span>
         </div>
+      </HeroCard>
+
+      {/* 2. RINGKASAN AKADEMIK & CAPAIAN (4 KPI HERO CARDS) */}
+      <section className="space-y-3">
+        <SectionHeader
+          icon={GraduationCap}
+          title="Ringkasan Capaian Akademik & Ibadah"
+          description="Pantauan cepat capaian pembelajaran, kehadiran, dan kedisiplinan terkini ananda."
+          badge="Live Status"
+        />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <HeroKpiCard
+            icon={Award}
+            label="Nilai Rata-rata"
+            value={average ?? '-'}
+            progress={average || 0}
+            subtitle={average == null ? 'Belum ada penilaian' : `${gradeValues.length} nilai terbit`}
+            tone="blue"
+          />
+          <HeroKpiCard
+            icon={CalendarCheck}
+            label="Presensi Hari Ini"
+            value={dashboard.attendance_today || '-'}
+            progress={/hadir/i.test(dashboard.attendance_today || '') ? 100 : 0}
+            subtitle="Status kehadiran"
+            tone="emerald"
+          />
+          <HeroKpiCard
+            icon={BookOpenCheck}
+            label="Hafalan Tahfizh"
+            value={dashboard.kpi?.total_tahfizh_ayat ?? '-'}
+            progress={Math.min(100, Number(dashboard.kpi?.total_tahfizh_ayat) || 0)}
+            subtitle="Total ayat mutqin"
+            tone="amber"
+          />
+          <HeroKpiCard
+            icon={HeartPulse}
+            label="Mutaba'ah Yaumiyyah"
+            value={dashboard.kpi?.mutabaah_status || '-'}
+            progress={/selesai|lengkap|terisi|verified/i.test(dashboard.kpi?.mutabaah_status || '') ? 100 : 0}
+            subtitle="Status harian"
+            tone="violet"
+          />
+        </div>
+      </section>
+
+      {/* 3. DATA PRIBADI SISWA */}
+      <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900">
+        <SectionHeader
+          icon={UserRound}
+          title="Data Pribadi Siswa"
+          description="Informasi identitas lengkap siswa yang tercatat dalam data kependudukan dan Dapodik."
+        />
+        <InfoTilesGrid items={personal} />
+      </HeroCard>
+
+      {/* 4. DATA ORANG TUA & WALI */}
+      <section className="space-y-3">
+        <SectionHeader
+          icon={UsersRound}
+          title="Data Orang Tua & Wali Murid"
+          description="Kontak keluarga dan informasi penanggung jawab siswa yang tersimpan resmi di yayasan."
+        />
+        <div className="grid gap-4 lg:grid-cols-3">
+          {[
+            ['Data Ayah Kandung', father, 'Ayah'],
+            ['Data Ibu Kandung', mother, 'Ibu'],
+            ['Data Wali Siswa (Opsional)', guardian, 'Wali'],
+          ].map(([title, data, role]) => (
+            <HeroCard
+              key={title}
+              className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/20 bg-white p-5 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900 flex flex-col justify-between"
+            >
+              <div className="h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 absolute top-0 left-0 right-0" />
+              <div>
+                <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3 dark:border-slate-800">
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <User className="h-4 w-4 text-emerald-600" />
+                    <span>{title}</span>
+                  </h4>
+                  <HeroChip size="sm" variant="flat" color="success" className="font-bold text-[10px]">
+                    {role}
+                  </HeroChip>
+                </div>
+                <div className="space-y-2.5">
+                  {parentItems(data).map(({ label, value, icon: Icon }) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between rounded-xl bg-slate-50/70 p-2.5 text-xs dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
+                    >
+                      <span className="text-[10.5px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                        <Icon className="h-3.5 w-3.5 text-slate-400" />
+                        {label}
+                      </span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200 text-right truncate max-w-[150px]">
+                        {value ?? '-'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </HeroCard>
+          ))}
+        </div>
+      </section>
+
+      {/* 5. DATA AKADEMIK & KELAS */}
+      <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900">
+        <SectionHeader
+          icon={School}
+          title="Data Akademik & Penempatan Kelas"
+          description="Informasi jenjang, rombongan belajar, nomor induk nasional, serta asatidz pembimbing."
+        />
+        <InfoTilesGrid items={academic} />
+      </HeroCard>
+
+      {/* 6. RIWAYAT PENDIDIKAN & PRESTASI (2 COLUMNS) */}
+      <div className="grid gap-6 xl:grid-cols-2">
+        {/* Riwayat Pendidikan */}
+        <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900">
+          <SectionHeader
+            icon={GraduationCap}
+            title="Riwayat Pendidikan Sebelumnya"
+            description="Jenjang sekolah yang telah diselesaikan ananda."
+          />
+          <TimelineList items={education} emptyTitle="Riwayat pendidikan belum dicatat" />
+        </HeroCard>
+
+        {/* Prestasi */}
+        <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-amber-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-amber-800/40 dark:bg-slate-900">
+          <SectionHeader
+            icon={Trophy}
+            title="Penghargaan & Prestasi"
+            description="Apresiasi dan pencapaian akademik maupun non-akademik."
+            badge={`${achievements.length} Prestasi`}
+          />
+          {achievements.length ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {achievements.map((item, index) => (
+                <button
+                  key={item.id || index}
+                  type="button"
+                  onClick={() => setDetailModal({ type: 'achievement', item })}
+                  className="rounded-2xl border-2 border-amber-100 bg-amber-50/30 p-4 text-left transition-all hover:border-amber-300 hover:bg-amber-50/70 hover:shadow-xs dark:border-amber-900/60 dark:bg-amber-950/20 cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
+                      <Trophy className="h-4 w-4" />
+                    </span>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9.5px] font-extrabold text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                      {item.category || item.kategori || item.tingkat || 'Prestasi'}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white line-clamp-2">
+                    {item.title || item.nama || item.judul || 'Prestasi Siswa'}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    {item.year || item.tahun || item.date || '-'}
+                  </p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<Trophy className="h-7 w-7 text-amber-500" />}
+              title="Belum ada prestasi tercatat"
+              description="Catatan prestasi santri akan otomatis muncul setelah divalidasi oleh Bagian Kesiswaan."
+            />
+          )}
+        </HeroCard>
       </div>
-      <p className="relative mt-5 border-t border-emerald-100 pt-4 text-[11px] text-slate-500 dark:border-emerald-900 dark:text-slate-400">{readOnly ? 'Biodata ditampilkan dalam mode baca-saja.' : 'Perubahan kontak mengikuti proses verifikasi tata usaha.'}</p>
-    </section>
 
-    <section><SectionTitle icon={GraduationCap} title="Ringkasan Akademik" description="Ringkasan dari data akademik yang telah diterbitkan." /><div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><KpiCard icon={Award} label="Nilai Rata-rata" value={average ?? '-'} progress={average || 0} subtitle={average == null ? 'Belum ada nilai' : `${gradeValues.length} nilai terbaru`} tone="blue" /><KpiCard icon={CalendarCheck} label="Kehadiran" value={dashboard.attendance_today || '-'} progress={/hadir/i.test(dashboard.attendance_today || '') ? 100 : 0} subtitle="Status hari ini" /><KpiCard icon={BookOpenCheck} label="Tahfizh" value={dashboard.kpi?.total_tahfizh_ayat ?? '-'} progress={Math.min(100, Number(dashboard.kpi?.total_tahfizh_ayat) || 0)} subtitle="Total ayat tercatat" tone="amber" /><KpiCard icon={HeartPulse} label="Mutabaah" value={dashboard.kpi?.mutabaah_status || '-'} progress={/selesai|lengkap|terisi/i.test(dashboard.kpi?.mutabaah_status || '') ? 100 : 0} subtitle="Status hari ini" tone="violet" /></div></section>
+      {/* 7. KESEHATAN & DOKUMEN (2 COLUMNS) */}
+      <div className="grid gap-6 xl:grid-cols-2">
+        {/* Rekam Kesehatan */}
+        <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900">
+          <SectionHeader
+            icon={HeartPulse}
+            title="Kondisi & Rekam Kesehatan"
+            description="Informasi medis dasar dan data fisik ananda untuk penanganan UKS."
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {health.map(({ label, value, icon: Icon }) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-800/40"
+              >
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <Icon className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>{label}</span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                  {value ?? '-'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </HeroCard>
 
-    <section className={`${card} p-5 sm:p-6`}><SectionTitle icon={UserRound} title="Data Pribadi" description="Informasi identitas siswa sesuai data sekolah." /><InfoGrid items={personal} /></section>
-    <section><SectionTitle icon={UsersRound} title="Data Orang Tua & Wali" description="Kontak keluarga yang tersimpan pada sistem." /><div className="grid gap-4 lg:grid-cols-3">{[['Ayah', father], ['Ibu', mother], ['Wali (opsional)', guardian]].map(([label, data]) => <article key={label} className={`${card} p-5`}><h3 className="mb-2 text-sm font-extrabold text-slate-900 dark:text-white">{label}</h3><InfoGrid items={parentItems(data)} /></article>)}</div></section>
-    <section className={`${card} p-5 sm:p-6`}><SectionTitle icon={School} title="Data Akademik" description="Kelas dan status akademik aktif siswa." /><InfoGrid items={academic} /></section>
+        {/* Berkas & Dokumen */}
+        <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900">
+          <SectionHeader
+            icon={FileText}
+            title="Berkas & Dokumen Siswa"
+            description="Arsip akta kelahiran, kartu keluarga, dan rapor terdahulu."
+            badge={`${documents.length} Berkas`}
+          />
+          {documents.length ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {documents.map((item, index) => (
+                <button
+                  key={item.id || index}
+                  type="button"
+                  onClick={() => setDetailModal({ type: 'document', item })}
+                  className="flex min-h-24 flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 text-left transition-all hover:border-emerald-300 hover:bg-emerald-50/40 dark:border-slate-800 dark:bg-slate-800/50 cursor-pointer"
+                >
+                  <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  <div>
+                    <b className="block text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
+                      {item.name || item.nama || item.type || item.jenis || 'Dokumen'}
+                    </b>
+                    <span className="mt-0.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-extrabold">
+                      Lihat rincian →
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<FileText className="h-7 w-7 text-emerald-600" />}
+              title="Dokumen belum tersedia"
+              description="Belum ada arsip dokumen yang dilampirkan pada sistem administrasi portal."
+            />
+          )}
+        </HeroCard>
+      </div>
 
-    <div className="grid gap-5 xl:grid-cols-2"><section className={`${card} p-5 sm:p-6`}><SectionTitle icon={GraduationCap} title="Riwayat Pendidikan" /><Timeline items={education} emptyTitle="Riwayat pendidikan belum dicatat" /></section><section className={`${card} p-5 sm:p-6`}><SectionTitle icon={Trophy} title="Prestasi" />{achievements.length ? <div className="grid gap-3 sm:grid-cols-2">{achievements.map((item, index) => <button key={item.id || index} type="button" onClick={() => setDetail({ type: 'achievement', item })} className="rounded-2xl border border-slate-100 p-4 text-left transition hover:border-emerald-200 hover:bg-emerald-50/50 dark:border-slate-800 dark:hover:bg-emerald-950/20"><Award className="h-5 w-5 text-amber-500" /><p className="mt-3 text-sm font-bold">{item.title || item.nama || item.judul || 'Prestasi siswa'}</p><p className="mt-1 text-xs text-slate-500">{item.category || item.kategori || item.tingkat || 'Prestasi'}</p></button>)}</div> : <EmptyState icon={<Trophy className="h-7 w-7" />} title="Belum ada prestasi" description="Prestasi siswa belum tersedia pada profil." />}</section></div>
+      {/* 8. AKTIVITAS TERBARU & JADWAL HARI INI */}
+      <div className="grid gap-6 xl:grid-cols-2">
+        <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900">
+          <SectionHeader
+            icon={Activity}
+            title="Aktivitas & Log Terbaru"
+            description="Aktivitas pembelajaran dan riwayat interaksi terkini."
+          />
+          <TimelineList items={activity} emptyTitle="Belum ada aktivitas terbaru" />
+        </HeroCard>
 
-    <section className={`${card} p-5 sm:p-6`}><SectionTitle icon={HeartPulse} title="Kesehatan" description="Informasi kesehatan yang tercatat di sekolah." /><InfoGrid items={health} /></section>
-    <section className={`${card} p-5 sm:p-6`}><SectionTitle icon={FileText} title="Dokumen" description="Dokumen siswa yang telah tersimpan." />{documents.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{documents.map((item, index) => <button key={item.id || index} type="button" onClick={() => setDetail({ type: 'document', item })} className="flex min-h-28 flex-col items-start rounded-2xl border border-slate-100 p-4 text-left transition hover:border-emerald-200 hover:bg-emerald-50/50 dark:border-slate-800 dark:hover:bg-emerald-950/20"><FileText className="h-6 w-6 text-emerald-600" /><b className="mt-3 text-xs">{item.name || item.nama || item.type || item.jenis || 'Dokumen'}</b><span className="mt-1 text-[10px] text-slate-400">Lihat detail</span></button>)}</div> : <EmptyState icon={<FileText className="h-7 w-7" />} title="Dokumen belum tersedia" description="Belum ada dokumen yang dapat ditampilkan pada portal." />}</section>
+        <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/20 bg-white p-5 sm:p-6 shadow-xs dark:border-emerald-800/40 dark:bg-slate-900">
+          <SectionHeader
+            icon={CalendarDays}
+            title="Jadwal Pelajaran Hari Ini"
+            description="Agenda KBM tatap muka aktif pada hari ini."
+          />
+          {schedules.length ? (
+            <div className="space-y-2.5">
+              {schedules.map((item, index) => (
+                <div
+                  key={item.id || index}
+                  className="flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3.5 dark:border-emerald-900/60 dark:bg-emerald-950/20"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-emerald-600 px-2.5 py-1 text-center font-mono text-xs font-black text-white shadow-2xs">
+                      {item.time_start || item.start_time || '-'}
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
+                        {item.subject?.name || 'Mata Pelajaran'}
+                      </p>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        {item.employee?.nama_lengkap || item.teacher?.name || 'Guru Pengampu'} · {item.room || item.ruangan || 'Ruang KBM'}
+                      </p>
+                    </div>
+                  </div>
+                  <HeroChip size="sm" variant="flat" color="success" className="font-bold text-[10px]">
+                    KBM Aktif
+                  </HeroChip>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<CalendarDays className="h-7 w-7 text-emerald-600" />}
+              title="Tidak ada jadwal hari ini"
+              description="Hari ini tidak terdapat jam KBM tatap muka atau kegiatan terjadwal."
+            />
+          )}
+        </HeroCard>
+      </div>
 
-    <div className="grid gap-5 xl:grid-cols-2"><section className={`${card} p-5 sm:p-6`}><SectionTitle icon={Activity} title="Aktivitas Terbaru" /><Timeline items={activity} emptyTitle="Belum ada aktivitas terbaru" /></section><section className={`${card} p-5 sm:p-6`}><SectionTitle icon={CalendarDays} title="Jadwal Hari Ini" />{schedules.length ? <div className="space-y-2">{schedules.map((item, index) => <div key={item.id || index} className="grid grid-cols-[74px_1fr] gap-3 rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/60"><b className="text-xs text-emerald-700 dark:text-emerald-300">{item.time_start || item.start_time || '-'}<span className="block font-normal text-slate-400">{item.time_end || item.end_time || ''}</span></b><div><p className="text-xs font-bold">{item.subject?.name || 'Mata Pelajaran'}</p><p className="mt-1 text-[11px] text-slate-500">{item.employee?.nama_lengkap || item.teacher?.name || 'Guru'} · {item.room || item.ruangan || 'Ruangan belum dicatat'}</p></div></div>)}</div> : <EmptyState icon={<CalendarDays className="h-7 w-7" />} title="Tidak ada jadwal hari ini" description="Jadwal pelajaran hari ini belum tersedia." />}</section></div>
+      {/* 9. PENGATURAN PASSWORD LOGIN ANAK (JIKA BUKAN READ-ONLY) */}
+      {!readOnly && <ChildPasswordSettingsSection student={student} />}
 
+      {/* MODAL QR KARTU SISWA DENGAN QRCODECANVAS */}
+      <Modal
+        isOpen={qrOpen}
+        onClose={() => setQrOpen(false)}
+        title="QR Presensi Kartu Siswa"
+        maxWidth="max-w-md"
+        footer={
+          <HeroButton
+            size="sm"
+            color="success"
+            onPress={() => setQrOpen(false)}
+            className="bg-emerald-700 text-white font-bold"
+          >
+            Tutup
+          </HeroButton>
+        }
+      >
+        <div className="flex flex-col items-center text-center p-3">
+          <div className="flex min-h-[252px] min-w-[252px] items-center justify-center rounded-[22px] bg-white p-5 shadow-inner border border-slate-200">
+            {qrToken ? (
+              <QRCodeCanvas value={qrToken} size={220} level="M" />
+            ) : (
+              <p className="max-w-[220px] text-xs font-semibold text-slate-500">
+                {qrError || 'Memuat QR kartu presensi...'}
+              </p>
+            )}
+          </div>
+          <h3 className="mt-4 text-base font-black text-slate-900 dark:text-white">{name}</h3>
+          <p className="mt-0.5 text-xs font-mono text-emerald-700 dark:text-emerald-400">
+            NIS: {student.nis || '-'} · Kelas: {className || '-'}
+          </p>
+          <p className="mt-2 text-[11px] text-slate-400 max-w-xs">
+            Arahkan kode QR ini ke kamera scanner presensi gerbang sekolah saat kedatangan maupun kepulangan santri.
+          </p>
+        </div>
+      </Modal>
 
+      {/* MODAL CETAK KARTU SISWA RESMI */}
+      {showCardModal && (
+        <CetakKartuSiswaModal
+          student={student}
+          showSettings={false}
+          onClose={() => setShowCardModal(false)}
+        />
+      )}
 
-    {!readOnly && <ChildPasswordSettingsSection student={student} />}
-
-    <Modal isOpen={qrOpen} onClose={() => setQrOpen(false)} title="QR Kartu Siswa" maxWidth="max-w-md" footer={<button type="button" onClick={() => setQrOpen(false)} className="h-10 rounded-xl bg-[#0E5C44] px-5 text-xs font-bold text-white">Tutup</button>}><div className="flex flex-col items-center text-center"><div className="flex min-h-[252px] min-w-[252px] items-center justify-center rounded-[18px] bg-white p-4 shadow-inner">{qrToken ? <QRCodeCanvas value={qrToken} size={220} level="M" /> : <p className="max-w-[220px] text-xs font-semibold text-slate-500">{qrError || 'Memuat QR kartu...'}</p>}</div><h3 className="mt-5 font-black">{name}</h3><p className="mt-1 text-xs text-slate-500">QR hanya berisi identitas kartu opaque.</p></div></Modal>
-    {showCardModal && <CetakKartuSiswaModal student={student} showSettings={false} onClose={() => setShowCardModal(false)} />}
-  </div>
+      {/* MODAL DETAIL PRESTASI / DOKUMEN */}
+      {detailModal && (
+        <Modal
+          isOpen={Boolean(detailModal)}
+          onClose={() => setDetailModal(null)}
+          title={detailModal.type === 'achievement' ? 'Rincian Prestasi Santri' : 'Rincian Berkas Dokumen'}
+          maxWidth="max-w-md"
+          footer={
+            <HeroButton
+              size="sm"
+              color="success"
+              onPress={() => setDetailModal(null)}
+              className="bg-emerald-700 text-white font-bold"
+            >
+              Tutup
+            </HeroButton>
+          }
+        >
+          <div className="space-y-3 p-2 text-xs">
+            <div className="rounded-xl bg-emerald-50 p-3.5 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800">
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                {detailModal.type === 'achievement' ? 'Nama Prestasi' : 'Nama Berkas'}
+              </p>
+              <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                {detailModal.item?.title || detailModal.item?.nama || detailModal.item?.name || '-'}
+              </h4>
+              <p className="mt-1 text-[11px] text-slate-600 dark:text-slate-300">
+                Kategori: <b>{detailModal.item?.category || detailModal.item?.kategori || detailModal.item?.type || '-'}</b>
+              </p>
+              {detailModal.item?.description && (
+                <p className="mt-2 text-slate-700 dark:text-slate-200 italic">
+                  "{detailModal.item.description}"
+                </p>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Tercatat pada data terpadu administrasi santri: {name}.
+            </p>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
 }
 
 function ChildPasswordSettingsSection({ student }) {
@@ -318,33 +1022,46 @@ function ChildPasswordSettingsSection({ student }) {
         password,
         password_confirmation: confirmPassword,
       })
-      setMessage({ text: `Password login untuk ${student.full_name || student.nama_lengkap || 'anak'} berhasil diperbarui!`, type: 'success' })
+      setMessage({
+        text: `Password login untuk ${student.full_name || student.nama_lengkap || 'anak'} berhasil diperbarui!`,
+        type: 'success',
+      })
       setPassword('')
       setConfirmPassword('')
     } catch (err) {
-      setMessage({ text: err.response?.data?.message || 'Gagal memperbarui password login anak.', type: 'error' })
+      setMessage({
+        text: err.response?.data?.message || 'Gagal memperbarui password login anak.',
+        type: 'error',
+      })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <section className={`${card} p-5 sm:p-6 border-emerald-200/80 bg-gradient-to-br from-emerald-50/40 via-white to-slate-50 dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900`}>
-      <SectionTitle
+    <HeroCard className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-br from-emerald-50/50 via-white to-slate-50 p-5 sm:p-6 dark:from-emerald-950/20 dark:via-slate-900 dark:to-slate-900 shadow-sm">
+      <SectionHeader
         icon={LockKeyhole}
         title="Pengaturan Password Login Anak"
-        description="Tentukan atau ubah password yang digunakan anak Anda untuk login ke Portal Siswa."
+        description="Tentukan atau perbarui kata sandi yang digunakan ananda untuk login ke Portal Siswa."
+        badge="Keamanan Akun"
       />
 
       {message.text && (
-        <div className={`mb-4 rounded-xl p-3.5 text-xs font-bold ${message.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'}`}>
+        <div
+          className={`mb-4 rounded-xl p-3.5 text-xs font-bold ${
+            message.type === 'success'
+              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300'
+              : 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'
+          }`}
+        >
           {message.text}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
         <div className="rounded-xl border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-800/80">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Identitas Login Anak</p>
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Identitas Akun Login Anak</p>
           <p className="mt-1 text-sm font-extrabold text-slate-900 dark:text-white">
             {student.nis ? `NIS: ${student.nis}` : student.nisn ? `NISN: ${student.nisn}` : student.full_name || 'Siswa'}
           </p>
@@ -352,7 +1069,9 @@ function ChildPasswordSettingsSection({ student }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Password Baru Anak</label>
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
+              Password Baru Anak
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -360,12 +1079,12 @@ function ChildPasswordSettingsSection({ student }) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimal 6 karakter..."
                 required
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 pr-10 text-xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                 aria-label="Toggle password visibility"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -374,7 +1093,9 @@ function ChildPasswordSettingsSection({ student }) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Konfirmasi Password Baru</label>
+            <label className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">
+              Konfirmasi Password Baru
+            </label>
             <input
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
@@ -386,15 +1107,18 @@ function ChildPasswordSettingsSection({ student }) {
           </div>
         </div>
 
-        <button
+        <HeroButton
           type="submit"
-          disabled={loading}
-          className="flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-800 disabled:opacity-50"
+          size="md"
+          color="success"
+          isDisabled={loading}
+          isLoading={loading}
+          className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold gap-2 rounded-xl shadow-md shadow-emerald-700/20 cursor-pointer"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+          {!loading && <KeyRound className="h-4 w-4" />}
           {loading ? 'Menyimpan...' : 'Simpan Password Login Anak'}
-        </button>
+        </HeroButton>
       </form>
-    </section>
+    </HeroCard>
   )
 }

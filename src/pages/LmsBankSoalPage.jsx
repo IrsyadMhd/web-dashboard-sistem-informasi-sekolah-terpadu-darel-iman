@@ -1,3 +1,4 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -159,83 +160,14 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
 
 // ── 2. TOAST NOTIFICATION STACK HOOK ──
 function useNotifications() {
-  const [items, setItems] = useState([])
+  const toast = useToast()
   const push = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setItems((prev) => [...prev, { id, title, message, tone }])
-    window.setTimeout(() => setItems((prev) => prev.filter((n) => n.id !== id)), 5000)
+    toast(title, message, tone)
   }
-  const dismiss = (id) => setItems((prev) => prev.filter((n) => n.id !== id))
-  return { items, push, dismiss }
+  const dismiss = () => {}
+  return { items: [], push, dismiss }
 }
 
-function ToastStack({ items, onDismiss }) {
-  if (!items.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
-      {items.map((n) => {
-        const isError = n.tone === 'error' || n.tone === 'danger'
-        const isWarning = n.tone === 'warning'
-        return (
-          <motion.div
-            key={n.id}
-            initial={{ opacity: 0, y: 15, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`pointer-events-auto relative overflow-hidden rounded-2xl border bg-white p-4 shadow-xl dark:bg-slate-900 ${
-              isError
-                ? 'border-rose-300 dark:border-rose-800 shadow-rose-950/10'
-                : isWarning
-                ? 'border-amber-300 dark:border-amber-800 shadow-amber-950/10'
-                : 'border-emerald-300 dark:border-emerald-800 shadow-emerald-950/10'
-            }`}
-          >
-            <div
-              className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${
-                isError
-                  ? 'from-rose-500 via-rose-600 to-red-700'
-                  : isWarning
-                  ? 'from-amber-400 via-amber-500 to-orange-600'
-                  : 'from-emerald-500 via-teal-400 to-emerald-600'
-              }`}
-            />
-            <div className="flex items-start gap-3 mt-1">
-              <div
-                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
-                  isError
-                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300'
-                    : isWarning
-                    ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300'
-                    : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300'
-                }`}
-              >
-                {isError ? (
-                  <XCircle className="h-5 w-5" />
-                ) : isWarning ? (
-                  <AlertTriangle className="h-5 w-5" />
-                ) : (
-                  <CheckCircle2 className="h-5 w-5" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-900 dark:text-white">{n.title}</p>
-                <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">{n.message}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
-                aria-label="Tutup notifikasi"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </motion.div>
-        )
-      })}
-    </div>
-  )
-}
 
 // ── 3. HARMONIZED BATCH IMPORT MODAL ──
 function HarmonizedBatchImportModal({ isOpen, onClose, onImportSuccess, notify }) {
@@ -1542,8 +1474,6 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
 
   return (
     <PageContainer maxW="7xl">
-      {/* Toast Notification Stack */}
-      <ToastStack items={toastItems} onDismiss={dismissToast} />
 
       {!(embedded || hideBreadcrumb) && (
         <AppBreadcrumb

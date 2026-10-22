@@ -91,20 +91,10 @@ export function FoundationUnitsPage() {
         if (Array.isArray(raw) && raw.length > 0) {
           setAcademicYears(raw)
         } else {
-          setAcademicYears([
-            { id: '2025/2026', name: '2025/2026', is_active: true },
-            { id: '2024/2025', name: '2024/2025', is_active: false },
-            { id: '2023/2024', name: '2023/2024', is_active: false },
-            { id: '2022/2023', name: '2022/2023', is_active: false },
-          ])
+          setAcademicYears([])
         }
       } catch (err) {
-        setAcademicYears([
-          { id: '2025/2026', name: '2025/2026', is_active: true },
-          { id: '2024/2025', name: '2024/2025', is_active: false },
-          { id: '2023/2024', name: '2023/2024', is_active: false },
-          { id: '2022/2023', name: '2022/2023', is_active: false },
-        ])
+        setAcademicYears([])
       }
     }
     fetchAcademicYears()
@@ -240,8 +230,8 @@ export function FoundationUnitsPage() {
       return {
         name: u.code || u.name?.substring(0, 8) || `Unit ${idx + 1}`,
         fullName: u.name,
-        'Siswa Masuk': masuk > 0 ? masuk : Math.floor(Math.random() * 18) + 5,
-        'Siswa Keluar': keluar > 0 ? keluar : Math.floor(Math.random() * 8) + 1,
+        'Siswa Masuk': masuk,
+        'Siswa Keluar': keluar,
       }
     })
   }, [units])

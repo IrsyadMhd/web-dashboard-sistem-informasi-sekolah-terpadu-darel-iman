@@ -13,6 +13,26 @@ export function RouteErrorElement() {
     error?.message ||
     (typeof error === 'string' ? error : 'Terjadi kesalahan tidak terduga pada halaman ini.')
 
+  const isChunkError =
+    typeof errorMessage === 'string' &&
+    (errorMessage.includes('Failed to fetch dynamically imported module') ||
+      errorMessage.includes('dynamically imported module') ||
+      errorMessage.includes('Loading chunk') ||
+      errorMessage.includes('Failed to load module script'))
+
+  React.useEffect(() => {
+    if (isChunkError) {
+      const reloadKey = 'chunk_error_reload_' + window.location.pathname
+      const lastReload = sessionStorage.getItem(reloadKey)
+      const now = Date.now()
+      // Auto-reload satu kali bila belum pernah direload dalam 15 detik terakhir
+      if (!lastReload || now - Number(lastReload) > 15000) {
+        sessionStorage.setItem(reloadKey, String(now))
+        window.location.reload()
+      }
+    }
+  }, [isChunkError])
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-slate-100">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center space-y-6">

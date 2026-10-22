@@ -38,6 +38,7 @@ import { useDebounce } from '../../hooks/useDebounce'
 import PageContainer from '../../components/app/PageContainer'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppBadge from '../../components/app/AppBadge'
+import AppTabs from '../../components/app/AppTabs'
 import AppSkeleton from '../../components/app/AppSkeleton'
 import AppEmptyState from '../../components/app/AppEmptyState'
 import TahfizhSubNav from '../../components/tahfizh/TahfizhSubNav'
@@ -425,13 +426,14 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
       item.hafalan_juz ??
       (surahNum ? getQuranJuz(surahNum, ayahStart || 1) : null)
 
-    const type =
+    const rawType =
       item.setoran_type ||
       item.metadata?.type ||
       item.type ||
       item.jenis_setoran ||
       item.category ||
       (surahNum ? 'Ziyadah' : (Number(item.murajaah_lembar || 0) > 0 || item.murajaah_text ? 'Murajaah' : (item.tilawah_text ? 'Tilawah' : 'Setoran')))
+    const type = String(rawType || '').toLowerCase() === 'murojaah' ? 'Murajaah' : (rawType || 'Ziyadah')
 
     const kelancaran =
       item.kelancaran_label ||
@@ -1080,7 +1082,7 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
   const ContainerComponent = embedded ? EmbeddedWrapper : MasterDataPage
 
   return (
-    <ContainerComponent className="education-unit-page tahfizh-recap-page space-y-6" hideBreadcrumb>
+    <ContainerComponent className="tahfizh-recap-page space-y-6" hideBreadcrumb>
       {/* 🧭 SCOPE BADGE & BREADCRUMB HEADER */}
       {!embedded && (
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -1169,8 +1171,8 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
           icon={BookMarked}
           label="Setoran Ziyadah"
           value={metrics.ziyadahCount}
-          subtext="Hafalan ayat baru"
-          tag={`${metrics.totalCount > 0 ? ((metrics.ziyadahCount / metrics.totalCount) * 100).toFixed(1) : '0.0'}%`}
+          subtext={metrics.totalCount > 0 ? `${metrics.ziyadahCount} dari ${metrics.totalCount} setoran` : 'Belum ada setoran'}
+          tag={metrics.totalCount > 0 ? `${((metrics.ziyadahCount / metrics.totalCount) * 100).toFixed(1)}%` : '—'}
           tone="emerald"
           onClick={() => openCardModal('Ziyadah', 'Setoran Ziyadah', 'emerald')}
         />
@@ -1178,8 +1180,8 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
           icon={CheckCircle2}
           label="Setoran Murajaah"
           value={metrics.murajaahCount}
-          subtext="Pengulangan hafalan"
-          tag={`${metrics.totalCount > 0 ? ((metrics.murajaahCount / metrics.totalCount) * 100).toFixed(1) : '0.0'}%`}
+          subtext={metrics.totalCount > 0 ? `${metrics.murajaahCount} dari ${metrics.totalCount} setoran` : 'Belum ada setoran'}
+          tag={metrics.totalCount > 0 ? `${((metrics.murajaahCount / metrics.totalCount) * 100).toFixed(1)}%` : '—'}
           tone="violet"
           onClick={() => openCardModal('Murajaah', 'Setoran Murajaah', 'violet')}
         />
@@ -1187,8 +1189,8 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
           icon={Sparkles}
           label="Tasmi' (Ujian Duduk)"
           value={metrics.tasmiCount}
-          subtext="Ujian sekali duduk"
-          tag={`${metrics.totalCount > 0 ? ((metrics.tasmiCount / metrics.totalCount) * 100).toFixed(1) : '0.0'}%`}
+          subtext={metrics.totalCount > 0 ? `${metrics.tasmiCount} dari ${metrics.totalCount} setoran` : 'Belum ada setoran'}
+          tag={metrics.totalCount > 0 ? `${((metrics.tasmiCount / metrics.totalCount) * 100).toFixed(1)}%` : '—'}
           tone="sky"
           onClick={() => openCardModal('Tasmi', "Tasmi' (Ujian Duduk)", 'sky')}
         />
@@ -1196,8 +1198,8 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
           icon={GraduationCap}
           label="Ujian Capaian Juz"
           value={metrics.ujianCount}
-          subtext="Kelulusan per Juz"
-          tag={`${metrics.totalCount > 0 ? ((metrics.ujianCount / metrics.totalCount) * 100).toFixed(1) : '0.0'}%`}
+          subtext={metrics.totalCount > 0 ? `${metrics.ujianCount} dari ${metrics.totalCount} setoran` : 'Belum ada setoran'}
+          tag={metrics.totalCount > 0 ? `${((metrics.ujianCount / metrics.totalCount) * 100).toFixed(1)}%` : '—'}
           tone="rose"
           onClick={() => openCardModal('Ujian', 'Ujian Capaian Juz', 'rose')}
         />
@@ -1276,63 +1278,22 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
             </div>
 
             {/* Quick Period Selector Tabs */}
-            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 self-start sm:self-auto overflow-x-auto" role="tablist" aria-label="Periode laporan">
-              <button
-                type="button"
-                onClick={() => handlePeriodChange('semua')}
-                role="tab" className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  periodType === 'semua' || periodType === 'all'
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                }`}
-              >
-                ♾️ Semua
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePeriodChange('harian')}
-                role="tab" className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  periodType === 'harian'
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                }`}
-              >
-                📅 Harian
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePeriodChange('mingguan')}
-                role="tab" className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  periodType === 'mingguan'
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                }`}
-              >
-                🗓️ Mingguan
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePeriodChange('bulanan')}
-                role="tab" className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  periodType === 'bulanan'
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                }`}
-              >
-                📆 Bulanan
-              </button>
-              <button
-                type="button"
-                onClick={() => setPeriodType('kustom')}
-                role="tab" className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  periodType === 'kustom'
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                }`}
-              >
-                ⚙️ Kustom
-              </button>
-            </div>
+            <AppTabs
+              size="sm"
+              tabs={[
+                { id: 'semua', label: 'Semua' },
+                { id: 'harian', label: 'Harian' },
+                { id: 'mingguan', label: 'Mingguan' },
+                { id: 'bulanan', label: 'Bulanan' },
+                { id: 'kustom', label: 'Kustom' },
+              ]}
+              activeTab={periodType === 'all' ? 'semua' : periodType}
+              onChange={(val) => {
+                if (val === 'kustom') setPeriodType('kustom')
+                else handlePeriodChange(val)
+              }}
+              ariaLabel="Periode laporan"
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full">
@@ -1526,6 +1487,7 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
                 <th className="hidden md:table-cell px-3 py-2.5">Capaian Hafalan</th>
                 <th className="hidden lg:table-cell px-3 py-2.5 text-center">Kelancaran</th>
                 <th className="hidden lg:table-cell px-3 py-2.5 text-center">Tajwid</th>
+                <th className="hidden xl:table-cell px-3 py-2.5 text-center">Makhraj</th>
                 <th className="hidden md:table-cell px-3 py-2.5">Pengajar</th>
                 <th className="px-3 py-2.5 text-center">Aksi</th>
               </tr>
@@ -1687,13 +1649,23 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
                         </span>
                       </td>
 
-                      <td className="px-3 py-3 text-center">
+                      <td className="hidden lg:table-cell px-3 py-3 text-center align-middle">
                         <span className={`inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${
                           item.tajwid === '-'
                             ? 'bg-slate-50 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500'
                             : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                         }`}>
                           {item.tajwid}
+                        </span>
+                      </td>
+
+                      <td className="hidden xl:table-cell px-3 py-3 text-center align-middle">
+                        <span className={`inline-block px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${
+                          item.makhraj === '-'
+                            ? 'bg-slate-50 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500'
+                            : 'bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/50'
+                        }`}>
+                          {item.makhraj}
                         </span>
                       </td>
 
@@ -2383,6 +2355,16 @@ export default function TahfizhReportSummaryPage({ embedded = false, defaultClas
                 {selectedRecordModal.kelancaran && selectedRecordModal.kelancaran !== '-' && (
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     · Kelancaran: <strong className="text-slate-800 dark:text-slate-200">{selectedRecordModal.kelancaran}</strong>
+                  </span>
+                )}
+                {selectedRecordModal.tajwid && selectedRecordModal.tajwid !== '-' && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    · Tajwid: <strong className="text-slate-800 dark:text-slate-200">{selectedRecordModal.tajwid}</strong>
+                  </span>
+                )}
+                {selectedRecordModal.makhraj && selectedRecordModal.makhraj !== '-' && (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    · Makhraj: <strong className="text-slate-800 dark:text-slate-200">{selectedRecordModal.makhraj}</strong>
                   </span>
                 )}
               </div>

@@ -18,6 +18,8 @@ import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+import { printCleanTable } from '../../../utils/printHelper'
+import { usePengaturanStore } from '../../../stores/pengaturanStore'
 
 const ChartDarkTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -60,6 +62,7 @@ const itemVariants = {
 }
 
 export function LaporanMutasiPage() {
+  const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
   const [filters, setFilters] = useState({ period: 'year', page: 1, per_page: 15, search: '' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -118,6 +121,64 @@ export function LaporanMutasiPage() {
   const handleConfirmExport = async ({ format, orientation }) => {
     setIsExportOpen(false)
     await reportService.exportFoundationReport('mutasi', { ...filters, format, orientation })
+  }
+
+  const handlePrintReport = () => {
+    if (!reportData) return
+    const headers = [
+      'No',
+      'Unit Pendidikan',
+      'Pindah Masuk',
+      'Pindah Keluar',
+      'Berhenti',
+      'Antarunit Masuk',
+      'Antarunit Keluar',
+      'Dalam Proses',
+      'Selesai',
+      'Selisih Net',
+    ]
+
+    const unitRecaps = Array.isArray(reportData.unit_recaps) ? reportData.unit_recaps : []
+    const rows = unitRecaps.map((r, idx) => [
+      idx + 1,
+      r.unit_name || '-',
+      (r.pindah_masuk ?? 0).toLocaleString('id-ID'),
+      (r.pindah_keluar ?? 0).toLocaleString('id-ID'),
+      (r.berhenti ?? 0).toLocaleString('id-ID'),
+      (r.antarunit_masuk ?? 0).toLocaleString('id-ID'),
+      (r.antarunit_keluar ?? 0).toLocaleString('id-ID'),
+      (r.dalam_proses ?? 0).toLocaleString('id-ID'),
+      (r.selesai ?? 0).toLocaleString('id-ID'),
+      (r.selisih ?? 0) > 0 ? `+${r.selisih}` : `${r.selisih ?? 0}`,
+    ])
+
+    if (reportData.unit_recaps_total) {
+      const tot = reportData.unit_recaps_total
+      rows.push([
+        '—',
+        'TOTAL KESELURUHAN',
+        (tot.pindah_masuk ?? 0).toLocaleString('id-ID'),
+        (tot.pindah_keluar ?? 0).toLocaleString('id-ID'),
+        (tot.berhenti ?? 0).toLocaleString('id-ID'),
+        (tot.antarunit_masuk ?? 0).toLocaleString('id-ID'),
+        (tot.antarunit_keluar ?? 0).toLocaleString('id-ID'),
+        (tot.dalam_proses ?? 0).toLocaleString('id-ID'),
+        (tot.selesai ?? 0).toLocaleString('id-ID'),
+        (tot.selisih ?? 0) > 0 ? `+${tot.selisih}` : `${tot.selisih ?? 0}`,
+      ])
+    }
+
+    const orgName = (sitePengaturan?.school_name || sitePengaturan?.application_name || '').trim()
+    printCleanTable({
+      title: 'LAPORAN REKAPITULASI MUTASI SISWA',
+      subtitle: reportData.report?.title || orgName || 'Laporan Rekapitulasi Mutasi Siswa',
+      period: reportData.report?.period?.label || filters.period || 'Tahun Ajaran Aktif',
+      headers,
+      rows,
+      orientation: 'landscape',
+      foundationName: orgName,
+      systemLogo: sitePengaturan?.logo_url,
+    })
   }
 
   if (loading && !reportData) return <ReportSkeleton />
@@ -241,7 +302,7 @@ export function LaporanMutasiPage() {
           onReset={handleResetFilter}
           onRefresh={fetchReport}
           onOpenPreview={() => setIsPreviewOpen(true)}
-          onPrint={() => window.print()}
+          onPrint={handlePrintReport}
           onExportPdf={handleExportPdf}
           onExportExcel={handleExportExcel}
           loading={loading}
@@ -383,7 +444,7 @@ export function LaporanMutasiPage() {
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         reportData={reportData}
-        onPrint={() => window.print()}
+        onPrint={handlePrintReport}
         onExportPdf={() => setIsExportOpen(true)}
       />
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useToast } from '../components/app/ToastProvider'
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -56,6 +57,8 @@ import { gateAttendanceService } from '../services/gateAttendanceService'
 import { educationUnitService } from '../services/educationUnitService'
 import { studentService } from '../services/studentService'
 import { useAuthStore } from '../stores/authStore'
+import { Navigate } from 'react-router-dom'
+import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { cn } from '../lib/utils'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -76,82 +79,6 @@ import { Dialog, DialogBody, DialogDescription, DialogFooter, DialogHeader, Dial
 import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 
-// ── SEMANTIC TOAST STACK (§L Tailgrids_Pengaturan_Halaman) ───────────────────
-const TOAST_TONE = { success: 'success', error: 'error', danger: 'error', warning: 'warning', info: 'info' }
-
-function ToastStack({ items, onDismiss }) {
-  if (!items?.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none print:hidden" aria-live="polite" aria-atomic="true">
-      {items.map((n) => {
-        const tone = TOAST_TONE[n.type] || 'info'
-        const isDanger = tone === 'error' || tone === 'danger'
-        const isWarning = tone === 'warning'
-        const isInfo = tone === 'info'
-        const isSuccess = !isDanger && !isWarning && !isInfo
-        return (
-          <div
-            key={n.id}
-            className={cn(
-              'relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]',
-              isSuccess && 'border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50',
-              isDanger && 'border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50',
-              isWarning && 'border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50',
-              isInfo && 'border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50'
-            )}
-          >
-            <div className={cn(
-              'absolute top-0 left-0 right-0 h-1',
-              isSuccess && 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
-              isDanger && 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-700',
-              isWarning && 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600',
-              isInfo && 'bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600'
-            )} />
-            <div className="flex items-start gap-3 mt-0.5">
-              <div className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
-                isSuccess && 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30',
-                isDanger && 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30',
-                isWarning && 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30',
-                isInfo && 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30'
-              )}>
-                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
-                {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
-                {isInfo && <Eye className="size-5" strokeWidth={2.3} />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">{n.title}</h4>
-                  <span className={cn(
-                    'inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border',
-                    isSuccess && 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80',
-                    isDanger && 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
-                    isWarning && 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80',
-                    isInfo && 'bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80'
-                  )}>
-                    {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
-                  </span>
-                </div>
-                {n.message && (
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{n.message}</p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                aria-label="Tutup notifikasi"
-              >
-                <X className="size-4" strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 const MODAL_PAGE_SIZE = 6
 const today = () => new Date().toISOString().slice(0, 10)
@@ -248,8 +175,36 @@ const getPeriodDateRange = (periodKey) => {
   return { from: '', to: '' }
 }
 
+const getAttendanceBadgeVariant = (status) => {
+  const s = String(status || '').toUpperCase().trim()
+  if (['HADIR', 'TEPAT_WAKTU', 'HADIR_DALAM_TOLERANSI'].includes(s)) return 'success'
+  if (['TERLAMBAT'].includes(s)) return 'warning'
+  if (['IZIN', 'SAKIT'].includes(s)) return 'info'
+  if (['PULANG', 'SUDAH_PULANG'].includes(s)) return 'info'
+  if (['ALPHA', 'ALPA'].includes(s)) return 'danger'
+  return 'secondary'
+}
+
 export default function RekapAbsensiGerbangPage() {
   const { user } = useAuthStore()
+
+  const authLevel = useMemo(() => getUserRoleLevel(user), [user])
+  const userRoles = useMemo(() => {
+    const raw = user?.roles || user?.role || []
+    const list = Array.isArray(raw) ? raw : [raw]
+    return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
+  }, [user])
+  const isGuru = useMemo(() => {
+    if (authLevel === ROLE_LEVELS.GURU) return true
+    const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
+    const hasAdminOrKepsek = userRoles.some((r) => /admin|super|kepala[\s_]*sekolah|kepsek|waka|tata[\s_]*usaha|tu|operator|divisi|yayasan/i.test(r))
+    return hasGuru && !hasAdminOrKepsek
+  }, [authLevel, userRoles])
+
+  if (isGuru) {
+    return <Navigate to="/portal-guru/workspace" replace />
+  }
+
   const userUnitId = user?.unit_id || user?.education_unit_id
   const isMultiUnitUser = !userUnitId || ['Yayasan', 'Admin', 'Super Admin'].includes(user?.role?.name)
 
@@ -297,7 +252,6 @@ export default function RekapAbsensiGerbangPage() {
   const [processingScan, setProcessingScan] = useState(false)
   const [lastScanResult, setLastScanResult] = useState(null)
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [toasts, setToasts] = useState([])
 
   // Webcam Scanner State & Refs
   const [showCameraModal, setShowCameraModal] = useState(false)
@@ -327,18 +281,14 @@ export default function RekapAbsensiGerbangPage() {
   const [allUnitsSchedules, setAllUnitsSchedules] = useState([])
   const [targetUnitForConfig, setTargetUnitForConfig] = useState('')
 
-  // Toast Helper
+  // Global Toast Helper
+  const toast = useToast()
   const pushToast = useCallback((type, title, message) => {
-    const id = Date.now() + Math.random().toString(36).slice(2, 6)
-    setToasts((prev) => [...prev, { id, type, title, message }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4500)
-  }, [])
+    const tone = type === 'error' || type === 'danger' ? 'error' : type === 'warning' ? 'warning' : 'success'
+    toast(message ? `${title}: ${message}` : title, tone)
+  }, [toast])
 
-  const dismissToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }, [])
+  const dismissToast = useCallback(() => {}, [])
 
   // Web Audio Synthetic Beep
   const playBeep = useCallback((isSuccess = true) => {
@@ -379,7 +329,9 @@ export default function RekapAbsensiGerbangPage() {
         }),
         gateAttendanceService.getStats({
           unit_id: selectedUnit || undefined,
-          date: dateFrom || date
+          date: dateFrom || date,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
         }),
       ])
       const fetchedRows = logs.data?.data?.data || logs.data?.data || []
@@ -703,17 +655,54 @@ export default function RekapAbsensiGerbangPage() {
   }, [rows, dateFrom, dateTo])
 
   // Summary Metrics Computation
+  // Summary Metrics Computation (100% konsisten antara Datatable, Cards, & Donut Chart)
   const metrics = useMemo(() => {
-    const totalSiswa = stats.total_siswa || timeFilteredRows.length || 0
-    const totalScanned = stats.total_scanned || timeFilteredRows.filter((r) => r.check_in_time || r.status).length
-    const tepatWaktu = stats.tepat_waktu || timeFilteredRows.filter((r) => String(r.status || '').toUpperCase() === 'HADIR' || String(r.status || '').toUpperCase() === 'TEPAT_WAKTU').length
-    const terlambat = stats.terlambat || timeFilteredRows.filter((r) => String(r.status || '').toUpperCase() === 'TERLAMBAT').length
-    const izinSakit = (stats.izin || 0) + (stats.sakit || 0) || timeFilteredRows.filter((r) => ['IZIN', 'SAKIT'].includes(String(r.status || '').toUpperCase())).length
-    const sudahPulang = stats.sudah_pulang || timeFilteredRows.filter((r) => r.check_out_time).length
-    const alpa = stats.alpa || (totalSiswa > totalScanned ? totalSiswa - totalScanned : timeFilteredRows.filter((r) => String(r.status || '').toUpperCase() === 'ALPHA' || String(r.status || '').toUpperCase() === 'ALPA').length)
-    const baseTotal = totalSiswa > 0 ? totalSiswa : Math.max(1, totalScanned)
+    const rowCount = timeFilteredRows.length
 
-    return { totalSiswa, totalScanned, tepatWaktu, terlambat, izinSakit, sudahPulang, alpa, baseTotal }
+    // Normalisasi status dari baris riil
+    const rowHadir = timeFilteredRows.filter((r) => {
+      const s = String(r.status || '').toUpperCase()
+      return s === 'HADIR' || s === 'TEPAT_WAKTU' || s === 'HADIR_DALAM_TOLERANSI'
+    }).length
+    const rowTerlambat = timeFilteredRows.filter((r) => String(r.status || '').toUpperCase() === 'TERLAMBAT').length
+    const rowIzinSakit = timeFilteredRows.filter((r) => ['IZIN', 'SAKIT'].includes(String(r.status || '').toUpperCase())).length
+    const rowSudahPulang = timeFilteredRows.filter((r) => Boolean(r.check_out_time) || String(r.status || '').toUpperCase() === 'PULANG').length
+    const rowAlpha = timeFilteredRows.filter((r) => ['ALPHA', 'ALPA'].includes(String(r.status || '').toUpperCase())).length
+    const rowLainnya = timeFilteredRows.filter((r) => {
+      const s = String(r.status || '').toUpperCase()
+      return !['HADIR', 'TEPAT_WAKTU', 'HADIR_DALAM_TOLERANSI', 'TERLAMBAT', 'IZIN', 'SAKIT', 'ALPHA', 'ALPA'].includes(s)
+    }).length
+
+    // Gunakan baris riil jika ada, atau data teragregasi backend jika logs tabel belum dimuat
+    const hasLogRows = rowCount > 0
+    const totalScanned = hasLogRows ? rowCount : (stats.total_scanned || 0)
+
+    const tepatWaktu = hasLogRows ? rowHadir : (stats.hadir ?? stats.tepat_waktu ?? 0)
+    const terlambat = hasLogRows ? rowTerlambat : (stats.terlambat ?? 0)
+    const izinSakit = hasLogRows ? rowIzinSakit : ((stats.izin ?? 0) + (stats.sakit ?? 0))
+    const sudahPulang = hasLogRows ? rowSudahPulang : (stats.sudah_pulang ?? 0)
+    const alpa = hasLogRows ? rowAlpha : (stats.alpha ?? stats.alpa ?? 0)
+    const lainnya = hasLogRows ? rowLainnya : Math.max(0, totalScanned - (tepatWaktu + terlambat + izinSakit + alpa))
+
+    // Total data absensi gerbang aktual (penyebut distribusi status gerbang):
+    // PENTING: Total data absensi gerbang dihitung HANYA dari total catatan absensi gerbang riil (totalScanned).
+    // DILARANG menggunakan total_siswa sebagai total absensi gerbang saat tidak ada data!
+    const totalData = totalScanned
+    const hasData = totalData > 0
+    const totalSiswaPopulasi = stats.total_siswa || 0
+
+    return {
+      totalData,
+      hasData,
+      totalSiswa: totalSiswaPopulasi,
+      totalScanned,
+      tepatWaktu,
+      terlambat,
+      izinSakit,
+      sudahPulang,
+      alpa,
+      lainnya,
+    }
   }, [stats, timeFilteredRows])
 
   const cards = useMemo(
@@ -724,7 +713,7 @@ export default function RekapAbsensiGerbangPage() {
         value: metrics.tepatWaktu,
         icon: UserCheck,
         tone: 'emerald',
-        percent: (metrics.tepatWaktu / metrics.baseTotal) * 100,
+        percent: metrics.hasData && metrics.totalData > 0 ? (metrics.tepatWaktu / metrics.totalData) * 100 : null,
       },
       {
         label: 'Terlambat',
@@ -732,7 +721,7 @@ export default function RekapAbsensiGerbangPage() {
         value: metrics.terlambat,
         icon: Clock,
         tone: 'violet',
-        percent: (metrics.terlambat / metrics.baseTotal) * 100,
+        percent: metrics.hasData && metrics.totalData > 0 ? (metrics.terlambat / metrics.totalData) * 100 : null,
       },
       {
         label: 'Izin / Sakit',
@@ -740,7 +729,7 @@ export default function RekapAbsensiGerbangPage() {
         value: metrics.izinSakit,
         icon: ClipboardCheck,
         tone: 'sky',
-        percent: (metrics.izinSakit / metrics.baseTotal) * 100,
+        percent: metrics.hasData && metrics.totalData > 0 ? (metrics.izinSakit / metrics.totalData) * 100 : null,
       },
       {
         label: 'Sudah Pulang',
@@ -748,7 +737,7 @@ export default function RekapAbsensiGerbangPage() {
         value: metrics.sudahPulang,
         icon: User,
         tone: 'amber',
-        percent: (metrics.sudahPulang / metrics.baseTotal) * 100,
+        percent: metrics.hasData && metrics.totalData > 0 ? (metrics.sudahPulang / metrics.totalData) * 100 : null,
       },
       {
         label: 'Alpha / Belum Scan',
@@ -756,21 +745,31 @@ export default function RekapAbsensiGerbangPage() {
         value: metrics.alpa,
         icon: UserX,
         tone: 'rose',
-        percent: (metrics.alpa / metrics.baseTotal) * 100,
+        percent: metrics.hasData && metrics.totalData > 0 ? (metrics.alpa / metrics.totalData) * 100 : null,
       },
     ],
     [metrics]
   )
 
   const distribution = useMemo(
-    () => [
-      { name: 'Hadir', value: metrics.tepatWaktu, color: warnaStatus.hadir },
-      { name: 'Terlambat', value: metrics.terlambat, color: warnaStatus.terlambat },
-      { name: 'Izin/Sakit', value: metrics.izinSakit, color: warnaStatus.izin },
-      { name: 'Sudah Pulang', value: metrics.sudahPulang, color: warnaStatus.pulang },
-      { name: 'Alpha/Belum', value: metrics.alpa, color: warnaStatus.alpa },
-    ],
+    () => {
+      const items = [
+        { name: 'Hadir', value: metrics.tepatWaktu, color: warnaStatus.hadir },
+        { name: 'Terlambat', value: metrics.terlambat, color: warnaStatus.terlambat },
+        { name: 'Izin/Sakit', value: metrics.izinSakit, color: warnaStatus.izin },
+        { name: 'Alpha', value: metrics.alpa, color: warnaStatus.alpa },
+      ]
+      if (metrics.lainnya > 0) {
+        items.push({ name: 'Lainnya', value: metrics.lainnya, color: '#94a3b8' })
+      }
+      return items
+    },
     [metrics]
+  )
+
+  const activeDistribution = useMemo(
+    () => distribution.filter((item) => item.value > 0),
+    [distribution]
   )
 
   const chartData = useMemo(() => {
@@ -873,7 +872,27 @@ export default function RekapAbsensiGerbangPage() {
     if (!cardModal.isOpen) return []
     let list = timeFilteredRows
     if (cardModal.statusKey === 'PULANG') {
-      list = list.filter((r) => r.check_out_time)
+      list = list.filter((r) => Boolean(r.check_out_time) || String(r.status || '').toUpperCase() === 'PULANG')
+    } else if (cardModal.statusKey === 'HADIR') {
+      list = list.filter((r) => {
+        const s = String(r.status || '').toUpperCase()
+        return s === 'HADIR' || s === 'TEPAT_WAKTU' || s === 'HADIR_DALAM_TOLERANSI'
+      })
+    } else if (cardModal.statusKey === 'IZIN') {
+      list = list.filter((r) => {
+        const s = String(r.status || '').toUpperCase()
+        return s === 'IZIN' || s === 'SAKIT'
+      })
+    } else if (cardModal.statusKey === 'ALPHA') {
+      list = list.filter((r) => {
+        const s = String(r.status || '').toUpperCase()
+        return s === 'ALPHA' || s === 'ALPA'
+      })
+    } else if (cardModal.statusKey === 'LAINNYA') {
+      list = list.filter((r) => {
+        const s = String(r.status || '').toUpperCase()
+        return !['HADIR', 'TEPAT_WAKTU', 'HADIR_DALAM_TOLERANSI', 'TERLAMBAT', 'IZIN', 'SAKIT', 'ALPHA', 'ALPA'].includes(s)
+      })
     } else if (cardModal.statusKey && cardModal.statusKey !== 'semua') {
       list = list.filter((r) => String(r.status || '').toUpperCase() === cardModal.statusKey.toUpperCase())
     }
@@ -1550,15 +1569,20 @@ export default function RekapAbsensiGerbangPage() {
                   </div>
                 </div>
                 <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${style.badge}`}>
-                  {percent.toFixed(1)}%
+                  {percent !== null && percent !== undefined ? `${percent.toFixed(1)}%` : '—'}
                 </span>
               </div>
               <p className={`text-4xl font-black tabular-nums ${style.val}`}>
                 {formatAngka(value)}
               </p>
-              <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${style.cta}`}>
-                <Eye className="h-3 w-3" /> Klik untuk detail lengkap
-              </p>
+              <div className="flex items-center justify-between mt-3 text-[10px] font-bold">
+                <span className="text-slate-500 dark:text-slate-400">
+                  {metrics.hasData && metrics.totalData > 0 ? `${formatAngka(value)} dari ${formatAngka(metrics.totalData)} data` : 'Belum ada data'}
+                </span>
+                <span className={`inline-flex items-center gap-1 ${style.cta}`}>
+                  <Eye className="h-3 w-3" /> Detail &rarr;
+                </span>
+              </div>
             </motion.article>
           )
         })}
@@ -1733,11 +1757,33 @@ export default function RekapAbsensiGerbangPage() {
                   <p className="text-xs text-slate-500 dark:text-slate-400">Tren ketepatan per jam</p>
                 </div>
               </div>
-              <AppBadge variant="success" size="sm">Jam Masuk</AppBadge>
+              <AppBadge variant={loading ? 'secondary' : error ? 'danger' : chartData.length > 0 ? 'success' : 'secondary'} size="sm">
+                {loading ? 'Memuat...' : error ? 'Gagal' : 'Jam Masuk'}
+              </AppBadge>
             </div>
             <div className="h-64 w-full pt-2 text-slate-200 dark:text-slate-800">
               {loading ? (
                 <AppSkeleton variant="card" className="h-full" />
+              ) : error ? (
+                <div className="flex h-full flex-col items-center justify-center text-center p-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200/60 dark:border-rose-900/40">
+                    <AlertTriangle className="size-6" />
+                  </div>
+                  <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Gagal Memuat Tren Jam Masuk</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[220px]">{error}</p>
+                </div>
+              ) : chartData.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center text-center p-4">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 mb-3 border border-emerald-200/60 dark:border-emerald-900/40">
+                    <TrendingUp className="size-6 opacity-60" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Belum ada tren waktu masuk untuk periode ini
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[220px]">
+                    Data pemindaian jam masuk gerbang akan otomatis terpetakan di sini.
+                  </p>
+                </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
@@ -1789,39 +1835,79 @@ export default function RekapAbsensiGerbangPage() {
                   <p className="text-xs text-slate-500 dark:text-slate-400">Proporsi status scan siswa</p>
                 </div>
               </div>
-              <AppBadge variant="success" size="sm">{formatAngka(metrics.baseTotal)} Total</AppBadge>
-            </div>
-          <div className="flex flex-col items-center justify-center flex-1">
-            <div className="relative w-40 h-40 mb-3">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={distribution} dataKey="value" innerRadius="62%" outerRadius="88%" paddingAngle={2}>
-                    {distribution.map((item) => <Cell key={item.name} fill={item.color} />)}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <strong className="text-xl font-black text-slate-900 dark:text-white">{formatAngka(metrics.totalScanned)}</strong>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Sudah Scan</span>
-              </div>
+              <AppBadge variant={loading ? 'secondary' : error ? 'danger' : metrics.hasData ? 'success' : 'secondary'} size="sm">
+                {loading ? 'Memuat...' : error ? 'Gagal' : `${formatAngka(metrics.totalData)} Total`}
+              </AppBadge>
             </div>
 
-            <div className="w-full grid grid-cols-2 gap-2 text-xs">
-              {distribution.map((item) => (
-                <div key={item.name} className="flex items-center gap-1.5 p-1.5 rounded-lg border border-emerald-100 bg-slate-50/70 dark:border-emerald-900/40 dark:bg-slate-900/40">
-                  <span className="size-2.5 rounded-full shrink-0" style={{ background: item.color }} />
-                  <div className="flex items-center justify-between w-full min-w-0">
-                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">{item.name}</span>
-                    <span className="text-[11px] font-bold text-slate-900 dark:text-white ml-1 tabular-nums">{formatAngka(item.value)}</span>
+            {loading ? (
+              <div className="h-64 flex items-center justify-center">
+                <AppSkeleton variant="card" className="h-full w-full" />
+              </div>
+            ) : error ? (
+              <div className="flex h-64 flex-col items-center justify-center text-center p-4">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 mb-3 border border-rose-200/60 dark:border-rose-900/40">
+                  <AlertTriangle className="size-6" />
+                </div>
+                <p className="text-xs font-bold text-rose-700 dark:text-rose-300">
+                  Gagal Memuat Distribusi Absensi
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[220px]">
+                  {error}
+                </p>
+              </div>
+            ) : !metrics.hasData ? (
+              <div className="flex h-64 flex-col items-center justify-center text-center p-4">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 mb-3 border border-sky-200/60 dark:border-sky-900/40">
+                  <ChartPieIcon className="size-6 opacity-60" />
+                </div>
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Belum ada data absensi gerbang untuk periode ini
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-[240px]">
+                  Tidak ada catatan pemindaian masuk atau kepulangan siswa pada filter yang dipilih.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center flex-1">
+                <div className="relative w-40 h-40 mb-3">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={activeDistribution} dataKey="value" innerRadius="62%" outerRadius="88%" paddingAngle={2}>
+                        {activeDistribution.map((item) => <Cell key={item.name} fill={item.color} />)}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <strong className="text-xl font-black text-slate-900 dark:text-white">{formatAngka(metrics.totalScanned)}</strong>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Sudah Scan</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                <div className="w-full grid grid-cols-2 gap-2 text-xs">
+                  {distribution.map((item) => (
+                    <div key={item.name} className="flex items-center gap-1.5 p-1.5 rounded-lg border border-emerald-100 bg-slate-50/70 dark:border-emerald-900/40 dark:bg-slate-900/40">
+                      <span className="size-2.5 rounded-full shrink-0" style={{ background: item.color }} />
+                      <div className="flex items-center justify-between w-full min-w-0">
+                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">{item.name}</span>
+                        <div className="flex items-center gap-1 shrink-0 ml-1">
+                          <span className="text-[11px] font-bold text-slate-900 dark:text-white tabular-nums">{formatAngka(item.value)}</span>
+                          <span className="text-[10px] text-slate-400 tabular-nums">
+                            ({metrics.totalData > 0 ? ((item.value / metrics.totalData) * 100).toFixed(0) : 0}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="pt-3 border-t border-emerald-200/80 dark:border-emerald-800/60 flex items-center justify-between text-[11px] font-semibold text-slate-500">
             <span>Proporsi status scan gerbang</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatAngka(metrics.totalScanned)} Sudah Scan</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+              {metrics.hasData ? `${formatAngka(metrics.totalScanned)} Sudah Scan` : '0 Sudah Scan'}
+            </span>
           </div>
         </article>
       </motion.div>
@@ -1926,14 +2012,13 @@ export default function RekapAbsensiGerbangPage() {
 
         {/* Viewport Tabel dengan Horizontal Padding */}
         <div className="px-4 sm:px-6 md:px-8 overflow-x-auto">
-          {error && !loading && (
-            <div className="py-4">
-              <AppErrorState title="Rekap absensi gerbang gagal dimuat" description={error} onRetry={load} compact />
-            </div>
-          )}
           {loading ? (
             <div className="py-6">
               <AppSkeleton rows={6} />
+            </div>
+          ) : error ? (
+            <div className="py-6">
+              <AppErrorState title="Rekap absensi gerbang gagal dimuat" description={error} onRetry={load} compact />
             </div>
           ) : paginatedRows.length === 0 ? (
             <div className="py-8">
@@ -1975,7 +2060,7 @@ export default function RekapAbsensiGerbangPage() {
                   const unitName = row.education_unit?.name || '-'
                   const kelasName = row.school_class?.name || row.school_class?.nama_kelas || '-'
                   const st = String(row.status || '').toUpperCase()
-                  const statusVariant = st === 'HADIR' || st === 'TEPAT_WAKTU' ? 'success' : st === 'TERLAMBAT' ? 'warning' : st === 'PULANG' ? 'info' : 'danger'
+                  const statusVariant = getAttendanceBadgeVariant(st)
 
                   return (
                     <TableRow key={row.id || index} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
@@ -2053,9 +2138,9 @@ export default function RekapAbsensiGerbangPage() {
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 tabular-nums">
                             {row.check_in_time || '-'}
                           </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
+                          <AppBadge size="sm" variant={statusVariant}>
                             {row.status || 'HADIR'}
-                          </span>
+                          </AppBadge>
                         </div>
                       </TableCell>
 
@@ -2225,8 +2310,8 @@ export default function RekapAbsensiGerbangPage() {
                             {row.check_out_time || '-'}
                           </td>
                           <td className="py-3 px-4">
-                            <AppBadge variant={st === 'HADIR' ? 'success' : st === 'TERLAMBAT' ? 'warning' : 'danger'}>
-                              {st || 'SCAN'}
+                            <AppBadge variant={getAttendanceBadgeVariant(row.status)}>
+                              {row.status || 'HADIR'}
                             </AppBadge>
                           </td>
                         </tr>
@@ -2344,9 +2429,11 @@ export default function RekapAbsensiGerbangPage() {
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[10px] font-semibold">Status Presensi</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                        {selectedDetailStudent.status || 'HADIR'}
-                      </span>
+                      <div className="mt-1">
+                        <AppBadge variant={getAttendanceBadgeVariant(selectedDetailStudent.status)}>
+                          {selectedDetailStudent.status || 'HADIR'}
+                        </AppBadge>
+                      </div>
                     </div>
                   </div>
 
@@ -2756,8 +2843,6 @@ export default function RekapAbsensiGerbangPage() {
         )}
       </AnimatePresence>
 
-      {/* Semantic Toast Stack */}
-      <ToastStack items={toasts} onDismiss={dismissToast} />
     </PageContainer>
   )
 }

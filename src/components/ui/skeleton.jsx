@@ -1,11 +1,12 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { Skeleton as HeroSkeleton } from '@heroui/react'
 import { cn } from '../../lib/utils'
 
 export function Skeleton({ className, ...props }) {
   return (
-    <div
-      className={cn('animate-pulse rounded-xl bg-slate-200/80 dark:bg-slate-800', className)}
+    <HeroSkeleton
+      className={cn('rounded-xl bg-slate-200/80 dark:bg-slate-800', className)}
       {...props}
     />
   )

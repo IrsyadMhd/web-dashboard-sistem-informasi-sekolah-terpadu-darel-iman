@@ -1,6 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { toast } from 'sonner'
+import { globalToast as toast } from '../../app/ToastProvider'
 import { Button } from '@/components/tailgrids/core/button'
 import {
   AlertDialog,
@@ -120,6 +120,8 @@ export const Swal = {
       isDestructive = false,
       input = null,
       inputPlaceholder = '',
+      inputOptions = {},
+      inputValue: initialInputValue = '',
       preConfirm = null,
       didOpen = null,
       allowOutsideClick = true,
@@ -176,7 +178,15 @@ export const Swal = {
       }
 
       function DialogWrapper() {
-        const [inputValue, setInputValue] = React.useState('')
+        const [inputValue, setInputValue] = React.useState(() => {
+          if (initialInputValue !== undefined && initialInputValue !== '') {
+            return String(initialInputValue)
+          }
+          if (input === 'select' && inputOptions && Object.keys(inputOptions).length > 0) {
+            return Object.keys(inputOptions)[0]
+          }
+          return ''
+        })
         const [validationMsg, setValidationMsg] = React.useState('')
         const [isSubmitting, setIsSubmitting] = React.useState(activeLoadingState)
 
@@ -201,7 +211,9 @@ export const Swal = {
           setValidationMsg('')
 
           try {
-            let resultVal = input ? inputValue : true
+            let resultVal = input
+              ? (inputValue || (input === 'select' && inputOptions ? Object.keys(inputOptions)[0] : ''))
+              : true
             if (preConfirm) {
               const res = await preConfirm(resultVal)
               if (res === false) {
@@ -250,8 +262,13 @@ export const Swal = {
         const isDanger = isDestructive || (confirmButtonText && /hapus|delete|keluar|reset/i.test(confirmButtonText))
 
         return (
-          <Backdrop isOpen={true} isDismissable={allowOutsideClick} onOpenChange={(open) => !open && handleBackdropClose()}>
-            <AlertDialog className="w-full max-w-md p-6 bg-white dark:bg-[#1B2433] rounded-[22px] border-2 border-emerald-500/25 shadow-2xl space-y-4">
+          <AlertDialog
+            isOpen={true}
+            isDismissable={allowOutsideClick}
+            isKeyboardDismissDisabled={false}
+            onOpenChange={(open) => !open && handleBackdropClose()}
+            className="w-full max-w-md p-6 bg-white dark:bg-[#1B2433] rounded-[22px] border-2 border-emerald-500/25 shadow-2xl space-y-4"
+          >
               <DialogHeader>
                 <DialogTitle className="text-lg font-black text-slate-900 dark:text-white">
                   {title || (showCancelButton ? 'Konfirmasi Tindakan' : 'Informasi')}
@@ -262,6 +279,23 @@ export const Swal = {
                   </DialogDescription>
                 )}
               </DialogHeader>
+
+              {input === 'select' && (
+                <div className="space-y-2">
+                  <select
+                    autoFocus
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
+                  >
+                    {Object.entries(inputOptions || {}).map(([val, label]) => (
+                      <option key={val} value={val}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {input === 'password' && (
                 <div className="space-y-2">
@@ -316,7 +350,6 @@ export const Swal = {
                 </Button>
               </DialogFooter>
             </AlertDialog>
-          </Backdrop>
         )
       }
 

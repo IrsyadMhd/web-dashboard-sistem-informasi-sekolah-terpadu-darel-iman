@@ -29,6 +29,8 @@ import {
   Printer,
   ChevronDown,
   X,
+  Copy,
+  Check,
 } from 'lucide-react'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import api from '../services/api'
@@ -37,6 +39,8 @@ import { Card } from '../components/tailgrids/core/card'
 import { Badge } from '../components/tailgrids/core/badge'
 import { Button } from '../components/tailgrids/core/button'
 import { Avatar, AvatarFallback } from '../components/tailgrids/core/avatar'
+import { usePengaturanStore } from '../stores/pengaturanStore'
+import { resolveFoundationName } from '../utils/printHelper'
 
 const formatRupiah = (val) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
@@ -55,6 +59,30 @@ const formatDate = (val) => {
 export default function ParentDashboardPage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
+  const bankName = pengaturan?.bank_name || ''
+  const bankAccount = pengaturan?.bank_account_number || ''
+  const bankHolder = pengaturan?.bank_account_name || foundationName
+
+  const [copiedVa, setCopiedVa] = useState(false)
+  const getChildVa = (child) => {
+    if (!child) return '-'
+    const meta = child.metadata || {}
+    const va = meta.no_va || meta.nis_pembayaran || child.no_va || child.nis_pembayaran
+    if (va) return va
+    const prefix = pengaturan?.bsi_va_prefix || '9023'
+    const rawNis = child.nis || ''
+    const cleanNis = String(rawNis).replace(/\D/g, '')
+    return cleanNis ? `${prefix}${cleanNis}` : '-'
+  }
+
+  const copyVa = (va) => {
+    if (!va || va === '-') return
+    navigator.clipboard.writeText(va)
+    setCopiedVa(true)
+    setTimeout(() => setCopiedVa(false), 2000)
+  }
 
   const [children, setChildren] = useState([])
   const [selectedChildId, setSelectedChildId] = useState(null)
@@ -221,7 +249,7 @@ export default function ParentDashboardPage() {
                   PORTAL WALI MURID
                 </span>
                 <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                  {dashboardData?.academic_context?.academic_year ? `T.A. ${dashboardData.academic_context.academic_year}` : 'Yayasan Dar El-Iman'}
+                  {dashboardData?.academic_context?.academic_year ? `T.A. ${dashboardData.academic_context.academic_year}` : foundationName}
                 </span>
               </div>
               <p className="mt-1 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
@@ -295,9 +323,14 @@ export default function ParentDashboardPage() {
                       <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                         {child.class_name || '-'} • NIS: {child.nis || '-'}
                       </p>
-                      <span className="mt-1 inline-block rounded-md bg-emerald-100/80 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
-                        {child.unit_name || 'Unit Pendidikan'}
-                      </span>
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-1">
+                        <span className="inline-block rounded-md bg-emerald-100/80 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                          {child.unit_name || 'Unit Pendidikan'}
+                        </span>
+                        <span className="font-mono text-[9px] font-bold text-emerald-900 dark:text-emerald-300 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded">
+                          VA: {getChildVa(child)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -646,12 +679,12 @@ export default function ParentDashboardPage() {
                     <div className="rounded-xl border border-slate-100 p-3 text-xs dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
                       <span className="text-[10px] font-bold text-slate-400 uppercase">Setoran Terakhir:</span>
                       <p className="mt-1 font-bold text-slate-900 dark:text-white">
-                        {r.surah_name || 'Surat Al-Qur’an'} ({r.ayah_start ? `Ayat ${r.ayah_start}-${r.ayah_end}` : (r.ayat_range || 'Ayat Lengkap')})
+                        {r.surah_name || 'Al-Qur’an'} ({r.ayah_start ? `Ayat ${r.ayah_start}-${r.ayah_end}` : (r.ayat_range || '-')})
                       </p>
                       <div className="mt-2 flex items-center justify-between text-[11px]">
                         <span className="text-slate-500">Tanggal: {formatDate(r.record_date || r.date)}</span>
                         <Badge color="success" size="xs">
-                          {r.quality || r.status || 'Mumtaz'}
+                          {r.quality || r.status || '-'}
                         </Badge>
                       </div>
                     </div>
@@ -748,9 +781,15 @@ export default function ParentDashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-slate-900 dark:text-white truncate">{act.title}</span>
-                        <span className="font-mono text-[10px] text-slate-400 shrink-0">{act.time || '-'}</span>
+                        <span className="font-mono text-[10px] text-slate-400 shrink-0">{act.time || act.time_label || '-'}</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 truncate">{act.description}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{act.description || act.subtitle}</p>
+                      {(act.keterangan || act.notes) && (
+                        <div className="mt-1 flex items-start gap-1 rounded bg-amber-50 px-2 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                          <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
+                          <span className="truncate"><strong>{act.badge_label?.toLowerCase().includes('lambat') || act.status?.toLowerCase().includes('lambat') ? 'Alasan Terlambat: ' : 'Catatan: '}</strong>{act.keterangan || act.notes}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -829,7 +868,7 @@ export default function ParentDashboardPage() {
 
             <div className="p-4 sm:p-5">
               <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                BSI Syariah: <span className="font-mono font-bold text-emerald-800 dark:text-emerald-200">777-1234-567</span> a.n. Yayasan Dar El-Iman
+                {bankName ? `${bankName}: ` : ''}<span className="font-mono font-bold text-emerald-800 dark:text-emerald-200">{bankAccount || '-'}</span>{bankHolder ? ` a.n. ${bankHolder}` : ''}
               </p>
               <Button
                 type="button"
@@ -917,12 +956,32 @@ export default function ParentDashboardPage() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
                                   <span className="font-bold text-slate-900 dark:text-white">{act.title}</span>
-                                  <span className="font-mono text-[10px] text-slate-400">{act.time || '-'}</span>
+                                  <span className="font-mono text-[10px] text-slate-400">{act.time || act.time_label || '-'}</span>
                                 </div>
-                                <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-300">{act.description}</p>
-                                {act.status && (
-                                  <span className="mt-1.5 inline-block rounded bg-emerald-100 px-2 py-0.5 text-[9px] font-bold uppercase text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
-                                    {act.status}
+                                <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-300">{act.description || act.subtitle}</p>
+                                {(act.keterangan || act.notes) && (
+                                  <div className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-amber-200/80 bg-amber-50/80 p-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
+                                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                                    <div>
+                                      <span className="font-semibold text-amber-800 dark:text-amber-300">
+                                        {act.badge_label?.toLowerCase().includes('lambat') || act.status?.toLowerCase().includes('lambat') ? 'Alasan Keterlambatan: ' : 'Catatan Presensi: '}
+                                      </span>
+                                      <span>{act.keterangan || act.notes}</span>
+                                      {act.arrival_time && <span className="ml-1 text-[11px] text-amber-700 dark:text-amber-400">(Tiba pk {act.arrival_time})</span>}
+                                    </div>
+                                  </div>
+                                )}
+                                {(act.status || act.badge_label) && (
+                                  <span className={`mt-1.5 inline-block rounded px-2 py-0.5 text-[9px] font-bold uppercase ${
+                                    (act.badge_type === 'amber' || act.status === 'terlambat' || act.badge_label?.toLowerCase().includes('lambat'))
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                                      : (act.badge_type === 'red' || act.status === 'alpa')
+                                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300'
+                                      : (act.badge_type === 'blue' || act.status === 'sakit')
+                                      ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300'
+                                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
+                                  }`}>
+                                    {act.badge_label || act.status}
                                   </span>
                                 )}
                               </div>
@@ -1019,15 +1078,15 @@ export default function ParentDashboardPage() {
                                   {r.surah_name || 'Surat Al-Qur’an'}
                                 </span>
                                 <Badge color="success" size="xs">
-                                  {r.quality || r.status || 'Mumtaz'}
+                                  {r.quality || r.status || '-'}
                                 </Badge>
                               </div>
                               <p className="text-xs text-slate-600 dark:text-slate-300">
-                                Rentang Ayat: <span className="font-mono font-bold">{r.ayah_start ? `Ayat ${r.ayah_start}-${r.ayah_end}` : (r.ayat_range || 'Ayat Lengkap')}</span>
+                                Rentang Ayat: <span className="font-mono font-bold">{r.ayah_start ? `Ayat ${r.ayah_start}-${r.ayah_end}` : (r.ayat_range || '-')}</span>
                               </p>
                               <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-2 dark:border-slate-700">
                                 <span>Tanggal: {formatDate(r.record_date || r.date)}</span>
-                                <span>{r.teacher_name || 'Ustadz/Musyrif Pengampu'}</span>
+                                <span>{r.teacher_name || '-'}</span>
                               </div>
                             </div>
                           )
@@ -1199,7 +1258,7 @@ export default function ParentDashboardPage() {
                             {note.content || note.note}
                           </p>
                           <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 text-[11px] text-slate-500 dark:border-slate-700">
-                            <span>Guru: <span className="font-bold text-slate-700 dark:text-slate-300">{note.teacher?.name || 'Wali Kelas'}</span></span>
+                            <span>Guru: <span className="font-bold text-slate-700 dark:text-slate-300">{note.teacher?.name || '-'}</span></span>
                             <span className="text-emerald-600 font-bold">Terverifikasi Sekolah</span>
                           </div>
                         </div>
@@ -1262,11 +1321,45 @@ export default function ParentDashboardPage() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-5 space-y-4">
-                    {/* Rekening Card */}
-                    <div className="rounded-xl border border-amber-300/60 bg-amber-50/70 p-3 text-xs dark:bg-amber-950/30 dark:border-amber-800/40">
-                      <p className="font-bold text-amber-950 dark:text-amber-200">Rekening Resmi Pembayaran Pendidikan Yayasan:</p>
-                      <p className="text-slate-600 dark:text-slate-300 mt-0.5">
-                        Bank Syariah Indonesia (BSI) — No. Rekening: <span className="font-mono font-bold text-amber-900 dark:text-amber-200">777-1234-567</span> a.n. Yayasan Dar El-Iman Padang
+                    {/* Virtual Account BSI Ananda Card */}
+                    {selectedChild && (
+                      <div className="rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white p-4 shadow-sm dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 dark:border-emerald-700/50">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full uppercase">
+                              Bank Syariah Indonesia (BSI)
+                            </span>
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-1">
+                              Virtual Account: {selectedChild.name}
+                            </h4>
+                          </div>
+                          {getChildVa(selectedChild) !== '-' && (
+                            <button
+                              type="button"
+                              onClick={() => copyVa(getChildVa(selectedChild))}
+                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 text-[11px] font-bold transition shadow-sm"
+                            >
+                              {copiedVa ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                              <span>{copiedVa ? 'Tersalin' : 'Salin VA'}</span>
+                            </button>
+                          )}
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="font-mono text-base font-extrabold text-emerald-800 dark:text-emerald-300">
+                            {getChildVa(selectedChild)}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                          Transfer via BSI Mobile, ATM BSI, atau antar bank (Kode Bank: 451). Pembayaran langsung terverifikasi otomatis.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Rekening Yayasan Card */}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs dark:bg-slate-900 dark:border-slate-800">
+                      <p className="font-bold text-slate-700 dark:text-slate-300">Rekening Resmi Alternatif {foundationName}:</p>
+                      <p className="text-slate-600 dark:text-slate-400 mt-0.5">
+                        {bankName ? `${bankName} — ` : ''}No. Rekening: <span className="font-mono font-bold text-slate-900 dark:text-slate-200">{bankAccount || '-'}</span>{bankHolder ? ` a.n. ${bankHolder}` : ''}
                       </p>
                     </div>
 

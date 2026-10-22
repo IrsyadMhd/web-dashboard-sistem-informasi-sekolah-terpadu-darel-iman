@@ -18,6 +18,8 @@ import {
   Building2,
   Calendar,
   Download,
+  Upload,
+  Plus,
   FileSpreadsheet,
   FileText,
 } from 'lucide-react'
@@ -31,11 +33,11 @@ import KurikulumImportModal from '../components/kurikulum/KurikulumImportModal'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
-import { Download1, Upload1, Plus as PlusIcon } from '@tailgrids/icons'
+import { useToast } from '../components/app'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { handleApiExport } from '../utils/exportUtils'
 import { useAuthStore } from '../stores/authStore'
-import { isGlobalAccessManager } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { PrintOptionModal } from '../components/master-data'
 import { useDebounce } from '../hooks/useDebounce'
 import { cn } from '../lib/utils'
@@ -149,59 +151,6 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
   )
 }
 
-function ToastStack({ toasts, onDismiss }) {
-  return (
-    <aside
-      aria-label="Notifikasi sistem"
-      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0"
-    >
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-              toast.type === 'error'
-                ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-            }`}
-          >
-            <div
-              className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                toast.type === 'error'
-                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-              }`}
-            >
-              {toast.type === 'error' ? (
-                <AlertTriangle className="size-4" strokeWidth={2.2} />
-              ) : (
-                <CheckCircle2 className="size-4" strokeWidth={2.2} />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.title}</p>
-              {toast.message && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{toast.message}</p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => onDismiss(toast.id)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-              aria-label="Tutup notifikasi"
-            >
-              <X className="size-3.5" />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </aside>
-  )
-}
 
 function getJenjangFromUnit(unit) {
   if (!unit) return ''
@@ -232,20 +181,22 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
     return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
   }, [user])
 
+  const userLevel = useMemo(() => getUserRoleLevel(user), [user])
+
   const canViewAllUnits = useMemo(() => {
     if (!user || userRoles.length === 0) return false
-    return isGlobalAccessManager(userRoles)
-  }, [user, userRoles])
+    return userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
+  }, [user, userRoles, userLevel])
 
   const canDelete = useMemo(() => {
     if (!user) return false
     const perms = Array.isArray(user?.permissions) ? user.permissions : []
     return (
-      isGlobalAccessManager(userRoles) ||
+      userLevel <= ROLE_LEVELS.YAYASAN || // Level 1-2: Global Access
       perms.includes('academic.curriculum.delete') ||
       perms.includes('sistem.master_data')
     )
-  }, [user, userRoles])
+  }, [user, userRoles, userLevel])
 
   // Fetch Education Units
   const { data: unitsData = [] } = useQuery({
@@ -349,16 +300,11 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
     staleTime: 5 * 60 * 1000,
   })
 
-  // Toast Stack state
-  const [toasts, setToasts] = useState([])
+  // Toast Notifications
+  const toast = useToast()
   const pushToast = (title, message, type = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, title, message, type }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4500)
+    toast(title, message, type)
   }
-  const dismissToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id))
 
   // Delete & Restore Confirmation state
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -655,7 +601,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
           className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
           onClick={() => setIsImportModalOpen(true)}
         >
-          <Upload1 className="size-5 text-white" strokeWidth={2.2} />
+          <Upload className="size-5 text-white" strokeWidth={2.2} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -672,7 +618,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
           className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
           onClick={() => setShowExportModal(true)}
         >
-          <Download1 className="size-5 text-white" strokeWidth={2.2} />
+          <Download className="size-5 text-white" strokeWidth={2.2} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -689,7 +635,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
           className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
           onClick={handleOpenFormTambah}
         >
-          <PlusIcon className="size-5 text-white" strokeWidth={2.5} />
+          <Plus className="size-5 text-white" strokeWidth={2.5} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
@@ -1380,8 +1326,7 @@ export default function MasterKurikulumPage({ embedded = false, hidePageHeader =
         )}
       </AnimatePresence>
 
-      {/* ── Toast Notifications Stack ── */}
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
     </PageContainer>
   )
 }

@@ -1,3 +1,4 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api'
@@ -98,14 +99,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [apiData, setApiData] = useState(null)
 
-  // Toast notifications state
-  const [toasts, setToasts] = useState([])
+  // Global toast integration
+  const toast = useToast()
   const pushToast = (type, title, message = '') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, type, title, message }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    const tone = type === 'error' || type === 'danger' ? 'error' : type === 'warning' ? 'warning' : 'success'
+    toast(message ? `${title}: ${message}` : title, tone)
   }
 
   // Fetch real data from backend API
@@ -949,57 +947,8 @@ export default function DashboardPage() {
       </ModalErrorBoundary>
 
       {/* Toast Notification Stack */}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-              className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-                toast.type === 'error'
-                  ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                  : toast.type === 'warning'
-                  ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
-                  : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-              }`}
-            >
-              <div
-                className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                  toast.type === 'error'
-                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                    : toast.type === 'warning'
-                    ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                    : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                }`}
-              >
-                {toast.type === 'error' ? (
-                  <AlertTriangle className="size-4.5" />
-                ) : toast.type === 'warning' ? (
-                  <AlertTriangle className="size-4.5" />
-                ) : (
-                  <Check className="size-4.5" />
-                )}
-              </div>
-              <div className="flex-1 pt-0.5">
-                <p className="text-xs font-bold leading-tight">{toast.title}</p>
-                {toast.message && (
-                  <p className="mt-0.5 text-[11px] opacity-80 leading-normal">{toast.message}</p>
-                )}
-              </div>
-              <button
-                onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="size-3.5" />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-    </div>
+      {null}
+</div>
     </PageContainer>
   )
 }

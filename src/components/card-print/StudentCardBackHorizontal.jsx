@@ -2,20 +2,22 @@ import React, { useId } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { FaGraduationCap } from 'react-icons/fa'
 import { getCardLogoUrl } from '../../utils/cardLogoHelper'
+import { resolveFoundationName } from '../../utils/printHelper'
+import { usePengaturanStore } from '../../stores/pengaturanStore'
 
 export default function StudentCardBackHorizontal({
   data = {},
   config = {},
   theme = {},
-  pengaturan = {},
+  pengaturan: propPengaturan = {},
   qrToken = '',
   formatDate,
   isPrint = false,
   showPattern = true,
   showWave = true,
   backTitle = 'TATA TERTIB SISWA',
-  backRules = '1. Kartu ini adalah kartu identitas resmi siswa Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam KBM sekolah.\n3. Apabila menemukan kartu ini, harap mengembalikan ke piket sekolah.\n4. QR Code digunakan untuk absensi gerbang & verifikasi SIMSIT.',
-  backAddress = 'Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: (0751) 123456 | Website: dareliman.or.id',
+  backRules,
+  backAddress,
   backShowQr = true,
 }) {
   const instanceId = useId().replace(/:/g, '')
@@ -26,11 +28,31 @@ export default function StudentCardBackHorizontal({
   const darkColor = theme.dark || '#003822'
   const accentColor = theme.accent || '#E5A93C'
 
-  const schoolName = pengaturan.school_name || 'YAYASAN DAR EL-IMAN'
+  const storePengaturan = usePengaturanStore((state) => state.pengaturan)
+  const pengaturan =
+    propPengaturan && Object.keys(propPengaturan).length > 0
+      ? propPengaturan
+      : (storePengaturan || {})
+
+  const schoolName =
+    resolveFoundationName(
+      pengaturan?.school_name ||
+      pengaturan?.institution_name ||
+      pengaturan?.nama_yayasan ||
+      pengaturan?.yayasan
+    ) ||
+    pengaturan?.school_name ||
+    'YAYASAN DAR EL-IMAN'
   const brandTitle = schoolName.replace(/^YAYASAN\s*/i, '').replace(/\s*-\s*/g, '-').trim()
   const logoUrl = getCardLogoUrl(pengaturan, data)
 
-  const rulesList = (backRules || '').split('\n').filter((r) => r.trim().length > 0)
+  const defaultBackRules =
+    pengaturan?.card_rules_student ||
+    `1. Kartu ini adalah kartu identitas resmi siswa ${schoolName}.\n2. Wajib dibawa & dikenakan selama jam KBM sekolah.\n3. Apabila menemukan kartu ini, harap mengembalikan ke piket sekolah.\n4. QR Code digunakan untuk absensi gerbang & verifikasi SIMSIT.`
+  const resolvedRulesText = backRules
+    ? backRules.replace(/Yayasan\s+Dar\s*el-?Iman/gi, schoolName)
+    : defaultBackRules
+  const rulesList = (resolvedRulesText || '').split('\n').filter((r) => r.trim().length > 0)
 
   const cardClass = `w-[560px] min-w-[560px] max-w-[560px] h-[353px] min-h-[353px] max-h-[353px] ${isPrint ? 'border-0 rounded-none' : 'rounded-2xl border border-slate-200 shadow-2xl'}`
 
@@ -176,10 +198,11 @@ export default function StudentCardBackHorizontal({
         <div className="relative z-10 grid grid-cols-[1fr_auto] w-full items-center divide-x divide-white/20 text-xs">
           <div className="pr-2.5 min-w-0">
             <p className="text-[8px] font-semibold text-emerald-50 leading-tight">
-              Jl. Gajah Mada No. 28 Padang, Sumatera Barat
+              {pengaturan?.address || '-'}
             </p>
             <p className="text-[7.5px] font-medium text-emerald-100 leading-tight">
-              Telp: (0751) 123456 | Website: dareliman.or.id
+              {pengaturan?.phone ? `Telp: ${pengaturan.phone}` : ''}
+              {pengaturan?.website ? ` | Website: ${pengaturan.website}` : ''}
             </p>
           </div>
 
@@ -188,7 +211,7 @@ export default function StudentCardBackHorizontal({
               TAHUN AJARAN
             </span>
             <span className="text-[9.5px] font-black text-white block mt-0.5 leading-none">
-              2025/2026
+              {data?.academic_year || data?.tahun_ajaran || data?.tahun_ajaran_berjalan || pengaturan?.tahun_ajaran_aktif || '2026/2027'}
             </span>
           </div>
         </div>

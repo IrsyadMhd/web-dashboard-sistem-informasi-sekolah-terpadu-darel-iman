@@ -656,7 +656,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
       {!(embedded || hideBreadcrumb) && (
         <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Tujuan Pembelajaran' }]} />
       )}
-      <MasterDataPage className="education-unit-page tp-master-page" hideBreadcrumb={embedded || hideBreadcrumb}>
+      <MasterDataPage className="tp-master-page" hideBreadcrumb={embedded || hideBreadcrumb}>
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       <PrintOptionModal
         isOpen={isPrintModalOpen}
@@ -810,8 +810,8 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
 
       {/* Main Table */}
       <motion.div variants={itemVariants}>
-      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
           <div>
             <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Data Tujuan Pembelajaran</h2>
             <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Data sesuai filter dan kewenangan pengguna.</p>
@@ -831,7 +831,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
                 <th className="w-[16%] bg-transparent px-5 sm:px-6 md:px-8 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-slate-700 dark:text-slate-300">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
@@ -848,7 +848,7 @@ export default function MasterTujuanPembelajaranPage({ embedded = false, hideBre
                 </tr>
               ) : (
                 dataTp.map((item) => (
-                  <tr key={item.id} className="group border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/90 dark:hover:bg-slate-800/60 transition-all duration-200 cursor-pointer">
+                  <tr key={item.id} className="group hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all duration-200 cursor-pointer">
                     <td className="py-4 px-5 sm:px-6 md:px-8 text-center font-bold text-slate-500 dark:text-slate-400">
                       #{item.urutan}
                     </td>

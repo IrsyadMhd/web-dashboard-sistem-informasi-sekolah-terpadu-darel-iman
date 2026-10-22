@@ -303,7 +303,7 @@ export default function LaporanPegawaiPage() {
         r.education_unit?.name || r.unit?.name || r.unit || '-',
         r.position?.name || r.jabatan?.name || r.jabatan || '-',
         r.gender || r.jenis_kelamin || '-',
-        r.status_pegawai || r.status || 'Aktif',
+        r.status_pegawai || r.status || '-',
       ]),
     })
   }
@@ -324,7 +324,7 @@ export default function LaporanPegawaiPage() {
         r.education_unit?.name || r.unit?.name || r.unit || '-',
         r.position?.name || r.jabatan?.name || r.jabatan || '-',
         r.gender || r.jenis_kelamin || '-',
-        r.status_pegawai || r.status || 'Aktif',
+        r.status_pegawai || r.status || '-',
       ]),
     })
   }
@@ -470,7 +470,7 @@ export default function LaporanPegawaiPage() {
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Status Kepegawaian</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs">{selectedRowModal.status_pegawai || selectedRowModal.status || 'Aktif'}</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 text-xs">{selectedRowModal.status_pegawai || selectedRowModal.status || '-'}</span>
                 </div>
               </div>
             </DialogBody>
@@ -488,12 +488,90 @@ export default function LaporanPegawaiPage() {
 
       {/* KPI Stats Grid */}
       <MasterStatsGrid columns={5}>
-        <MasterStatCard icon={Users} label="Total Pegawai" value={angka(totalPegawai)} subtitle="Total SDM terdaftar" variant="success" delay={0} />
-        <MasterStatCard icon={CheckCircle2} label="Pegawai Aktif" value={angka(pegawaiAktif)} subtitle={`${totalPegawai ? ((pegawaiAktif / totalPegawai) * 100).toFixed(1) : 0}% dari total`} variant="info" delay={50} />
-        <MasterStatCard icon={GraduationCap} label="Guru Pendidik" value={angka(guru)} subtitle="Tenaga Pendidik" variant="warning" delay={100} />
-        <MasterStatCard icon={Briefcase} label="Tenaga Kependidikan" value={angka(tendik)} subtitle="Tendik / Staf Support" variant="neutral" delay={150} />
-        <MasterStatCard icon={UserX} label="Pegawai Non-Aktif" value={angka(nonaktif)} subtitle="Cuti / Resign" variant="danger" delay={200} />
+        <MasterStatCard 
+          icon={Users} 
+          label="Total Pegawai" 
+          value={angka(totalPegawai)} 
+          subtitle={totalPegawai > 0 ? `${totalPegawai} SDM terdaftar` : 'Belum ada data'} 
+          variant="success" 
+          delay={0}
+          active={status === 'semua' && !search}
+          onClick={() => { setStatus('semua'); setSearch(''); setJabatan('semua'); }} 
+        />
+        <MasterStatCard 
+          icon={CheckCircle2} 
+          label="Pegawai Aktif" 
+          value={angka(pegawaiAktif)} 
+          subtitle={totalPegawai > 0 ? `${pegawaiAktif} dari ${totalPegawai} pegawai (${((pegawaiAktif / totalPegawai) * 100).toFixed(1)}%)` : 'Belum ada data'} 
+          variant="info" 
+          delay={50}
+          active={status === 'aktif'}
+          onClick={() => { setStatus(status === 'aktif' ? 'semua' : 'aktif'); setSearch(''); }} 
+        />
+        <MasterStatCard 
+          icon={GraduationCap} 
+          label="Guru Pendidik" 
+          value={angka(guru)} 
+          subtitle={totalPegawai > 0 ? `${guru} dari ${totalPegawai} pegawai (${((guru / totalPegawai) * 100).toFixed(1)}%)` : 'Tenaga Pendidik'} 
+          variant="warning" 
+          delay={100}
+          active={search.toLowerCase() === 'guru'}
+          onClick={() => { setSearch(search.toLowerCase() === 'guru' ? '' : 'Guru'); setStatus('semua'); }} 
+        />
+        <MasterStatCard 
+          icon={Briefcase} 
+          label="Tenaga Kependidikan" 
+          value={angka(tendik)} 
+          subtitle={totalPegawai > 0 ? `${tendik} dari ${totalPegawai} pegawai (${((tendik / totalPegawai) * 100).toFixed(1)}%)` : 'Tendik / Staf Support'} 
+          variant="neutral" 
+          delay={150}
+          active={search.toLowerCase() === 'tendik' || search.toLowerCase() === 'staf'}
+          onClick={() => { setSearch(search.toLowerCase() === 'tendik' ? '' : 'Tendik'); setStatus('semua'); }} 
+        />
+        <MasterStatCard 
+          icon={UserX} 
+          label="Pegawai Non-Aktif" 
+          value={angka(nonaktif)} 
+          subtitle={totalPegawai > 0 ? `${nonaktif} dari ${totalPegawai} pegawai (${((nonaktif / totalPegawai) * 100).toFixed(1)}%)` : 'Cuti / Resign'} 
+          variant="danger" 
+          delay={200}
+          active={status === 'nonaktif'}
+          onClick={() => { setStatus(status === 'nonaktif' ? 'semua' : 'nonaktif'); setSearch(''); }} 
+        />
       </MasterStatsGrid>
+
+      {/* KPI Definition & Transparency Banner */}
+      <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-white p-4 text-xs dark:border-emerald-800/60 dark:bg-[#13221f] dark:from-[#13221f] dark:to-[#1B2433]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-emerald-600 px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
+                Formula Rasio SDM Pegawai & Guru
+              </span>
+              <span className="font-bold text-slate-800 dark:text-slate-100">
+                SDM Aktif: {totalPegawai > 0 ? `${((pegawaiAktif / totalPegawai) * 100).toFixed(1)}%` : '—'} • Guru: {totalPegawai > 0 ? `${((guru / totalPegawai) * 100).toFixed(1)}%` : '—'} • Tendik: {totalPegawai > 0 ? `${((tendik / totalPegawai) * 100).toFixed(1)}%` : '—'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              <strong className="text-slate-700 dark:text-slate-200">Rumus:</strong> (Jumlah Kategori SDM / Total Pegawai Terdaftar) &times; 100% • <strong className="text-slate-700 dark:text-slate-200">Penyebut Basis:</strong> {totalPegawai} pegawai • <strong className="text-slate-700 dark:text-slate-200">Cakupan:</strong> Seluruh unit & staf yayasan.
+            </p>
+          </div>
+          {(status !== 'semua' || search) && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="rounded-lg bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300/80">
+                Filter: {status !== 'semua' ? `Status ${status}` : `Pencarian "${search}"`}
+              </span>
+              <button
+                type="button"
+                onClick={() => { setStatus('semua'); setSearch(''); setJabatan('semua'); }}
+                className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer"
+              >
+                Reset Filter
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* 3-Column Equal Grid (Style persis LaporanAbsensiPage) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
@@ -546,7 +624,7 @@ export default function LaporanPegawaiPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Status Kepegawaian</label>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Status Keaktifan</label>
                 <select
                   value={status}
                   onChange={(e) => { setStatus(e.target.value); setHalaman(1); }}

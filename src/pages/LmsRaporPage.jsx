@@ -129,7 +129,7 @@ function OfficialRaporSheet({ digitalData }) {
           LAPORAN HASIL BELAJAR SISWA (RAPOR DIGITAL)
         </h2>
         <p className="text-[11px] font-sans text-slate-500 font-semibold">
-          KURIKULUM MERDEKA / TERPADU • SEMESTER {rapor.semester?.nama || '1'} • TA {rapor.tahun_ajaran?.year || '2025/2026'}
+          KURIKULUM MERDEKA / TERPADU • SEMESTER {rapor.semester?.nama || '1'} • TA {rapor.tahun_ajaran?.year || rapor.tahun_ajaran?.nama || '2026/2027'}
         </p>
       </div>
 
@@ -475,7 +475,7 @@ export function printRaporDocument(digitalData) {
       </div>
 
       <div class="title">LAPORAN HASIL BELAJAR SISWA (RAPOR DIGITAL)</div>
-      <div class="subtitle">KURIKULUM MERDEKA • SEMESTER ${rapor.semester?.nama || '1'} • TA ${rapor.tahun_ajaran?.year || '2025/2026'}</div>
+      <div class="subtitle">KURIKULUM MERDEKA • SEMESTER ${rapor.semester?.nama || '1'} • TA ${rapor.tahun_ajaran?.year || rapor.tahun_ajaran?.nama || '2026/2027'}</div>
 
       <table class="meta-table">
         <tr>
@@ -681,7 +681,6 @@ export default function LmsRaporPage({ tabNav = null }) {
   const [editingItem, setEditingItem] = useState(null)
   const [digitalData, setDigitalData] = useState(null)
   const [loadingDigital, setLoadingDigital] = useState(false)
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
 
   // Card Drill-Down Modal State
   const [cardModal, setCardModal] = useState({
@@ -1192,17 +1191,6 @@ export default function LmsRaporPage({ tabNav = null }) {
   return (
     <PageContainer>
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
-        {/* Toast Notification */}
-        {toast.show && (
-          <div
-            className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-white font-medium transition-all transform duration-300 ${
-              toast.type === 'error' ? 'bg-rose-600' : 'bg-[#0E5C44]'
-            }`}
-          >
-            <Sparkles className="w-5 h-5 text-amber-300" />
-            <span>{toast.message}</span>
-          </div>
-        )}
 
         {/* 5-Card KPI Summary Grid */}
         <motion.div variants={itemVariants}>
@@ -1299,9 +1287,9 @@ export default function LmsRaporPage({ tabNav = null }) {
         <motion.div variants={itemVariants}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
             {/* Column 1: Filter Laporan Rapor */}
-            <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
+            <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] flex flex-col justify-between h-full">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-emerald-200/80 dark:border-emerald-800/60">
                   <h2 className="text-base font-bold text-slate-900 dark:text-white">Filter Laporan Rapor</h2>
                   <button
                     type="button"
@@ -1396,8 +1384,8 @@ export default function LmsRaporPage({ tabNav = null }) {
             </article>
 
             {/* Column 2: Grafik Tren Utama (BarChart) */}
-            <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-emerald-200/80 dark:border-emerald-800/60">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Analisis Skor per Kelas</h2>
                 <span className="text-xs font-semibold text-slate-400">Rata-Rata Nilai</span>
               </div>
@@ -1415,8 +1403,8 @@ export default function LmsRaporPage({ tabNav = null }) {
             </article>
 
             {/* Column 3: Grafik Distribusi Status Rapor (PieChart) */}
-            <article className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:bg-[#1B2433] p-5 sm:p-6 shadow-xs flex flex-col justify-between h-full">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <article className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] flex flex-col justify-between h-full">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-emerald-200/80 dark:border-emerald-800/60">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">Distribusi Status Rapor</h2>
                 <span className="text-xs font-bold text-slate-500">{stats.total_rapor || dataList.length} Total</span>
               </div>
@@ -1453,18 +1441,28 @@ export default function LmsRaporPage({ tabNav = null }) {
           </div>
         </motion.div>
 
-        {/* Datatable Outer Container */}
+        {/* Canonical Datatable Outer Container */}
         <motion.div variants={itemVariants}>
-          <div className="overflow-hidden rounded-[18px] border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-[#1B2433] shadow-xs space-y-4 p-4 md:p-6">
-            {/* Datatable Toolbar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Award className="w-5 h-5 text-[#0E5C44]" /> Daftar Rapor Digital Siswa
-                </h3>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  {pagination.total || dataList.length} Records
-                </span>
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+            {/* Datatable Toolbar Header Baris 1 */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3.5 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shrink-0 shadow-sm border border-emerald-300/40">
+                  <Award className="size-5 text-white" strokeWidth={2.2} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                      Daftar Rapor Digital Siswa
+                    </h3>
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800 dark:text-emerald-200 border border-emerald-200/60 dark:border-emerald-800/60">
+                      {pagination.total || dataList.length} Records
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Pengelolaan dan penerbitan buku rapor digital per siswa dan kelas.
+                  </p>
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -1515,11 +1513,11 @@ export default function LmsRaporPage({ tabNav = null }) {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <table className="w-full text-left text-sm border-collapse" aria-label="Daftar rapor digital siswa">
+                  <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200">
+                    <tr className="border-b-2 border-emerald-200/90 dark:border-emerald-800/80 bg-transparent text-xs font-extrabold uppercase tracking-wider">
                       <th className="py-3.5 px-4">Nama Siswa</th>
-                      <th className="py-3.5 px-4">Kelas & Periode</th>
+                      <th className="py-3.5 px-4">Kelas &amp; Periode</th>
                       <th className="py-3.5 px-4 text-center">Mapel (Lulus/Total)</th>
                       <th className="py-3.5 px-4 text-center">Rata-Rata Nilai</th>
                       <th className="py-3.5 px-4 text-center">Ranking Kelas</th>
@@ -1528,9 +1526,9 @@ export default function LmsRaporPage({ tabNav = null }) {
                       <th className="py-3.5 px-4 text-right">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-slate-700 dark:text-slate-200">
                     {dataList.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                      <tr key={item.id} className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors duration-150">
                         {/* Student Info with HoverCard */}
                         <td className="py-3.5 px-4 align-top">
                           <HoverCard>
@@ -1661,7 +1659,7 @@ export default function LmsRaporPage({ tabNav = null }) {
 
             {/* Pagination */}
             {!loading && pagination.lastPage > 1 && (
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="p-4 sm:p-6 border-t border-emerald-200/80 dark:border-emerald-800/60">
                 <Pagination
                   currentPage={pagination.currentPage}
                   totalPages={pagination.lastPage}
@@ -2014,17 +2012,17 @@ export default function LmsRaporPage({ tabNav = null }) {
                 />
               </div>
 
-              <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl">
+              <div className="overflow-x-auto border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-900 text-slate-500 font-semibold border-b border-slate-100 dark:border-slate-800">
+                    <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200 font-semibold border-b border-emerald-200/90 dark:border-emerald-800/80">
                       <th className="py-2.5 px-3">Siswa & NIS</th>
                       <th className="py-2.5 px-3">Kelas & Periode</th>
                       <th className="py-2.5 px-3 text-center">Rata-Rata</th>
                       <th className="py-2.5 px-3 text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                     {paginatedModalRows.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="py-8 text-center text-slate-400">

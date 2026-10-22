@@ -18,6 +18,8 @@ import { ReportSkeleton } from '../../../components/reports/ReportSkeleton'
 import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
+import { printCleanTable } from '../../../utils/printHelper'
+import { usePengaturanStore } from '../../../stores/pengaturanStore'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
@@ -36,6 +38,7 @@ const itemVariants = {
 }
 
 export function LaporanAlumniPage() {
+  const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
   const [filters, setFilters] = useState({ period: 'year', page: 1, per_page: 15, search: '' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -94,6 +97,54 @@ export function LaporanAlumniPage() {
   const handleConfirmExport = async ({ format, orientation }) => {
     setIsExportOpen(false)
     await reportService.exportFoundationReport('alumni', { ...filters, format, orientation })
+  }
+
+  const handlePrintReport = () => {
+    if (!reportData) return
+    const headers = [
+      'No',
+      'Unit Asal',
+      'Total Alumni',
+      'Kuliah / PT',
+      'Bekerja',
+      'Berwirausaha',
+      'Belum Terdata',
+    ]
+
+    const rows = (reportData.unit_recaps || []).map((r, idx) => [
+      idx + 1,
+      r.unit_name || '-',
+      (r.total_alumni ?? 0).toLocaleString('id-ID'),
+      (r.melanjutkan_pendidikan ?? 0).toLocaleString('id-ID'),
+      (r.bekerja ?? 0).toLocaleString('id-ID'),
+      (r.berwirausaha ?? 0).toLocaleString('id-ID'),
+      (r.belum_terdata ?? 0).toLocaleString('id-ID'),
+    ])
+
+    if (reportData.unit_recaps_total) {
+      const tot = reportData.unit_recaps_total
+      rows.push([
+        '—',
+        'TOTAL KESELURUHAN',
+        (tot.total_alumni ?? 0).toLocaleString('id-ID'),
+        (tot.melanjutkan_pendidikan ?? 0).toLocaleString('id-ID'),
+        (tot.bekerja ?? 0).toLocaleString('id-ID'),
+        (tot.berwirausaha ?? 0).toLocaleString('id-ID'),
+        (tot.belum_terdata ?? 0).toLocaleString('id-ID'),
+      ])
+    }
+
+    const orgName = (sitePengaturan?.school_name || sitePengaturan?.application_name || '').trim()
+    printCleanTable({
+      title: 'LAPORAN REKAPITULASI TRACER STUDY ALUMNI',
+      subtitle: reportData.report?.title || orgName || 'Laporan Rekapitulasi Data Alumni',
+      period: reportData.report?.period?.label || filters.period || 'Tahun Ajaran Aktif',
+      headers,
+      rows,
+      orientation: 'landscape',
+      foundationName: orgName,
+      systemLogo: sitePengaturan?.logo_url,
+    })
   }
 
   if (loading && !reportData) return <ReportSkeleton />
@@ -210,7 +261,7 @@ export function LaporanAlumniPage() {
           onReset={handleResetFilter}
           onRefresh={fetchReport}
           onOpenPreview={() => setIsPreviewOpen(true)}
-          onPrint={() => window.print()}
+          onPrint={handlePrintReport}
           onExportPdf={handleExportPdf}
           onExportExcel={handleExportExcel}
           loading={loading}
@@ -311,7 +362,7 @@ export function LaporanAlumniPage() {
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         reportData={reportData}
-        onPrint={() => window.print()}
+        onPrint={handlePrintReport}
         onExportPdf={() => setIsExportOpen(true)}
       />
 

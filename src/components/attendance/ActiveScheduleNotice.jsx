@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AlarmClock, CheckCircle2, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { lmsPresensiService } from '../../services/lmsPresensiService'
 import { useAuthStore } from '../../stores/authStore'
+import { getUserRoleLevel, ROLE_LEVELS } from '../../auth/portalResolver'
 
 export default function ActiveScheduleNotice() {
   const navigate = useNavigate()
-  const roles = useAuthStore((state) => state.user?.roles || [])
+  const user = useAuthStore((state) => state.user)
   const [data, setData] = useState(null)
   const [isExpanded, setIsExpanded] = useState(false)
-  const eligible = roles.includes('Guru') || roles.includes('Wali Kelas')
+  const eligible = getUserRoleLevel(user) === ROLE_LEVELS.GURU // Level 6 (Tenaga Pendidik)
 
   useEffect(() => {
     if (!eligible) return undefined
@@ -26,8 +27,6 @@ export default function ActiveScheduleNotice() {
       window.clearInterval(timer)
     }
   }, [eligible])
-
-  if (!eligible || !data?.schedules?.length) return null
 
   // Helper untuk konversi waktu HH:MM ke menit total dalam hari
   const toMinutes = (timeStr) => {
@@ -48,15 +47,29 @@ export default function ActiveScheduleNotice() {
     return lDate.getHours() * 60 + lDate.getMinutes()
   })()
 
+  // Deduplikasi jadwal berdasarkan subjek, kelas, dan rentang waktu (mencegah duplikasi data ganda semester/seeder)
+  const uniqueSchedules = useMemo(() => {
+    if (!data?.schedules?.length) return []
+    const seen = new Set()
+    return data.schedules.filter((s) => {
+      const key = `${s.subject?.name || s.subject_id}-${s.kelas?.nama_kelas || s.school_class?.name || s.kelas_id}-${s.time_start}-${s.time_end}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [data?.schedules])
+
+  if (!eligible || !uniqueSchedules.length) return null
+
   // Cek apakah ada jadwal yang sedang benar-benar berjalan di jam ini
-  const hasCurrentOngoing = data.schedules.some((s) => {
+  const hasCurrentOngoing = uniqueSchedules.some((s) => {
     const sMin = toMinutes(s.time_start)
     const eMin = toMinutes(s.time_end)
     return currentMinutes >= sMin && currentMinutes <= eMin
   })
 
-  const totalSchedules = data.schedules.length
-  const displayedSchedules = isExpanded ? data.schedules : data.schedules.slice(0, 2)
+  const totalSchedules = uniqueSchedules.length
+  const displayedSchedules = isExpanded ? uniqueSchedules : uniqueSchedules.slice(0, 2)
 
   return (
     <section className="mb-3.5 space-y-2.5" aria-label="Jadwal pelajaran aktif">
@@ -66,11 +79,10 @@ export default function ActiveScheduleNotice() {
         const sMin = toMinutes(schedule.time_start)
         const eMin = toMinutes(schedule.time_end)
 
-        // Penentuan status: Pelajaran Sekarang vs Pelajaran Berikutnya
+        // Penentuan status: Pelajaran Sekarang vs Pelajaran Berikutnya (Ketat hanya aktif pada jam KBM)
         const isCurrent = currentMinutes >= sMin && currentMinutes <= eMin
-        // Jika tidak ada yang strictly ongoing, jadwal pertama dianggap sesi aktif terdekat
-        const isEffectiveCurrent = isCurrent || (!hasCurrentOngoing && idx === 0)
-        const isUpcoming = !isEffectiveCurrent && currentMinutes < sMin
+        const isUpcoming = currentMinutes < sMin
+        const isPast = currentMinutes > eMin
 
         return (
           <article
@@ -78,9 +90,11 @@ export default function ActiveScheduleNotice() {
             className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-4 rounded-2xl border px-4 py-3 shadow-xs transition ${
               done
                 ? 'border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-900/40'
-                : isEffectiveCurrent
+                : isCurrent
                 ? 'border-emerald-500/35 bg-gradient-to-r from-emerald-50/95 via-teal-50/60 to-emerald-50/90 hover:border-emerald-500/50 dark:border-emerald-800/60 dark:bg-emerald-950/30'
-                : 'border-amber-400/80 bg-gradient-to-r from-amber-50/95 via-yellow-50/60 to-amber-50/90 hover:border-amber-400 dark:border-amber-700/60 dark:bg-amber-950/25'
+                : isUpcoming
+                ? 'border-amber-400/80 bg-gradient-to-r from-amber-50/95 via-yellow-50/60 to-amber-50/90 hover:border-amber-400 dark:border-amber-700/60 dark:bg-amber-950/25'
+                : 'border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40'
             }`}
           >
             <div className="flex items-center gap-3 min-w-0">
@@ -88,14 +102,16 @@ export default function ActiveScheduleNotice() {
                 className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white shadow-xs ${
                   done
                     ? 'bg-slate-600 dark:bg-slate-700'
-                    : isEffectiveCurrent
+                    : isCurrent
                     ? 'bg-gradient-to-br from-emerald-600 to-teal-700 shadow-emerald-600/30'
-                    : 'bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-500/30'
+                    : isUpcoming
+                    ? 'bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-500/30'
+                    : 'bg-slate-500 dark:bg-slate-700'
                 }`}
               >
                 {done ? (
                   <CheckCircle2 size={18} />
-                ) : isEffectiveCurrent ? (
+                ) : isCurrent ? (
                   <AlarmClock size={18} />
                 ) : (
                   <Clock size={18} />
@@ -108,36 +124,42 @@ export default function ActiveScheduleNotice() {
                     className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider ${
                       done
                         ? 'text-slate-600 dark:text-slate-400'
-                        : isEffectiveCurrent
+                        : isCurrent
                         ? 'text-emerald-800 dark:text-emerald-300'
-                        : 'text-amber-900 dark:text-amber-300'
+                        : isUpcoming
+                        ? 'text-amber-900 dark:text-amber-300'
+                        : 'text-slate-500 dark:text-slate-400'
                     }`}
                   >
-                    {!done && isEffectiveCurrent && (
+                    {!done && isCurrent && (
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                       </span>
                     )}
-                    {!done && !isEffectiveCurrent && isUpcoming && (
+                    {!done && isUpcoming && (
                       <span className="relative flex h-2 w-2">
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                       </span>
                     )}
                     {done
                       ? 'Presensi Selesai'
-                      : isEffectiveCurrent
-                      ? 'Jam Pelajaran Sekarang'
-                      : 'Pelajaran Berikutnya'}
+                      : isCurrent
+                      ? 'Jam Pelajaran Sekarang (KBM Aktif)'
+                      : isUpcoming
+                      ? 'Pelajaran Berikutnya'
+                      : 'Jam Pelajaran Berakhir'}
                   </span>
 
                   <span
                     className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md ${
                       done
                         ? 'bg-slate-200/80 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                        : isEffectiveCurrent
+                        : isCurrent
                         ? 'bg-emerald-100/90 text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-200'
-                        : 'bg-amber-100/90 text-amber-950 dark:bg-amber-900/60 dark:text-amber-200'
+                        : isUpcoming
+                        ? 'bg-amber-100/90 text-amber-950 dark:bg-amber-900/60 dark:text-amber-200'
+                        : 'bg-slate-200/60 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                     }`}
                   >
                     {String(schedule.time_start).slice(0, 5)}–{String(schedule.time_end).slice(0, 5)} WIB
@@ -155,14 +177,15 @@ export default function ActiveScheduleNotice() {
               </div>
             </div>
 
-            {/* BUTTON / STATUS AREA: Hanya tampilkan tombol presensi di pelajaran sekarang, sembunyikan di pelajaran berikutnya */}
-            {isEffectiveCurrent ? (
+            {/* BUTTON / STATUS AREA: Tombol presensi HANYA AKTIF saat jam KBM berlangsung */}
+            {isCurrent ? (
               <button
                 type="button"
                 disabled={done}
-                onClick={() =>
-                  navigate(`/absensi/presensi?schedule_id=${schedule.id}&date=${data.date}`)
-                }
+                onClick={() => {
+                  const classId = schedule.kelas_id || schedule.class_id || schedule.kelas?.id || schedule.class?.id || ''
+                  navigate(`/portal-guru/workspace?tab=presensi&schedule_id=${schedule.id}&class_id=${classId}&date=${data.date || ''}`)
+                }}
                 className={`inline-flex shrink-0 h-8 items-center justify-center rounded-xl px-4 text-xs font-bold transition shadow-xs cursor-pointer active:scale-95 ${
                   done
                     ? 'bg-slate-200 text-slate-500 cursor-not-allowed dark:bg-slate-800 dark:text-slate-400'
@@ -175,12 +198,18 @@ export default function ActiveScheduleNotice() {
                   ? 'Lanjutkan Absen'
                   : 'Ambil Presensi'}
               </button>
-            ) : (
-              /* Pelajaran Berikutnya: Button presensi disembunyikan, diganti label badge kuning informatif */
+            ) : isUpcoming ? (
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="inline-flex items-center gap-1 rounded-xl bg-amber-100/90 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 px-3 py-1.5 text-xs font-extrabold shadow-2xs">
                   <Clock className="size-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Segera Dimulai</span>
+                  <span>Belum Mulai (Presensi Nonaktif)</span>
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="inline-flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-bold shadow-2xs">
+                  <Clock className="size-3.5 text-slate-400" />
+                  <span>Di Luar Jam KBM</span>
                 </span>
               </div>
             )}

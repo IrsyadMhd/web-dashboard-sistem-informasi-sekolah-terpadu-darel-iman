@@ -3,6 +3,7 @@ import { X, BookOpen, Save, RefreshCw, AlertCircle } from 'lucide-react'
 import { api } from '../../services/api'
 import AppModal from '../app/AppModal'
 import { Button } from '@/components/tailgrids/core/button'
+import { codeGeneratorService } from '../../services/codeGeneratorService'
 
 const JENIS_OPTIONS = ['SIT', 'Merdeka', 'Nasional', 'Pesantren', 'Lokal', 'Lainnya']
 const JENJANG_OPTIONS = ['TK', 'PAUD', 'SD', 'MI', 'SMP', 'MTs', 'SMA', 'MA', 'Pesantren']
@@ -80,7 +81,7 @@ export default function KurikulumFormModal({
       })
     } else {
       setFormData({
-        kode_kurikulum: `KUR-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+        kode_kurikulum: '',
         nama_kurikulum: '',
         jenis_kurikulum: 'SIT',
         unit_pendidikan_id: displayUnits[0]?.id || '',
@@ -92,6 +93,13 @@ export default function KurikulumFormModal({
         status: true,
         deskripsi: '',
       })
+      codeGeneratorService.preview('curriculum_code')
+        .then(res => {
+          if (res?.preview_code) {
+            setFormData(prev => ({ ...prev, kode_kurikulum: res.preview_code }))
+          }
+        })
+        .catch(() => {})
     }
     setErrors({})
   }, [initialData, isOpen, displayUnits, tahunAjarans])

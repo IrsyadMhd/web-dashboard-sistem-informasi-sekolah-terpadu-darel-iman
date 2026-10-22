@@ -29,8 +29,11 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import AppTabs from '../components/app/AppTabs'
+import { useToast } from '../components/app'
 import { Button } from '../components/tailgrids/core/button'
 import { DEFAULT_MOBILE_API_CONFIG, mobileApiConfigService } from '../services/mobileApiConfigService'
+import { usePengaturanStore, resolveFoundationName } from '../stores/pengaturanStore'
 
 const colorFields = [
   ['primary_color', 'Warna Utama'],
@@ -116,24 +119,7 @@ const FEATURE_DEFINITIONS = [
   },
 ]
 
-// ── TOAST NOTIFICATION HELPER ──────────────────────────────────────────────
-function useToast() {
-  const [toasts, setToasts] = useState([])
-  const add = (type, title, message) => {
-    const id = Date.now() + Math.random()
-    setToasts((p) => [...p, { id, type, title, message }])
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000)
-  }
-  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
-  return {
-    toasts,
-    dismiss,
-    success: (t, m) => add('success', t, m),
-    error: (t, m) => add('error', t, m),
-    warning: (t, m) => add('warning', t, m),
-    info: (t, m) => add('info', t, m),
-  }
-}
+
 
 // ── HARMONIZED DELETE MODAL ───────────────────────────────────────────────
 function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
@@ -244,6 +230,8 @@ function ResetConfirmModal({ isOpen, onClose, onConfirm }) {
 }
 
 export default function MobileApiConfigPage() {
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const [config, setConfig] = useState(DEFAULT_MOBILE_API_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -254,7 +242,10 @@ export default function MobileApiConfigPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [resetModalOpen, setResetModalOpen] = useState(false)
 
-  const { toasts, dismiss, success: toastSuccess, error: toastError, warning: toastWarning } = useToast()
+  const toast = useToast()
+  const toastSuccess = (title, message) => toast.success(title, message)
+  const toastError = (title, message) => toast.error(title, message)
+  const toastWarning = (title, message) => toast.warning(title, message)
 
   useEffect(() => {
     mobileApiConfigService
@@ -426,34 +417,7 @@ export default function MobileApiConfigPage() {
 
   return (
     <div className="space-y-5 p-4 sm:p-6">
-      {/* ── TOAST NOTIFICATIONS ──────────────────────────────────────────── */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`pointer-events-auto flex items-start gap-3 rounded-xl p-3.5 shadow-lg border backdrop-blur-md transition-all ${
-              t.type === 'success'
-                ? 'bg-emerald-600/95 text-white border-emerald-400'
-                : t.type === 'error'
-                ? 'bg-rose-600/95 text-white border-rose-400'
-                : t.type === 'warning'
-                ? 'bg-amber-600/95 text-white border-amber-400'
-                : 'bg-sky-600/95 text-white border-sky-400'
-            }`}
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold leading-tight">{t.title}</p>
-              {t.message && <p className="mt-0.5 text-xs opacity-90 leading-snug">{t.message}</p>}
-            </div>
-            <button
-              onClick={() => dismiss(t.id)}
-              className="rounded-lg p-0.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
-            >
-              <XCircle className="size-4" />
-            </button>
-          </div>
-        ))}
-      </div>
+
 
       <AppBreadcrumb pageTitle="Pengaturan Mobile App Android" />
 
@@ -487,27 +451,13 @@ export default function MobileApiConfigPage() {
         </header>
 
         {/* 5-Section Tab Navigation */}
-        <nav className="flex overflow-x-auto border-b border-slate-200 bg-slate-50/70 p-2 dark:border-slate-800 dark:bg-slate-900/50">
-          <div className="flex min-w-full gap-1.5 sm:min-w-0">
-            {tabs.map((tab) => {
-              const Icon = tab.icon
-              const isActive = activeTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black transition-all ${
-                    isActive
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
+        <nav aria-label="Navigasi Pengaturan Mobile API" className="flex overflow-x-auto no-scrollbar border-b border-emerald-200/80 bg-emerald-50/30 p-3 dark:border-emerald-800/60 dark:bg-[#13221f]/50">
+          <AppTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            ariaLabel="Navigasi Pengaturan Mobile API"
+          />
         </nav>
 
         {/* Workspace Layout */}
@@ -1317,7 +1267,7 @@ export default function MobileApiConfigPage() {
                 className="text-[11px]"
                 style={{ color: config.theme?.muted_text_color || '#64748B' }}
               >
-                {config.branding?.school_name || 'Yayasan Dar el-Iman'}
+                {config.branding?.school_name || foundationName || 'Yayasan Pendidikan Islam'}
               </p>
               {config.theme?.welcome_text ? (
                 <p

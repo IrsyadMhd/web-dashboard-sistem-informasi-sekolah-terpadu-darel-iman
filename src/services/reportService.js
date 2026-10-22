@@ -20,7 +20,7 @@ export const reportService = {
   submissionStats: async () => unwrap(await api.get('/lms/pengumpulan-tugas/stats')),
   reportCardStats: async (params = {}) => unwrap(await api.get('/lms/rapor/stats', { params })),
   submissions: async (params = {}) => unwrap(await api.get('/lms/pengumpulan-tugas', { params: { ...params, per_page: 100 } })),
-  tahfizhReport: async (params = {}) => unwrap(await api.get('/tahfizh/report', { params })),
+  tahfizhReport: async (params = {}) => (await api.get('/tahfizh/report', { params }))?.data ?? {},
   tahfizhAnalytics: async () => unwrap(await api.get('/mutabaah/analytics/recap')),
   alumni: async (params = {}) => unwrap(await api.get('/alumni', { params })),
   alumniStats: async () => unwrap(await api.get('/alumni/stats')),

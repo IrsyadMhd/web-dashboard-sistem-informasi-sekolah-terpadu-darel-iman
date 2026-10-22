@@ -52,4 +52,19 @@ export const lmsMateriService = {
     const res = await api.post(`/lms/materi/${id}/restore`)
     return res.data
   },
+
+  ajukanTelaah: async (id, catatan = '') => {
+    const res = await api.post(`/lms/materi/${id}/ajukan-telaah`, { catatan })
+    return res.data
+  },
+
+  supervisi: async (id, payload) => {
+    const res = await api.post(`/lms/materi/${id}/supervisi`, payload)
+    return res.data
+  },
+
+  getSupervisiLogs: async (id) => {
+    const res = await api.get(`/lms/materi/${id}/supervisi-logs`)
+    return res.data
+  },
 }

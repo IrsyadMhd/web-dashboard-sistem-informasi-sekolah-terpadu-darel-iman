@@ -82,6 +82,7 @@ import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
 import AppErrorState from '../components/app/AppErrorState'
 import PageContainer from '../components/app/PageContainer'
+import { useToast } from '../components/app'
 import { MasterStatusBadge, MasterErrorState, MasterEmptyState, MasterStatsGrid, MasterStatCard, SquircleActionButton, PrintOptionModal } from '../components/master-data'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 
@@ -110,8 +111,15 @@ import { getProvinsiList, getKotaOptions, getKecamatanOptions, getKelurahanOptio
 import SearchableRegionInput from '../components/common/SearchableRegionInput'
 import InteractiveMapPicker from '../components/common/InteractiveMapPicker'
 import { getPostalCode, enrichKelurahanWithPostal } from '../utils/postalCodeHelper'
-import { Download1, Upload1 } from '@tailgrids/icons'
-import { Button } from '@/components/tailgrids/core/button'
+import {
+  Button as HeroButton,
+  Chip as HeroChip,
+  Card as HeroCard,
+  Modal as HeroModal,
+  Spinner as HeroSpinner,
+  Tooltip as HeroTooltip,
+} from '@heroui/react'
+import { Button } from '@/components/ui/button'
 import {
  Dialog,
  DialogBody,
@@ -237,17 +245,7 @@ function makePayload(form) {
 }
 
 
-// ── Toast-style notification stack ──────────────────────────────────────────
-function useNotifications() {
- const [items, setItems] = useState([])
- const push = (title, message, tone = 'success') => {
- const id = `${Date.now()}-${Math.random()}`
- setItems(prev => [...prev, { id, title, message, tone }])
- window.setTimeout(() => setItems(prev => prev.filter(n => n.id !== id)), 6000)
- }
- const dismiss = (id) => setItems(prev => prev.filter(n => n.id !== id))
- return { items, push, dismiss }
-}
+
 
 // ── Inline alert (replaces Swal for validation/error messages) ───────────────
 function InlineAlert({ type = 'error', message, onClose }) {
@@ -271,97 +269,7 @@ function InlineAlert({ type = 'error', message, onClose }) {
  )
 }
 
-// ── Toast Stack ──────────────────────────────────────────────────────────────
-function ToastStack({ items, onDismiss }) {
-  if (!items.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
-      {items.map((n) => {
-        const isDanger = n.tone === 'danger' || n.tone === 'error'
-        const isWarning = n.tone === 'warning'
-        const isInfo = n.tone === 'info'
-        const isSuccess = !isDanger && !isWarning && !isInfo
 
-        return (
-          <div
-            key={n.id}
-            className={cn(
-              "relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]",
-              isSuccess && "border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50",
-              isDanger && "border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50",
-              isWarning && "border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50",
-              isInfo && "border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50"
-            )}
-          >
-            {/* Top Accent Gradient Line */}
-            <div
-              className={cn(
-                "absolute top-0 left-0 right-0 h-1",
-                isSuccess && "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600",
-                isDanger && "bg-gradient-to-r from-rose-500 via-rose-600 to-red-700",
-                isWarning && "bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600",
-                isInfo && "bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600"
-              )}
-            />
-
-            <div className="flex items-start gap-3 mt-0.5">
-              {/* Squircle Icon Badge */}
-              <div
-                className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
-                  isSuccess && "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30",
-                  isDanger && "bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30",
-                  isWarning && "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30",
-                  isInfo && "bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30"
-                )}
-              >
-                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
-                {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
-                {isInfo && <Info className="size-5" strokeWidth={2.3} />}
-              </div>
-
-              {/* Text Body */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                    {n.title}
-                  </h4>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border",
-                      isSuccess && "bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80",
-                      isDanger && "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80",
-                      isWarning && "bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80",
-                      isInfo && "bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80"
-                    )}
-                  >
-                    {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
-                  </span>
-                </div>
-                {n.message && (
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                    {n.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Dismiss Button */}
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                aria-label="Tutup notifikasi"
-              >
-                <X className="size-4" strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 // ── DEFINISI TONE WARNA KARTU KPI MODERN (TAILGRIDS SPEC) ──
 const MODERN_CARD_TONES = {
@@ -407,64 +315,100 @@ const MODERN_CARD_TONES = {
   },
 }
 
+function HeroStatusBadge({ active, activeLabel = 'Aktif', inactiveLabel = 'Nonaktif' }) {
+  return (
+    <HeroChip
+      size="sm"
+      variant="soft"
+      color={active ? 'success' : 'default'}
+      className={cn(
+        "font-bold text-[11px] inline-flex items-center gap-1.5",
+        active
+          ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60"
+          : "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+      )}
+    >
+      <span className={cn("inline-block size-1.5 rounded-full shrink-0", active ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+      <HeroChip.Label>{active ? activeLabel : inactiveLabel}</HeroChip.Label>
+    </HeroChip>
+  )
+}
+
 function ModernKpiCard({ icon: Icon, label, subtext, value, tag, ctaText = 'Rincian Unit', tone = 'emerald', onClick }) {
   const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
   const isClickable = typeof onClick === 'function'
 
   return (
-    <motion.article
+    <motion.div
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      onClick={onClick}
-      role={isClickable ? 'button' : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left flex flex-col justify-between h-full ${
-        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
-      } ${t.card}`}
+      className="h-full"
     >
-      {/* Ambient Glow */}
-      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+      <HeroCard
+        onClick={onClick}
+        onKeyDown={isClickable ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick()
+          }
+        } : undefined}
+        role={isClickable ? 'button' : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+        className={cn(
+          "group relative overflow-hidden rounded-[20px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left flex flex-col justify-between h-full",
+          isClickable ? "cursor-pointer hover:shadow-md" : "cursor-default",
+          t.card
+        )}
+      >
+        {/* Ambient Glow */}
+        <div className={cn("pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all", t.glow)} />
 
-      {/* Header dengan Icon Box & Tag */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
+        {/* Header dengan Icon Box & Tag */}
+        <HeroCard.Header className="flex items-center justify-between p-0 mb-3 bg-transparent border-0">
           <div className="flex items-center gap-2.5">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white ${t.iconBox}`}>
+            <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm", t.iconBox)}>
               <Icon className="h-5 w-5" />
             </div>
             <div>
-              <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+              <p className={cn("text-[11px] font-bold uppercase tracking-wider", t.title)}>{label}</p>
             </div>
           </div>
           {tag && (
-            <span className={`rounded-lg px-2.5 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
-              {tag}
-            </span>
+            <HeroChip
+              size="sm"
+              variant="soft"
+              color={tone === 'emerald' ? 'success' : tone === 'amber' ? 'warning' : 'default'}
+              className={cn("rounded-lg px-2.5 py-0.5 text-[10px] font-extrabold", t.tag)}
+            >
+              <HeroChip.Label>{tag}</HeroChip.Label>
+            </HeroChip>
           )}
-        </div>
+        </HeroCard.Header>
 
         {/* Nilai Utama */}
-        <p className={`text-3xl sm:text-4xl font-black tabular-nums tracking-tight ${t.val}`}>
-          {value ?? '0'}
-        </p>
-        {subtext && (
-          <p className={`mt-1 text-[11px] font-semibold ${t.sub}`}>
-            {subtext}
+        <HeroCard.Content className="p-0 bg-transparent">
+          <p className={cn("text-3xl sm:text-4xl font-black tabular-nums tracking-tight", t.val)}>
+            {value ?? '0'}
           </p>
-        )}
-      </div>
+          {subtext && (
+            <p className={cn("mt-1 text-[11px] font-semibold", t.sub)}>
+              {subtext}
+            </p>
+          )}
+        </HeroCard.Content>
 
-      {/* Click Affordance Footer */}
-      {isClickable && (
-        <div className={`mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] font-bold ${t.cta}`}>
-          <span>{ctaText}</span>
-          <span className="inline-flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
-            Detail &rarr;
-          </span>
-        </div>
-      )}
-    </motion.article>
+        {/* Click Affordance Footer */}
+        {isClickable && (
+          <HeroCard.Footer className={cn("mt-4 pt-3 p-0 bg-transparent border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] font-bold", t.cta)}>
+            <span>{ctaText}</span>
+            <span className="inline-flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+              Detail &rarr;
+            </span>
+          </HeroCard.Footer>
+        )}
+      </HeroCard>
+    </motion.div>
   )
 }
 
@@ -473,7 +417,7 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, ctaText = 'Rinc
 // ════════════════════════════════════════════════════════════════════════════
 export default function EducationUnitsPage() {
  const queryClient = useQueryClient()
- const { items: toasts, push: pushToast, dismiss: dismissToast } = useNotifications()
+ const { pushToast } = useToast()
 
  // ── Auth & Permissions ──────────────────────────────────────────────────
  const user = useAuthStore(state => state.user)
@@ -904,6 +848,7 @@ export default function EducationUnitsPage() {
  }
 
  const handleConfirmSave = () => {
+ if (isMutating) return
  const payload = makePayload(formData)
  if (isEditMode && formData.id) updateMutation.mutate({ id: formData.id, payload })
  else createMutation.mutate(payload)
@@ -1151,9 +1096,13 @@ export default function EducationUnitsPage() {
  const isBoarding = row.program_type === 'boarding'
  return (
   <div className="flex flex-col gap-1 items-start">
-   <span className={`inline-flex rounded-lg border px-2 py-0.5 text-[9px] font-bold ${style.bg} ${style.text} ${style.border}`}>
-    {row.unit_type || '—'}
-   </span>
+   <HeroChip
+    size="sm"
+    variant="soft"
+    className={cn("inline-flex rounded-lg border px-2 py-0.5 text-[9px] font-bold", style.bg, style.text, style.border)}
+   >
+    <HeroChip.Label>{row.unit_type || '—'}</HeroChip.Label>
+   </HeroChip>
    <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-extrabold border ${
     isBoarding
      ? 'bg-teal-50 text-teal-700 border-teal-200/80 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/60'
@@ -1207,7 +1156,7 @@ export default function EducationUnitsPage() {
  key: 'is_active',
  label: 'Status',
  className: 'hidden sm:table-cell text-center',
- render: (row) => <MasterStatusBadge active={row.is_active} inactiveLabel="Nonaktif" />,
+ render: (row) => <HeroStatusBadge active={row.is_active} inactiveLabel="Nonaktif" />,
  },
  ]
 
@@ -1230,7 +1179,7 @@ export default function EducationUnitsPage() {
  <p className="text-[13px] font-extrabold text-slate-900 dark:text-white">{row.name}</p>
  <p className="text-[10px] font-semibold text-slate-400">{row.code}</p>
  </div>
- <MasterStatusBadge active={row.is_active} inactiveLabel="Nonaktif" />
+ <HeroStatusBadge active={row.is_active} inactiveLabel="Nonaktif" />
  </div>
  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400">
  {(row.city || row.province) && (
@@ -1502,73 +1451,73 @@ export default function EducationUnitsPage() {
  description="Daftar unit sesuai filter dan kewenangan pengguna."
  actions={
  <div className="flex flex-wrap items-center gap-2">
- {/* Tombol Cetak Laporan (Vivid Indigo / Purple Squircle) */}
- <div className="group relative inline-flex">
- <button
- type="button"
- title="Cetak & Download Data Unit"
- aria-label="Cetak & Download Data Unit"
- className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
- onClick={() => setPrintOptionModalOpen(true)}
- >
- <Printer className="size-5 text-white" strokeWidth={2.2} />
- </button>
- <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
- <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
- Cetak & Export
- </div>
- </div>
+  {/* Tombol Cetak Laporan (Vivid Indigo / Purple Squircle) */}
+  <HeroTooltip>
+   <HeroTooltip.Trigger>
+    <HeroButton
+     isIconOnly
+     aria-label="Cetak & Download Data Unit"
+     onPress={() => setPrintOptionModalOpen(true)}
+     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs"
+    >
+     <Printer className="size-5 text-white" strokeWidth={2.2} />
+    </HeroButton>
+   </HeroTooltip.Trigger>
+   <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+    Cetak & Export
+   </HeroTooltip.Content>
+  </HeroTooltip>
 
- {/* Import Button (Vivid Sky Blue Squircle) */}
- <div className="group relative inline-flex">
- <button
- type="button"
- title="Import Data Unit"
- aria-label="Import Data Unit"
- className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
- onClick={() => setShowImportModal(true)}
- >
- <Upload1 className="size-5 text-white" strokeWidth={2.2} />
- </button>
- <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
- <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
- Import Data
- </div>
- </div>
+  {/* Import Button (Vivid Sky Blue Squircle) */}
+  <HeroTooltip>
+   <HeroTooltip.Trigger>
+    <HeroButton
+     isIconOnly
+     aria-label="Import Data Unit"
+     onPress={() => setShowImportModal(true)}
+     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 text-white border border-sky-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs"
+    >
+     <Upload className="size-5 text-white" strokeWidth={2.2} />
+    </HeroButton>
+   </HeroTooltip.Trigger>
+   <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+    Import Data
+   </HeroTooltip.Content>
+  </HeroTooltip>
 
- {/* Export / Download Button (Vivid Amber / Orange Squircle) */}
- <div className="group relative inline-flex">
- <button
- type="button"
- title="Export Data Unit"
- aria-label="Export Data Unit"
- className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
- onClick={() => setShowExportModal(true)}
- >
- <Download1 className="size-5 text-white" strokeWidth={2.2} />
- </button>
- <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
- <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
- Export Data
- </div>
- </div>
+  {/* Export / Download Button (Vivid Amber / Orange Squircle) */}
+  <HeroTooltip>
+   <HeroTooltip.Trigger>
+    <HeroButton
+     isIconOnly
+     aria-label="Export Data Unit"
+     onPress={() => setShowExportModal(true)}
+     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-xs"
+    >
+     <Download className="size-5 text-white" strokeWidth={2.2} />
+    </HeroButton>
+   </HeroTooltip.Trigger>
+   <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+    Export Data
+   </HeroTooltip.Content>
+  </HeroTooltip>
 
- {/* Tambah Unit Button (Vivid Emerald / Teal Squircle) */}
- <div className="group relative inline-flex">
- <button
- type="button"
- title="Tambah Unit Baru"
- aria-label="Tambah Unit Baru"
- className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
- onClick={openAddModal}
- >
- <Plus className="size-5 text-white" strokeWidth={2.5} />
- </button>
- <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
- <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
- Tambah Unit
- </div>
- </div>
+  {/* Tambah Unit Button (HeroUI v3 Emerald Primary #065F46) */}
+  <HeroTooltip>
+   <HeroTooltip.Trigger>
+    <HeroButton
+     isIconOnly
+     aria-label="Tambah Unit Baru"
+     onPress={openAddModal}
+     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#065F46] via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-emerald-950/20"
+    >
+     <Plus className="size-5 text-white" strokeWidth={2.5} />
+    </HeroButton>
+   </HeroTooltip.Trigger>
+   <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+    Tambah Unit
+   </HeroTooltip.Content>
+  </HeroTooltip>
  </div>
  }
  columns={columns}
@@ -1646,16 +1595,15 @@ export default function EducationUnitsPage() {
  </div>
  {/* Reset */}
  {hasActiveFilters && (
- <Button
- variant="ghost"
- appearance="outline"
- size="xs"
- onPress={resetFilters}
- onClick={resetFilters}
- >
- <RefreshCcw />
- <span>Reset</span>
- </Button>
+  <HeroButton
+   variant="outline"
+   size="sm"
+   onPress={resetFilters}
+   className="h-10 cursor-pointer rounded-xl border border-emerald-300/80 bg-white hover:bg-emerald-50 text-emerald-800 dark:border-emerald-700/80 dark:bg-slate-900 dark:text-emerald-300 font-bold text-xs gap-1.5 px-3 transition-colors inline-flex items-center"
+  >
+   <RefreshCcw className="size-3.5" />
+   <span>Reset</span>
+  </HeroButton>
  )}
  </div>
  }
@@ -2070,7 +2018,7 @@ export default function EducationUnitsPage() {
  name={guru.nama_lengkap || guru.nama || guru.name}
  subtitle={guru.position?.name || guru.jabatan || 'Guru / Pendidik'}
  />
- <MasterStatusBadge active={guru.is_active !== false} />
+ <HeroStatusBadge active={guru.is_active !== false} />
  </div>
  ))}
  </div>
@@ -2092,7 +2040,7 @@ export default function EducationUnitsPage() {
  name={siswa.nama || siswa.full_name}
  subtitle={`NIS: ${siswa.nis || '-'}`}
  />
- <MasterStatusBadge active={siswa.is_active !== false} />
+ <HeroStatusBadge active={siswa.is_active !== false} />
  </div>
  ))}
  </div>
@@ -2115,7 +2063,7 @@ export default function EducationUnitsPage() {
  <p className="text-xs font-bold text-slate-900 dark:text-white">{namaKelas}</p>
  <p className="text-[10px] text-slate-500">{kelas.tingkat || kelas.level || ''}</p>
  </div>
- <MasterStatusBadge active={kelas.is_active !== false} />
+ <HeroStatusBadge active={kelas.is_active !== false} />
  </div>
  )
  })}
@@ -2293,19 +2241,18 @@ export default function EducationUnitsPage() {
  <p className="font-bold text-slate-700 dark:text-slate-300">
  {totalS} Siswa / {u.total_guru ?? 0} Guru
  </p>
- <MasterStatusBadge active={u.is_active} />
+ <HeroStatusBadge active={u.is_active} />
  </div>
  )}
 
- <Button
- variant="ghost"
- appearance="outline"
- size="xs"
- onPress={() => { setActiveKpiModal(null); setActiveDetailTab('Informasi'); setDetailUnit(u) }}
- onClick={() => { setActiveKpiModal(null); setActiveDetailTab('Informasi'); setDetailUnit(u) }}
+ <HeroButton
+  variant="outline"
+  size="sm"
+  onPress={() => { setActiveKpiModal(null); setActiveDetailTab('Informasi'); setDetailUnit(u) }}
+  className="text-xs font-bold"
  >
- Lihat Detail &rarr;
- </Button>
+  Lihat Detail &rarr;
+ </HeroButton>
  </div>
  </div>
  )
@@ -2496,7 +2443,7 @@ export default function EducationUnitsPage() {
  id="name"
  name="name"
  type="text"
- placeholder="Contoh: SDIT 2 Dar el-Iman"
+ placeholder="Contoh: Nama Unit Sekolah"
  value={formData.name}
  onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
  className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder-slate-400 shadow-xs focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 transition-colors"
@@ -2562,7 +2509,7 @@ export default function EducationUnitsPage() {
  id="email"
  name="email"
  type="email"
- placeholder="info@sdit2.dareliman.sch.id"
+ placeholder="info@sekolah.sch.id"
  value={formData.email}
  onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
  className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder-slate-400 shadow-xs focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 transition-colors"
@@ -3341,235 +3288,219 @@ export default function EducationUnitsPage() {
       {/* ══════════════════════════════════════════════════════════════════
       SAVE / UPDATE CONFIRMATION DIALOG — Harmonized with Modal Tambah/Edit UI/UX
       ══════════════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {showSaveConfirmDialog && (
-          <div
-            className="overlay modal fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="edu-unit-save-confirm-title"
-            tabIndex={-1}
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget && !isMutating) setShowSaveConfirmDialog(false)
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 14 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="modal-dialog font-sans my-auto w-full max-w-md"
-            >
-              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
-                {/* Top Accent Gradient Bar */}
-                <div
-                  className={cn(
-                    "h-1.5 w-full shrink-0",
-                    isEditMode
-                      ? "bg-gradient-to-r from-amber-500 via-teal-400 to-emerald-600"
-                      : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"
-                  )}
-                />
+      <HeroModal
+        isOpen={showSaveConfirmDialog}
+        onOpenChange={(open) => {
+          if (!open && !isMutating) setShowSaveConfirmDialog(false)
+        }}
+      >
+        <HeroModal.Backdrop isDismissable={!isMutating} className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
+          <HeroModal.Container placement="center" className="w-full max-w-md">
+            <HeroModal.Dialog className="modal-dialog font-sans my-auto w-full max-w-md flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60 outline-hidden">
+              {/* Top Accent Gradient Bar */}
+              <div
+                className={cn(
+                  "h-1.5 w-full shrink-0",
+                  isEditMode
+                    ? "bg-gradient-to-r from-amber-500 via-teal-400 to-[#065F46]"
+                    : "bg-gradient-to-r from-emerald-500 via-teal-400 to-[#065F46]"
+                )}
+              />
 
-                {/* Header */}
-                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        "rounded-2xl text-white p-2.5 shadow-md shrink-0 border",
-                        isEditMode
-                          ? "bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 shadow-amber-500/30 border-amber-300/30"
-                          : "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/30 border-emerald-300/30"
-                      )}
-                    >
-                      {isEditMode ? (
-                        <Pencil className="h-5 w-5 text-white" strokeWidth={2.25} />
-                      ) : (
-                        <School className="h-5 w-5 text-white" strokeWidth={2.25} />
-                      )}
-                    </div>
-                    <div>
-                      <h3
-                        id="edu-unit-save-confirm-title"
-                        className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
-                      >
-                        <span>{isEditMode ? 'Konfirmasi Perubahan Data' : 'Konfirmasi Penyimpanan Data'}</span>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border",
-                            isEditMode
-                              ? "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60"
-                              : "bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60"
-                          )}
-                        >
-                          <Sparkles className="size-3" />
-                          {isEditMode ? 'Update Data' : 'Unit Baru'}
-                        </span>
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {isEditMode
-                          ? 'Verifikasi data unit sebelum pembaruan diterapkan ke sistem.'
-                          : 'Verifikasi data unit baru sebelum disimpan ke sistem.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={isMutating}
-                    onClick={() => setShowSaveConfirmDialog(false)}
-                    aria-label="Tutup dialog konfirmasi"
-                    className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
-                  >
-                    <X className="size-4 text-white" strokeWidth={2.25} />
-                  </button>
-                </div>
-
-                {/* Body */}
-                <div className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
-                  {/* Target Info Summary Card */}
-                  <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/50 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unit Pendidikan</span>
-                      <span className="text-xs font-extrabold text-slate-900 dark:text-white text-right max-w-[220px] truncate">
-                        {formData.name || '-'}
-                      </span>
-                    </div>
-                    {formData.code && (
-                      <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Kode Unit</span>
-                        <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
-                          {formData.code}
-                        </span>
-                      </div>
-                    )}
-                    {formData.unit_type && (
-                      <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jenjang / Jenis</span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                          {formData.unit_type}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Model Program</span>
-                      <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 capitalize">
-                        {formData.program_type === 'boarding' ? 'Boarding / Pesantren (24 Jam)' : 'Fullday School'}
-                      </span>
-                    </div>
-                    {formData.jam_pulang && (
-                      <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jam Pulang / Selesai</span>
-                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                          {formData.jam_pulang} WIB {formData.jam_masuk ? `(Mulai: ${formData.jam_masuk})` : ''}
-                        </span>
-                      </div>
-                    )}
-                    {formData.latitude && formData.longitude && (
-                      <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Titik Peta & Radius</span>
-                        <span className="text-xs font-mono font-bold text-teal-700 dark:text-teal-400">
-                          {formData.latitude}, {formData.longitude} (R: {formData.radius_meter || 100}m)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Callout Notice Box */}
+              {/* Header */}
+              <HeroModal.Header className="modal-header flex !flex-row items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                <div className="flex items-center gap-3">
                   <div
                     className={cn(
-                      "rounded-2xl border p-3.5 text-xs font-semibold leading-relaxed flex items-start gap-2.5",
+                      "rounded-2xl text-white p-2.5 shadow-md shrink-0 border",
                       isEditMode
-                        ? "border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300"
-                        : "border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                        ? "bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 shadow-amber-500/30 border-amber-300/30"
+                        : "bg-gradient-to-br from-[#065F46] via-emerald-600 to-teal-700 shadow-emerald-500/30 border-emerald-300/30"
                     )}
                   >
-                    <div
-                      className={cn(
-                        "flex size-5 shrink-0 items-center justify-center rounded-lg text-white mt-0.5",
-                        isEditMode
-                          ? "bg-gradient-to-br from-amber-500 to-orange-600"
-                          : "bg-gradient-to-br from-emerald-500 to-teal-600"
-                      )}
+                    {isEditMode ? (
+                      <Pencil className="h-5 w-5 text-white" strokeWidth={2.25} />
+                    ) : (
+                      <School className="h-5 w-5 text-white" strokeWidth={2.25} />
+                    )}
+                  </div>
+                  <div>
+                    <h3
+                      id="edu-unit-save-confirm-title"
+                      className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
                     >
-                      <Sparkles className="size-3 text-white" />
-                    </div>
-                    <div className="flex-1">
+                      <span>{isEditMode ? "Konfirmasi Perubahan Data" : "Konfirmasi Penyimpanan Data"}</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border",
+                          isEditMode
+                            ? "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60"
+                            : "bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60"
+                        )}
+                      >
+                        <Sparkles className="size-3" />
+                        {isEditMode ? "Update Data" : "Unit Baru"}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       {isEditMode
-                        ? 'Data unit pendidikan yang sudah ada akan segera diperbarui di database server dengan informasi terbaru yang Anda masukkan.'
-                        : 'Data unit pendidikan baru akan tersimpan dan langsung aktif sesuai konfigurasi sistem.'}
-                    </div>
+                        ? "Verifikasi data unit sebelum pembaruan diterapkan ke sistem."
+                        : "Verifikasi data unit baru sebelum disimpan ke sistem."}
+                    </p>
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
-                  <button
-                    type="button"
-                    disabled={isMutating}
-                    onClick={() => setShowSaveConfirmDialog(false)}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
-                  >
-                    <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
-                      <X className="size-3" strokeWidth={2.2} />
-                    </div>
-                    <span>Batal</span>
-                  </button>
+                <HeroButton
+                  isIconOnly
+                  size="sm"
+                  isDisabled={isMutating}
+                  disabled={isMutating}
+                  onPress={() => setShowSaveConfirmDialog(false)}
+                  aria-label="Tutup dialog konfirmasi"
+                  className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
+                >
+                  <X className="size-4 text-white" strokeWidth={2.25} />
+                </HeroButton>
+              </HeroModal.Header>
 
-                  <button
-                    type="button"
-                    disabled={isMutating}
-                    onClick={handleConfirmSave}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-500/20"
-                  >
-                    {isMutating ? (
-                      <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                      <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
-                        <Save className="size-3 text-white" strokeWidth={2.2} />
-                      </div>
-                    )}
-                    <span>
-                      {isMutating
-                        ? isEditMode ? 'Memperbarui...' : 'Menyimpan...'
-                        : isEditMode ? 'Ya, Perbarui Data' : 'Ya, Simpan Unit'}
+              {/* Body */}
+              <HeroModal.Body className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
+                {/* Target Info Summary Card */}
+                <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/50 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unit Pendidikan</span>
+                    <span className="text-xs font-extrabold text-slate-900 dark:text-white text-right max-w-[220px] truncate">
+                      {formData.name || "-"}
                     </span>
-                  </button>
+                  </div>
+                  {formData.code && (
+                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Kode Unit</span>
+                      <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {formData.code}
+                      </span>
+                    </div>
+                  )}
+                  {formData.unit_type && (
+                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jenjang / Jenis</span>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {formData.unit_type}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Model Program</span>
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 capitalize">
+                      {formData.program_type === "boarding" ? "Boarding / Pesantren (24 Jam)" : "Fullday School"}
+                    </span>
+                  </div>
+                  {formData.jam_pulang && (
+                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jam Pulang / Selesai</span>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {formData.jam_pulang} WIB {formData.jam_masuk ? `(Mulai: ${formData.jam_masuk})` : ""}
+                      </span>
+                    </div>
+                  )}
+                  {formData.latitude && formData.longitude && (
+                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 dark:border-slate-800/60">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Titik Peta & Radius</span>
+                      <span className="text-xs font-mono font-bold text-teal-700 dark:text-teal-400">
+                        {formData.latitude}, {formData.longitude} (R: {formData.radius_meter || 100}m)
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+                {/* Callout Notice Box */}
+                <div
+                  className={cn(
+                    "rounded-2xl border p-3.5 text-xs font-semibold leading-relaxed flex items-start gap-2.5",
+                    isEditMode
+                      ? "border-amber-200 bg-amber-50/70 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300"
+                      : "border-emerald-200 bg-emerald-50/70 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex size-5 shrink-0 items-center justify-center rounded-lg text-white mt-0.5",
+                      isEditMode
+                        ? "bg-gradient-to-br from-amber-500 to-orange-600"
+                        : "bg-gradient-to-br from-[#065F46] to-teal-600"
+                    )}
+                  >
+                    <Sparkles className="size-3 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    {isEditMode
+                      ? "Data unit pendidikan yang sudah ada akan segera diperbarui di database server dengan informasi terbaru yang Anda masukkan."
+                      : "Data unit pendidikan baru akan tersimpan dan langsung aktif sesuai konfigurasi sistem."}
+                  </div>
+                </div>
+              </HeroModal.Body>
+
+              {/* Footer */}
+              <HeroModal.Footer className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                <HeroButton
+                  variant="outline"
+                  size="sm"
+                  isDisabled={isMutating}
+                  disabled={isMutating}
+                  onPress={() => setShowSaveConfirmDialog(false)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                    <X className="size-3" strokeWidth={2.2} />
+                  </div>
+                  <span>Batal</span>
+                </HeroButton>
+
+                <HeroButton
+                  variant="solid"
+                  size="sm"
+                  isDisabled={isMutating}
+                  disabled={isMutating}
+                  onPress={handleConfirmSave}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-[#065F46] via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-500/20"
+                >
+                  {isMutating ? (
+                    <HeroSpinner size="sm" className="size-3.5 text-white" />
+                  ) : (
+                    <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
+                      <Save className="size-3 text-white" strokeWidth={2.2} />
+                    </div>
+                  )}
+                  <span>
+                    {isMutating
+                      ? isEditMode ? "Memperbarui..." : "Menyimpan..."
+                      : isEditMode ? "Ya, Perbarui Data" : "Ya, Simpan Unit"}
+                  </span>
+                </HeroButton>
+              </HeroModal.Footer>
+            </HeroModal.Dialog>
+          </HeroModal.Container>
+        </HeroModal.Backdrop>
+      </HeroModal>
 
       {/* ══════════════════════════════════════════════════════════════════
       DELETE CONFIRM DIALOG — Harmonized with Modal Tambah/Edit UI/UX
       ══════════════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {deleteTarget && (
-          <div
-            className="overlay modal fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="edu-unit-delete-confirm-title"
-            tabIndex={-1}
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget && !deleteMutation.isPending) setDeleteTarget(null)
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 14 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-              className="modal-dialog font-sans my-auto w-full max-w-md"
-            >
-              <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-rose-200/60 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/50 dark:bg-[#182232] dark:shadow-black/60">
+      <HeroModal
+        isOpen={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) setDeleteTarget(null)
+        }}
+      >
+        <HeroModal.Backdrop isDismissable={!deleteMutation.isPending} className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md">
+          <HeroModal.Container placement="center" className="w-full max-w-md">
+            {deleteTarget && (
+              <HeroModal.Dialog className="modal-dialog font-sans my-auto w-full max-w-md flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-rose-200/60 bg-white shadow-2xl shadow-rose-950/20 dark:border-rose-900/50 dark:bg-[#182232] dark:shadow-black/60 outline-hidden">
                 {/* Top Accent Gradient Bar */}
                 <div className="h-1.5 w-full bg-gradient-to-r from-rose-500 via-rose-600 to-red-700 shrink-0" />
 
                 {/* Header */}
-                <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                <HeroModal.Header className="modal-header flex !flex-row items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-center gap-3">
                     <div className="rounded-2xl text-white p-2.5 shadow-md shrink-0 border bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/30 border-rose-300/30">
                       <Trash2 className="h-5 w-5 text-white" strokeWidth={2.25} />
@@ -3591,25 +3522,27 @@ export default function EducationUnitsPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
+                  <HeroButton
+                    isIconOnly
+                    size="sm"
+                    isDisabled={deleteMutation.isPending}
                     disabled={deleteMutation.isPending}
-                    onClick={() => setDeleteTarget(null)}
+                    onPress={() => setDeleteTarget(null)}
                     aria-label="Tutup dialog konfirmasi"
                     className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white hover:scale-105 active:scale-95 transition-all duration-200 shadow-md shadow-rose-500/20 cursor-pointer disabled:opacity-50"
                   >
                     <X className="size-4 text-white" strokeWidth={2.25} />
-                  </button>
-                </div>
+                  </HeroButton>
+                </HeroModal.Header>
 
                 {/* Body */}
-                <div className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
+                <HeroModal.Body className="modal-body p-6 space-y-4 text-slate-700 dark:text-slate-200">
                   {/* Target Info Summary Card */}
                   <div className="rounded-2xl border border-rose-100/90 bg-rose-50/40 p-3.5 dark:border-rose-900/40 dark:bg-rose-950/20 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unit Pendidikan</span>
                       <span className="text-xs font-extrabold text-slate-900 dark:text-white text-right max-w-[220px] truncate">
-                        {deleteTarget.name || '-'}
+                        {deleteTarget.name || "-"}
                       </span>
                     </div>
                     {deleteTarget.code && (
@@ -3639,43 +3572,50 @@ export default function EducationUnitsPage() {
                       Data unit <strong>"{deleteTarget.name}"</strong> akan dihapus secara permanen dari server. Semua data kelas, siswa, dan relasi terkait akan terpengaruh.
                     </div>
                   </div>
-                </div>
+                </HeroModal.Body>
 
                 {/* Footer */}
-                <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
-                  <button
-                    type="button"
+                <HeroModal.Footer className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                  <HeroButton
+                    variant="outline"
+                    size="sm"
+                    isDisabled={deleteMutation.isPending}
                     disabled={deleteMutation.isPending}
-                    onClick={() => setDeleteTarget(null)}
+                    onPress={() => setDeleteTarget(null)}
                     className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 px-4 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
                   >
                     <div className="flex size-4 items-center justify-center rounded-md bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                       <X className="size-3" strokeWidth={2.2} />
                     </div>
                     <span>Batal</span>
-                  </button>
+                  </HeroButton>
 
-                  <button
-                    type="button"
+                  <HeroButton
+                    variant="solid"
+                    size="sm"
+                    isDisabled={deleteMutation.isPending}
                     disabled={deleteMutation.isPending}
-                    onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                    onPress={() => {
+                      if (deleteMutation.isPending) return
+                      deleteMutation.mutate(deleteTarget.id)
+                    }}
                     className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-5 py-2.5 text-xs font-extrabold border border-rose-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-rose-500/25"
                   >
                     {deleteMutation.isPending ? (
-                      <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <HeroSpinner size="sm" className="size-3.5 text-white" />
                     ) : (
                       <div className="flex size-4 items-center justify-center rounded-md bg-white/20 text-white">
                         <Trash2 className="size-3 text-white" strokeWidth={2.2} />
                       </div>
                     )}
-                    <span>{deleteMutation.isPending ? 'Menghapus...' : 'Ya, Hapus Unit'}</span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                    <span>{deleteMutation.isPending ? "Menghapus..." : "Ya, Hapus Unit"}</span>
+                  </HeroButton>
+                </HeroModal.Footer>
+              </HeroModal.Dialog>
+            )}
+          </HeroModal.Container>
+        </HeroModal.Backdrop>
+      </HeroModal>
 
  {/* ══════════════════════════════════════════════════════════════════
  EXPORT DIALOG
@@ -4416,8 +4356,6 @@ export default function EducationUnitsPage() {
  )}
  </AnimatePresence>
 
- {/* Toast Stack */}
- <ToastStack items={toasts} onDismiss={dismissToast} />
  </PageContainer>
  )
 }

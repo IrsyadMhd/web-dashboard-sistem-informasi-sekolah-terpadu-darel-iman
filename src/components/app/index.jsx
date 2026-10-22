@@ -67,7 +67,7 @@ export { default as AppImportDialog } from './ImportDialog'
 export { default as NotificationCenter } from './NotificationCenter'
 export { default as AppNotificationCenter } from './NotificationCenter'
 export { ToastProvider as AppToast } from './ToastProvider'
-export { ToastProvider, useToast } from './ToastProvider'
+export { ToastProvider, useToast, showToast, globalToast } from './ToastProvider'
 
 // --- Identity ---
 export { default as PersonAvatar } from '../ui/PersonAvatar'

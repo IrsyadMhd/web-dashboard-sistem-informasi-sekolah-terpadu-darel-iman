@@ -30,6 +30,7 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { academicCalendarService } from '../services/academicCalendarService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
+import { usePengaturanStore, resolveFoundationName } from '../stores/pengaturanStore'
 import {
   PRESET_CATEGORIES,
   COLOR_PALETTE,
@@ -37,7 +38,7 @@ import {
   AUDIENCE_OPTIONS,
 } from '../components/calendar/AcademicCalendarModal'
 import { useDebounce } from '../hooks/useDebounce'
-import { toast } from 'sonner'
+import { useToast } from '../components/app/ToastProvider'
 
 // Helper format tanggal lokal (WIB/Local) tanpa offset UTC
 const formatLocalDate = (dateObj = new Date()) => {
@@ -77,7 +78,10 @@ const formatDateRange = (startStr, endStr) => {
 }
 
 export default function AcademicCalendarPage() {
+  const toast = useToast()
   const user = useAuthStore((state) => state.user)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const permissions = useAuthStore((state) => state.user?.permissions || [])
   const canManage =
     permissions.includes('*') ||
@@ -175,7 +179,7 @@ export default function AcademicCalendarPage() {
       })
       .catch(() => {
         if (isMounted) {
-          setUnits([{ value: 'Semua Unit', label: 'Semua Unit (Yayasan Dar El-Iman)' }])
+          setUnits([{ value: 'Semua Unit', label: `Semua Unit (${foundationName})` }])
         }
       })
 
@@ -762,7 +766,7 @@ export default function AcademicCalendarPage() {
                 {editingEvent ? 'Ubah Agenda Akademik' : 'Tambah Agenda Akademik'}
               </DialogTitle>
               <DialogDescription>
-                Rincian jadwal kegiatan dan kalender akademik terpadu Yayasan Dar El-Iman.
+                Rincian jadwal kegiatan dan kalender akademik terpadu {foundationName}.
               </DialogDescription>
             </DialogHeader>
 

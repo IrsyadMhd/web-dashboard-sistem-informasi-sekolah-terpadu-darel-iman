@@ -527,10 +527,10 @@ export default function LaporanSiswaPage() {
       else karir++
     })
     return [
-      { name: 'PTN (Negeri)', value: ptn || 14 },
-      { name: 'PTS (Swasta)', value: pts || 8 },
-      { name: "Ma'had / Ponpes", value: mahad || 12 },
-      { name: 'Karir / Wirausaha', value: karir || 6 },
+      { name: 'PTN (Negeri)', value: ptn },
+      { name: 'PTS (Swasta)', value: pts },
+      { name: "Ma'had / Ponpes", value: mahad },
+      { name: 'Karir / Wirausaha', value: karir },
     ]
   }, [alumniList])
 
@@ -555,10 +555,10 @@ export default function LaporanSiswaPage() {
   }, [prestasiList, prestasiSearch, prestasiTingkatFilter])
 
   const displayedPrestasiCount = useMemo(() => {
-    if (prestasiTotalCount && prestasiTotalCount !== 2044) return Number(prestasiTotalCount)
-    if (statistik.total_prestasi_unit) return Number(statistik.total_prestasi_unit)
-    return 1479
-  }, [prestasiTotalCount, statistik.total_prestasi_unit])
+    if (prestasiTotalCount !== undefined && prestasiTotalCount !== null) return Number(prestasiTotalCount)
+    if (statistik.total_prestasi_unit !== undefined && statistik.total_prestasi_unit !== null) return Number(statistik.total_prestasi_unit)
+    return prestasiList.length
+  }, [prestasiTotalCount, statistik.total_prestasi_unit, prestasiList.length])
 
   const prestasiKpi = useMemo(() => {
     let nasional = 0
@@ -577,6 +577,26 @@ export default function LaporanSiswaPage() {
       kota,
     }
   }, [prestasiList, displayedPrestasiCount])
+
+  const komposisiBidangPrestasi = useMemo(() => {
+    let akademik = 0
+    let keagamaan = 0
+    let olahragaSeni = 0
+    let teknologi = 0
+    prestasiList.forEach((p) => {
+      const b = String(p.jenis_prestasi || p.bidang || p.kategori || '').toLowerCase()
+      if (b.includes('tahfizh') || b.includes('agama') || b.includes('diniyah') || b.includes('quran')) keagamaan++
+      else if (b.includes('olahraga') || b.includes('seni') || b.includes('futsal') || b.includes('panahan')) olahragaSeni++
+      else if (b.includes('robotik') || b.includes('teknologi') || b.includes('it') || b.includes('komputer')) teknologi++
+      else akademik++
+    })
+    return [
+      { name: 'Akademik', value: akademik },
+      { name: 'Keagamaan (Tahfizh)', value: keagamaan },
+      { name: 'Olahraga & Seni', value: olahragaSeni },
+      { name: 'Teknologi & Robotik', value: teknologi },
+    ]
+  }, [prestasiList])
 
   // ── Mutasi Computed ──
   const hasilFilterMutasi = useMemo(() => {
@@ -772,11 +792,11 @@ export default function LaporanSiswaPage() {
         education_unit: finalUnitObj,
       },
       period: {
-        title: 'Senin, 10 Agustus 2026 s.d. Jumat, 14 Agustus 2026',
+        title: 'Pekan Berjalan',
         academicYear: '2026/2027',
       },
       homeroomTeacher: {
-        name: st?.wali_kelas || 'Ustadzah Pembina',
+        name: st?.wali_kelas || 'Wali Kelas',
       },
       guruWali: {
         name: st?.guru_wali || 'Guru Wali',
@@ -1099,46 +1119,46 @@ export default function LaporanSiswaPage() {
                 label: 'Total Siswa',
                 statusFilter: 'semua',
                 value: angka(total),
-                subtitle: 'Total terdaftar',
+                subtitle: total > 0 ? `${total} siswa terdaftar` : 'Belum ada data siswa',
                 icon: Users,
                 tone: 'emerald',
-                percent: '100%',
+                percent: total > 0 ? '100%' : '—',
               },
               {
                 label: 'Siswa Aktif',
                 statusFilter: 'aktif',
                 value: angka(aktif),
-                subtitle: `${total ? ((aktif / total) * 100).toFixed(1) : 0}% dari total`,
+                subtitle: total > 0 ? `${aktif} dari ${total} siswa (${((aktif / total) * 100).toFixed(1)}%)` : 'Belum ada data',
                 icon: GraduationCap,
                 tone: 'sky',
-                percent: `${total ? ((aktif / total) * 100).toFixed(1) : 0}%`,
+                percent: total > 0 ? `${((aktif / total) * 100).toFixed(1)}%` : '—',
               },
               {
                 label: 'Siswa Alumni',
                 statusFilter: 'alumni',
                 value: angka(alumni),
-                subtitle: `${total ? ((alumni / total) * 100).toFixed(1) : 0}% dari total`,
+                subtitle: total > 0 ? `${alumni} dari ${total} siswa (${((alumni / total) * 100).toFixed(1)}%)` : 'Belum ada data',
                 icon: UserCheck,
                 tone: 'amber',
-                percent: `${total ? ((alumni / total) * 100).toFixed(1) : 0}%`,
+                percent: total > 0 ? `${((alumni / total) * 100).toFixed(1)}%` : '—',
               },
               {
                 label: 'Mutasi Keluar',
                 statusFilter: 'mutasi_keluar',
                 value: angka(mutasi),
-                subtitle: `${total ? ((mutasi / total) * 100).toFixed(1) : 0}% dari total`,
+                subtitle: total > 0 ? `${mutasi} dari ${total} siswa (${((mutasi / total) * 100).toFixed(1)}%)` : 'Belum ada data',
                 icon: UserMinus,
                 tone: 'violet',
-                percent: `${total ? ((mutasi / total) * 100).toFixed(1) : 0}%`,
+                percent: total > 0 ? `${((mutasi / total) * 100).toFixed(1)}%` : '—',
               },
               {
                 label: 'Siswa Non-Aktif',
                 statusFilter: 'nonaktif',
                 value: angka(nonaktif),
-                subtitle: `${total ? ((nonaktif / total) * 100).toFixed(1) : 0}% dari total`,
+                subtitle: total > 0 ? `${nonaktif} dari ${total} siswa (${((nonaktif / total) * 100).toFixed(1)}%)` : 'Belum ada data',
                 icon: UserX,
                 tone: 'rose',
-                percent: `${total ? ((nonaktif / total) * 100).toFixed(1) : 0}%`,
+                percent: total > 0 ? `${((nonaktif / total) * 100).toFixed(1)}%` : '—',
               },
             ].map(({ label, statusFilter, value, subtitle, icon: Icon, tone, percent }) => {
               const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
@@ -1907,12 +1927,7 @@ export default function LaporanSiswaPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={[
-                        { name: 'Akademik', value: 12 },
-                        { name: 'Keagamaan (Tahfizh)', value: 18 },
-                        { name: 'Olahraga & Seni', value: 8 },
-                        { name: 'Teknologi & Robotik', value: 5 },
-                      ]}
+                      data={komposisiBidangPrestasi}
                       innerRadius={45}
                       outerRadius={75}
                       dataKey="value"

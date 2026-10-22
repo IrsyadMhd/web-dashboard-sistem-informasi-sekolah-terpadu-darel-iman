@@ -12,10 +12,12 @@ import SelectAcademicYearCard from './SelectAcademicYearCard'
 import SessionLoginCard from './SessionLoginCard'
 import ActivityLoginCard from './ActivityLoginCard'
 import TwoFactorAuthCard from './TwoFactorAuthCard'
+import { usePengaturanStore } from '../../stores/pengaturanStore'
 
 export default function AuthenticationShowcase() {
   const [activeTab, setActiveTab] = useState(1)
   const [viewMode, setViewMode] = useState('single') // 'single' | 'grid'
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
 
   const screens = [
     { id: 1, title: '1. LOGIN', component: LoginCard },
@@ -50,7 +52,7 @@ export default function AuthenticationShowcase() {
             </div>
             <div>
               <h1 className="text-sm font-extrabold text-emerald-900 tracking-tight leading-none">
-                SDIT DAR EL-IMAN
+                {pengaturan?.school_name || 'SEKOLAH ISLAM TERPADU'}
               </h1>
               <p className="text-[11px] font-medium text-slate-500 mt-0.5">
                 Sistem Manajemen Sekolah Islam Terpadu

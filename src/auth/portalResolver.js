@@ -203,8 +203,27 @@ const ROLE_ROUTES = [
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
-// § 3. CORE UTILITIES
+// § 3. ROLE LEVELS & CORE UTILITIES (VALIDASI TINGKATAN ANGKA)
+// Tingkatan: 1 (Super Admin), 2 (Admin), 3 (Operator), 4 (Kepala Sekolah), dst.
+// Validasi halaman dan fungsi menggunakan tingkatan angka (1, 2, 3, dst.)
 // ─────────────────────────────────────────────────────────────────────────────
+
+export const ROLE_LEVELS = {
+  SUPER_ADMIN: 1,
+  ADMIN: 1,
+  ADMIN_SISTEM: 1,
+  PIMPINAN_YAYASAN: 2,
+  YAYASAN: 2,
+  OPERATOR: 3,
+  TATA_USAHA: 3,
+  KEPALA_SEKOLAH: 4,
+  DIVISI_PENDIDIKAN: 4,
+  GURU: 5,
+  MUSYRIF: 6,
+  ORANG_TUA: 7,
+  SISWA: 8,
+  ALUMNI: 9,
+}
 
 /** Normalisasi role ke string lowercase tanpa spasi/underscore/dash */
 export const normalizeRole = (role) => {
@@ -215,9 +234,53 @@ export const normalizeRole = (role) => {
   return String(role).toLowerCase().replace(/[\s_-]+/g, '')
 }
 
+/**
+ * Mengambil tingkat role pengguna sebagai angka murni (1: Admin Sistem, 2: Yayasan, 3: Operator, dst.).
+ * Memprioritaskan atribut role_level dari backend database.
+ */
+export const getUserRoleLevel = (userOrRoles) => {
+  if (!userOrRoles) return 99
+  if (typeof userOrRoles === 'number') return userOrRoles
+  if (typeof userOrRoles === 'object' && typeof userOrRoles.role_level === 'number') {
+    return userOrRoles.role_level
+  }
+  const roles = Array.isArray(userOrRoles)
+    ? userOrRoles
+    : (userOrRoles.roles || userOrRoles.role || [])
+  const list = Array.isArray(roles) ? roles : [roles]
+  const current = list.map(normalizeRole)
+
+  if (current.some(r => ['superadmin', 'super_admin', 'admin'].includes(r))) return 1
+  if (current.some(r => ['yayasan', 'ketuayayasan', 'pengurusyayasan', 'sekretarisyayasan', 'bendaharayayasan'].includes(r))) return 2
+  if (current.some(r => ['operator', 'tatausaha', 'tu'].includes(r))) return 3
+  if (current.some(r => ['kepalasekolah', 'kepsek', 'divisipendidikan', 'kepalabidangpendidikan', 'divisikurikulum', 'divisikesiswaan', 'divisibahasa', 'divisiprogramkhusus', 'wakilkepalasekolah', 'wakakurikulum', 'wakakesiswaan', 'wakilhumasdanprogramkhusus'].includes(r))) return 4
+  if (current.some(r => ['guru', 'gurutahfizh', 'walikelas', 'gurubk', 'gurumatapelajaran', 'gurupai', 'pembimbing'].includes(r))) return 5
+  if (current.some(r => ['musyrif', 'musyrifah'].includes(r))) return 6
+  if (current.some(r => ['orangtua', 'walimurid', 'parent'].includes(r))) return 7
+  if (current.some(r => ['siswa', 'student'].includes(r))) return 8
+  if (current.some(r => ['alumni'].includes(r))) return 9
+  return 99
+}
+
+/** Cek apakah level pengguna memenuhi batas level angka yang diizinkan (level <= maxLevel) */
+export const hasRoleLevel = (userOrRoles, maxAllowedLevel) => {
+  return getUserRoleLevel(userOrRoles) <= maxAllowedLevel
+}
+
+/** Helper validasi cepat tingkatan angka */
+export const isLevel1AdminSistem = (userOrRoles) => getUserRoleLevel(userOrRoles) === 1
+export const isLevel2Yayasan = (userOrRoles) => getUserRoleLevel(userOrRoles) === 2
+export const isLevel3Operator = (userOrRoles) => getUserRoleLevel(userOrRoles) === 3
+export const isLevel4KepalaSekolah = (userOrRoles) => getUserRoleLevel(userOrRoles) === 4
+export const isLevel5Guru = (userOrRoles) => getUserRoleLevel(userOrRoles) === 5
+export const isLevel6Musyrif = (userOrRoles) => getUserRoleLevel(userOrRoles) === 6
+export const isLevel7OrangTua = (userOrRoles) => getUserRoleLevel(userOrRoles) === 7
+export const isLevel8Siswa = (userOrRoles) => getUserRoleLevel(userOrRoles) === 8
+export const isLevel9Alumni = (userOrRoles) => getUserRoleLevel(userOrRoles) === 9
+
 /** Cek apakah pengguna memiliki setidaknya satu dari role yang diizinkan */
 export const hasAnyRole = (roles = [], allowedRoles = []) => {
-  const current = roles.map(normalizeRole)
+  const current = (Array.isArray(roles) ? roles : [roles]).map(normalizeRole)
   return allowedRoles.some((role) => current.includes(normalizeRole(role)))
 }
 
@@ -227,72 +290,91 @@ export const hasAnyRole = (roles = [], allowedRoles = []) => {
 
 /**
  * Global Access Manager — kelola data seluruh unit pendidikan.
- * Termasuk: Super Admin, Admin, Pengurus Yayasan
+ * Termasuk: Super Admin & Admin (1), Pengurus Yayasan (2)
  */
-export const isGlobalAccessManager = (roles = []) =>
-  hasAnyRole(roles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN])
+export const isGlobalAccessManager = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 1 || lvl === 2) return true
+  return hasAnyRole(roles, [...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN])
+}
 
 /**
  * Unit Access Manager — kelola data unit sendiri saja.
- * Termasuk: Divisi Pendidikan (semua sub-divisi), Kepala Sekolah, Tata Usaha
+ * Termasuk: Operator / TU (3), Kepala Sekolah & Divisi (4)
  */
-export const isUnitAccessManager = (roles = []) =>
-  hasAnyRole(roles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.TATA_USAHA])
+export const isUnitAccessManager = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 3 || lvl === 4) return true
+  return hasAnyRole(roles, [...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.TATA_USAHA])
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § 5. HELPER PREDICATE — BERDASARKAN DOKUMEN HAK AKSES SIT
-// Setiap fungsi mencerminkan kolom "Hak Akses" di dokumen yang dilampirkan.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * § 1 Dashboard Monitoring Kepala Sekolah
- * "Kepsek & Divisi"
- * Fitur: Monitoring Kehadiran, Input Monitoring Divisi, Input Laporan Bulanan,
- *        Rekapitulasi Prestasi Siswa
+ * § 1 Dashboard Monitoring Kepala Sekolah & Divisi (Level 4)
  */
-export const isKepsekOrDivisi = (roles = []) =>
-  hasAnyRole(roles, [...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI])
+export const isKepsekOrDivisi = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 4) return true
+  return hasAnyRole(roles, [...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI])
+}
 
 /**
- * § 2 Sistem Absensi Digital
- * "TU, Kepsek"
- * Fitur: Absensi Digital Siswa, Rekap Otomatis Keterlambatan,
- *        Rekap Otomatis Ketidakhadiran
+ * § 2 Sistem Absensi Digital (Operator & Kepala Sekolah: Level 3 & Level 4)
  */
-export const isTuOrKepsek = (roles = []) =>
-  hasAnyRole(roles, [...ROLES.TATA_USAHA, ...ROLES.KEPALA_SEKOLAH])
+export const isTuOrKepsek = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 3 || lvl === 4) return true
+  return hasAnyRole(roles, [...ROLES.TATA_USAHA, ...ROLES.KEPALA_SEKOLAH])
+}
 
 /**
- * § 3 Sistem Tahfizh & Mutabaah
- * "Kepsek, Div. Pendidikan, Guru"
- * Fitur: Input Setoran Tahfizh, Rekap Harian/Mingguan/Bulanan/Tahunan,
- *        Mutabaah Yaumiyah, Perhitungan Tercapai/Tidak, Total Hafalan
+ * § 3 Sistem Tahfizh & Mutabaah (Kepsek, Divisi, Guru: Level 4 & Level 5)
  */
-export const isKepsekDivisiOrGuru = (roles = []) =>
-  hasAnyRole(roles, [...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI, ...ROLES.GURU])
+export const isKepsekDivisiOrGuru = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 4 || lvl === 5) return true
+  return hasAnyRole(roles, [...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI, ...ROLES.GURU])
+}
 
 /**
- * Orang Tua & Siswa
- * Fitur: Absensi Barcode/Kartu, Izin/Sakit, Laporan Hafalan & Target
+ * Orang Tua & Siswa (Level 7 & Level 8)
  */
-export const isOrangTuaOrSiswa = (roles = []) =>
-  hasAnyRole(roles, [...ROLES.ORANG_TUA, ...ROLES.SISWA])
+export const isOrangTuaOrSiswa = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 7 || lvl === 8) return true
+  return hasAnyRole(roles, [...ROLES.ORANG_TUA, ...ROLES.SISWA])
+}
 
-/** Tenaga Pendidik semua jenis (termasuk Musyrif & Wali Kelas) */
-export const isTeacherRole = (roles = []) =>
-  hasAnyRole(roles, ROLES.GURU)
+/** Tenaga Pendidik semua jenis (Level 5) */
+export const isTeacherRole = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 5) return true
+  return hasAnyRole(roles, ROLES.GURU)
+}
 
-/** Musyrif / Pembimbing Asrama */
-export const isMusyrifRole = (roles = []) =>
-  hasAnyRole(roles, ROLES.MUSYRIF)
+/** Musyrif / Pembimbing Asrama (Level 6) */
+export const isMusyrifRole = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 6) return true
+  return hasAnyRole(roles, ROLES.MUSYRIF)
+}
 
-/** Orang Tua / Wali Murid */
-export const isParentRole = (roles = []) =>
-  hasAnyRole(roles, ROLES.ORANG_TUA)
+/** Orang Tua / Wali Murid (Level 7) */
+export const isParentRole = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 7) return true
+  return hasAnyRole(roles, ROLES.ORANG_TUA)
+}
 
-/** Siswa / Peserta Didik */
-export const isStudentRole = (roles = []) =>
-  hasAnyRole(roles, ROLES.SISWA)
+/** Siswa / Peserta Didik (Level 8) */
+export const isStudentRole = (roles = []) => {
+  const lvl = getUserRoleLevel(roles)
+  if (lvl === 8) return true
+  return hasAnyRole(roles, ROLES.SISWA)
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // § 6. RESOLVE DEFAULT PORTAL

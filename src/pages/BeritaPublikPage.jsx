@@ -8,7 +8,7 @@ import { dashboardPemantauanService } from '../services/dashboardPemantauanServi
 export default function BeritaPublikPage() {
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const logoUrl = pengaturan?.logo_url || pengaturan?.logoUrl || ''
-  const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'YAYASAN DAR EL - IMAN'
+  const namaSekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'Yayasan Pendidikan Islam'
   const namaAplikasi = pengaturan?.application_name || 'Sistem Manajemen Sekolah Terpadu'
 
   const [beritaList, setBeritaList] = useState([])

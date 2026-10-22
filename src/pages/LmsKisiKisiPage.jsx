@@ -10,6 +10,7 @@ import { lmsKisiKisiService } from '../services/lmsKisiKisiService'
 import { subjectService } from '../services/subjectService'
 import { useAuthStore } from '../stores/authStore'
 import { useUnitStore } from '../stores/unitStore'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 import ActionDropdown from '../components/app/ActionDropdown'
 import PageContainer from '../components/app/PageContainer'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
@@ -67,7 +68,7 @@ const getJenisBadgeColor = (j) => {
     case 'PTS': case 'UTS': return 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300'
     case 'PAS': case 'UAS': return 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300'
     case 'CBT': return 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300'
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300'
+    default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700'
   }
 }
 function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting }) {
@@ -137,6 +138,42 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const activeUnit = useUnitStore((s) => s.activeUnit)
+  const customLabels = usePengaturanStore((s) => s.customLabels)
+  const ujianLabels = customLabels?.ujian || {}
+
+  const getJenisLabel = (j) => {
+    switch (j) {
+      case 'UH': return ujianLabels.singkatan_uh || 'UH'
+      case 'PTS': case 'UTS': return ujianLabels.singkatan_pts || 'PTS'
+      case 'PAS': case 'UAS': return ujianLabels.singkatan_pas || 'PAS'
+      case 'CBT': return ujianLabels.singkatan_cbt || 'CBT'
+      case 'Remedial': return ujianLabels.singkatan_remedial || 'Remedial'
+      default: return j || '-'
+    }
+  }
+
+  const getJenisFullName = (j) => {
+    switch (j) {
+      case 'UH': return ujianLabels.jenis_uh || 'Ulangan Harian (UH)'
+      case 'PTS': case 'UTS': return ujianLabels.jenis_pts || 'Penilaian Tengah Semester (PTS)'
+      case 'PAS': case 'UAS': return ujianLabels.jenis_pas || 'Penilaian Akhir Semester (PAS)'
+      case 'CBT': return ujianLabels.jenis_cbt || 'Computer Based Test (CBT)'
+      case 'Remedial': return ujianLabels.jenis_remedial || 'Ujian Remedial'
+      default: return j || '-'
+    }
+  }
+
+  const getKognitifLabel = (k) => {
+    if (!k) return ''
+    if (k.startsWith('C1')) return ujianLabels.kognitif_c1 || k
+    if (k.startsWith('C2')) return ujianLabels.kognitif_c2 || k
+    if (k.startsWith('C3')) return ujianLabels.kognitif_c3 || k
+    if (k.startsWith('C4')) return ujianLabels.kognitif_c4 || k
+    if (k.startsWith('C5')) return ujianLabels.kognitif_c5 || k
+    if (k.startsWith('C6')) return ujianLabels.kognitif_c6 || k
+    return k
+  }
+
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, item: null, isSubmitting: false })
 
   const handleGoToBankSoal = (item) => {
@@ -190,7 +227,6 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [viewingItem, setViewingItem] = useState(null)
-  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
   const [rowDetailItem, setRowDetailItem] = useState(null)
   const [showRowDetailModal, setShowRowDetailModal] = useState(false)
   const [distribusiError, setDistribusiError] = useState('')
@@ -424,16 +460,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
 
   return (
     <PageContainer maxW="7xl">
-      <div className="education-unit-page lms-kisi-kisi-page space-y-6">
+      <div className="lms-kisi-kisi-page space-y-6">
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-
-          {/* Toast */}
-          {toast.show && (
-            <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl text-white font-medium text-sm ${toast.type === 'error' ? 'bg-rose-600' : 'bg-[#0E5C44]'}`}>
-              {toast.type === 'error' ? <XCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-              <span>{toast.message}</span>
-            </div>
-          )}
 
           {/* Hero */}
           {!embedded && !hidePageHeader && (
@@ -460,8 +488,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
           <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiTintedCard icon={FileText} label="Total Kisi-kisi" value={stats.total} subtext={`${stats.aktif} Status Aktif`} tone="emerald" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: '', status: '' }))} />
             <KpiTintedCard icon={Target} label="Target Butir Soal" value={stats.total_soal_target} subtext="Soal direncanakan" tone="blue" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: '', status: '' }))} />
-            <KpiTintedCard icon={BookOpen} label="Kisi-kisi UH" value={stats.uh} subtext="Ulangan Harian" tone="purple" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: 'UH' }))} />
-            <KpiTintedCard icon={Award} label="PTS &amp; PAS / UAS" value={(stats.pts || 0) + (stats.pas || 0)} subtext="Ujian Semester" tone="amber" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: 'PTS' }))} />
+            <KpiTintedCard icon={BookOpen} label={`Kisi-kisi ${getJenisLabel('UH')}`} value={stats.uh} subtext={getJenisFullName('UH')} tone="purple" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: 'UH' }))} />
+            <KpiTintedCard icon={Award} label={`${getJenisLabel('PTS')} & ${getJenisLabel('PAS')}`} value={(stats.pts || 0) + (stats.pas || 0)} subtext="Ujian Semester" tone="amber" onClick={() => setFilters((p) => ({ ...p, jenis_ujian: 'PTS' }))} />
           </motion.div>
 
           {/* Tab Nav */}
@@ -483,8 +511,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
               <select value={filters.jenis_ujian} onChange={(e) => setFilters((p) => ({ ...p, jenis_ujian: e.target.value }))} className={dropdownCls}>
                 <option value="">Semua Jenis Ujian</option>
                 {options.jenis_ujian_options.length > 0
-                  ? options.jenis_ujian_options.map((j) => <option key={j.id} value={j.id}>{j.nama}</option>)
-                  : <><option value="UH">Ulangan Harian (UH)</option><option value="PTS">PTS / UTS</option><option value="PAS">PAS / UAS</option><option value="CBT">CBT</option><option value="Remedial">Remedial</option></>
+                  ? options.jenis_ujian_options.map((j) => <option key={j.id} value={j.id}>{getJenisFullName(j.id) || j.nama}</option>)
+                  : <><option value="UH">{getJenisFullName('UH')}</option><option value="PTS">{getJenisFullName('PTS')}</option><option value="PAS">{getJenisFullName('PAS')}</option><option value="CBT">{getJenisFullName('CBT')}</option><option value="Remedial">{getJenisFullName('Remedial')}</option></>
                 }
               </select>
               <select value={filters.kelas_id} onChange={(e) => setFilters((p) => ({ ...p, kelas_id: e.target.value }))} className={dropdownCls}>
@@ -510,8 +538,8 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
 
           {/* Datatable — Emerald Style */}
           <motion.div variants={itemVariants}>
-            <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 px-5 py-4 sm:px-6">
+            <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 px-5 py-4 sm:px-6 dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
                 <div>
                   <h3 className="text-base font-bold text-slate-800 dark:text-white">
                     Daftar Kisi-kisi Ujian <span className="text-xs font-normal text-slate-400">({pagination.total} total)</span>
@@ -524,7 +552,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
               <MasterDataTable className="!rounded-none !border-0 !shadow-none">
                 <div className="overflow-x-auto min-h-[340px] pb-4">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/50 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-xs font-semibold text-slate-700 dark:text-slate-300">
                       <tr>
                         <th className="px-5 py-3.5 whitespace-nowrap">Judul &amp; Mata Pelajaran</th>
                         <th className="px-5 py-3.5 whitespace-nowrap">Capaian (CP / TP)</th>
@@ -535,7 +563,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                         <th className="px-5 py-3.5 text-right whitespace-nowrap">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-emerald-50 dark:divide-emerald-950/30">
+                    <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
                       {loading ? (
                         <tr><td colSpan="7" className="text-center py-14 text-slate-400">
                           <div className="flex flex-col items-center gap-2"><RefreshCw className="w-6 h-6 animate-spin text-emerald-600" /><span className="text-xs">Memuat data kisi-kisi...</span></div>
@@ -576,8 +604,14 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                               {item.tp && <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">TP: {item.tp.kode_tp || item.tp.nama_tp}</div>}
                             </td>
                             <td className="px-5 py-4 whitespace-nowrap">
-                              <span className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getJenisBadgeColor(item.jenis_ujian)}`}>{item.jenis_ujian}</span>
-                              {item.level_kognitif && <div className="text-[10px] text-slate-400 mt-1">{item.level_kognitif}</div>}
+                              <span className={`inline-block px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getJenisBadgeColor(item.jenis_ujian)}`}>
+                                {getJenisLabel(item.jenis_ujian)}
+                              </span>
+                              {item.level_kognitif && (
+                                <div className="text-[10px] text-slate-400 mt-1">
+                                  {getKognitifLabel(item.level_kognitif)}
+                                </div>
+                              )}
                             </td>
                             <td className="px-5 py-4 whitespace-nowrap">
                               <div className="font-bold text-slate-800 dark:text-white text-sm">{item.jumlah_soal} Soal</div>
@@ -644,7 +678,9 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                 </div>
                 <div className="px-6 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
                   <div className="flex flex-wrap gap-2">
-                    <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full border ${getJenisBadgeColor(rowDetailItem.jenis_ujian)}`}>{rowDetailItem.jenis_ujian}</span>
+                    <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full border ${getJenisBadgeColor(rowDetailItem.jenis_ujian)}`}>
+                      {getJenisFullName(rowDetailItem.jenis_ujian)}
+                    </span>
                     {rowDetailItem.status
                       ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />Aktif</span>
                       : <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200"><span className="w-1.5 h-1.5 rounded-full bg-slate-400" />Nonaktif</span>
@@ -657,7 +693,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                     <div className="bg-purple-50 dark:bg-purple-950/30 rounded-xl p-3"><p className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Target Soal</p><p className="text-sm font-bold text-purple-700 dark:text-purple-400 mt-0.5">{rowDetailItem.jumlah_soal} Soal</p></div>
                     <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3"><p className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Soal Tersedia</p><p className="text-sm font-bold text-blue-700 dark:text-blue-400 mt-0.5">{rowDetailItem.bank_soal_count ?? 0} Soal</p></div>
                     <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3"><p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Waktu</p><p className="text-sm font-semibold text-slate-800 dark:text-white mt-0.5">{rowDetailItem.alokasi_waktu_menit} Menit</p></div>
-                    <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3"><p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Level Kognitif</p><p className="text-xs font-semibold text-slate-800 dark:text-white mt-0.5">{rowDetailItem.level_kognitif || '-'}</p></div>
+                    <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3"><p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Level Kognitif</p><p className="text-xs font-semibold text-slate-800 dark:text-white mt-0.5">{getKognitifLabel(rowDetailItem.level_kognitif) || '-'}</p></div>
                   </div>
                   <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900">
                     <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mb-2">Kelengkapan Bank Soal</p>
@@ -737,7 +773,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                     <div><label className={labelCls}>Jenis Ujian *</label>
                       <select required value={formData.jenis_ujian} onChange={(e) => setFormData({ ...formData, jenis_ujian: e.target.value })} className={inputCls}>
                         <option value="">-- Pilih Jenis Ujian --</option>
-                        {options.jenis_ujian_options.map((j) => <option key={j.id} value={j.id}>{j.nama}</option>)}
+                        {options.jenis_ujian_options.map((j) => <option key={j.id} value={j.id}>{getJenisFullName(j.id) || j.nama}</option>)}
                       </select></div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -792,7 +828,7 @@ export default function LmsKisiKisiPage({ embedded, hidePageHeader, tabNav, onNa
                   <div><label className={labelCls}>Level Kognitif Bloom</label>
                     <select value={formData.level_kognitif} onChange={(e) => setFormData({ ...formData, level_kognitif: e.target.value })} className={inputCls}>
                       <option value="">-- Pilih Level Kognitif --</option>
-                      {options.level_kognitif_options.map((l) => <option key={l.id} value={l.id}>{l.nama}</option>)}
+                      {options.level_kognitif_options.map((l) => <option key={l.id} value={l.id}>{getKognitifLabel(l.nama || l.id) || l.nama}</option>)}
                     </select></div>
                   <div>
                     <label className={labelCls}>Distribusi Bobot Soal <span className="text-slate-400 font-normal normal-case">(Total harus = 100%)</span></label>

@@ -20,7 +20,11 @@ import {
   Upload,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
-import { Breadcrumbs } from '../tailgrids/core/breadcrumbs'
+import { Breadcrumbs } from '../ui/breadcrumbs'
+import {
+  Button as HeroButton,
+  Tooltip as HeroTooltip,
+} from '@heroui/react'
 import {
   AppBadge,
   AppButton,
@@ -83,6 +87,7 @@ export function MasterDataPage({
       '/dashboard/employees': 'Pegawai',
       '/dashboard/students': 'Buku Induk Siswa',
       '/dashboard/master/siswa': 'Buku Induk Siswa',
+      '/dashboard/master/status-siswa': 'Status Siswa',
     }
     const label = labelMap[path] || 'Data Master'
     return [
@@ -151,15 +156,16 @@ const actionVariantClasses = {
     'border border-slate-200/90 bg-white text-slate-700 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800',
 }
 
-export function MasterActionButton({ variant = 'primary', icon: CustomIcon, children, disabled = false, loading = false, className = '', ...props }) {
+export function MasterActionButton({ variant = 'primary', icon: CustomIcon, children, disabled = false, loading = false, onClick, onPress, className = '', ...props }) {
   const Icon = CustomIcon || actionIcons[variant] || actionIcons.primary
   const variantStyle = actionVariantClasses[variant] || actionVariantClasses.primary
   const isSecondary = variant === 'secondary'
   const isDisabled = disabled || loading
   return (
-    <button
-      type="button"
-      disabled={isDisabled}
+    <HeroButton
+      onPress={onPress || onClick}
+      onClick={onClick}
+      isDisabled={isDisabled}
       className={`inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-xs font-extrabold transition-all duration-200 hover:scale-[1.03] active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${variantStyle} ${className}`}
       {...props}
     >
@@ -173,7 +179,7 @@ export function MasterActionButton({ variant = 'primary', icon: CustomIcon, chil
         )
       )}
       {children && <span>{children}</span>}
-    </button>
+    </HeroButton>
   )
 }
 
@@ -262,11 +268,34 @@ const squircleVariants = {
   },
 }
 
+const defaultSquircleLabels = {
+  import: 'Import Data',
+  export: 'Export Data',
+  print: 'Cetak Data',
+  primary: 'Tambah Data',
+  view: 'Lihat Detail',
+  edit: 'Ubah Data',
+  delete: 'Hapus Data',
+  restore: 'Pulihkan Data',
+  setActive: 'Set Aktif',
+  neutral: 'Kelola Data',
+  teal: 'Filter Data',
+  cyan: 'Jadwal / Kalender',
+  violet: 'Tampilan Grid',
+  pink: 'Spreadsheet',
+  vividBlue: 'Kelola Data',
+  vividPurple: 'Cetak Data',
+  vividSky: 'Import Data',
+  vividAmber: 'Export Data',
+  vividEmerald: 'Tambah Data',
+}
+
 export function SquircleActionButton({
   variant = 'primary',
   icon: CustomIcon,
   label,
   onClick,
+  onPress,
   disabled = false,
   loading = false,
   className = '',
@@ -275,37 +304,43 @@ export function SquircleActionButton({
   const config = squircleVariants[variant] || squircleVariants.primary
   const Icon = CustomIcon || config.icon
   const isDisabled = disabled || loading
+  const effectiveLabel = label || props.title || defaultSquircleLabels[variant] || 'Aksi'
+
+  const buttonNode = (
+    <HeroButton
+      isIconOnly
+      onPress={onPress || onClick}
+      onClick={onClick}
+      isDisabled={isDisabled}
+      aria-label={effectiveLabel}
+      title={effectiveLabel}
+      aria-busy={loading || undefined}
+      className={`
+        flex size-10 items-center justify-center rounded-2xl
+        ${config.classes}
+        transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer
+        disabled:opacity-50 disabled:pointer-events-none
+        ${className}
+      `}
+      {...props}
+    >
+      {loading ? (
+        <span className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
+      ) : (
+        Icon && <Icon className="size-5 text-white" strokeWidth={config.iconStrokeWidth || 2.2} />
+      )}
+    </HeroButton>
+  )
 
   return (
-    <div className="group relative inline-flex" {...props}>
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={isDisabled}
-        title={label}
-        aria-label={label}
-        aria-busy={loading || undefined}
-        className={`
-          flex size-10 items-center justify-center rounded-2xl
-          ${config.classes}
-          transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer
-          disabled:opacity-50 disabled:pointer-events-none
-          ${className}
-        `}
-      >
-        {loading ? (
-          <span className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true" />
-        ) : (
-          Icon && <Icon className="size-5 text-white" strokeWidth={config.iconStrokeWidth || 2.2} />
-        )}
-      </button>
-      {label && (
-        <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
-          <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          {label}
-        </div>
-      )}
-    </div>
+    <HeroTooltip>
+      <HeroTooltip.Trigger>
+        {buttonNode}
+      </HeroTooltip.Trigger>
+      <HeroTooltip.Content className="z-50 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+        {effectiveLabel}
+      </HeroTooltip.Content>
+    </HeroTooltip>
   )
 }
 
@@ -634,15 +669,29 @@ const iconButtonVariantMap = {
   view: 'view',
   edit: 'edit',
   delete: 'delete',
+  print: 'print',
 }
 
 const iconButtonDefaultLabels = {
   view: 'Lihat Detail',
   edit: 'Edit Data',
   delete: 'Hapus Data',
+  print: 'Cetak Data',
 }
 
-export function MasterActionIconButton({ variant = 'view', icon, label, loading = false, ...props }) {
+/**
+ * @param {Object} props
+ * @param {string} [props.variant]
+ * @param {any} [props.icon]
+ * @param {string} [props.label]
+ * @param {boolean} [props.loading]
+ * @param {boolean} [props.disabled]
+ * @param {string} [props.className]
+ * @param {any} [props.onClick]
+ * @param {any} [props.title]
+ * @param {any} [props.children]
+ */
+export function MasterActionIconButton({ variant = 'view', icon = undefined, label = '', loading = false, ...props }) {
   const mapped = iconButtonVariantMap[variant] || 'view'
   return (
     <SquircleActionButton
@@ -666,7 +715,7 @@ export function MasterPagination({ meta = {}, page = 1, onPageChange }) {
   )
 }
 
-function ModalShell({ isOpen, onClose, icon: Icon = Database, title, description, children, footer, maxWidth = 'max-w-2xl' }) {
+function ModalShell({ isOpen, onClose, icon: Icon = Database, title, description, children, footer, maxWidth = 'max-w-2xl', hideCloseButton = false, ...rest }) {
   return (
     <AppModal
       isOpen={isOpen}
@@ -676,6 +725,8 @@ function ModalShell({ isOpen, onClose, icon: Icon = Database, title, description
       description={description}
       footer={footer}
       maxWidth={maxWidth}
+      hideCloseButton={hideCloseButton}
+      {...rest}
     >
       {children}
     </AppModal>

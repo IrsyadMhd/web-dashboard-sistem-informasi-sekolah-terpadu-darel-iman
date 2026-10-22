@@ -2,41 +2,38 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSearchParams } from 'react-router-dom'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import AppTabs from '../components/app/AppTabs'
 import {
   AlertCircle,
   Award,
+  BarChart3,
   BookOpen,
   BookOpenCheck,
   Building2,
+  Calendar,
   CalendarCheck,
   CalendarDays,
   CheckCircle2,
-  ChevronDown,
+  ChevronRight,
   ClipboardList,
-  Download,
+  Clock,
   FileCheck2,
   FileText,
   HeartHandshake,
   Home,
   Info,
-  LayoutGrid,
   Loader2,
   Megaphone,
   MessageCircle,
   Moon,
-  Plus,
   Receipt,
   RefreshCw,
-  Send,
-  ShieldCheck,
   Sparkles,
-  Star,
   Sun,
+  TrendingUp,
   UserCheck,
   UserRound,
   Users,
-  X,
-  Zap,
 } from 'lucide-react'
 
 import { familyPortalService } from '../services/familyPortalService'
@@ -50,7 +47,6 @@ import TahfizhWorkspace from '../components/portal/TahfizhWorkspace'
 import GradesWorkspace from '../components/portal/GradesWorkspace'
 import TeacherCommentsWorkspace from '../components/portal/TeacherCommentsWorkspace'
 import MutabaahWorkspace from '../components/portal/MutabaahWorkspace'
-import ParentWorshipInputWorkspace from '../components/portal/ParentWorshipInputWorkspace'
 import AttendanceWorkspace from '../components/portal/AttendanceWorkspace'
 import ExamGridsWorkspace from '../components/portal/ExamGridsWorkspace'
 import CbtExamsWorkspace from '../components/portal/CbtExamsWorkspace'
@@ -58,7 +54,6 @@ import ExamResultsWorkspace from '../components/portal/ExamResultsWorkspace'
 import ParentBillsWorkspace from '../components/portal/ParentBillsWorkspace'
 import ChatGuruWorkspace from '../components/portal/ChatGuruWorkspace'
 import AcademicCalendarModal from '../components/calendar/AcademicCalendarModal'
-import { useAuthStore } from '../stores/authStore'
 
 // TailGrids Core Components
 import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
@@ -87,48 +82,21 @@ const menu = [
   ['chat', 'Chat Guru / Musyrif', MessageCircle, 'bg-pink-100/90 text-pink-600 border-pink-200/90 hover:bg-pink-200'],
 ]
 
-const rupiah = (value) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
-    Number(value || 0)
-  )
-
-const date = (value) =>
-  value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(new Date(value)) : '-'
-
 const unwrap = (response) => {
   if (Array.isArray(response?.data?.data?.data)) return response.data.data.data
   if (Array.isArray(response?.data?.data)) return response.data.data
+  if (Array.isArray(response?.data?.all_schedules)) return response.data.all_schedules
+  if (Array.isArray(response?.data?.weekly_schedules)) return response.data.weekly_schedules
+  if (Array.isArray(response?.data?.today_schedules)) return response.data.today_schedules
   if (Array.isArray(response?.data)) return response.data
+  if (Array.isArray(response?.all_schedules)) return response.all_schedules
+  if (Array.isArray(response?.weekly_schedules)) return response.weekly_schedules
+  if (Array.isArray(response?.today_schedules)) return response.today_schedules
   if (Array.isArray(response)) return response
   return []
 }
 
-function Empty({ text }) {
-  return (
-    <div className="py-12 text-center text-xs text-slate-400">
-      <FileText className="mx-auto mb-2 h-9 w-9 text-slate-300 dark:text-slate-700" />
-      {text}
-    </div>
-  )
-}
-
-function Status({ value }) {
-  const good = ['PAID', 'Hadir', 'hadir', 'verified', 'published', 'dikumpulkan'].includes(value)
-  return (
-    <span
-      className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
-        good
-          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-          : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-      }`}
-    >
-      {value || 'Aktif'}
-    </span>
-  )
-}
-
 export default function ParentPortalPage() {
-  const user = useAuthStore((state) => state.user)
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab')
   const requestedChild = searchParams.get('child') || ''
@@ -150,6 +118,7 @@ export default function ParentPortalPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [ringkasanSubTab, setRingkasanSubTab] = useState('mutabaah')
+  const [monitoringPeriod, setMonitoringPeriod] = useState('harian')
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false)
 
   // Multi-Child List Fetching & Merging
@@ -173,7 +142,7 @@ export default function ParentPortalPage() {
         setChildId('')
         setLoading(false)
       })
-  }, [])
+  }, [requestedChild])
 
   const selectChild = (id) => {
     setViewAllChildren(false)
@@ -246,13 +215,19 @@ export default function ParentPortalPage() {
         const res = await familyPortalService.list('grades', childId).catch(() => ({ data: null }))
         setRecords(res?.data || null)
       } else if (active === 'tahfizh') {
-        const [logsResponse, achievementResponse] = await Promise.all([
+        const [logsResponse, achievementResponse, dashboardResponse] = await Promise.all([
           familyPortalService.list('tahfizh', childId).catch(() => ({ data: [] })),
           api.get(`/portal/children/${childId}/tahfizh-achievement`).catch(() => ({ data: { data: null } })),
+          familyPortalService.dashboard(childId).catch(() => ({ data: null })),
         ])
         setRecords(unwrap(logsResponse))
         setTahfizhAchievement(achievementResponse.data?.data || null)
-        if (logsResponse?.tahfizh_target) setDashboard((prev) => ({ ...(prev || {}), tahfizh_target: logsResponse.tahfizh_target }))
+        const dData = dashboardResponse?.data || dashboardResponse || null
+        if (dData) {
+          setDashboard(dData)
+        } else if (logsResponse?.tahfizh_target) {
+          setDashboard((prev) => ({ ...(prev || {}), tahfizh_target: logsResponse.tahfizh_target }))
+        }
       } else if (active === 'mutabaah') {
         const res = await api.get(`/parent/mutabaah/${childId}`)
         setRecords(res.data?.data || null)
@@ -261,6 +236,11 @@ export default function ParentPortalPage() {
         const res = await api.get('/portal/bills', { headers: { 'X-Child-Id': childId } }).catch(() => ({ data: { data: [] } }))
         const list = res.data?.data?.data ?? res.data?.data ?? []
         setRecords(Array.isArray(list) ? list : [])
+      } else if (active === 'schedules') {
+        setRecords([])
+        const res = await familyPortalService.list('schedules', childId).catch(() => ({ data: [] }))
+        const payload = res?.data || res || []
+        setRecords(payload)
       } else {
         setRecords([])
         const res = await familyPortalService.list(active, childId).catch(() => ({ data: [] }))
@@ -316,12 +296,31 @@ export default function ParentPortalPage() {
     return children.find((c) => String(c.id) === String(childId)) || children[0] || null
   }, [children, childId])
 
+  const childUnitName = useMemo(() => {
+    return (
+      activeChild?.unit_name ||
+      activeChild?.education_unit?.name ||
+      activeChild?.educationUnit?.name ||
+      activeChild?.kelas?.unit_pendidikan?.name ||
+      activeChild?.kelas?.unitPendidikan?.name ||
+      ''
+    )
+  }, [activeChild])
+
+  useEffect(() => {
+    if (childUnitName) {
+      try {
+        localStorage.setItem('portal_active_child_unit', childUnitName)
+      } catch {}
+    }
+  }, [childUnitName])
+
   const isChildSD = useMemo(() => {
     if (!activeChild) return false
-    const unitName = (activeChild.unit_name || activeChild.education_unit?.name || "").toLowerCase()
+    const unitName = (childUnitName || "").toLowerCase()
     const jenjang = (activeChild.jenjang || activeChild.kelas?.jenjang || activeChild.education_unit?.level || "").toLowerCase()
-    return jenjang.includes("sd") || jenjang.includes("mi") || unitName.includes("sd") || unitName.includes("mi") || unitName.includes("sekolah dasar") || unitName.includes("ibtidaiyah")
-  }, [activeChild])
+    return jenjang.includes("sd") || jenjang.includes("mi") || jenjang.includes("tk") || jenjang.includes("paud") || unitName.includes("sd") || unitName.includes("mi") || unitName.includes("tk") || unitName.includes("paud") || unitName.includes("sekolah dasar") || unitName.includes("ibtidaiyah")
+  }, [activeChild, childUnitName])
 
   const handleAssignmentSubmit = async (assignmentId, payload) => {
     const formData = new FormData()
@@ -336,28 +335,34 @@ export default function ParentPortalPage() {
   }
 
   const activeChildAnnouncements = useMemo(() => {
-    const raw = dashboard?.announcements || [
-      { id: 'a-sd-1', title: 'Pengumuman Supercamp & Outbound SD IT Darel Iman', content: 'Kegiatan edukasi outdoor santri SD IT akan dilaksanakan Sabtu pekan ini.', education_unit: 'SD IT Darel Iman' },
-      { id: 'a-smp-1', title: 'Jadwal Munaqasyah & Tasmi\' 3 Juz Pertengahan Semester', content: 'Pelaksanaan tasmi\' hafalan santri SMP IT akan diselenggarakan pada hari Sabtu mendatang.', education_unit: 'SMP IT Darel Iman' },
-      { id: 'a-sma-1', title: 'Informasi Kepulangan & Mutabaah Malam Santri Asrama', content: 'Jadwal penjemputan dan kegiatan mutabaah santri asrama Pondok Pesantren Darel Iman.', education_unit: 'SMA IT / Pondok Pesantren Darel Iman' },
-      { id: 'a-yayasan-1', title: 'Apel Gabungan & Pengumuman Yayasan Darel Iman', content: 'Pengumuman resmi dari Pengurus Yayasan Darel Iman untuk seluruh civitas akademika.', education_unit: 'Seluruh Yayasan' },
-    ]
+    const raw = dashboard?.announcements || []
     return raw.filter((a) => {
-      const unit = a.education_unit || a.unit_name || a.unit
-      if (!unit || unit === 'Seluruh Yayasan' || unit === 'Semua Unit' || unit === 'Yayasan') return true
-      const activeUnit = activeChild?.unit_name || ''
-      const activeCode = activeChild?.unit_code || ''
-      if (activeUnit && unit.toLowerCase().includes(activeUnit.toLowerCase())) return true
+      const unit = a.data_tambahan?.unit_name || a.education_unit || a.unit_name || a.unit || ''
+      if (!unit || unit.includes('Seluruh') || unit.includes('Semua') || unit.toLowerCase() === 'yayasan') return true
+      const activeUnit = childUnitName || ''
+      if (activeUnit && (unit.toLowerCase().includes(activeUnit.toLowerCase()) || activeUnit.toLowerCase().includes(unit.toLowerCase()))) return true
+      const activeCode = activeChild?.unit_code || activeChild?.education_unit?.code || ''
       if (activeCode && unit.toLowerCase().includes(activeCode.toLowerCase())) return true
-      if (activeUnit.includes('SD') && unit.includes('SD')) return true
-      if (activeUnit.includes('SMP') && unit.includes('SMP')) return true
-      if ((activeUnit.includes('SMA') || activeUnit.includes('Pesantren')) && (unit.includes('SMA') || unit.includes('Pesantren'))) return true
       return false
     })
-  }, [dashboard?.announcements, activeChild?.unit_name, activeChild?.unit_code])
+  }, [dashboard?.announcements, childUnitName, activeChild?.unit_code, activeChild?.education_unit?.code])
 
   const handleSubmitPermissionFromWorkspace = async (payload) => {
     await familyPortalService.submitPermission({ ...payload, child_id: childId })
+    load()
+  }
+
+  const handleSaveMutabaahFromWorkspace = async (homeItemsPayload) => {
+    const todayDate =
+      records?.today?.date ||
+      records?.today?.record_date ||
+      new Intl.DateTimeFormat('en-CA').format(new Date())
+    if (Array.isArray(homeItemsPayload) && homeItemsPayload.length > 0) {
+      await api.post(`/portal/children/${childId}/worship-input`, {
+        date: todayDate,
+        items: homeItemsPayload,
+      })
+    }
     load()
   }
 
@@ -390,7 +395,7 @@ export default function ParentPortalPage() {
                   </span>
                   {activeChild && (
                     <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
-                      Anak Aktif: {activeChild.full_name} ({activeChild.unit_name || 'SIT'})
+                      Anak Aktif: {activeChild.full_name}{activeChild.unit_name ? ` (${activeChild.unit_name})` : ''}
                     </span>
                   )}
                 </div>
@@ -411,9 +416,11 @@ export default function ParentPortalPage() {
               >
                 <CalendarDays className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                 <span>Kalender Akademik</span>
-                <span className="rounded-md bg-cyan-100 px-1.5 py-0.5 text-[10px] text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 font-extrabold">
-                  {activeChild?.unit_name || 'Unit Siswa'}
-                </span>
+                {activeChild?.unit_name ? (
+                  <span className="rounded-md bg-cyan-100 px-1.5 py-0.5 text-[10px] text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 font-extrabold">
+                    {activeChild.unit_name}
+                  </span>
+                ) : null}
               </button>
             </div>
           </div>
@@ -423,8 +430,8 @@ export default function ParentPortalPage() {
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       {/* 1. CARDS PILIHAN ANAK LINTAS UNIT (DI ATAS AKSI CEPAT & UKURAN COMPACT)     */}
       {/* ───────────────────────────────────────────────────────────────────────────── */}
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/80 pb-3 dark:border-emerald-800/60">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
@@ -479,7 +486,7 @@ export default function ParentPortalPage() {
                 <div className="flex items-center gap-2">
                   <Avatar className={`h-8 w-8 shrink-0 border ${isSelected ? 'border-emerald-600' : 'border-slate-300 dark:border-slate-600'}`}>
                     <AvatarFallback className={`${isSelected ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'} font-black text-xs`}>
-                      {c.full_name?.charAt(0) || 'A'}
+                      {c.full_name?.charAt(0) || c.name?.charAt(0) || '-'}
                     </AvatarFallback>
                   </Avatar>
 
@@ -491,17 +498,17 @@ export default function ParentPortalPage() {
                     </div>
 
                     <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-                      {c.unit_name || 'Sekolah Terpadu'} · {c.kelas?.nama_kelas || 'Kelas'}
+                      {c.unit_name ? `${c.unit_name} · ` : ''}{c.kelas?.nama_kelas || '-'}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-2 flex items-center justify-between border-t border-slate-200/60 pt-1.5 dark:border-slate-700/60 text-[9px] font-bold">
                   <span className="text-emerald-700 dark:text-emerald-400 truncate">
-                    Tahfizh: {c.tahfizh_summary || `${c.tahfizh_target_pct || 85}%`}
+                    Tahfizh: {c.tahfizh_summary || (c.tahfizh_target_pct != null ? `${c.tahfizh_target_pct}%` : '-')}
                   </span>
                   <span className="text-sky-700 dark:text-sky-400 shrink-0">
-                    Rapor: {c.gpa || 90}
+                    Rapor: {c.gpa != null ? c.gpa : '-'}
                   </span>
                 </div>
 
@@ -520,8 +527,8 @@ export default function ParentPortalPage() {
       {/* 2. CARD AKSI CEPAT: 16 MODUL (TAMPIL DI BAWAH KETIKA CARD ANAK DIKLIK/AKTIF)  */}
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       {!viewAllChildren && activeChild && (
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 transition-all">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
+        <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] p-5 transition-all">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/80 pb-4 dark:border-emerald-800/60">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                 <Sparkles className="h-5 w-5" />
@@ -531,7 +538,7 @@ export default function ParentPortalPage() {
                   Aksi Cepat & Navigasi Modul Orang Tua ({menu.length} Modul)
                 </h2>
                 <p className="text-[11px] text-slate-400">
-                  Anak Aktif: <b className="text-emerald-700 dark:text-emerald-400">{activeChild?.full_name}</b> ({activeChild?.unit_name || 'Sekolah Terpadu'})
+                  Anak Aktif: <b className="text-emerald-700 dark:text-emerald-400">{activeChild?.full_name}</b>{activeChild?.unit_name ? ` (${activeChild.unit_name})` : ''}
                 </p>
               </div>
             </div>
@@ -569,9 +576,17 @@ export default function ParentPortalPage() {
         <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold text-rose-700 dark:border-rose-900 dark:bg-rose-950/30">
           <AlertCircle className="h-5 w-5 shrink-0 text-rose-600" />
           <span className="flex-1">{error}</span>
-          <button type="button" onClick={load} className="rounded-lg p-1 hover:bg-rose-100 dark:hover:bg-rose-900">
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            iconOnly
+            onClick={load}
+            aria-label="Muat ulang data portal"
+            className="rounded-lg p-1 text-rose-700 hover:bg-rose-100 dark:text-rose-300 dark:hover:bg-rose-900"
+          >
             <RefreshCw className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -602,7 +617,7 @@ export default function ParentPortalPage() {
                   <CardHeader className="bg-gradient-to-r from-slate-900 to-emerald-950 p-5 text-white">
                     <div className="flex items-center justify-between gap-2">
                       <Badge color="emerald" className="bg-white/20 text-white font-extrabold">
-                        {c.unit_name || 'Unit SIT'}
+                        {c.unit_name || '-'}
                       </Badge>
                       {isPonpes && (
                         <span className="rounded-full bg-amber-400 px-2.5 py-0.5 text-[9px] font-black text-slate-900 uppercase">
@@ -612,7 +627,7 @@ export default function ParentPortalPage() {
                     </div>
                     <CardTitle className="mt-3 text-lg font-black text-white">{c.full_name}</CardTitle>
                     <CardDescription className="text-xs text-emerald-200">
-                      {c.kelas?.nama_kelas || 'Kelas'} · NISN: {c.nisn || '-'}
+                      {c.kelas?.nama_kelas || '-'} · NISN: {c.nisn || '-'}
                     </CardDescription>
                   </CardHeader>
 
@@ -620,21 +635,21 @@ export default function ParentPortalPage() {
                     {/* Nilai Rapor */}
                     <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
                       <span className="font-bold text-slate-600 dark:text-slate-400">Rata-rata Nilai Rapor</span>
-                      <b className="text-sm font-black text-blue-600 dark:text-blue-400">{c.gpa || 90}</b>
+                      <b className="text-sm font-black text-blue-600 dark:text-blue-400">{c.gpa != null ? c.gpa : '-'}</b>
                     </div>
 
                     {/* Hafalan Tahfizh */}
                     <div className="flex items-center justify-between rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/40">
                       <span className="font-bold text-emerald-800 dark:text-emerald-300">Capaian Tahfizh</span>
                       <b className="text-xs font-black text-emerald-700 dark:text-emerald-400">
-                        {c.tahfizh_summary || `${c.tahfizh_target_pct || 85}% Target`}
+                        {c.tahfizh_summary || (c.tahfizh_target_pct != null ? `${c.tahfizh_target_pct}% Target` : '-')}
                       </b>
                     </div>
 
                     {/* Mutabaah Yaumiyah */}
                     <div className="flex items-center justify-between rounded-xl bg-purple-50 p-3 dark:bg-purple-950/40">
                       <span className="font-bold text-purple-800 dark:text-purple-300">Skor Mutabaah Yaumiyah</span>
-                      <b className="text-xs font-black text-purple-700 dark:text-purple-400">{c.mutabaah_score || 95}/100</b>
+                      <b className="text-xs font-black text-purple-700 dark:text-purple-400">{c.mutabaah_score != null ? `${c.mutabaah_score}/100` : '-'}</b>
                     </div>
 
                     {/* Rincian Asrama jika Pesantren */}
@@ -645,15 +660,15 @@ export default function ParentPortalPage() {
                           <span>Data Pesantren / Asrama</span>
                         </div>
                         <p className="text-[11px] text-amber-800 dark:text-amber-200">
-                          {c.asrama || 'Gedung Asrama Utama'}
+                          {c.asrama || '-'}
                         </p>
                         <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                          Musyrif: {c.musyrif || 'Ustadz Asrama'}
+                          Musyrif: {c.musyrif || '-'}
                         </p>
                         {c.pesantren_details && (
                           <div className="mt-2 border-t border-amber-200/80 pt-2 text-[10px] space-y-1 text-slate-700 dark:text-slate-300">
-                            <p><b>Presensi Malam:</b> {c.pesantren_details.presensi_malam}</p>
-                            <p><b>Kebersihan Kamar:</b> {c.pesantren_details.kebersihan_kamar}</p>
+                            <p><b>Presensi Malam:</b> {c.pesantren_details.presensi_malam || '-'}</p>
+                            <p><b>Kebersihan Kamar:</b> {c.pesantren_details.kebersihan_kamar || '-'}</p>
                           </div>
                         )}
                       </div>
@@ -661,7 +676,7 @@ export default function ParentPortalPage() {
                   </CardContent>
 
                   <div className="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-between dark:bg-slate-800/40 dark:border-slate-800">
-                    <span className="text-[11px] font-bold text-slate-500">Wali Kelas: {c.wali_kelas || 'Guru SIT'}</span>
+                    <span className="text-[11px] font-bold text-slate-500">Wali Kelas: {c.wali_kelas || '-'}</span>
                     <Button
                       size="sm"
                       variant="primary"
@@ -687,43 +702,43 @@ export default function ParentPortalPage() {
             <div className="space-y-6">
               {/* Stat Grid Anak */}
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                <div className="rounded-[20px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-gradient-to-br from-emerald-50/60 to-white dark:from-emerald-950/20 dark:to-[#1B2433] p-5 shadow-xs">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 shadow-sm">
                     <UserCheck className="h-5 w-5" />
                   </div>
                   <p className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-400">Kehadiran Hari Ini</p>
                   <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">
-                    {dashboard?.attendance_today || activeChild?.attendance_status || 'Hadir'}
+                    {dashboard?.attendance_today || activeChild?.attendance_status || '-'}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                <div className="rounded-[20px] border-2 border-blue-300 dark:border-blue-700/80 bg-gradient-to-br from-blue-50/60 to-white dark:from-blue-950/20 dark:to-[#1B2433] p-5 shadow-xs">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 shadow-sm">
                     <Award className="h-5 w-5" />
                   </div>
                   <p className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-400">Rata-rata Rapor</p>
                   <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">
-                    {activeChild?.gpa || 92}
+                    {activeChild?.gpa || '-'}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                <div className="rounded-[20px] border-2 border-teal-300 dark:border-teal-700/80 bg-gradient-to-br from-teal-50/60 to-white dark:from-teal-950/20 dark:to-[#1B2433] p-5 shadow-xs">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 shadow-sm">
                     <BookOpenCheck className="h-5 w-5" />
                   </div>
                   <p className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-400">Capaian Tahfizh</p>
                   <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">
-                    {activeChild?.tahfizh_summary || `${dashboard?.kpi?.total_tahfizh_ayat || 150} Ayat`}
+                    {activeChild?.tahfizh_summary || (dashboard?.kpi?.total_tahfizh_ayat ? `${dashboard.kpi.total_tahfizh_ayat} Ayat` : '-')}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                <div className="rounded-[20px] border-2 border-purple-300 dark:border-purple-700/80 bg-gradient-to-br from-purple-50/60 to-white dark:from-purple-950/20 dark:to-[#1B2433] p-5 shadow-xs">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 shadow-sm">
                     <HeartHandshake className="h-5 w-5" />
                   </div>
                   <p className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-400">Mutabaah Yaumiyah</p>
                   <p className="mt-1 text-lg font-black text-slate-900 dark:text-white">
-                    {activeChild?.mutabaah_score || 95}% Tertib
+                    {activeChild?.mutabaah_score ? `${activeChild.mutabaah_score}% Tertib` : '-'}
                   </p>
                 </div>
               </div>
@@ -731,8 +746,8 @@ export default function ParentPortalPage() {
               {/* ───────────────────────────────────────────────────────────────────────────── */}
               {/* 5 MODUL MONITORING INTEGRASI: MUTABA'AH, TAHFIZH, TARGET, ORTU & NON-PONPES  */}
               {/* ───────────────────────────────────────────────────────────────────────────── */}
-              <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-5">
-                <div className="space-y-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+              <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433] p-5 space-y-5">
+                <div className="space-y-3 border-b border-emerald-200/80 pb-4 dark:border-emerald-800/60">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
                       <HeartHandshake className="h-5 w-5" />
@@ -747,88 +762,853 @@ export default function ParentPortalPage() {
                     </div>
                   </div>
 
-                  {/* Sub-Tab Switcher 4 Modul - Grid 4 Kolom Sejajar Presisi (Rapih & Tanpa Bergeser Kiri Kanan) */}
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 w-full">
-                    {[
-                      ['mutabaah', 'Dashboard Mutaba’ah', HeartHandshake, 'bg-amber-100/90 text-amber-800 border-amber-200/90 hover:bg-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60'],
-                      ['setoran', 'Setoran Tahfizh Siswa', BookOpenCheck, 'bg-emerald-100/90 text-emerald-800 border-emerald-200/90 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60'],
-                      ['target', 'Target & Evaluasi', Award, 'bg-teal-100/90 text-teal-800 border-teal-200/90 hover:bg-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/60'],
-                      ['ortu', 'Monitoring Orang Tua', Users, 'bg-purple-100/90 text-purple-800 border-purple-200/90 hover:bg-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800/60'],
-                    ].map(([key, label, IconComp, colorClass]) => {
-                      const isActive = ringkasanSubTab === key
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setRingkasanSubTab(key)}
-                          className={`flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-xs font-extrabold transition-colors duration-150 cursor-pointer w-full text-center truncate ${colorClass} ${
-                            isActive
-                              ? 'ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-sm'
-                              : 'opacity-90 hover:opacity-100'
-                          }`}
-                          title={label}
-                        >
-                          <IconComp className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{label}</span>
-                        </button>
-                      )
-                    })}
+                  {/* Sub-Tab Switcher 4 Modul */}
+                  <AppTabs
+                    tabs={[
+                      { id: 'mutabaah', label: 'Dashboard Mutaba’ah', icon: HeartHandshake },
+                      { id: 'setoran', label: 'Setoran Tahfizh Siswa', icon: BookOpenCheck },
+                      { id: 'target', label: 'Target & Evaluasi', icon: Award },
+                      { id: 'ortu', label: 'Monitoring Orang Tua', icon: Users },
+                    ]}
+                    activeTab={ringkasanSubTab}
+                    onChange={setRingkasanSubTab}
+                    ariaLabel="Sub-modul pemantauan"
+                  />
+
+                  {/* Filter Periode Evaluasi Terpadu: Harian, Mingguan, Bulanan, Semester */}
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1.5">
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                      {[
+                        { id: 'harian', label: 'Harian', icon: Calendar, desc: 'Catatan Terakhir' },
+                        { id: 'mingguan', label: 'Mingguan', icon: CalendarDays, desc: '7 Hari Terakhir' },
+                        { id: 'bulanan', label: 'Bulanan', icon: BarChart3, desc: '30 Hari Terakhir' },
+                        { id: 'semester', label: 'Semester', icon: Award, desc: 'Semester 1' },
+                      ].map((p) => {
+                        const isSel = monitoringPeriod === p.id
+                        const IconComponent = p.icon
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setMonitoringPeriod(p.id)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                              isSel
+                                ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/30 ring-2 ring-emerald-500/20'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-700/60'
+                            }`}
+                          >
+                            <IconComponent className="h-3.5 w-3.5" />
+                            <span>{p.label}</span>
+                            <span className={`text-[10px] font-medium hidden sm:inline ${isSel ? 'text-emerald-100' : 'text-slate-400'}`}>
+                              ({p.desc})
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/60 px-3 py-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60 flex items-center gap-1.5">
+                        <Clock className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                        <span>Filter:</span>
+                        <b className="text-emerald-600 dark:text-emerald-400 font-black">
+                          {dashboard?.mutabaah_monitoring?.periods?.[monitoringPeriod]?.sub_label ||
+                            (monitoringPeriod === 'harian' ? 'Catatan Harian Terakhir' : monitoringPeriod)}
+                        </b>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* CONTENT MODUL 1: DASHBOARD MUTABA'AH */}
-                {ringkasanSubTab === 'mutabaah' && (
-                  <div className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5 dark:border-emerald-900/60 dark:bg-emerald-950/30">
-                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Shalat 5 Waktu</span>
-                        <p className="mt-1 text-sm font-black text-emerald-950 dark:text-emerald-200">100% Berjamaah</p>
+                {/* CONTENT MODUL 1: DASHBOARD MUTABA'AH - ADAPTIF PERIODE */}
+                {ringkasanSubTab === 'mutabaah' && (() => {
+                  const activePeriod = dashboard?.mutabaah_monitoring?.periods?.[monitoringPeriod] || dashboard?.mutabaah_monitoring
+                  const scoreVal = activePeriod?.score != null ? Math.round(Number(activePeriod.score)) : null
+                  const isHarian = monitoringPeriod === 'harian'
+
+                  return (
+                    <div className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
+                      {/* Header info tanggal/rentang & kepatuhan */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/50 p-4 border border-emerald-200/80 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/30">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm font-black text-sm shrink-0">
+                            {scoreVal != null ? `${scoreVal}%` : '-'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-black text-slate-800 dark:text-slate-100">
+                                {isHarian
+                                  ? 'Kepatuhan Ibadah & Amalan Harian'
+                                  : monitoringPeriod === 'mingguan'
+                                  ? 'Rata-rata Kepatuhan Mingguan (7 Hari)'
+                                  : monitoringPeriod === 'bulanan'
+                                  ? 'Rata-rata Kepatuhan Bulanan (30 Hari)'
+                                  : 'Indeks Kepatuhan Kumulatif Semester'}
+                              </span>
+                              {scoreVal != null ? (
+                                <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/80 dark:text-emerald-200">
+                                  {scoreVal >= 90 ? 'Sangat Tertib & Istiqamah' : scoreVal >= 75 ? 'Tertib Terlaksana' : 'Perlu Peningkatan'}
+                                </span>
+                              ) : (
+                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  Belum Ada Evaluasi
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              {isHarian ? (
+                                <>Data Terakhir Terverifikasi: <b>{activePeriod?.date_display || activePeriod?.activity_date || 'Hari Ini'}</b></>
+                              ) : (
+                                <>Rentang Evaluasi: <b>{activePeriod?.date_range || activePeriod?.sub_label || '-'}</b> · <b>{activePeriod?.days_active || 0} Hari Aktif Tercatat</b></>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => selectTab('mutabaah')}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold shadow-xs transition-all cursor-pointer"
+                        >
+                          <span>Buka Buku Mutaba'ah Lengkap</span>
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-3.5 dark:border-purple-900/60 dark:bg-purple-950/30">
-                        <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 uppercase">Shalat Dhuha & Tahajud</span>
-                        <p className="mt-1 text-sm font-black text-purple-950 dark:text-purple-200">Terlaksana Rutin</p>
-                      </div>
-                      <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 dark:border-blue-900/60 dark:bg-blue-950/30">
-                        <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase">Tilawah Al-Qur'an</span>
-                        <p className="mt-1 text-sm font-black text-blue-950 dark:text-blue-200">1 Juz / Hari</p>
-                      </div>
-                      <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 dark:border-amber-900/60 dark:bg-amber-950/30">
-                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">Kedisiplinan Adab</span>
-                        <p className="mt-1 text-sm font-black text-amber-950 dark:text-amber-200">Sangat Baik (A)</p>
-                      </div>
+
+                      {/* Tren Skor Harian Khusus Periode Mingguan */}
+                      {monitoringPeriod === 'mingguan' && Array.isArray(activePeriod?.daily_trend) && activePeriod.daily_trend.length > 0 && (
+                        <div className="rounded-2xl border border-emerald-200/80 bg-white p-3.5 dark:border-emerald-900/60 dark:bg-slate-900 shadow-2xs space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                              <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+                              Tren Kepatuhan Ibadah Harian Santri (Pekan Ini)
+                            </span>
+                            <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                              Rata-rata: {scoreVal != null ? `${scoreVal}%` : '-'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                            {activePeriod.daily_trend.map((d, idx) => (
+                              <div
+                                key={idx}
+                                className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-2 text-center dark:border-slate-800 dark:bg-slate-800/60"
+                              >
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">
+                                  {d.day}, {d.date}
+                                </span>
+                                <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 block mt-0.5">
+                                  {d.score != null ? `${Math.round(d.score)}%` : '-'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* JIKA HARIAN: Tampilkan 4 Pilar Rincian Kegiatan Individual */}
+                      {isHarian ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* 1. Shalat 5 Waktu (Fardhu) */}
+                          <div className="rounded-2xl border border-emerald-200 bg-white p-4 dark:border-emerald-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                            <div className="flex items-center justify-between border-b border-emerald-100 dark:border-emerald-900/40 pb-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs">
+                                  1
+                                </span>
+                                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                                  Shalat 5 Waktu (Fardhu)
+                                </h4>
+                              </div>
+                              <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400">
+                                {activePeriod?.shalat_fardhu?.length ?? 0} Waktu
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {Array.isArray(activePeriod?.shalat_fardhu) && activePeriod.shalat_fardhu.length > 0 ? (
+                                activePeriod.shalat_fardhu.map((it, idx) => (
+                                  <div
+                                    key={it.code || idx}
+                                    className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 pr-1">
+                                      <span className={`h-2 w-2 rounded-full shrink-0 ${it.status_value === 'good' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                        {it.name}
+                                      </span>
+                                    </div>
+                                    <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9.5px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                      {it.status_value === 'good' ? 'Terlaksana' : (it.status_value === 'less' ? 'Kurang' : (it.status_value || 'Belum'))}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="col-span-full py-4 text-center text-xs text-slate-400 italic">
+                                  Belum ada catatan shalat fardhu untuk tanggal ini.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 2. Shalat Sunnah & Qiyamul Lail */}
+                          <div className="rounded-2xl border border-purple-200 bg-white p-4 dark:border-purple-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                            <div className="flex items-center justify-between border-b border-purple-100 dark:border-purple-900/40 pb-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 font-bold text-xs">
+                                  2
+                                </span>
+                                <h4 className="text-xs font-black uppercase tracking-wider text-purple-950 dark:text-purple-200">
+                                  Shalat Sunnah & Qiyamul Lail
+                                </h4>
+                              </div>
+                              <span className="text-[10px] font-extrabold text-purple-700 dark:text-purple-400">
+                                {activePeriod?.shalat_sunnah?.length ?? 0} Amalan
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {Array.isArray(activePeriod?.shalat_sunnah) && activePeriod.shalat_sunnah.length > 0 ? (
+                                activePeriod.shalat_sunnah.map((it, idx) => (
+                                  <div
+                                    key={it.code || idx}
+                                    className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 pr-1">
+                                      <span className={`h-2 w-2 rounded-full shrink-0 ${it.status_value === 'good' ? 'bg-purple-500' : 'bg-amber-500'}`} />
+                                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                        {it.name}
+                                      </span>
+                                    </div>
+                                    <span className="shrink-0 rounded-md bg-purple-100 px-1.5 py-0.5 text-[9.5px] font-extrabold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                                      {it.status_value === 'good' ? 'Rutin' : (it.status_value === 'less' ? 'Kurang' : (it.status_value || 'Belum'))}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="col-span-full py-4 text-center text-xs text-slate-400 italic">
+                                  Belum ada catatan shalat sunnah untuk tanggal ini.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 3. Tilawah, Zikir & Penguatan */}
+                          <div className="rounded-2xl border border-blue-200 bg-white p-4 dark:border-blue-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                            <div className="flex items-center justify-between border-b border-blue-100 dark:border-blue-900/40 pb-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold text-xs">
+                                  3
+                                </span>
+                                <h4 className="text-xs font-black uppercase tracking-wider text-blue-950 dark:text-blue-200">
+                                  Tilawah, Zikir & Penguatan
+                                </h4>
+                              </div>
+                              <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400">
+                                {activePeriod?.tilawah_dzikir?.length ?? 0} Kegiatan
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {Array.isArray(activePeriod?.tilawah_dzikir) && activePeriod.tilawah_dzikir.length > 0 ? (
+                                activePeriod.tilawah_dzikir.map((it, idx) => (
+                                  <div
+                                    key={it.code || idx}
+                                    className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 pr-1">
+                                      <span className={`h-2 w-2 rounded-full shrink-0 ${it.status_value === 'good' ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                        {it.name}
+                                      </span>
+                                    </div>
+                                    <span className="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[9.5px] font-extrabold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                                      {it.status_value === 'good' ? 'Aktif' : (it.status_value === 'less' ? 'Kurang' : (it.status_value || 'Belum'))}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="col-span-full py-4 text-center text-xs text-slate-400 italic">
+                                  Belum ada catatan tilawah/zikir untuk tanggal ini.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 4. Adab & Karakter Terpuji */}
+                          <div className="rounded-2xl border border-amber-200 bg-white p-4 dark:border-amber-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                            <div className="flex items-center justify-between border-b border-amber-100 dark:border-amber-900/40 pb-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 font-bold text-xs">
+                                  4
+                                </span>
+                                <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                                  Adab & Karakter Terpuji
+                                </h4>
+                              </div>
+                              <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400">
+                                {activePeriod?.adab_karakter?.length ?? 0} Pembiasaan
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {Array.isArray(activePeriod?.adab_karakter) && activePeriod.adab_karakter.length > 0 ? (
+                                activePeriod.adab_karakter.map((it, idx) => (
+                                  <div
+                                    key={it.code || idx}
+                                    className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 pr-1">
+                                      <span className={`h-2 w-2 rounded-full shrink-0 ${it.status_value === 'good' ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                        {it.name}
+                                      </span>
+                                    </div>
+                                    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9.5px] font-extrabold ${
+                                      it.status_value === 'good' 
+                                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' 
+                                        : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                    }`}>
+                                      {it.status_value === 'good' ? 'Baik' : (it.status_value === 'less' ? 'Kurang' : (it.status_value || 'Belum'))}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="col-span-full py-4 text-center text-xs text-slate-400 italic">
+                                  Belum ada catatan adab/karakter untuk tanggal ini.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* JIKA MINGGUAN / BULANAN / SEMESTER: Tampilkan 4 Kartu Rekap Kategori Kumulatif */
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                            {/* Kartu 1: Shalat Fardhu */}
+                            <div className="rounded-2xl border border-emerald-200 bg-white p-4 dark:border-emerald-900/60 dark:bg-slate-900 shadow-2xs space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                                  1. Shalat Fardhu
+                                </span>
+                                <Badge color="emerald" size="sm">
+                                  {activePeriod?.category_stats?.fardhu?.label || '-'}
+                                </Badge>
+                              </div>
+                              <div className="flex items-baseline justify-between">
+                                <span className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                                  {activePeriod?.category_stats?.fardhu?.rate ?? 0}%
+                                </span>
+                                {activePeriod?.category_stats?.fardhu?.total ? (
+                                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                    {activePeriod.category_stats.fardhu.good}/{activePeriod.category_stats.fardhu.total} Waktu
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-100 dark:bg-emerald-950/80">
+                                <div
+                                  className="h-full bg-emerald-500 rounded-full"
+                                  style={{ width: `${activePeriod?.category_stats?.fardhu?.rate ?? 0}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Kartu 2: Shalat Sunnah */}
+                            <div className="rounded-2xl border border-purple-200 bg-white p-4 dark:border-purple-900/60 dark:bg-slate-900 shadow-2xs space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black uppercase tracking-wider text-purple-950 dark:text-purple-200">
+                                  2. Shalat Sunnah
+                                </span>
+                                <Badge color="purple" size="sm">
+                                  {activePeriod?.category_stats?.sunnah?.label || '-'}
+                                </Badge>
+                              </div>
+                              <div className="flex items-baseline justify-between">
+                                <span className="text-2xl font-black text-purple-700 dark:text-purple-300">
+                                  {activePeriod?.category_stats?.sunnah?.rate ?? 0}%
+                                </span>
+                                {activePeriod?.category_stats?.sunnah?.total ? (
+                                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                    {activePeriod.category_stats.sunnah.good}/{activePeriod.category_stats.sunnah.total} Amalan
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="h-2 w-full overflow-hidden rounded-full bg-purple-100 dark:bg-purple-950/80">
+                                <div
+                                  className="h-full bg-purple-500 rounded-full"
+                                  style={{ width: `${activePeriod?.category_stats?.sunnah?.rate ?? 0}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Kartu 3: Tilawah & Zikir */}
+                            <div className="rounded-2xl border border-blue-200 bg-white p-4 dark:border-blue-900/60 dark:bg-slate-900 shadow-2xs space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black uppercase tracking-wider text-blue-950 dark:text-blue-200">
+                                  3. Tilawah & Zikir
+                                </span>
+                                <Badge color="blue" size="sm">
+                                  {activePeriod?.category_stats?.tilawah?.label || '-'}
+                                </Badge>
+                              </div>
+                              <div className="flex items-baseline justify-between">
+                                <span className="text-2xl font-black text-blue-700 dark:text-blue-300">
+                                  {activePeriod?.category_stats?.tilawah?.rate ?? 0}%
+                                </span>
+                                {activePeriod?.category_stats?.tilawah?.total ? (
+                                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                    {activePeriod.category_stats.tilawah.good}/{activePeriod.category_stats.tilawah.total} Kegiatan
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="h-2 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950/80">
+                                <div
+                                  className="h-full bg-blue-500 rounded-full"
+                                  style={{ width: `${activePeriod?.category_stats?.tilawah?.rate ?? 0}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Kartu 4: Adab & Karakter */}
+                            <div className="rounded-2xl border border-amber-200 bg-white p-4 dark:border-amber-900/60 dark:bg-slate-900 shadow-2xs space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                                  4. Adab & Karakter
+                                </span>
+                                <Badge color="amber" size="sm">
+                                  {activePeriod?.category_stats?.adab?.label || '-'}
+                                </Badge>
+                              </div>
+                              <div className="flex items-baseline justify-between">
+                                <span className="text-2xl font-black text-amber-700 dark:text-amber-300">
+                                  {activePeriod?.category_stats?.adab?.rate ?? 0}%
+                                </span>
+                                {activePeriod?.category_stats?.adab?.total ? (
+                                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                                    {activePeriod.category_stats.adab.good}/{activePeriod.category_stats.adab.total} Pembiasaan
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="h-2 w-full overflow-hidden rounded-full bg-amber-100 dark:bg-amber-950/80">
+                                <div
+                                  className="h-full bg-amber-500 rounded-full"
+                                  style={{ width: `${activePeriod?.category_stats?.adab?.rate ?? 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Rincian Terpadu Per Amalan & Pembiasaan Khusus Periode */}
+                          <div className="space-y-3 pt-2">
+                            <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-emerald-600" />
+                                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                                  Rincian Frekuensi & Konsistensi Per Kegiatan ({activePeriod?.label || monitoringPeriod})
+                                </h4>
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                Total {((activePeriod?.shalat_fardhu?.length || 0) + (activePeriod?.shalat_sunnah?.length || 0) + (activePeriod?.tilawah_dzikir?.length || 0) + (activePeriod?.adab_karakter?.length || 0))} Agenda Amalan Terpantau
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* 1. Shalat 5 Waktu (Fardhu) */}
+                              <div className="rounded-2xl border border-emerald-200 bg-white p-4 dark:border-emerald-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                                <div className="flex items-center justify-between border-b border-emerald-100 dark:border-emerald-900/40 pb-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs">
+                                      1
+                                    </span>
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                                      Shalat 5 Waktu (Fardhu)
+                                    </h4>
+                                  </div>
+                                  <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400">
+                                    {activePeriod?.shalat_fardhu?.length ?? 0} Waktu
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {Array.isArray(activePeriod?.shalat_fardhu) && activePeriod.shalat_fardhu.length > 0 ? (
+                                    activePeriod.shalat_fardhu.map((it, idx) => (
+                                      <div
+                                        key={it.code || idx}
+                                        className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60"
+                                      >
+                                        <div className="min-w-0 pr-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="h-2 w-2 rounded-full shrink-0 bg-emerald-500" />
+                                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                              {it.name}
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] text-slate-500 dark:text-slate-400 pl-4 block">
+                                            {it.good_count}/{it.total_days} Hari ({it.rate}%)
+                                          </span>
+                                        </div>
+                                        <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9.5px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                          {it.status_label || '-'}
+                                        </span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="col-span-full py-3 text-center text-xs text-slate-500 dark:text-slate-400 italic">
+                                      Belum ada agenda shalat fardhu tercatat untuk periode ini.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* 2. Shalat Sunnah & Qiyamul Lail */}
+                              <div className="rounded-2xl border border-purple-200 bg-white p-4 dark:border-purple-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                                <div className="flex items-center justify-between border-b border-purple-100 dark:border-purple-900/40 pb-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 font-bold text-xs">
+                                      2
+                                    </span>
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-purple-950 dark:text-purple-200">
+                                      Shalat Sunnah & Qiyamul Lail
+                                    </h4>
+                                  </div>
+                                  <span className="text-[10px] font-extrabold text-purple-700 dark:text-purple-400">
+                                    {activePeriod?.shalat_sunnah?.length ?? 0} Amalan
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {Array.isArray(activePeriod?.shalat_sunnah) && activePeriod.shalat_sunnah.length > 0 ? (
+                                    activePeriod.shalat_sunnah.map((it, idx) => (
+                                      <div
+                                        key={it.code || idx}
+                                        className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60"
+                                      >
+                                        <div className="min-w-0 pr-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className={`h-2 w-2 rounded-full shrink-0 ${it.rate >= 80 ? 'bg-purple-500' : 'bg-amber-500'}`} />
+                                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                              {it.name}
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] text-slate-500 dark:text-slate-400 pl-4 block">
+                                            {it.good_count}/{it.total_days} Hari ({it.rate}%)
+                                          </span>
+                                        </div>
+                                        <span className="shrink-0 rounded-md bg-purple-100 px-1.5 py-0.5 text-[9.5px] font-extrabold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                                          {it.status_label || '-'}
+                                        </span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="col-span-full py-3 text-center text-xs text-slate-500 dark:text-slate-400 italic">
+                                      Belum ada agenda shalat sunnah tercatat untuk periode ini.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* 3. Tilawah, Zikir & Penguatan */}
+                              <div className="rounded-2xl border border-blue-200 bg-white p-4 dark:border-blue-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                                <div className="flex items-center justify-between border-b border-blue-100 dark:border-blue-900/40 pb-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold text-xs">
+                                      3
+                                    </span>
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-blue-950 dark:text-blue-200">
+                                      Tilawah, Zikir & Penguatan
+                                    </h4>
+                                  </div>
+                                  <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400">
+                                    {activePeriod?.tilawah_dzikir?.length ?? 0} Kegiatan
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {Array.isArray(activePeriod?.tilawah_dzikir) && activePeriod.tilawah_dzikir.length > 0 ? (
+                                    activePeriod.tilawah_dzikir.map((it, idx) => (
+                                      <div
+                                        key={it.code || idx}
+                                        className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60"
+                                      >
+                                        <div className="min-w-0 pr-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className={`h-2 w-2 rounded-full shrink-0 ${it.rate >= 80 ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                              {it.name}
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] text-slate-500 dark:text-slate-400 pl-4 block">
+                                            {it.good_count}/{it.total_days} Hari ({it.rate}%)
+                                          </span>
+                                        </div>
+                                        <span className="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[9.5px] font-extrabold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                                          {it.status_label || '-'}
+                                        </span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="col-span-full py-3 text-center text-xs text-slate-500 dark:text-slate-400 italic">
+                                      Belum ada agenda tilawah & zikir tercatat untuk periode ini.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* 4. Adab & Karakter Terpuji */}
+                              <div className="rounded-2xl border border-amber-200 bg-white p-4 dark:border-amber-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                                <div className="flex items-center justify-between border-b border-amber-100 dark:border-amber-900/40 pb-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 font-bold text-xs">
+                                      4
+                                    </span>
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                                      Adab & Karakter Terpuji
+                                    </h4>
+                                  </div>
+                                  <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400">
+                                    {activePeriod?.adab_karakter?.length ?? 0} Pembiasaan
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {Array.isArray(activePeriod?.adab_karakter) && activePeriod.adab_karakter.length > 0 ? (
+                                    activePeriod.adab_karakter.map((it, idx) => (
+                                      <div
+                                        key={it.code || idx}
+                                        className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60"
+                                      >
+                                        <div className="min-w-0 pr-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className={`h-2 w-2 rounded-full shrink-0 ${it.rate >= 80 ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                              {it.name}
+                                            </span>
+                                          </div>
+                                          <span className="text-[10px] text-slate-500 dark:text-slate-400 pl-4 block">
+                                            {it.good_count}/{it.total_days} Hari ({it.rate}%)
+                                          </span>
+                                        </div>
+                                        <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[9.5px] font-extrabold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                          {it.status_label || '-'}
+                                        </span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="col-span-full py-3 text-center text-xs text-slate-500 dark:text-slate-400 italic">
+                                      Belum ada agenda adab & karakter tercatat untuk periode ini.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Ringkasan & Riwayat Setoran Tahfizh Periode Ini */}
+                          <div className="space-y-3">
+                            {activePeriod?.tahfizh_summary && (
+                              <div className="rounded-2xl border border-teal-200/80 bg-gradient-to-r from-teal-50/60 via-emerald-50/40 to-white p-4 dark:border-teal-900/60 dark:bg-slate-900 dark:from-teal-950/20 dark:to-slate-900 flex flex-wrap items-center justify-between gap-3">
+                                <div className="space-y-1">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-teal-800 dark:text-teal-300 flex items-center gap-1.5">
+                                    <BookOpenCheck className="h-3.5 w-3.5" />
+                                    Aktivitas Tahfizh & Setoran Hafalan pada Periode Ini
+                                  </span>
+                                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                    Total Setoran Terverifikasi:{' '}
+                                    <b className="text-teal-700 dark:text-teal-300">
+                                      {activePeriod.tahfizh_summary.total_logs || 0} Kali Setoran
+                                    </b>
+                                    {activePeriod.tahfizh_summary.latest_surah ? (
+                                      <> · Surah Terakhir: <b>{activePeriod.tahfizh_summary.latest_surah}</b></>
+                                    ) : null}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setRingkasanSubTab('setoran')}
+                                  className="inline-flex items-center gap-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                                >
+                                  <span>Lihat Rincian Setoran</span>
+                                  <ChevronRight className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Rincian Catatan Setoran Tahfizh pada Periode Ini */}
+                            {Array.isArray(activePeriod?.tahfizh_logs) && activePeriod.tahfizh_logs.length > 0 && (
+                              <div className="rounded-2xl border border-teal-200/80 bg-white p-4 dark:border-teal-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                                <div className="flex items-center justify-between border-b border-teal-100 dark:border-teal-900/40 pb-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-bold text-xs">
+                                      <BookOpenCheck className="h-3.5 w-3.5" />
+                                    </div>
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-teal-950 dark:text-teal-200">
+                                      Riwayat Rincian Setoran Hafalan ({activePeriod?.label || monitoringPeriod})
+                                    </h4>
+                                  </div>
+                                  <span className="text-[10px] font-extrabold text-teal-700 dark:text-teal-400">
+                                    {activePeriod.tahfizh_logs.length} Setoran Tercatat
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                  {activePeriod.tahfizh_logs.map((log) => (
+                                    <div
+                                      key={log.id}
+                                      className="rounded-xl border border-teal-200/60 bg-teal-50/25 p-3 dark:border-teal-900/40 dark:bg-teal-950/20 flex items-start justify-between gap-3"
+                                    >
+                                      <div className="min-w-0 space-y-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-xs font-black text-slate-800 dark:text-slate-100">
+                                            {log.surah}
+                                          </span>
+                                          <span className="rounded-md bg-teal-100 px-1.5 py-0.5 text-[9.5px] font-extrabold text-teal-800 dark:bg-teal-900/80 dark:text-teal-200">
+                                            {log.ayah_range}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
+                                          {log.notes}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                                          Penguji: <b className="text-slate-600 dark:text-slate-300">{log.teacher_name}</b> · {log.date}
+                                        </p>
+                                      </div>
+                                      <div className="shrink-0 text-right">
+                                        <span className="rounded-lg bg-emerald-600 px-2 py-0.5 text-[10px] font-black text-white shadow-2xs block">
+                                          Nilai {log.score}
+                                        </span>
+                                        <span className="text-[9.5px] font-extrabold text-teal-700 dark:text-teal-400 block mt-1">
+                                          {log.quality}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 {/* CONTENT MODUL 2: SETORAN TAHFIZH SISWA */}
                 {ringkasanSubTab === 'setoran' && (
                   <div className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30 flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Setoran Terakhir Aktif</span>
-                        <h4 className="text-sm font-black text-emerald-950 dark:text-emerald-100 mt-0.5">Surah Al-Mulk: Ayat 1-30 (Lancar / Mumtaz)</h4>
-                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">Penguji: Ustadz Hamzah, S.Pd.I · Tanggal: 18 Agustus 2026</p>
+                    {dashboard?.latest_tahfizh ? (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Setoran Terakhir Aktif</span>
+                          <h4 className="text-sm font-black text-emerald-950 dark:text-emerald-100 mt-0.5">
+                            {dashboard.latest_tahfizh.surah_name || 'Hafalan Al-Qur\'an'}
+                            {dashboard.latest_tahfizh.ayah_start ? `: Ayat ${dashboard.latest_tahfizh.ayah_start}-${dashboard.latest_tahfizh.ayah_end}` : ''}
+                            {dashboard.latest_tahfizh.quality ? ` (${dashboard.latest_tahfizh.quality})` : ''}
+                          </h4>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                            Penguji: {dashboard.latest_tahfizh.teacher_name || 'Guru Tahfizh'} · Tanggal: {dashboard.latest_tahfizh.record_date || '-'}
+                          </p>
+                        </div>
+                        <Badge color="emerald" className="bg-emerald-700 text-white font-extrabold">
+                          {dashboard.latest_tahfizh.score ? `Nilai ${dashboard.latest_tahfizh.score}` : (dashboard.latest_tahfizh.status || 'Tuntas')}
+                        </Badge>
                       </div>
-                      <Badge color="emerald" className="bg-emerald-700 text-white font-extrabold">Nilai A+ (Mumtaz)</Badge>
-                    </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center dark:border-slate-800 dark:bg-slate-900/50">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Belum ada riwayat setoran tahfizh terbaru untuk ananda.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* CONTENT MODUL 3: TARGET & EVALUASI */}
+                {/* CONTENT MODUL 3: TARGET & EVALUASI TAHFIZH - RINCIAN AKTUAL */}
                 {ringkasanSubTab === 'target' && (
                   <div className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
-                    <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/60 dark:bg-blue-950/30 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold text-blue-900 dark:text-blue-200">
-                        <span>Pencapaian Target Semester (Juz 30, 29, 28)</span>
-                        <span>88% Tercapai</span>
+                    {/* Ringkasan Progress Target Semester */}
+                    <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/70 to-white p-4.5 dark:border-blue-900/60 dark:bg-slate-900 shadow-2xs space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-800 dark:text-blue-300">
+                            Pencapaian Target Hafalan Semester
+                          </span>
+                          <h4 className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                            {dashboard?.tahfizh_evaluation_details?.total_ayat_tercapai || 0} Ayat Tercapai
+                            {dashboard?.tahfizh_evaluation_details?.target_ayat ? (
+                              <span className="text-xs font-medium text-slate-500 dark:text-slate-400"> / Target {dashboard.tahfizh_evaluation_details.target_ayat} Ayat</span>
+                            ) : null}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-xl bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-xs">
+                            {dashboard?.tahfizh_evaluation_details?.persentase != null ? `${dashboard.tahfizh_evaluation_details.persentase}% Tercapai` : '-'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-blue-200 dark:bg-blue-950">
-                        <div className="h-full bg-blue-600 rounded-full" style={{ width: '88%' }} />
+
+                      {/* Progress Bar Dinamis */}
+                      <div className="h-3 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950/80 p-0.5">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 via-teal-500 to-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(0, dashboard?.tahfizh_evaluation_details?.persentase || 0))}%` }}
+                        />
                       </div>
-                      <p className="text-[11px] text-blue-800/80 dark:text-blue-300/80 mt-1">
-                        <b>Evaluasi Pembimbing:</b> "Anak menunjukkan konsistensi kelancaran hafalan dan makhraj tajwid yang tajam."
-                      </p>
+
+                      {/* Rincian Surah yang Tuntas Mutqin */}
+                      {Array.isArray(dashboard?.tahfizh_evaluation_details?.surah_tuntas) && dashboard.tahfizh_evaluation_details.surah_tuntas.length > 0 && (
+                        <div className="pt-2 border-t border-blue-100 dark:border-blue-900/40">
+                          <span className="text-[10.5px] font-bold text-slate-600 dark:text-slate-300 block mb-1.5">
+                            Surah yang Telah Tuntas & Mutqin:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {dashboard.tahfizh_evaluation_details.surah_tuntas.map((s, idx) => (
+                              <span
+                                key={s.number || idx}
+                                className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 px-2.5 py-1 text-[11px] font-extrabold"
+                              >
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                <span>QS. {s.name} ({s.number})</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Catatan Riil Pembimbing Tahfizh */}
+                      <div className="rounded-xl bg-blue-50/80 p-3.5 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-800/60">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-bold text-blue-900 dark:text-blue-200">
+                            Catatan & Rekomendasi Asatidz Pembimbing:
+                          </span>
+                          <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-medium">
+                            {dashboard?.tahfizh_evaluation_details?.guru_pembimbing || '-'} · {dashboard?.tahfizh_evaluation_details?.tanggal_evaluasi || '-'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-blue-950 dark:text-blue-100 italic leading-relaxed">
+                          {dashboard?.tahfizh_evaluation_details?.catatan_pembimbing ? `"${dashboard.tahfizh_evaluation_details.catatan_pembimbing}"` : 'Belum ada catatan evaluasi tertulis dari pembimbing.'}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Riwayat Setoran Ziyadah Terkini */}
+                    {Array.isArray(dashboard?.tahfizh_evaluation_details?.recent_logs) && dashboard.tahfizh_evaluation_details.recent_logs.length > 0 && (
+                      <div className="space-y-2">
+                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Riwayat Setoran Ziyadah & Muroja'ah Terakhir
+                        </h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {dashboard.tahfizh_evaluation_details.recent_logs.map((log, idx) => (
+                            <div
+                              key={log.id || idx}
+                              className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-900 space-y-1.5"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100">
+                                  {log.surah} ({log.ayah_range})
+                                </span>
+                                <span className="rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-black">
+                                  Tajwid {log.quality}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 italic">
+                                "{log.notes}"
+                              </p>
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/50 dark:border-slate-800">
+                                <span>{log.teacher_name}</span>
+                                <span>{log.date}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -839,10 +1619,18 @@ export default function ParentPortalPage() {
                       <div>
                         <h4 className="text-xs font-black text-purple-950 dark:text-purple-200">Konfirmasi Pendampingan Wali Murid Harian</h4>
                         <p className="text-[11px] text-purple-800/80 dark:text-purple-300/80 mt-0.5">
-                          Telah diverifikasi oleh Wali Kelas: Shalat jamaah & tilawah rumah telah diparaf oleh Orang Tua.
+                          {dashboard?.mutabaah_monitoring?.supervisor_notes
+                            ? `Catatan Pembimbing: "${dashboard.mutabaah_monitoring.supervisor_notes}"`
+                            : (dashboard?.mutabaah_monitoring?.status === 'verified' || dashboard?.mutabaah_monitoring?.status === 'finalized'
+                              ? 'Telah diverifikasi oleh Wali Kelas: Shalat jamaah & tilawah rumah telah divalidasi.'
+                              : (dashboard?.mutabaah_monitoring ? 'Menunggu konfirmasi dan verifikasi catatan ibadah harian santri oleh Wali Kelas/Musyrif.' : 'Belum ada catatan mutabaah harian yang terekam.'))}
                         </p>
                       </div>
-                      <Badge color="purple" className="bg-purple-700 text-white font-bold">Terverifikasi Wali Kelas</Badge>
+                      <Badge color="purple" className="bg-purple-700 text-white font-bold">
+                        {dashboard?.mutabaah_monitoring?.status === 'verified' || dashboard?.mutabaah_monitoring?.status === 'finalized'
+                          ? 'Terverifikasi Wali Kelas'
+                          : (dashboard?.mutabaah_monitoring?.status ? `Status: ${dashboard.mutabaah_monitoring.status}` : 'Belum Ada Data')}
+                      </Badge>
                     </div>
                   </div>
                 )}
@@ -862,7 +1650,7 @@ export default function ParentPortalPage() {
                             Pondok Pesantren / Asrama Santri
                           </Badge>
                           <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300">
-                            {activeChild?.asrama || 'Gedung Asrama Utama'}
+                            {activeChild?.asrama || '-'}
                           </span>
                         </div>
                         <h3 className="mt-1 text-base font-black text-amber-950 dark:text-amber-100">
@@ -872,7 +1660,7 @@ export default function ParentPortalPage() {
                     </div>
 
                     <div className="text-right text-xs text-amber-900 dark:text-amber-200">
-                      <p>Musyrif Pendamping: <b>{activeChild?.musyrif || 'Ustadz Zulkifli, Lc'}</b></p>
+                      <p>Musyrif Pendamping: <b>{activeChild?.musyrif || activeChild?.mentor_name || '-'}</b></p>
                       <p className="text-[10px] text-amber-700 dark:text-amber-400">Pembimbing Asrama Putra/Putri</p>
                     </div>
                   </div>
@@ -884,7 +1672,7 @@ export default function ParentPortalPage() {
                         <span>Presensi Qiyamul Lail</span>
                       </div>
                       <p className="mt-1.5 font-black text-slate-900 dark:text-white">
-                        {activeChild?.pesantren_details?.presensi_malam || 'Hadir (03.30 WIB)'}
+                        {activeChild?.pesantren_details?.presensi_malam || '-'}
                       </p>
                     </div>
 
@@ -894,7 +1682,7 @@ export default function ParentPortalPage() {
                         <span>Shalat Subuh Jamaah</span>
                       </div>
                       <p className="mt-1.5 font-black text-slate-900 dark:text-white">
-                        {activeChild?.pesantren_details?.shalat_subuh || 'Hadir di Masjid Utama'}
+                        {activeChild?.pesantren_details?.shalat_subuh || '-'}
                       </p>
                     </div>
 
@@ -904,7 +1692,7 @@ export default function ParentPortalPage() {
                         <span>Kebersihan Kamar</span>
                       </div>
                       <p className="mt-1.5 font-black text-slate-900 dark:text-white">
-                        {activeChild?.pesantren_details?.kebersihan_kamar || 'A (Sangat Baik)'}
+                        {activeChild?.pesantren_details?.kebersihan_kamar || '-'}
                       </p>
                     </div>
 
@@ -914,94 +1702,287 @@ export default function ParentPortalPage() {
                         <span>Kesehatan Santri</span>
                       </div>
                       <p className="mt-1.5 font-black text-slate-900 dark:text-white">
-                        {activeChild?.pesantren_details?.kesehatan || 'Sehat'}
+                        {activeChild?.pesantren_details?.kesehatan || '-'}
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Grid Nilai & Pengumuman Terbaru */}
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Card className="border-slate-200/80 shadow-xs">
-                  <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-900">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-bold">Nilai Rapor Terbaru ({activeChild?.full_name})</CardTitle>
-                      <Button size="sm" variant="ghost" onClick={() => selectTab('grades')} className="text-xs text-emerald-700">
-                        Lihat Semua Nilai →
-                      </Button>
+              {/* Grid Nilai, Kalender Akademik & Pengumuman Terbaru */}
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+                {/* 1. KARTU NILAI RAPOR TERBARU */}
+                <Card className="flex flex-col rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white dark:bg-[#1B2433] shadow-md shadow-emerald-500/5 overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/10">
+                  <CardHeader className="border-b border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-transparent p-5 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:via-teal-950/20">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 shadow-xs">
+                          <Award className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <CardTitle className="text-xs font-black text-slate-800 dark:text-slate-100 leading-tight">
+                            Nilai Rapor Terbaru
+                          </CardTitle>
+                          <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 truncate max-w-[140px]">
+                            {activeChild?.full_name}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => selectTab('grades')}
+                        className="inline-flex items-center gap-1 shrink-0 rounded-xl bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-200/80 hover:bg-emerald-100/80 transition-all dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80 dark:hover:bg-emerald-900/60 cursor-pointer"
+                      >
+                        <span>Semua</span>
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-5 space-y-3 text-xs">
-                    {(dashboard?.latest_grades || [
-                      { id: '1', subject: { name: 'Pendidikan Agama Islam (PAI)' }, nilai_akhir: 95 },
-                      { id: '2', subject: { name: 'Al-Qur\'an & Hadits' }, nilai_akhir: 94 },
-                      { id: '3', subject: { name: 'Bahasa Arab' }, nilai_akhir: 92 },
-                      { id: '4', subject: { name: 'Matematika' }, nilai_akhir: 88 },
-                    ]).map((g) => (
-                      <div key={g.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{g.subject?.name || 'Mata Pelajaran'}</span>
-                        <Badge color="cyan" className="font-black text-xs">
-                          {g.nilai_akhir || g.nilai_tugas || 90}
-                        </Badge>
+
+                  <CardContent className="flex-1 p-5 flex flex-col justify-between space-y-4">
+                    {Array.isArray(dashboard?.latest_grades) && dashboard.latest_grades.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {dashboard.latest_grades.slice(0, 4).map((g, idx) => {
+                          const score = g.final_score != null ? g.final_score : (g.nilai_akhir != null ? g.nilai_akhir : (g.score != null ? g.score : null))
+                          const predikat = g.predikat || g.predicate || g.grade_letter || null
+                          const periodLabel = [g.semester || dashboard?.academic_context?.semester, g.academic_year || dashboard?.academic_context?.academic_year].filter(Boolean).join(' ')
+                          return (
+                            <div
+                              key={g.id || idx}
+                              className="group flex items-center justify-between rounded-xl bg-slate-50/90 p-3 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 hover:border-emerald-300 dark:hover:border-emerald-600 transition-all"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100/90 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-black text-[11px] border border-emerald-200/60 dark:border-emerald-800/60">
+                                  {idx + 1}
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="block font-bold text-slate-800 dark:text-slate-100 text-xs truncate">
+                                    {g.subject_name || g.subject?.name || g.nama_mapel || '-'}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 font-medium">
+                                    {[periodLabel, predikat ? `Predikat ${predikat}` : null].filter(Boolean).join(' · ') || '-'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                <span className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1 text-xs font-black text-white shadow-xs">
+                                  {score !== null && score !== undefined ? score : '-'}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                    ))}
+                    ) : (
+                      <div className="py-8 text-center space-y-2">
+                        <Award className="mx-auto h-9 w-9 text-emerald-300 dark:text-emerald-700" />
+                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                          Belum ada rekapitulasi nilai rapor terbaru untuk ananda <b>{activeChild?.full_name}</b>.
+                        </p>
+                        <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                          Penilaian capaian kompetensi {dashboard?.academic_context?.semester ? dashboard.academic_context.semester.toLowerCase() : 'periode ini'} {dashboard?.academic_context?.academic_year ? `TA ${dashboard.academic_context.academic_year}` : ''} sedang berlangsung oleh dewan guru/asatidz.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                      <span>Mata Pelajaran: <b>{dashboard?.latest_grades?.length || 0} Mapel</b></span>
+                      <button
+                        type="button"
+                        onClick={() => selectTab('grades')}
+                        className="text-emerald-700 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                      >
+                        Buka Rapor Lengkap →
+                      </button>
+                    </div>
                   </CardContent>
                 </Card>
 
-                {/* KARTU KALENDER AKADEMIK UNIT SISWA */}
-                <Card className="border-cyan-200/80 bg-gradient-to-br from-cyan-50/40 via-white to-teal-50/30 shadow-xs dark:border-cyan-900/50 dark:from-slate-900 dark:to-slate-900">
-                  <CardHeader className="border-b border-cyan-100/70 bg-cyan-50/60 p-5 dark:border-slate-800 dark:bg-slate-900">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4 text-cyan-600" />
-                        <CardTitle className="text-sm font-bold text-slate-900 dark:text-white">
-                          Kalender Akademik ({activeChild?.unit_name})
-                        </CardTitle>
+                {/* 2. KARTU KALENDER AKADEMIK UNIT SISWA */}
+                <Card className="flex flex-col rounded-[22px] border-2 border-cyan-300 dark:border-cyan-700/80 bg-white dark:bg-[#1B2433] shadow-md shadow-cyan-500/5 overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-cyan-500/10">
+                  <CardHeader className="border-b border-cyan-200/80 bg-gradient-to-r from-cyan-50/80 via-teal-50/40 to-transparent p-5 dark:border-cyan-800/60 dark:from-cyan-950/40 dark:via-teal-950/20">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300 border border-cyan-200/80 dark:border-cyan-800/80 shadow-xs">
+                          <CalendarDays className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <CardTitle className="text-xs font-black text-slate-800 dark:text-slate-100 leading-tight">
+                            Kalender Akademik
+                          </CardTitle>
+                          {childUnitName ? (
+                            <p className="text-[10px] font-semibold text-cyan-700 dark:text-cyan-400 truncate max-w-[140px]">
+                              {childUnitName}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => setIsCalendarModalOpen(true)} className="text-xs text-cyan-700 font-black dark:text-cyan-400">
-                        Lihat Kalender →
-                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => setIsCalendarModalOpen(true)}
+                        className="inline-flex items-center gap-1 shrink-0 rounded-xl bg-cyan-50 px-2 py-1 text-[11px] font-bold text-cyan-700 border border-cyan-200/80 hover:bg-cyan-100/80 transition-all dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800/80 dark:hover:bg-cyan-900/60 cursor-pointer"
+                      >
+                        <span>Lihat</span>
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-5 space-y-2.5 text-xs">
-                    <div className="rounded-xl bg-cyan-50/80 p-3 text-[11px] text-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-200 border border-cyan-200/60">
-                      ℹ️ Menampilkan agenda resmi tahun ajaran dan kalender akademik khusus unit <b>{activeChild?.unit_name}</b>.
+
+                  <CardContent className="flex-1 p-5 flex flex-col justify-between space-y-3.5 text-xs">
+                    <div className="space-y-3">
+                      <div className="rounded-xl bg-cyan-50/80 p-3 text-[11px] text-cyan-900 dark:bg-cyan-950/40 dark:text-cyan-200 border border-cyan-200/70 dark:border-cyan-800/60 leading-relaxed">
+                        <div className="flex items-center gap-1.5 font-bold mb-1">
+                          <Info className="h-3.5 w-3.5 text-cyan-700 dark:text-cyan-400 shrink-0" />
+                          <span>Agenda Resmi {[dashboard?.academic_context?.semester, dashboard?.academic_context?.academic_year].filter(Boolean).join(' ') || (childUnitName || '-')}</span>
+                        </div>
+                        <p className="text-[10.5px] text-cyan-800/90 dark:text-cyan-300/90">
+                          Menampilkan jadwal resmi pembelajaran, penilaian, dan libur akademik{childUnitName ? <> khusus <b>{childUnitName}</b></> : ''}.
+                        </p>
+                      </div>
+
+                      {/* Preview Agenda Penting Mendatang dari Database */}
+                      <div className="space-y-2">
+                        {Array.isArray(dashboard?.upcoming_calendar_events) && dashboard.upcoming_calendar_events.length > 0 ? (
+                          dashboard.upcoming_calendar_events.map((ev, idx) => {
+                            const colorKey = ev.color || (ev.category === 'ujian' ? 'purple' : ev.category === 'mulai_kbm' ? 'emerald' : ev.category === 'libur_sekolah' ? 'rose' : ev.category === 'libur_semester' ? 'amber' : ev.category === 'terima_rapor' ? 'indigo' : 'cyan')
+                            const dotColor = colorKey === 'purple' ? 'bg-purple-500' : colorKey === 'emerald' ? 'bg-emerald-500' : colorKey === 'rose' ? 'bg-rose-500' : colorKey === 'amber' ? 'bg-amber-500' : colorKey === 'indigo' ? 'bg-indigo-500' : 'bg-cyan-500'
+                            const badgeColor = colorKey === 'purple'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                              : colorKey === 'emerald'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : colorKey === 'rose'
+                                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                                  : colorKey === 'amber'
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                    : colorKey === 'indigo'
+                                      ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
+                                      : 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300'
+                            return (
+                              <div
+                                key={ev.id || idx}
+                                onClick={() => setIsCalendarModalOpen(true)}
+                                className="group cursor-pointer flex items-center justify-between rounded-xl bg-slate-50/90 p-2.5 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 hover:border-cyan-300 dark:hover:border-cyan-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                              >
+                                <div className="flex items-center gap-2 min-w-0 pr-2">
+                                  <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+                                  <div className="truncate">
+                                    <p className="font-bold text-slate-800 dark:text-slate-100 text-[11px] truncate group-hover:text-cyan-700 dark:group-hover:text-cyan-400 transition-colors">
+                                      {ev.title}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 truncate">
+                                      {ev.notes || ev.category || '-'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[9px] font-black ${badgeColor}`}>
+                                  {ev.date_label}
+                                </span>
+                              </div>
+                            )
+                          })
+                        ) : (
+                          <div className="py-4 text-center text-slate-400 text-xs">
+                            Belum ada jadwal agenda mendatang.
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <Button
+
+                    <button
+                      type="button"
                       onClick={() => setIsCalendarModalOpen(true)}
-                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold text-xs py-2.5 rounded-xl shadow-xs hover:opacity-95"
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-600 to-cyan-700 hover:from-cyan-700 hover:to-teal-800 text-white font-bold text-xs py-2.5 px-4 shadow-md shadow-cyan-600/20 transition-all active:scale-98 cursor-pointer mt-2"
                     >
                       <CalendarDays className="h-4 w-4" />
-                      Buka Kalender Akademik {activeChild?.unit_name}
-                    </Button>
+                      <span>Buka Kalender Akademik{childUnitName ? ` ${childUnitName}` : ''}</span>
+                    </button>
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-200/80 shadow-xs">
-                  <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-900">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-bold">Pengumuman Terbaru Unit ({activeChild?.unit_name})</CardTitle>
-                      <Button size="sm" variant="ghost" onClick={() => selectTab('announcements')} className="text-xs text-emerald-700">
-                        Info Sekolah →
-                      </Button>
+                {/* 3. KARTU PENGUMUMAN TERBARU UNIT */}
+                <Card className="flex flex-col rounded-[22px] border-2 border-teal-300 dark:border-teal-700/80 bg-white dark:bg-[#1B2433] shadow-md shadow-teal-500/5 overflow-hidden transition-all duration-200 hover:shadow-lg hover:shadow-teal-500/10">
+                  <CardHeader className="border-b border-teal-200/80 bg-gradient-to-r from-teal-50/80 via-emerald-50/40 to-transparent p-5 dark:border-teal-800/60 dark:from-teal-950/40 dark:via-emerald-950/20">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/80 shadow-xs">
+                          <Megaphone className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <CardTitle className="text-xs font-black text-slate-800 dark:text-slate-100 leading-tight">
+                            Pengumuman Unit
+                          </CardTitle>
+                          {childUnitName ? (
+                            <p className="text-[10px] font-semibold text-teal-700 dark:text-teal-400 truncate max-w-[140px]">
+                              {childUnitName}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => selectTab('announcements')}
+                        className="inline-flex items-center gap-1 shrink-0 rounded-xl bg-teal-50 px-2 py-1 text-[11px] font-bold text-teal-700 border border-teal-200/80 hover:bg-teal-100/80 transition-all dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/80 dark:hover:bg-teal-900/60 cursor-pointer"
+                      >
+                        <span>Semua</span>
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-5 space-y-3 text-xs">
-                    {activeChildAnnouncements.map((a) => (
-                      <div key={a.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-800/50">
-                        <div className="flex items-center justify-between gap-2">
-                          <b className="text-slate-900 dark:text-white font-extrabold">{a.title || a.judul_pengumuman}</b>
-                          <span className="shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                            {a.education_unit || activeChild?.unit_name}
-                          </span>
+
+                  <CardContent className="flex-1 p-5 flex flex-col justify-between space-y-3.5 text-xs">
+                    <div className="space-y-2.5">
+                      {activeChildAnnouncements.slice(0, 3).map((a) => {
+                        const targetUnit = a.education_unit || a.unit_name || a.data_tambahan?.unit_name || (childUnitName || null)
+                        const category = a.category || a.data_tambahan?.kategori || a.kategori || 'Pengumuman'
+                        const title = a.title || a.judul_pengumuman || '-'
+                        const summary = a.summary || a.content || a.data_tambahan?.ringkasan || a.isi_pengumuman || ''
+                        return (
+                          <div
+                            key={a.id}
+                            onClick={() => selectTab('announcements')}
+                            className="group cursor-pointer rounded-xl border border-teal-100/90 bg-teal-50/40 p-3 dark:border-teal-900/60 dark:bg-slate-800/60 hover:bg-teal-50 dark:hover:bg-slate-800 hover:border-teal-300 dark:hover:border-teal-600 transition-all"
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="shrink-0 rounded-md bg-teal-100 px-2 py-0.5 text-[9px] font-black text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                                {category}
+                              </span>
+                              {targetUnit ? (
+                                <span className="shrink-0 rounded-md bg-emerald-100/80 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 truncate max-w-[170px]">
+                                  {targetUnit}
+                                </span>
+                              ) : null}
+                            </div>
+                            <b className="block text-slate-900 dark:text-white font-extrabold text-[11px] leading-snug group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors line-clamp-1">
+                              {title}
+                            </b>
+                            <p className="mt-1 line-clamp-2 text-slate-500 dark:text-slate-400 text-[10.5px] leading-relaxed">
+                              {summary}
+                            </p>
+                          </div>
+                        )
+                      })}
+
+                      {!activeChildAnnouncements.length && (
+                        <div className="py-8 text-center space-y-2">
+                          <Megaphone className="mx-auto h-9 w-9 text-teal-300 dark:text-teal-700" />
+                          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                            Belum ada pengumuman khusus{childUnitName ? ` untuk unit ${childUnitName}` : ''}.
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            Pengumuman resmi dari madrasah/sekolah akan tampil secara otomatis di sini.
+                          </p>
                         </div>
-                        <p className="mt-1 line-clamp-2 text-slate-500 text-[11px] leading-relaxed">{a.content || a.isi_pengumuman}</p>
-                      </div>
-                    ))}
-                    {!activeChildAnnouncements.length && (
-                      <p className="py-4 text-center text-slate-400">Belum ada pengumuman khusus untuk unit {activeChild?.unit_name}.</p>
-                    )}
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => selectTab('announcements')}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-800 text-white font-bold text-xs py-2.5 px-4 shadow-md shadow-teal-600/20 transition-all active:scale-98 cursor-pointer mt-2"
+                    >
+                      <Megaphone className="h-4 w-4" />
+                      <span>Buka Pusat Informasi{childUnitName ? ` ${childUnitName}` : ''}</span>
+                    </button>
                   </CardContent>
                 </Card>
               </div>
@@ -1029,7 +2010,7 @@ export default function ParentPortalPage() {
                       Kalender Akademik Terpadu
                     </span>
                     <h2 className="mt-2 text-lg font-black text-slate-900 dark:text-white">
-                      Kalender Akademik Unit: {activeChild?.unit_name}
+                      Kalender Akademik{childUnitName ? ` Unit: ${childUnitName}` : ''}
                     </h2>
                     <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                       Jadwal resmi kegiatan belajar mengajar, penilaian, libur semester, dan agenda penting khusus ananda {activeChild?.full_name}.
@@ -1050,10 +2031,10 @@ export default function ParentPortalPage() {
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 text-center py-10">
                 <CalendarDays className="mx-auto h-12 w-12 text-cyan-600 dark:text-cyan-400" />
                 <h3 className="mt-3 text-base font-black text-slate-900 dark:text-white">
-                  Kalender Akademik & Agenda Kegiatan {activeChild?.unit_name}
+                  Kalender Akademik & Agenda Kegiatan{childUnitName ? ` ${childUnitName}` : ''}
                 </h3>
                 <p className="mx-auto mt-1 max-w-md text-xs text-slate-500">
-                  Data kalender telah difilter khusus untuk unit {activeChild?.unit_name}. Anda dapat melihat tampilan bulanan, mingguan, serta daftar agenda lengkap dengan membuka kalender interaktif.
+                  Data kalender telah difilter khusus{childUnitName ? ` untuk unit ${childUnitName}` : ''}. Anda dapat melihat tampilan bulanan, mingguan, serta daftar agenda lengkap dengan membuka kalender interaktif.
                 </p>
                 <button
                   type="button"
@@ -1061,7 +2042,7 @@ export default function ParentPortalPage() {
                   className="mt-5 inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-xs font-black text-white shadow-md transition hover:bg-cyan-700 cursor-pointer"
                 >
                   <CalendarDays className="h-4 w-4" />
-                  Buka Kalender Akademik {activeChild?.unit_name}
+                  Buka Kalender Akademik{childUnitName ? ` ${childUnitName}` : ''}
                 </button>
               </div>
             </div>
@@ -1072,34 +2053,61 @@ export default function ParentPortalPage() {
           )}
 
           {active === 'schedules' && (
-            <ClassScheduleWorkspace schedules={records} loading={loading} />
+            <ClassScheduleWorkspace schedules={records} loading={loading} activeChild={activeChild} />
           )}
 
           {active === 'materials' && (
-            <MaterialsWorkspace materials={records} loading={loading} />
+            <MaterialsWorkspace materials={records} loading={loading} student={activeChild} />
           )}
 
           {active === 'assignments' && (
-            <AssignmentsWorkspace assignments={records} isParent={true} canSubmit={isChildSD} onSubmitAssignment={handleAssignmentSubmit} loading={loading} />
+            <AssignmentsWorkspace
+              assignments={records}
+              isParent={true}
+              canSubmit={Boolean(isChildSD)}
+              onSubmitAssignment={handleAssignmentSubmit}
+              loading={loading}
+              student={activeChild}
+            />
           )}
 
           {active === 'tahfizh' && (
-            <TahfizhWorkspace logs={records} target={dashboard?.tahfizh_target} achievement={tahfizhAchievement} loading={loading} />
+            <TahfizhWorkspace
+              logs={records}
+              target={dashboard?.tahfizh_target}
+              achievement={tahfizhAchievement}
+              pendingHomeMurajaah={dashboard?.pending_home_murajaah}
+              loading={loading}
+              student={activeChild}
+              onMurajaahSubmitted={load}
+            />
           )}
 
           {active === 'grades' && (
-            <GradesWorkspace grades={records} loading={loading} />
+            <GradesWorkspace grades={records} loading={loading} student={activeChild} />
           )}
 
           {active === 'student-notes' && (
-            <TeacherCommentsWorkspace comments={records} loading={loading} childId={childId} isParent onSigned={load} />
+            <TeacherCommentsWorkspace
+              comments={records}
+              loading={loading}
+              childId={childId}
+              isParent
+              onSigned={load}
+              student={activeChild}
+            />
           )}
 
           {active === 'mutabaah' && (
-            <div className="space-y-5">
-              <ParentWorshipInputWorkspace studentId={childId} />
-              <MutabaahWorkspace mutabaah={records?.today || null} isParent={true} loading={loading} />
-            </div>
+            <MutabaahWorkspace
+              studentId={childId}
+              student={activeChild}
+              mutabaah={records?.today || null}
+              recapData={records || null}
+              isParent={true}
+              loading={loading}
+              onReload={load}
+            />
           )}
 
           {active === 'attendance' && (
@@ -1110,15 +2118,18 @@ export default function ParentPortalPage() {
               canSubmitPermission={true}
               isParent={true}
               loading={loading}
+              student={activeChild}
+              childId={childId}
+              onReload={load}
             />
           )}
 
           {active === 'kisi' && (
-            <ExamGridsWorkspace grids={examGridsRecords} loading={loading} />
+            <ExamGridsWorkspace grids={examGridsRecords} loading={loading} student={activeChild} isParent={true} />
           )}
 
           {active === 'ujian' && (
-            <CbtExamsWorkspace lmsData={cbtOverview} isParent={true} loading={loading} />
+            <CbtExamsWorkspace lmsData={cbtOverview} isParent={true} loading={loading} student={activeChild} />
           )}
 
           {active === 'hasil' && (
@@ -1145,7 +2156,7 @@ export default function ParentPortalPage() {
       <AcademicCalendarModal
         isOpen={isCalendarModalOpen}
         onClose={() => setIsCalendarModalOpen(false)}
-        lockedUnit={activeChild?.unit_name || ''}
+        lockedUnit={childUnitName || activeChild?.unit_name || ''}
       />
     </div>
   )

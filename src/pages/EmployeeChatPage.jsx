@@ -6,6 +6,7 @@ import ChatGuruWorkspace from '../components/portal/ChatGuruWorkspace'
 import { useSearchParams } from 'react-router-dom'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import AppTabs from '../components/app/AppTabs'
 
 export default function EmployeeChatPage() {
   const user = useAuthStore((state) => state.user)
@@ -90,34 +91,20 @@ export default function EmployeeChatPage() {
 
             {/* Tab Switcher for Teachers who also deal with Parent Messages */}
             {isTeacher && (
-              <div className="flex items-center gap-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 p-1.5 border border-emerald-500/20 shadow-sm backdrop-blur-md self-start sm:self-auto shrink-0">
-                <button
-                  onClick={() => setActiveTabMode('employee')}
-                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                    activeTabMode === 'employee'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <Users className="h-4 w-4" /> Chat Pegawai
-                </button>
-
-                <button
-                  onClick={() => setActiveTabMode('teacher')}
-                  className={`relative flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-                    activeTabMode === 'teacher'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <HeartHandshake className="h-4 w-4" /> Pesan Orang Tua
-                  {parentUnreadCount > 0 && (
-                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-black text-white shadow-xs animate-pulse">
-                      {parentUnreadCount}
-                    </span>
-                  )}
-                </button>
-              </div>
+              <AppTabs
+                tabs={[
+                  { id: 'employee', label: 'Chat Pegawai', icon: Users },
+                  {
+                    id: 'teacher',
+                    label: 'Pesan Orang Tua',
+                    icon: HeartHandshake,
+                    badge: parentUnreadCount > 0 ? parentUnreadCount : undefined,
+                  },
+                ]}
+                activeTab={activeTabMode}
+                onChange={setActiveTabMode}
+                ariaLabel="Mode perpesanan"
+              />
             )}
           </div>
         </div>

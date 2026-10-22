@@ -1,10 +1,11 @@
 import * as React from 'react'
 import PropTypes from 'prop-types'
+import { Input as HeroInput } from '@heroui/react'
 import { cn } from '../../lib/utils'
 
 export const Input = React.forwardRef(({ className, type = 'text', isError = false, ...props }, ref) => {
   return (
-    <input
+    <HeroInput
       type={type}
       ref={ref}
       className={cn(
@@ -26,3 +27,6 @@ Input.propTypes = {
   type: PropTypes.string,
   isError: PropTypes.bool,
 }
+
+export default Input
+

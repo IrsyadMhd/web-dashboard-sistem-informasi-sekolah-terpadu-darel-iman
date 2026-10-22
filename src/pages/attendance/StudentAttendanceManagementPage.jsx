@@ -50,6 +50,7 @@ import { kelasService } from '../../services/kelasService'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppSkeleton from '../../components/app/AppSkeleton'
 import AppEmptyState from '../../components/app/AppEmptyState'
+import { useToast } from '../../components/app'
 import ActionDropdown from '../../components/app/ActionDropdown'
 import { SquircleActionButton, PrintOptionModal } from '../../components/master-data'
 import { downloadPdfTable, printCleanTable } from '../../utils/printHelper'
@@ -78,22 +79,16 @@ import {
 } from '@/components/tailgrids/core/dialog'
 import { Backdrop } from '@/components/tailgrids/core/overlay'
 
-// ── TOAST NOTIFICATION HELPER ──────────────────────────────────────────────
-function useToast() {
-  const [toasts, setToasts] = useState([])
-  const add = (type, title, message) => {
-    const id = Date.now() + Math.random()
-    setToasts((p) => [...p, { id, type, title, message }])
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 5000)
-  }
-  const dismiss = (id) => setToasts((p) => p.filter((t) => t.id !== id))
-  return { toasts, dismiss, success: (t, m) => add('success', t, m), error: (t, m) => add('error', t, m), warning: (t, m) => add('warning', t, m), info: (t, m) => add('info', t, m) }
-}
+
 
 export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = searchParams.get('tab') || initialTab
-  const { toasts, dismiss, success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo } = useToast()
+  const toast = useToast()
+  const toastSuccess = (title, message) => toast.success(title, message)
+  const toastError = (title, message) => toast.error(title, message)
+  const toastWarning = (title, message) => toast.warning(title, message)
+  const toastInfo = (title, message) => toast.info(title, message)
 
   const handleTabChange = (tabKey) => {
     setSearchParams({ tab: tabKey })
@@ -715,34 +710,7 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
 
   return (
     <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
-      {/* ── TOAST NOTIFICATIONS ──────────────────────────────────────────── */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`pointer-events-auto flex items-start gap-3 rounded-xl p-3.5 shadow-lg border backdrop-blur-md transition-all ${
-              t.type === 'success'
-                ? 'bg-emerald-600/95 text-white border-emerald-400'
-                : t.type === 'error'
-                ? 'bg-rose-600/95 text-white border-rose-400'
-                : t.type === 'warning'
-                ? 'bg-amber-600/95 text-white border-amber-400'
-                : 'bg-sky-600/95 text-white border-sky-400'
-            }`}
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold leading-tight">{t.title}</p>
-              {t.message && <p className="mt-0.5 text-xs opacity-90 leading-snug">{t.message}</p>}
-            </div>
-            <button
-              onClick={() => dismiss(t.id)}
-              className="rounded-lg p-0.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer"
-            >
-              <Xmark2x className="size-4" />
-            </button>
-          </div>
-        ))}
-      </div>
+
 
       {/* BREADCRUMB NAV */}
       <AppBreadcrumb items={[{ label: 'Absensi', href: '/absensi/rekap-kehadiran' }, { label: 'Manajemen Kehadiran Siswa' }]} />
@@ -858,15 +826,17 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
       <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
         {/* Workspace Navigation Tabs Toolbar Header */}
         <div className="relative z-30 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-500/20 px-4 py-3 sm:px-6 md:px-8">
-          <nav className="flex items-center gap-2.5 flex-wrap py-1" aria-label="Tabs">
+          <nav role="tablist" className="flex items-center gap-2.5 flex-wrap py-1" aria-label="Modul Presensi Siswa">
             {/* Tab 1: Rekapitulasi Kehadiran */}
             <div className="group relative inline-flex">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'rekap'}
                 title="Rekapitulasi Kehadiran"
                 aria-label="Rekapitulasi Kehadiran"
                 onClick={() => handleTabChange('rekap')}
-                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 ${
+                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 select-none ${
                   activeTab === 'rekap'
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 dark:bg-blue-500 dark:text-white'
                     : 'bg-blue-100/90 text-blue-600 hover:bg-blue-500 hover:text-white dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-500 dark:hover:text-white hover:shadow-md hover:shadow-blue-500/30'
@@ -884,10 +854,12 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             <div className="group relative inline-flex">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'sesi-pelajaran'}
                 title="Absensi Per Mata Pelajaran & Guru"
                 aria-label="Absensi Per Mata Pelajaran & Guru"
                 onClick={() => handleTabChange('sesi-pelajaran')}
-                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 ${
+                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 select-none ${
                   activeTab === 'sesi-pelajaran'
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30 dark:bg-emerald-500 dark:text-white'
                     : 'bg-emerald-100/90 text-emerald-600 hover:bg-emerald-500 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-500 dark:hover:text-white hover:shadow-md hover:shadow-emerald-500/30'
@@ -905,10 +877,12 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             <div className="group relative inline-flex">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'verifikasi'}
                 title="Verifikasi Izin / Sakit"
                 aria-label="Verifikasi Izin / Sakit"
                 onClick={() => handleTabChange('verifikasi')}
-                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 ${
+                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 select-none ${
                   activeTab === 'verifikasi'
                     ? 'bg-amber-600 text-white shadow-md shadow-amber-500/30 dark:bg-amber-500 dark:text-white'
                     : 'bg-amber-100/90 text-amber-600 hover:bg-amber-500 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white hover:shadow-md hover:shadow-amber-500/30'
@@ -926,10 +900,12 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             <div className="group relative inline-flex">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'koreksi'}
                 title="Koreksi Presensi"
                 aria-label="Koreksi Presensi"
                 onClick={() => handleTabChange('koreksi')}
-                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 ${
+                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40 select-none ${
                   activeTab === 'koreksi'
                     ? 'bg-purple-600 text-white shadow-md shadow-purple-500/30 dark:bg-purple-500 dark:text-white'
                     : 'bg-purple-100/90 text-purple-600 hover:bg-purple-500 hover:text-white dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-500 dark:hover:text-white hover:shadow-md hover:shadow-purple-500/30'
@@ -947,10 +923,12 @@ export default function StudentAttendanceManagementPage({ initialTab = 'rekap' }
             <div className="group relative inline-flex">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'tindak-lanjut'}
                 title="Tindak Lanjut Siswa"
                 aria-label="Tindak Lanjut Siswa"
                 onClick={() => handleTabChange('tindak-lanjut')}
-                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 ${
+                className={`flex size-10 items-center justify-center rounded-2xl cursor-pointer shadow-2xs transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 select-none ${
                   activeTab === 'tindak-lanjut'
                     ? 'bg-rose-600 text-white shadow-md shadow-rose-500/30 dark:bg-rose-500 dark:text-white'
                     : 'bg-rose-100/90 text-rose-600 hover:bg-rose-500 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-500 dark:hover:text-white hover:shadow-md hover:shadow-rose-500/30'

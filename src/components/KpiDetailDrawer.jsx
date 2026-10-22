@@ -26,6 +26,7 @@ import { Drawer } from './ui/drawer'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Skeleton } from './ui/skeleton'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 
 const ENDPOINT_MAP = {
   unit_pendidikan: '/foundation/units',
@@ -53,6 +54,7 @@ export default function KpiDetailDrawer({ type, id, isOpen, onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
   const [data, setData] = useState(null)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
 
   const fetchDetail = useCallback(async () => {
     if (!type || !id) return
@@ -248,12 +250,12 @@ function RenderDetailContent({ type, data }) {
               </div>
               <Field label="Kelurahan / Nagari" value={data.kelurahan || data.unit?.kelurahan} />
               <Field label="Kecamatan" value={data.kecamatan || data.unit?.kecamatan} />
-              <Field label="Kota / Kabupaten" value={data.city || data.unit?.city || 'Padang'} />
-              <Field label="Provinsi" value={data.province || data.unit?.province || 'Sumatera Barat'} />
-              <Field label="Kode Pos" value={data.kode_pos || data.unit?.postal_code} />
-              <Field label="Nomor Telepon" value={data.phone || data.unit?.phone || '0751-123456'} icon={Phone} />
-              <Field label="Email Unit" value={data.email || data.unit?.email || 'info@dareliman.sch.id'} icon={Mail} />
-              <Field label="Website" value={data.website || data.unit?.website || 'https://dareliman.sch.id'} />
+              <Field label="Kota / Kabupaten" value={data.city || data.unit?.city || pengaturan?.city || '-'} />
+              <Field label="Provinsi" value={data.province || data.unit?.province || pengaturan?.province || '-'} />
+              <Field label="Kode Pos" value={data.kode_pos || data.unit?.postal_code || '-'} />
+              <Field label="Nomor Telepon" value={data.phone || data.unit?.phone || pengaturan?.phone || '-'} icon={Phone} />
+              <Field label="Email Unit" value={data.email || data.unit?.email || pengaturan?.email || '-'} icon={Mail} />
+              <Field label="Website" value={data.website || data.unit?.website || pengaturan?.website || '-'} />
             </div>
           </div>
 

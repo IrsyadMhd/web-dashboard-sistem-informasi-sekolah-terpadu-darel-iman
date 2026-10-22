@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Sparkles, Building2, GraduationCap, Scale, ChevronRight, X, Users, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { Card } from '@/components/tailgrids/core/card'
+import { Card } from '../ui/card'
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter } from '@/components/tailgrids/core/dialog'
 
 export function ReportInsightCard({ insights, unitRecaps = [], summary = null, details = [] }) {
@@ -354,7 +354,7 @@ export function ReportInsightCard({ insights, unitRecaps = [], summary = null, d
               </div>
             ) : (
               <div className="p-4 text-xs font-semibold text-slate-500">
-                Informasi rincian unit terbanyak: {insightItems.find((i) => i.key.includes('unit'))?.description || 'SDIT 1 Dar el-Iman - 50 Kota'}
+                Informasi rincian unit terbanyak: {insightItems.find((i) => i.key.includes('unit'))?.description || '-'}
               </div>
             )}
           </DialogBody>
@@ -523,7 +523,7 @@ export function ReportInsightCard({ insights, unitRecaps = [], summary = null, d
               </div>
             ) : (
               <div className="p-4 text-xs font-semibold text-slate-500">
-                Informasi rincian guru terbanyak: {insightItems.find((i) => i.key.includes('guru'))?.description || 'SDIT 1 Dar el-Iman - 50 Kota'}
+                Informasi rincian guru terbanyak: {insightItems.find((i) => i.key.includes('guru'))?.description || '-'}
               </div>
             )}
           </DialogBody>

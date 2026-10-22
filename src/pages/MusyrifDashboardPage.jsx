@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   BookOpen,
@@ -87,13 +87,22 @@ import { Backdrop } from '@/components/tailgrids/core/overlay'
 import { Badge } from '@/components/tailgrids/core/badge'
 import { Avatar, AvatarFallback } from '@/components/tailgrids/core/avatar'
 
-export default function MusyrifDashboardPage() {
+export default function MusyrifDashboardPage({ defaultTab }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
   const [activeModal, setActiveModal] = useState(null)
-  const [activeTab, setActiveTab] = useState('aktivitas') // aktivitas, tasmi, poin, klinik, titipan
+  const [activeTab, setActiveTab] = useState(() => defaultTab || (location?.pathname?.includes('asrama/izin') ? 'perizinan' : 'aktivitas'))
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab)
+    } else if (location?.pathname?.includes('asrama/izin')) {
+      setActiveTab('perizinan')
+    }
+  }, [defaultTab, location?.pathname])
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [customTables, setCustomTables] = useState({ aktivitas: null, tasmi: null, poin: null, klinik: null, titipan: null })
   const fileInputRef = React.useRef(null)
@@ -761,7 +770,7 @@ export default function MusyrifDashboardPage() {
       } else if (modalType === 'klinik') {
         await api.post('/musyrif/clinic-logs', {
           student_id: studentId,
-          symptoms: klinikForm.symptoms || 'Keluhan Sakit Harian',
+          symptoms: klinikForm.symptoms || '-',
           medicine_given: klinikForm.medicine,
           status: klinikForm.status,
         }).catch(() => null)
@@ -769,7 +778,7 @@ export default function MusyrifDashboardPage() {
         await api.post('/musyrif/deposits', {
           student_id: studentId,
           item_type: titipanForm.item_type,
-          item_name: titipanForm.item_name || 'HP / Laptop',
+          item_name: titipanForm.item_name || '-',
           serial_number: titipanForm.serial_number,
           deposited_at: new Date().toISOString(),
         }).catch(() => null)
@@ -858,12 +867,12 @@ export default function MusyrifDashboardPage() {
     {
       key: 'room',
       label: 'Kamar Asrama',
-      render: (row) => <AppBadge variant="info">{row.room || row.kamar || 'Asrama'}</AppBadge>,
+      render: (row) => <AppBadge variant="info">{row.room || row.kamar || '-'}</AppBadge>,
     },
     {
       key: 'worship',
       label: 'Kedisiplinan Shalat',
-      render: (row) => <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{row.worship || 'Hadir Berjamaah'}</span>,
+      render: (row) => <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">{row.worship || '-'}</span>,
     },
     {
       key: 'tahfizh',
@@ -875,7 +884,7 @@ export default function MusyrifDashboardPage() {
       label: 'Status',
       render: (row) => (
         <AppBadge variant={row.status === 'Baik' || row.status === 'Hadir' ? 'success' : 'warning'} dot>
-          {row.status || 'Aktif'}
+          {row.status || '-'}
         </AppBadge>
       ),
     },
@@ -890,19 +899,19 @@ export default function MusyrifDashboardPage() {
     {
       key: 'kegiatan',
       label: 'Kegiatan / Mutaba\'ah',
-      render: (row) => <span className="font-medium text-slate-700 dark:text-slate-300 text-xs">{row.kegiatan || 'Shalat 5 Waktu & Dhuha'}</span>,
+      render: (row) => <span className="font-medium text-slate-700 dark:text-slate-300 text-xs">{row.kegiatan || '-'}</span>,
     },
     {
       key: 'waktu',
       label: 'Waktu / Tanggal',
-      render: (row) => <span className="text-slate-500 text-[11px] font-semibold">{row.waktu || row.created_at || 'Hari Ini'}</span>,
+      render: (row) => <span className="text-slate-500 text-[11px] font-semibold">{row.waktu || row.created_at || '-'}</span>,
     },
     {
       key: 'status',
       label: 'Status Check-in',
       render: (row) => (
         <AppBadge variant={row.status === 'Hadir' || row.status === 'Lengkap' ? 'success' : 'info'} dot>
-          {row.status || 'Terverifikasi'}
+          {row.status || '-'}
         </AppBadge>
       ),
     },
@@ -1369,58 +1378,84 @@ export default function MusyrifDashboardPage() {
               {/* TAB 6: PERIZINAN & ABSENSI KEMBALI (BOARDING PASS) */}
               {activeTab === 'perizinan' && (
                 <section className="space-y-5">
-                  {/* Master Stats Grid */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <div className="rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-indigo-50/50 to-white p-4 shadow-sm dark:border-indigo-900/40 dark:bg-slate-900">
+                  {/* Master Stats Grid - 6 Key Boarding KPIs */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="rounded-2xl border border-emerald-100/80 bg-gradient-to-br from-emerald-50/50 to-white p-3.5 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Total Izin Boarding</span>
-                        <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-                          <CalendarCheck className="w-4 h-4" />
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Di Pondok</span>
+                        <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
                         </div>
                       </div>
-                      <div className="mt-2 text-2xl font-black text-slate-800 dark:text-white">
-                        {dormitoryPermitsStatistik?.total_permits ?? dormitoryPermits.length}
+                      <div className="mt-1.5 text-xl font-black text-emerald-700 dark:text-emerald-400">
+                        {dormitoryPermitsStatistik?.in_dormitory ?? 0}
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-1">Surat izin kepulangan/pesiar santri</p>
+                      <p className="text-[9px] text-slate-500 mt-0.5">Berada di lingkungan asrama</p>
                     </div>
 
-                    <div className="rounded-2xl border border-amber-100/80 bg-gradient-to-br from-amber-50/50 to-white p-4 shadow-sm dark:border-amber-900/40 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-amber-100/80 bg-gradient-to-br from-amber-50/50 to-white p-3.5 shadow-sm dark:border-amber-900/40 dark:bg-slate-900">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Sedang di Luar</span>
-                        <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
-                          <Clock className="w-4 h-4" />
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Sedang di Luar</span>
+                        <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                          <Clock className="w-3.5 h-3.5" />
                         </div>
                       </div>
-                      <div className="mt-2 text-2xl font-black text-amber-600 dark:text-amber-400">
+                      <div className="mt-1.5 text-xl font-black text-amber-600 dark:text-amber-400">
                         {dormitoryPermitsStatistik?.currently_out ?? 0}
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-1">Belum melakukan absensi kembali</p>
+                      <p className="text-[9px] text-slate-500 mt-0.5">Izin aktif / belum kembali</p>
                     </div>
 
-                    <div className="rounded-2xl border border-emerald-100/80 bg-gradient-to-br from-emerald-50/50 to-white p-4 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-rose-100/80 bg-gradient-to-br from-rose-50/50 to-white p-3.5 shadow-sm dark:border-rose-900/40 dark:bg-slate-900">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Tepat Waktu</span>
-                        <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                          <CheckCircle2 className="w-4 h-4" />
+                        <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">Izin Sakit / Rujuk</span>
+                        <div className="p-1.5 rounded-lg bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
+                          <CalendarCheck className="w-3.5 h-3.5" />
                         </div>
                       </div>
-                      <div className="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                        {dormitoryPermitsStatistik?.returned_ontime ?? 0}
+                      <div className="mt-1.5 text-xl font-black text-rose-600 dark:text-rose-400">
+                        {dormitoryPermitsStatistik?.medical_permits ?? 0}
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-1">Kembali sesuai batas jam pesantren</p>
+                      <p className="text-[9px] text-slate-500 mt-0.5">Klinik / RS / Rawat jalan</p>
                     </div>
 
-                    <div className="rounded-2xl border border-rose-100/80 bg-gradient-to-br from-rose-50/50 to-white p-4 shadow-sm dark:border-rose-900/40 dark:bg-slate-900">
+                    <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-white p-3.5 shadow-sm dark:border-red-900/50 dark:bg-slate-900">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider">Terlambat Masuk</span>
-                        <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
-                          <ShieldAlert className="w-4 h-4" />
+                        <span className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">Terlambat Kembali</span>
+                        <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400">
+                          <ShieldAlert className="w-3.5 h-3.5" />
                         </div>
                       </div>
-                      <div className="mt-2 text-2xl font-black text-rose-600 dark:text-rose-400">
+                      <div className="mt-1.5 text-xl font-black text-red-600 dark:text-red-400">
                         {dormitoryPermitsStatistik?.returned_late ?? 0}
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-1">Perlu pembinaan/konsekuensi musyrif</p>
+                      <p className="text-[9px] text-slate-500 mt-0.5">Perlu tindak lanjut / sanksi</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-blue-100/80 bg-gradient-to-br from-blue-50/50 to-white p-3.5 shadow-sm dark:border-blue-900/40 dark:bg-slate-900">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Perlu Approval</span>
+                        <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+                          <Clock className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                      <div className="mt-1.5 text-xl font-black text-blue-600 dark:text-blue-400">
+                        {dormitoryPermitsStatistik?.pending_approval ?? 0}
+                      </div>
+                      <p className="text-[9px] text-slate-500 mt-0.5">Izin baru & perpanjangan</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-indigo-50/50 to-white p-3.5 shadow-sm dark:border-indigo-900/40 dark:bg-slate-900">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Total Riwayat</span>
+                        <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                          <CalendarCheck className="w-3.5 h-3.5" />
+                        </div>
+                      </div>
+                      <div className="mt-1.5 text-xl font-black text-slate-800 dark:text-white">
+                        {dormitoryPermitsStatistik?.total_permits ?? dormitoryPermits.length}
+                      </div>
+                      <p className="text-[9px] text-slate-500 mt-0.5">Semua data perizinan</p>
                     </div>
                   </div>
 
@@ -1444,6 +1479,13 @@ export default function MusyrifDashboardPage() {
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${loadingPermits ? 'animate-spin' : ''}`} /> Refresh
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setQuickActionModal('perizinan_darurat')}
+                          className="px-3 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-extrabold text-xs shadow-md shadow-rose-600/20 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                        >
+                          <ShieldAlert className="w-3.5 h-3.5" /> 🚨 Fast-Track Darurat
+                        </button>
                         <MasterActionButton variant="emerald" icon={Plus} onClick={() => setQuickActionModal('perizinan_baru')}>
                           Terbitkan Surat Izin Santri
                         </MasterActionButton>
@@ -1456,8 +1498,10 @@ export default function MusyrifDashboardPage() {
                         {[
                           { id: 'all', label: 'Semua Status' },
                           { id: 'active', label: 'Sedang di Luar' },
-                          { id: 'returned', label: 'Kembali Tepat Waktu' },
-                          { id: 'late', label: 'Terlambat' },
+                          { id: 'medical', label: 'Izin Sakit / Rujuk' },
+                          { id: 'late', label: 'Terlambat / Tindak Lanjut' },
+                          { id: 'approval', label: 'Perlu Approval' },
+                          { id: 'returned', label: 'Kembali di Pondok' },
                         ].map((btn) => (
                           <button
                             key={btn.id}
@@ -1523,12 +1567,28 @@ export default function MusyrifDashboardPage() {
                               return (
                                 <tr key={p.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
                                   <td className="p-3">
-                                    <div className="font-extrabold text-slate-900 dark:text-white font-mono text-[11px]">
+                                    <div className="font-extrabold text-slate-900 dark:text-white font-mono text-[11px] flex items-center gap-1.5">
                                       {p.permit_number}
+                                      {p.is_emergency && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-600 text-white animate-pulse">
+                                          🚨 DARURAT
+                                        </span>
+                                      )}
                                     </div>
-                                    <div className="text-[10px] text-slate-500 capitalize mt-0.5">
-                                      {p.permit_type?.replace('_', ' ')}
+                                    <div className="text-[10px] text-slate-500 capitalize mt-0.5 flex items-center gap-1">
+                                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                        p.permit_type === 'sakit_berobat' || p.presence_status === 'berobat'
+                                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                          : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                                      }`}>
+                                        {p.permit_type?.replace(/_/g, ' ')}
+                                      </span>
                                     </div>
+                                    {p.medical_complaint && (
+                                      <div className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold truncate max-w-[180px] mt-0.5">
+                                        🩺 {p.medical_complaint}
+                                      </div>
+                                    )}
                                   </td>
 
                                   <td className="p-3">
@@ -1536,7 +1596,20 @@ export default function MusyrifDashboardPage() {
                                       {p.student?.full_name || p.student?.name || 'Santri Asrama'}
                                     </div>
                                     <div className="text-[10px] text-slate-500">
-                                      NISN: {p.student?.nisn || '-'} | Kamar: {p.student?.kamar || p.dormitory_room || 'Asrama Pondok'}
+                                      NIS: {p.student?.nis || '-'} | Kamar: {p.student?.kamar || p.dormitory_room || 'Asrama Pondok'}
+                                    </div>
+                                    <div className="mt-1">
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                        p.presence_status === 'berobat'
+                                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                          : p.presence_status === 'di_luar'
+                                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                                          : p.presence_status === 'pulang'
+                                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                      }`}>
+                                        ● {p.presence_status === 'berobat' ? 'Sedang Berobat' : p.presence_status === 'di_luar' ? 'Sedang di Luar' : p.presence_status === 'pulang' ? 'Pulang ke Rumah' : 'Di Pondok'}
+                                      </span>
                                     </div>
                                   </td>
 
@@ -1544,11 +1617,12 @@ export default function MusyrifDashboardPage() {
                                     <div className="text-slate-800 dark:text-slate-200">
                                       Berangkat: {p.scheduled_departure_at ? new Date(p.scheduled_departure_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
                                     </div>
-                                    <div className="text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
-                                      Batas Kembali: {p.scheduled_return_at ? new Date(p.scheduled_return_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                                    <div className={`font-bold mt-0.5 ${p.deadline_status === 'overdue' ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                                      Batas: {p.scheduled_return_at ? new Date(p.scheduled_return_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                                      {p.extension_count > 0 && <span className="ml-1 text-[9px] text-indigo-500 font-normal">({p.extension_count}x perpanjangan)</span>}
                                     </div>
                                     <div className="text-[10px] text-slate-500 truncate max-w-xs mt-0.5">
-                                      Tujuan: {p.destination || '-'}
+                                      Tujuan: {p.medical_destination || p.destination || '-'}
                                     </div>
                                   </td>
 
@@ -1574,9 +1648,16 @@ export default function MusyrifDashboardPage() {
                                         )}
                                       </div>
                                     ) : (
-                                      <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
-                                        <Clock className="w-3.5 h-3.5" /> Sedang Berada di Luar
-                                      </span>
+                                      <div>
+                                        <span className={`font-bold flex items-center gap-1 ${p.deadline_status === 'overdue' ? 'text-rose-600' : 'text-amber-600 dark:text-amber-400'}`}>
+                                          <Clock className="w-3.5 h-3.5" /> {p.presence_status === 'berobat' ? 'Sedang Berobat' : 'Sedang di Luar'}
+                                        </span>
+                                        {p.deadline_status === 'overdue' && (
+                                          <span className="inline-block mt-0.5 px-2 py-0.5 text-[9px] font-black rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                                            ⚠️ Melewati Batas Jam!
+                                          </span>
+                                        )}
+                                      </div>
                                     )}
                                   </td>
 

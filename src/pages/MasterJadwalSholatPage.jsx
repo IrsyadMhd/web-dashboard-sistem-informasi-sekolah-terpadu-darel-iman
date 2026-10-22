@@ -1,3 +1,4 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -34,6 +35,8 @@ import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useDebounce } from '../hooks/useDebounce'
 import { Pagination } from '../components/tailgrids/core/pagination'
+import { printCleanTable, resolveFoundationName } from '../utils/printHelper'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 import {
   SquircleActionButton,
   MasterDataPage,
@@ -236,6 +239,8 @@ function HarmonizedSaveConfirmModal({ isOpen, onClose, onConfirm, payload, isSub
 }
 
 export default function MasterJadwalSholatPage() {
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   // State for Interactive Testing Form
   const [activeEndpoint, setActiveEndpoint] = useState('POST_SHALAT') // GET_PROVINSI | POST_KABKOTA | POST_SHALAT
   const [provinsiList, setProvinsiList] = useState([])
@@ -252,13 +257,10 @@ export default function MasterJadwalSholatPage() {
   const [isConfirmSaveOpen, setIsConfirmSaveOpen] = useState(false)
 
   // Toast notifications state
-  const [toasts, setToasts] = useState([])
+  const toast = useToast()
   const pushToast = (type, title, message = '') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, type, title, message }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    const tone = type === 'error' || type === 'danger' ? 'error' : type === 'warning' ? 'warning' : 'success'
+    toast(message ? `${title}: ${message}` : title, tone)
   }
 
   // Delete modal state
@@ -439,7 +441,27 @@ export default function MasterJadwalSholatPage() {
   }
 
   const handlePrint = () => {
-    window.print()
+    if (!masterList || masterList.length === 0) return
+    const rows = masterList.map((m, idx) => [
+      idx + 1,
+      m.tanggal_lengkap || m.tanggal || '-',
+      m.hari || '-',
+      m.imsak || '-',
+      m.subuh || '-',
+      m.terbit || '-',
+      m.dhuha || '-',
+      m.dzuhur || '-',
+      m.ashar || '-',
+      m.maghrib || '-',
+      m.isya || '-',
+    ])
+    printCleanTable({
+      title: 'JADWAL WAKTU SHOLAT & IMSAKIYAH RESMI',
+      subtitle: `Wilayah: ${filterKabkota ? filterKabkota + ', ' : ''}${filterProvinsi || (pengaturan?.province || '-')}${foundationName ? ` (${foundationName})` : ''}`,
+      headers: ['No', 'Tanggal', 'Hari', 'Imsak', 'Subuh', 'Terbit', 'Dhuha', 'Dzuhur', 'Ashar', 'Maghrib', 'Isya'],
+      rows,
+      orientation: 'landscape',
+    })
   }
 
   const exportToCsv = () => {
@@ -524,7 +546,7 @@ export default function MasterJadwalSholatPage() {
         </div>
       </div>
 
-      <MasterDataPage className="education-unit-page sholat-master-page space-y-6" hideBreadcrumb>
+      <MasterDataPage className="sholat-master-page space-y-6" hideBreadcrumb>
         {/* Modern KPI Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <ModernKpiCard
@@ -825,9 +847,9 @@ export default function MasterJadwalSholatPage() {
         </div>
 
         {/* Master Data Datatable Container */}
-        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
           {/* Toolbar Baris 1 */}
-          <div className="p-5 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
+          <div className="p-5 border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent flex flex-col md:flex-row md:items-center justify-between gap-4 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
                 <Database className="w-5 h-5 text-white" />
@@ -1068,58 +1090,7 @@ export default function MasterJadwalSholatPage() {
           isSubmitting={savingDb}
         />
 
-        {/* Toast Notification Stack */}
-        <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full">
-          <AnimatePresence>
-            {toasts.map((toast) => (
-              <motion.div
-                key={toast.id}
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-                  toast.type === 'error'
-                    ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                    : toast.type === 'warning'
-                    ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
-                    : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-                }`}
-              >
-                <div
-                  className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                    toast.type === 'error'
-                      ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                      : toast.type === 'warning'
-                      ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                      : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                  }`}
-                >
-                  {toast.type === 'error' ? (
-                    <AlertTriangle className="size-4.5" />
-                  ) : toast.type === 'warning' ? (
-                    <AlertTriangle className="size-4.5" />
-                  ) : (
-                    <Check className="size-4.5" />
-                  )}
-                </div>
-                <div className="flex-1 pt-0.5">
-                  <p className="text-xs font-bold leading-tight">{toast.title}</p>
-                  {toast.message && (
-                    <p className="mt-0.5 text-[11px] opacity-80 leading-normal">{toast.message}</p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+
       </MasterDataPage>
     </PageContainer>
   )

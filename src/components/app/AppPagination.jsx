@@ -1,5 +1,5 @@
 import React from 'react'
-import { Pagination } from '../tailgrids/core/pagination'
+import { Pagination } from '../ui/pagination'
 
 /**
  * AppPagination - canonical pagination.

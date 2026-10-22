@@ -1,16 +1,20 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import {
-  Alert as TailGridsAlert,
-  AlertIndicator,
-  AlertContent,
-  AlertTitle as TailGridsAlertTitle,
-  AlertDescription as TailGridsAlertDescription,
-  AlertCloseButton,
-} from '../tailgrids/core/alert'
+  Alert as HeroAlert,
+} from '@heroui/react'
+import {
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  Info,
+  X,
+} from 'lucide-react'
+import { cn } from '../../lib/utils'
 
-const mapStatus = (variant) => {
-  switch (variant) {
+const mapHeroStatus = (status, variant) => {
+  const key = status || variant
+  switch (key) {
     case 'primary':
     case 'success':
       return 'success'
@@ -19,12 +23,27 @@ const mapStatus = (variant) => {
     case 'error':
     case 'danger':
     case 'destructive':
-      return 'error'
+      return 'danger'
     case 'info':
-      return 'info'
+      return 'accent'
     case 'default':
     default:
       return 'default'
+  }
+}
+
+const getDefaultIcon = (status) => {
+  switch (status) {
+    case 'success':
+      return <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+    case 'warning':
+      return <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+    case 'danger':
+      return <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0" />
+    case 'accent':
+      return <Info className="h-5 w-5 text-sky-600 dark:text-sky-400 shrink-0" />
+    default:
+      return <Info className="h-5 w-5 text-slate-500 dark:text-slate-400 shrink-0" />
   }
 }
 
@@ -38,48 +57,77 @@ export function Alert({
   icon: CustomIcon,
   ...props
 }) {
-  const resolvedStatus = status || mapStatus(variant)
+  const resolvedStatus = mapHeroStatus(status, variant)
 
   return (
-    <TailGridsAlert
+    <HeroAlert
       status={resolvedStatus}
-      className={className}
+      className={cn(
+        'relative flex w-full items-start gap-3 rounded-2xl p-4 text-sm transition-all duration-150',
+        resolvedStatus === 'success' && 'border border-emerald-200/80 bg-emerald-50/70 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-200',
+        resolvedStatus === 'warning' && 'border border-amber-200/80 bg-amber-50/70 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200',
+        resolvedStatus === 'danger' && 'border border-rose-200/80 bg-rose-50/70 text-rose-950 dark:border-rose-800/60 dark:bg-rose-950/30 dark:text-rose-200',
+        resolvedStatus === 'accent' && 'border border-sky-200/80 bg-sky-50/70 text-sky-950 dark:border-sky-800/60 dark:bg-sky-950/30 dark:text-sky-200',
+        resolvedStatus === 'default' && 'border border-slate-200/80 bg-slate-50/70 text-slate-900 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-100',
+        className
+      )}
       {...props}
     >
-      {showIcon && <AlertIndicator icon={CustomIcon ? <CustomIcon className="h-5 w-5" /> : undefined} />}
-      <AlertContent>
+      {showIcon && (
+        <HeroAlert.Indicator className="shrink-0 mt-0.5">
+          {CustomIcon ? (
+            React.isValidElement(CustomIcon) ? CustomIcon : <CustomIcon className="h-5 w-5 shrink-0" />
+          ) : (
+            getDefaultIcon(resolvedStatus)
+          )}
+        </HeroAlert.Indicator>
+      )}
+      <HeroAlert.Content className="flex-1 min-w-0 text-sm leading-relaxed">
         {children}
-      </AlertContent>
-      {onClose && <AlertCloseButton onClick={onClose} />}
-    </TailGridsAlert>
+      </HeroAlert.Content>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Tutup notifikasi"
+          className="ml-auto -mr-1 -mt-1 inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </HeroAlert>
   )
 }
 
 Alert.propTypes = {
   variant: PropTypes.oneOf(['default', 'primary', 'info', 'success', 'warning', 'error', 'danger', 'destructive']),
-  status: PropTypes.oneOf(['default', 'success', 'warning', 'error', 'info']),
+  status: PropTypes.oneOf(['default', 'success', 'warning', 'error', 'info', 'danger', 'accent']),
   children: PropTypes.node,
   className: PropTypes.string,
   onClose: PropTypes.func,
   showIcon: PropTypes.bool,
-  icon: PropTypes.elementType,
+  icon: PropTypes.oneOfType([PropTypes.element, PropTypes.elementType]),
 }
 
 export function AlertTitle({ className, children, ...props }) {
   return (
-    <TailGridsAlertTitle className={className} {...props}>
+    <HeroAlert.Title className={cn('text-sm font-bold leading-tight mb-1', className)} {...props}>
       {children}
-    </TailGridsAlertTitle>
+    </HeroAlert.Title>
   )
 }
 
+AlertTitle.propTypes = { className: PropTypes.string, children: PropTypes.node }
+
 export function AlertDescription({ className, children, ...props }) {
   return (
-    <TailGridsAlertDescription className={className} {...props}>
+    <HeroAlert.Description className={cn('text-xs text-slate-600 dark:text-slate-300 leading-normal', className)} {...props}>
       {children}
-    </TailGridsAlertDescription>
+    </HeroAlert.Description>
   )
 }
+
+AlertDescription.propTypes = { className: PropTypes.string, children: PropTypes.node }
 
 export function CRUDNotificationAlerts({ className = 'space-y-3' }) {
   return (
@@ -90,7 +138,7 @@ export function CRUDNotificationAlerts({ className = 'space-y-3' }) {
       <Alert status="success">
         <span>Perubahan Sukses! Data berhasil diperbarui dan tersimpan dengan benar di sistem.</span>
       </Alert>
-      <Alert status="info">
+      <Alert status="accent">
         <span>Penghapusan Sukses! Data telah berhasil dihapus dari sistem.</span>
       </Alert>
       <Alert status="success">
@@ -99,7 +147,7 @@ export function CRUDNotificationAlerts({ className = 'space-y-3' }) {
       <Alert status="warning">
         <span>Penghapusan Gagal! Data tidak dapat dihapus karena masih terhubung dengan catatan lain.</span>
       </Alert>
-      <Alert status="error">
+      <Alert status="danger">
         <span>Penyimpanan / Perubahan Gagal! Terjadi kesalahan saat memproses data. Silakan coba lagi.</span>
       </Alert>
     </div>

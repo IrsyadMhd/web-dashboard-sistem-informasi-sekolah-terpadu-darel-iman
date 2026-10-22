@@ -47,7 +47,7 @@ export default function KurikulumTable({
           <th className="py-3.5 px-4 text-center w-24 font-extrabold text-[11px] uppercase tracking-wider bg-transparent">AKSI</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs font-medium">
+      <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-xs font-medium">
             {data.map((item, idx) => {
               const rowNumber = (page - 1) * perPage + idx + 1
               const isTerhapus = !!item.deleted_at
@@ -55,9 +55,11 @@ export default function KurikulumTable({
               return (
                 <tr
                   key={item.id}
+                  onClick={onDetail ? () => onDetail(item) : undefined}
+                  title={onDetail ? 'Klik baris untuk melihat detail kurikulum' : undefined}
                   className={`hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 transition-colors ${
-                    isTerhapus ? 'bg-rose-50/30 dark:bg-rose-950/20 opacity-75' : ''
-                  }`}
+                    onDetail ? 'cursor-pointer' : ''
+                  } ${isTerhapus ? 'bg-rose-50/30 dark:bg-rose-950/20 opacity-75' : ''}`}
                 >
                   {/* No */}
                   <td className="py-3.5 px-4 text-center text-slate-500 dark:text-slate-400 font-bold">
@@ -121,7 +123,7 @@ export default function KurikulumTable({
                   </td>
 
                   {/* Action Buttons */}
-                  <td className="py-3.5 px-4 text-center">
+                  <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                     <div className="inline-flex items-center justify-center">
                       <ActionDropdown
                         onView={onDetail ? () => onDetail(item) : undefined}

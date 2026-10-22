@@ -1,3 +1,4 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import { useDebounce } from '../hooks/useDebounce'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -100,6 +101,7 @@ import {
 import { employeeService } from '../services/employeeService'
 import { educationUnitService } from '../services/educationUnitService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
+import { businessOptionService } from '../services/businessOptionService'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -118,25 +120,41 @@ function getEmployeePhotoUrl(emp) {
   return resolveAvatarUrl(emp) || ''
 }
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
-import { ROLES, hasAnyRole, isGlobalAccessManager, isUnitAccessManager, isKepsekOrDivisi } from '../auth/portalResolver'
+import { ROLES, hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
 import AppPageHeader from '../components/app/AppPageHeader'
-import { Download1, Upload1, Plus as PlusIcon } from '@tailgrids/icons'
 import { ChevronDown } from 'lucide-react'
-import { Button } from '@/components/tailgrids/core/button'
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Spinner } from '@/components/tailgrids/core/spinner'
+import { Button } from '../components/ui/button'
+import { Badge } from '../components/ui/badge'
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/tailgrids/core/hover-card'
+import EmployeeFormModal, {
+  DEFAULT_EMPLOYEE_STATUS_OPTIONS,
+  DEFAULT_MARITAL_OPTIONS,
+  DEFAULT_EDUCATION_OPTIONS,
+  DEFAULT_RELIGION_OPTIONS,
+} from '../components/pegawai/EmployeeFormModal'
 
-const STATUS_PEGAWAI_OPTIONS = ['Tetap', 'Kontrak', 'Honorer', 'Magang']
+const normalizeEmployeeStatus = (status) => {
+  if (!status) return 'Tetap'
+  const s = String(status).trim()
+  if (s === 'Pegawai Tetap Yayasan' || s === 'Pegawai Tetap') return 'Tetap'
+  if (s === 'Pegawai Kontrak') return 'Kontrak'
+  if (s === 'Nonaktif' || s === 'Non Aktif') return 'Non-Aktif'
+  return s
+}
+
+const STATUS_PEGAWAI_OPTIONS = DEFAULT_EMPLOYEE_STATUS_OPTIONS
+const MARITAL_STATUS_OPTIONS = DEFAULT_MARITAL_OPTIONS
+const LAST_EDUCATION_OPTIONS = DEFAULT_EDUCATION_OPTIONS
+const RELIGION_OPTIONS = DEFAULT_RELIGION_OPTIONS
 const STATUS_OPTIONS = ['Aktif', 'Nonaktif', 'Cuti', 'Resign']
 const ID_CARD_TEMPLATES = [
   { id: 'green', label: 'Hijau', description: 'Template Kepala Sekolah' },
@@ -188,15 +206,17 @@ function initialFormState() {
     jenis_kelamin: 'L',
     tempat_lahir: '',
     tanggal_lahir: '',
-    agama: '',
+    agama: 'Islam',
+    status_perkawinan: '',
+    pendidikan_terakhir: '',
     foto: '',
 
     unit_id: '',
     jabatan_id: '',
-    status_pegawai: '',
+    status_pegawai: 'Tetap',
     tanggal_masuk: '',
     tanggal_keluar: '',
-    status: '',
+    status: 'Aktif',
 
     no_hp: '',
     email: '',
@@ -210,6 +230,8 @@ function initialFormState() {
     user_id: '',
     role_id: '',
     metadata: {
+      status_perkawinan: '',
+      pendidikan_terakhir: '',
       teachings: [],
       position_history: [],
       certifications: [],
@@ -233,7 +255,9 @@ function parseFromApi(item) {
     jenis_kelamin: item?.jenis_kelamin || 'L',
     tempat_lahir: item?.tempat_lahir || '',
     tanggal_lahir: item?.tanggal_lahir ? item.tanggal_lahir.split('T')[0] : '',
-    agama: item?.agama || '',
+    agama: item?.agama || meta.agama || 'Islam',
+    status_perkawinan: item?.status_perkawinan || meta.status_perkawinan || meta.marital_status || '',
+    pendidikan_terakhir: item?.pendidikan_terakhir || meta.pendidikan_terakhir || meta.last_education || '',
     foto: resolvedPhoto,
     photo_url: resolvedPhoto,
     avatar_url: resolvedPhoto,
@@ -297,7 +321,7 @@ function parseFromApi(item) {
         ...t,
         mapel: t.mapel || t.subject?.name || t.subject?.nama_mapel || t.metadata?.mapel || '',
         kelas: t.kelas || t.classroom?.name || t.classroom?.nama_kelas || t.metadata?.kelas || '',
-        tahun: t.tahun || t.metadata?.tahun || '2025/2026',
+        tahun: t.tahun || t.metadata?.tahun || '2026/2027',
         semester: t.semester || t.metadata?.semester || 'Ganjil',
       }))
     })(),
@@ -316,34 +340,40 @@ function makePayload(form, assignmentOnly = false) {
     }
   }
 
+  const existingMeta = form.metadata || {}
   return {
-    niy: form.niy,
-    nik: form.nik,
-    nama_lengkap: form.nama_lengkap,
-    nama_panggilan: form.nama_panggilan,
-    gelar_depan: form.gelar_depan,
-    gelar_belakang: form.gelar_belakang,
-    jenis_kelamin: form.jenis_kelamin,
-    tempat_lahir: form.tempat_lahir,
+    niy: form.niy ? form.niy.trim() : null,
+    nik: form.nik ? form.nik.trim() : null,
+    nama_lengkap: form.nama_lengkap ? form.nama_lengkap.trim() : '',
+    nama_panggilan: form.nama_panggilan || null,
+    gelar_depan: form.gelar_depan || null,
+    gelar_belakang: form.gelar_belakang || null,
+    jenis_kelamin: form.jenis_kelamin || 'L',
+    tempat_lahir: form.tempat_lahir || null,
     tanggal_lahir: form.tanggal_lahir || null,
-    agama: form.agama,
-    foto: form.foto,
+    agama: form.agama || 'Islam',
+    status_perkawinan: form.status_perkawinan || null,
+    pendidikan_terakhir: form.pendidikan_terakhir || null,
+    foto: form.foto || null,
     unit_id: form.unit_id || null,
     jabatan_id: form.jabatan_id || null,
-    status_pegawai: form.status_pegawai,
+    status_pegawai: normalizeEmployeeStatus(form.status_pegawai),
     tanggal_masuk: form.tanggal_masuk || null,
     tanggal_keluar: form.tanggal_keluar || null,
-    status: form.status,
-    no_hp: form.no_hp,
-    email: form.email,
-    alamat: form.alamat,
-    provinsi: form.provinsi,
-    kota: form.kota,
-    kecamatan: form.kecamatan,
-    kelurahan: form.kelurahan,
-    kode_pos: form.kode_pos,
+    status: form.status || 'Aktif',
+    no_hp: form.no_hp || null,
+    email: form.email || null,
+    alamat: form.alamat || null,
+    provinsi: form.provinsi || null,
+    kota: form.kota || null,
+    kecamatan: form.kecamatan || null,
+    kelurahan: form.kelurahan || null,
+    kode_pos: form.kode_pos || null,
     teachings: form.teachings || [],
     metadata: {
+      ...existingMeta,
+      status_perkawinan: form.status_perkawinan || existingMeta.status_perkawinan || '',
+      pendidikan_terakhir: form.pendidikan_terakhir || existingMeta.pendidikan_terakhir || '',
       teachings: form.teachings || [],
       position_history: form.position_history || [],
       certifications: form.certifications || [],
@@ -462,9 +492,9 @@ export default function EmployeesPage() {
   const queryClient = useQueryClient()
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const user = useAuthStore((state) => state.user)
-  const userRoles = user?.roles || (user?.role ? [user.role] : [])
-  const isGlobalPersonnelManager = isGlobalAccessManager(userRoles)
-  const isUnitPersonnelManager = isUnitAccessManager(userRoles) && !isGlobalPersonnelManager
+  const userLevel = getUserRoleLevel(user)
+  const isGlobalPersonnelManager = userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
+  const isUnitPersonnelManager = (userLevel === ROLE_LEVELS.OPERATOR || userLevel === ROLE_LEVELS.KEPALA_SEKOLAH) // Level 3-4: Operator & Kepala Sekolah
   // Kepala Sekolah & Divisi Pendidikan: monitoring + input per unit
   const canUpdateEmployee = true
   const canCreateEmployee = isGlobalPersonnelManager
@@ -478,14 +508,7 @@ export default function EmployeesPage() {
     return position.includes('pengurus yayasan') || position.includes('ketua yayasan') || unit.includes('pengurus yayasan')
   }
 
-  const isGlobalUser = hasAnyRole(userRoles, [
-    'Super Admin', 'Superadmin', 'super_admin', 'super-admin',
-    'Admin', 'admin',
-    'Yayasan', 'Ketua Yayasan', 'ketua_yayasan',
-    'pengurus_yayasan', 'Pengurus Yayasan',
-    'Sekretaris Yayasan', 'sekretaris_yayasan',
-    'Bendahara Yayasan', 'bendahara_yayasan',
-  ])
+  const isGlobalUser = userLevel <= ROLE_LEVELS.YAYASAN
   const userUnitId = user?.unit_id || user?.education_unit_id || user?.employee?.unit_id || user?.metadata?.education_unit_id || user?.metadata?.unit_id || ''
 
   // Filter States
@@ -501,7 +524,7 @@ export default function EmployeesPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
 
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState('2025/2026')
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState('2026/2027')
 
   // Modal Controls
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
@@ -511,7 +534,6 @@ export default function EmployeesPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
-  const [notifications, setNotifications] = useState([])
   const [showIdCardModal, setShowIdCardModal] = useState(null)
   const [selectedIdCardTemplate, setSelectedIdCardTemplate] = useState('green')
   const [idCardOrientation, setIdCardOrientation] = useState(() => localStorage.getItem('employee-id-card-orientation') || 'vertical')
@@ -521,17 +543,13 @@ export default function EmployeesPage() {
   const [idCardPhotoShape, setIdCardPhotoShape] = useState('rounded')
   const [idCardShowPattern, setIdCardShowPattern] = useState(true)
   const [idCardShowWave, setIdCardShowWave] = useState(true)
-  const [idCardHeaderMotto, setIdCardHeaderMotto] = useState('Berilmu, Berakhlak, Beramal')
-  const [idCardFooterMotto, setIdCardFooterMotto] = useState('Generasi Beriman, Berilmu,\nBerakhlak Mulia')
+  const [idCardHeaderMotto, setIdCardHeaderMotto] = useState(() => pengaturan?.motto || 'Berilmu, Berakhlak, Beramal')
+  const [idCardFooterMotto, setIdCardFooterMotto] = useState(() => pengaturan?.card_footer_motto || 'Generasi Beriman, Berilmu,\nBerakhlak Mulia')
   const [idCardControlTab, setIdCardControlTab] = useState('style')
   const [idCardSide, setIdCardSide] = useState('front') // 'front' | 'back'
   const [idCardBackTitle, setIdCardBackTitle] = useState('KETENTUAN KARTU PEGAWAI')
-  const [idCardBackRules, setIdCardBackRules] = useState(
-    '1. Kartu ini adalah milik resmi Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi SIMSIT.'
-  )
-  const [idCardBackAddress, setIdCardBackAddress] = useState(
-    'Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: (0751) 123456 | Website: dareliman.or.id'
-  )
+  const [idCardBackRules, setIdCardBackRules] = useState(() => pengaturan?.card_rules_employee || '')
+  const [idCardBackAddress, setIdCardBackAddress] = useState('')
   const [idCardBackShowQr, setIdCardBackShowQr] = useState(true)
   const [idCardPrintSides, setIdCardPrintSides] = useState('both') // 'both' | 'front' | 'back'
 
@@ -578,16 +596,13 @@ export default function EmployeesPage() {
   const [statCardSearch, setStatCardSearch] = useState('')
 
   // Quick New Sub-item States inside Detail Modal
-  const [newTeaching, setNewTeaching] = useState({ mapel: '', kelas: '', tahun: '2025/2026', semester: 'Ganjil' })
+  const [newTeaching, setNewTeaching] = useState({ mapel: '', kelas: '', tahun: '2026/2027', semester: 'Ganjil' })
   const [newCert, setNewCert] = useState({ nama: '', penerbit: '', tahun: '', no_sertifikat: '' })
   const [newDoc, setNewDoc] = useState({ nama: '', file_name: '' })
 
+  const toast = useToast()
   const pushNotification = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setNotifications((current) => [...current, { id, title, message, tone }])
-    window.setTimeout(() => {
-      setNotifications((current) => current.filter((notification) => notification.id !== id))
-    }, 5500)
+    toast(message ? `${title}: ${message}` : title, tone)
   }
 
   // Query Fetching Employees
@@ -632,25 +647,76 @@ export default function EmployeesPage() {
     queryFn: () => educationUnitService.getDaftar({ per_page: 100 }),
   })
 
+  const { data: dynamicEmployeeStatusRes } = useQuery({
+    queryKey: ['business-options-employee-status'],
+    queryFn: () => businessOptionService.getDropdown('employee_status'),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: dynamicMaritalStatusRes } = useQuery({
+    queryKey: ['business-options-marital-status'],
+    queryFn: () => businessOptionService.getDropdown('marital_status'),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data: dynamicLastEducationRes } = useQuery({
+    queryKey: ['business-options-last-education'],
+    queryFn: () => businessOptionService.getDropdown('last_education'),
+    staleTime: 5 * 60 * 1000,
+  })
+
   const positionsList = positionsData?.data || []
   const employeeStats = dashboardData?.data || {}
-
   const unitsList = unitsData?.data || []
 
+  const statusPegawaiOptions = useMemo(() => {
+    const dynamicItems = dynamicEmployeeStatusRes?.data || []
+    if (Array.isArray(dynamicItems) && dynamicItems.length > 0) {
+      return dynamicItems.map(d => d.name || d.label || d.value || d)
+    }
+    return STATUS_PEGAWAI_OPTIONS
+  }, [dynamicEmployeeStatusRes])
+
+  const maritalStatusOptions = useMemo(() => {
+    const dynamicItems = dynamicMaritalStatusRes?.data || []
+    if (Array.isArray(dynamicItems) && dynamicItems.length > 0) {
+      return dynamicItems.map(d => d.name || d.label || d.value || d)
+    }
+    return MARITAL_STATUS_OPTIONS
+  }, [dynamicMaritalStatusRes])
+
+  const lastEducationOptions = useMemo(() => {
+    const dynamicItems = dynamicLastEducationRes?.data || []
+    if (Array.isArray(dynamicItems) && dynamicItems.length > 0) {
+      return dynamicItems.map(d => d.name || d.label || d.value || d)
+    }
+    return LAST_EDUCATION_OPTIONS
+  }, [dynamicLastEducationRes])
+
   const getEmployeeUnitAddress = useCallback((employee, unitsList, pengaturan) => {
-    if (!employee) return 'Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: (0751) 123456 | Website: dareliman.or.id'
+    const institutionAddr = pengaturan?.address ? `${pengaturan.address}${pengaturan.city ? `, ${pengaturan.city}` : ''}` : ''
+    const institutionPhone = pengaturan?.phone || ''
+    const institutionWeb = pengaturan?.website || ''
+
+    if (!employee) {
+      const parts = []
+      if (institutionAddr) parts.push(institutionAddr)
+      const contact = [institutionPhone ? `Telp: ${institutionPhone}` : '', institutionWeb ? `Website: ${institutionWeb}` : ''].filter(Boolean).join(' | ')
+      if (contact) parts.push(contact)
+      return parts.join('\n')
+    }
 
     const empUnit = (unitsList || []).find((u) => String(u.id) === String(employee.unit_id || employee.unit?.id)) || employee.unit
     const unitName = empUnit?.name || employee.unit_name || employee.unit?.name || ''
-    const unitAddrText = empUnit?.address || empUnit?.alamat || empUnit?.description || (pengaturan?.address ? `${pengaturan.address}${pengaturan.city ? `, ${pengaturan.city}` : ''}` : '')
-    const unitPhoneText = empUnit?.phone || empUnit?.telepon || pengaturan?.phone || ''
-    const unitWebText = empUnit?.website || pengaturan?.website || 'dareliman.or.id'
+    const unitAddrText = empUnit?.address || empUnit?.alamat || empUnit?.description || institutionAddr
+    const unitPhoneText = empUnit?.phone || empUnit?.telepon || institutionPhone
+    const unitWebText = empUnit?.website || institutionWeb
 
     const lines = []
     if (unitName || unitAddrText) {
       lines.push([unitName, unitAddrText].filter(Boolean).join(' — '))
-    } else {
-      lines.push('Jl. Gajah Mada No. 28 Padang, Sumatera Barat')
+    } else if (institutionAddr) {
+      lines.push(institutionAddr)
     }
 
     const contactLine = [unitPhoneText ? `Telp: ${unitPhoneText}` : '', unitWebText ? `Website: ${unitWebText}` : ''].filter(Boolean).join(' | ')
@@ -668,19 +734,26 @@ export default function EmployeesPage() {
     }
   }, [showIdCardModal, unitsList, pengaturan, getEmployeeUnitAddress])
 
+  useEffect(() => {
+    if (pengaturan?.card_rules_employee && !idCardBackRules) {
+      setIdCardBackRules(pengaturan.card_rules_employee)
+    }
+    if (pengaturan?.card_footer_motto && !idCardFooterMotto) {
+      setIdCardFooterMotto(pengaturan.card_footer_motto)
+    }
+  }, [pengaturan])
+
   const resetIdCardLayout = () => {
     setIdCardLayoutConfig({})
     setIdCardFrameStyle('standard')
     setIdCardPhotoShape('rounded')
     setIdCardShowPattern(true)
     setIdCardShowWave(true)
-    setIdCardHeaderMotto('Berilmu, Berakhlak, Beramal')
-    setIdCardFooterMotto('Generasi Beriman, Berilmu,\nBerakhlak Mulia')
+    setIdCardHeaderMotto(pengaturan?.motto || 'Berilmu, Berakhlak, Beramal')
+    setIdCardFooterMotto(pengaturan?.card_footer_motto || 'Generasi Beriman, Berilmu,\nBerakhlak Mulia')
     setIdCardSide('front')
     setIdCardBackTitle('KETENTUAN KARTU PEGAWAI')
-    setIdCardBackRules(
-      '1. Kartu ini adalah milik resmi Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi SIMSIT.'
-    )
+    setIdCardBackRules(pengaturan?.card_rules_employee || '')
     if (showIdCardModal) {
       setIdCardBackAddress(getEmployeeUnitAddress(showIdCardModal, unitsList, pengaturan))
     }
@@ -1161,7 +1234,7 @@ export default function EmployeesPage() {
     const updatedEmp = { ...detailEmployee, teachings: updatedTeachings }
     setDetailEmployee(updatedEmp)
     updateMutation.mutate({ id: detailEmployee.id, payload: makePayload(updatedEmp) })
-    setNewTeaching({ mapel: '', kelas: '', tahun: '2025/2026', semester: 'Ganjil' })
+    setNewTeaching({ mapel: '', kelas: '', tahun: '2026/2027', semester: 'Ganjil' })
   }
 
   // Remove Teaching Assignment from Detail Pegawai
@@ -1639,7 +1712,7 @@ export default function EmployeesPage() {
     const targetJp = 24
     const jpPercent = Math.min(100, Math.round((currentJp / targetJp) * 100))
     const otherRoles = getEmployeeOtherRoles(employee)
-    const statusKepegawaian = employee.status_pegawai || (employee.status === 'Aktif' ? 'Pegawai Tetap' : 'Pegawai Kontrak')
+    const statusKepegawaian = employee.status_pegawai || '-'
 
     return (
       <HoverCard openDelay={120} closeDelay={100}>
@@ -1749,6 +1822,8 @@ export default function EmployeesPage() {
     const isKontrak = lower.includes('kontrak')
     const isHonorer = lower.includes('honorer')
     const isMagang = lower.includes('magang')
+    const isPercobaan = lower.includes('coba') || lower.includes('probasi')
+    const isNonaktif = lower.includes('non') || lower.includes('keluar') || lower.includes('berhenti')
 
     let badgeStyle = 'bg-slate-600 text-white border-slate-700'
 
@@ -1764,6 +1839,12 @@ export default function EmployeesPage() {
     } else if (isMagang) {
       // Blue Solid
       badgeStyle = 'bg-blue-600 dark:bg-blue-600 text-white border-blue-700/80 shadow-xs ring-1 ring-blue-500/30'
+    } else if (isPercobaan) {
+      // Ungu Solid
+      badgeStyle = 'bg-purple-600 dark:bg-purple-600 text-white border-purple-700/80 shadow-xs ring-1 ring-purple-500/30'
+    } else if (isNonaktif) {
+      // Abu-abu Solid
+      badgeStyle = 'bg-slate-500 dark:bg-slate-600 text-white border-slate-600/80 shadow-xs ring-1 ring-slate-400/30'
     }
 
     return (
@@ -2318,6 +2399,7 @@ export default function EmployeesPage() {
           actionColumnLabel=""
           columns={columns}
           data={filteredItems}
+          onRowClick={(emp) => { setDetailEmployee(emp); setActiveDetailTab('Identitas') }}
           isLoading={isLoading}
           isError={isError}
           errorTitle="Data pegawai gagal dimuat"
@@ -2388,7 +2470,7 @@ export default function EmployeesPage() {
                   className="h-10 cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white pl-3.5 pr-8 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
                   <option value="">Status Pegawai</option>
-                  {STATUS_PEGAWAI_OPTIONS.map((st) => (
+                  {statusPegawaiOptions.map((st) => (
                     <option key={st} value={st}>{st}</option>
                   ))}
                 </select>
@@ -2459,7 +2541,7 @@ export default function EmployeesPage() {
                 <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex items-center gap-3">
                     <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 p-2.5 text-amber-700 dark:from-amber-950/60 dark:to-orange-950/40 dark:border-amber-800/60 dark:text-amber-400">
-                      <Download1 className="size-5" />
+                      <Download className="size-5" />
                     </div>
                     <div>
                       <h3 id="employee-export-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -2657,612 +2739,29 @@ export default function EmployeesPage() {
         )}
       </AnimatePresence>
 
-      {/* 5. MODAL WIZARD: TAMBAH / EDIT PEGAWAI */}
-      {isFormModalOpen && (
-        <div className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md print:hidden animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="employee-form-title" tabIndex={-1}>
-          <div className="modal-dialog font-sans my-auto w-full max-w-4xl">
-            <div className="modal-content flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-              {/* Top accent bar */}
-              <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
-
-              {/* Header */}
-              <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 p-2.5 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
-                    <UserPlus className="h-5 w-5" strokeWidth={2.25} />
-                  </div>
-                  <div>
-                    <h3 id="employee-form-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>{isEditMode ? (isUnitPersonnelManager ? 'Edit Jabatan Pegawai' : 'Edit Pegawai') : 'Tambah Pegawai'}</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
-                        <Sparkles className="size-3" />
-                        {isEditMode ? 'Update' : 'Baru'}
-                      </span>
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Langkah {currentStep} dari 4 · {
-                        currentStep === 1 ? 'Identitas & Foto' :
-                        currentStep === 2 ? 'Kepegawaian' :
-                        currentStep === 3 ? 'Kontak & Alamat' :
-                        'Konfirmasi Data'
-                      }
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {isUnitPersonnelManager && <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-extrabold text-amber-800 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/60">Hanya jabatan unit ini yang dapat diubah</span>}
-                  <button
-                    type="button"
-                    onClick={closeFormModal}
-                    className="rounded-xl p-2 bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
-                    aria-label="Tutup"
-                  >
-                    <X className="size-4" strokeWidth={2.25} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Step Wizard Indicator (Standardized Horizontal Bar) */}
-              <div className="border-b border-slate-100 bg-slate-50/70 p-2.5 dark:border-slate-800 dark:bg-slate-900/50">
-                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-                  {[
-                    { step: 1, label: 'Identitas & Foto', icon: UserCheck },
-                    { step: 2, label: 'Kepegawaian', icon: BriefcaseBusiness },
-                    { step: 3, label: 'Kontak & Alamat', icon: Phone },
-                    { step: 4, label: 'Konfirmasi', icon: CheckCircle2 },
-                  ].map((s) => {
-                    const isActive = currentStep === s.step
-                    const isDone = currentStep > s.step
-                    return (
-                      <button
-                        key={s.step}
-                        type="button"
-                        onClick={() => setCurrentStep(s.step)}
-                        className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 text-[11px] font-extrabold transition-all duration-200 cursor-pointer ${
-                          isActive
-                            ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600'
-                            : isDone
-                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100/80 border border-emerald-200/50 dark:border-emerald-800/40'
-                            : 'bg-white text-slate-400 border border-slate-200/80 hover:bg-slate-100 dark:bg-slate-800/60 dark:border-slate-700/60 dark:text-slate-500'
-                        }`}
-                      >
-                        <s.icon className={`size-3.5 shrink-0 ${isActive ? 'text-white' : isDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
-                        <span className="truncate">{s.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Form Content Body */}
-              <div className="modal-body min-h-0 flex-1 overflow-y-auto p-6 space-y-4 text-sm text-slate-700 dark:text-slate-200 max-h-[560px]">
-                {/* Banner Status in Edit Mode */}
-                {isEditMode && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-emerald-50/80 p-4 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:to-teal-950/20">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-black text-xs">
-                        {formData.niy ? formData.niy.slice(-3) : 'NIY'}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-slate-900 dark:text-white">{formData.nama_lengkap}</span>
-                          <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-extrabold dark:bg-emerald-900/60 dark:text-emerald-300">{formData.status}</span>
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-500">{formData.niy} · {formData.status_pegawai}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isGlobalPersonnelManager && (
-                        <button
-                          type="button"
-                          onClick={() => toggleEmployeeStatus(formData)}
-                          className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
-                        >
-                          {formData.status === 'Aktif' ? 'Nonaktifkan Pegawai' : 'Aktifkan Pegawai'}
-                        </button>
-                      )}
-                      {canDeleteEmployee && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDeleteTarget(formData)
-                            closeFormModal()
-                          }}
-                          className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
-                        >
-                          Hapus Pegawai
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-                    {/* STEP 1: Identitas & Foto */}
-                    {currentStep === 1 && (
-                      <div className="space-y-4">
-                        <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Identitas Pegawai</h3>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Foto Pegawai</label>
-                          {formData.foto ? (
-                            <div className="flex items-center gap-4 p-3.5 rounded-2xl border border-emerald-200/90 bg-emerald-50/60 dark:bg-emerald-950/40 dark:border-emerald-800">
-                              <PersonAvatar
-                                src={formData.foto}
-                                name={formData.nama_lengkap}
-                                size="detail"
-                                className="h-16 w-16 shrink-0 border-2 border-emerald-600 shadow-sm"
-                              />
-                              <div>
-                                <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Foto Berhasil Diunggah</p>
-                                <button
-                                  type="button"
-                                  onClick={() => setFormData((p) => ({ ...p, foto: '' }))}
-                                  className="text-xs font-bold text-rose-600 hover:underline mt-1 inline-block cursor-pointer"
-                                >
-                                  Hapus Foto & Upload Ulang
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <label className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-300/80 bg-emerald-50/20 p-5 text-center hover:bg-emerald-50/35 hover:border-emerald-500 cursor-pointer transition-all dark:border-emerald-800/60 dark:bg-slate-900/30">
-                              <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 text-[#0E5C44] dark:from-emerald-950/60 dark:to-teal-950/40 dark:border-emerald-800/60 dark:text-[#3FBF75]">
-                                <Upload className="size-5" strokeWidth={2.2} />
-                              </div>
-                              <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Upload Foto Profil</span>
-                              <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG Maksimal 2MB</span>
-                              <input type="file" accept="image/*" onChange={handleFotoUpload} className="hidden" />
-                            </label>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                              NIY (Nomor Induk Yayasan) <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Hash className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="NIY-2026xxxx"
-                                value={formData.niy}
-                                onChange={(e) => setFormData((p) => ({ ...p, niy: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">NIK (Nomor Induk Kependudukan)</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <IdCard className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="1371xxxxxxxxxxxx"
-                                value={formData.nik}
-                                onChange={(e) => setFormData((p) => ({ ...p, nik: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Gelar Depan</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <GraduationCap className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Ust. / Dr."
-                                value={formData.gelar_depan}
-                                onChange={(e) => setFormData((p) => ({ ...p, gelar_depan: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                          <div className="col-span-2">
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-                              Nama Lengkap <span className="text-rose-500">*</span>
-                            </label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <User className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Ahmad Farhan"
-                                value={formData.nama_lengkap}
-                                onChange={(e) => setFormData((p) => ({ ...p, nama_lengkap: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Gelar Belakang</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Award className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="S.Pd / M.Pd"
-                                value={formData.gelar_belakang}
-                                onChange={(e) => setFormData((p) => ({ ...p, gelar_belakang: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Nama Panggilan</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <UserCheck className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Farhan"
-                                value={formData.nama_panggilan}
-                                onChange={(e) => setFormData((p) => ({ ...p, nama_panggilan: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Jenis Kelamin</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Users className="size-4" />
-                              </div>
-                              <select
-                                value={formData.jenis_kelamin}
-                                onChange={(e) => setFormData((p) => ({ ...p, jenis_kelamin: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                              >
-                                <option value="L">Laki-laki</option>
-                                <option value="P">Perempuan</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tempat Lahir</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <MapPin className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Padang"
-                                value={formData.tempat_lahir}
-                                onChange={(e) => setFormData((p) => ({ ...p, tempat_lahir: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Lahir</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Calendar className="size-4" />
-                              </div>
-                              <input
-                                type="date"
-                                value={formData.tanggal_lahir}
-                                onChange={(e) => setFormData((p) => ({ ...p, tanggal_lahir: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* STEP 2: Kepegawaian */}
-                    {currentStep === 2 && (
-                      <div className="space-y-4">
-                        <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Status & Penempatan Kepegawaian</h3>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Unit Kerja / Sekolah</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Building2 className="size-4" />
-                              </div>
-                              <select
-                                 value={formData.unit_id}
-                                 onChange={(e) => setFormData((p) => ({ ...p, unit_id: e.target.value }))}
-                                 disabled={isUnitPersonnelManager}
-                                 className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 disabled:bg-slate-100/80 disabled:text-slate-400 disabled:cursor-not-allowed cursor-pointer"
-                              >
-                                <option value="">Pilih Unit Pendidikan</option>
-                                {unitsList.map((u) => (
-                                  <option key={u.id} value={u.id}>{u.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Jabatan Master</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <BriefcaseBusiness className="size-4" />
-                              </div>
-                              <select
-                                value={formData.jabatan_id}
-                                onChange={(e) => setFormData((p) => ({ ...p, jabatan_id: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                              >
-                                <option value="">Pilih Jabatan</option>
-                                {positionsList.map((p) => (
-                                  <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={`grid grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Pegawai</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <BadgeCheck className="size-4" />
-                              </div>
-                              <select
-                                value={formData.status_pegawai}
-                                onChange={(e) => setFormData((p) => ({ ...p, status_pegawai: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                              >
-                                {STATUS_PEGAWAI_OPTIONS.map((st) => (
-                                  <option key={st} value={st}>{st}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Status Keaktifan</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Activity className="size-4" />
-                              </div>
-                              <select
-                                value={formData.status}
-                                onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-8 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 cursor-pointer"
-                              >
-                                {STATUS_OPTIONS.map((st) => (
-                                  <option key={st} value={st}>{st}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={`grid grid-cols-2 gap-3 ${isUnitPersonnelManager ? 'hidden' : ''}`}>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Masuk</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Calendar className="size-4" />
-                              </div>
-                              <input
-                                type="date"
-                                value={formData.tanggal_masuk}
-                                onChange={(e) => setFormData((p) => ({ ...p, tanggal_masuk: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Tanggal Keluar (Jika Ada)</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Calendar className="size-4" />
-                              </div>
-                              <input
-                                type="date"
-                                value={formData.tanggal_keluar}
-                                onChange={(e) => setFormData((p) => ({ ...p, tanggal_keluar: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* STEP 3: Kontak & Alamat */}
-                    {currentStep === 3 && (
-                      <div className="space-y-4">
-                        <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Kontak & Alamat</h3>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">No. WhatsApp / HP</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Phone className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="0812-3456-7890"
-                                value={formData.no_hp}
-                                onChange={(e) => setFormData((p) => ({ ...p, no_hp: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Email Pegawai</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Mail className="size-4" />
-                              </div>
-                              <input
-                                type="email"
-                                placeholder="pegawai@dareliman.sch.id"
-                                value={formData.email}
-                                onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Alamat Tempat Tinggal</label>
-                          <div className="relative">
-                            <div className="pointer-events-none absolute left-3.5 top-3 flex items-center text-slate-400 dark:text-slate-500">
-                              <MapPin className="size-4" />
-                            </div>
-                            <textarea
-                              rows={3}
-                              placeholder="Jl. Khatib Sulaiman No. 20..."
-                              value={formData.alamat}
-                              onChange={(e) => setFormData((p) => ({ ...p, alamat: e.target.value }))}
-                              className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20 resize-none"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Kota / Kabupaten</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Building className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Padang"
-                                value={formData.kota}
-                                onChange={(e) => setFormData((p) => ({ ...p, kota: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">Provinsi</label>
-                            <div className="relative flex items-center">
-                              <div className="pointer-events-none absolute left-3.5 flex items-center text-slate-400 dark:text-slate-500">
-                                <Globe className="size-4" />
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Sumatera Barat"
-                                value={formData.provinsi}
-                                onChange={(e) => setFormData((p) => ({ ...p, provinsi: e.target.value }))}
-                                className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400/80 transition-all duration-200 hover:border-slate-300 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700/80 dark:bg-slate-900/50 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:border-[#3FBF75] dark:focus:bg-slate-900 dark:focus:ring-[#3FBF75]/20"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* STEP 4: Konfirmasi */}
-                    {!isUnitPersonnelManager && currentStep === 4 && (
-                      <div className="space-y-4">
-                        <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2">Konfirmasi Data Pegawai</h3>
-
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-xs">
-                          <div className="flex justify-between border-b border-slate-200 pb-2">
-                            <span className="text-slate-500 font-medium">NIY:</span>
-                            <span className="font-bold text-slate-800">{formData.niy || '-'}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-slate-200 pb-2">
-                            <span className="text-slate-500 font-medium">Nama Lengkap:</span>
-                            <span className="font-bold text-slate-800">{formData.nama_lengkap || '-'}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-slate-200 pb-2">
-                            <span className="text-slate-500 font-medium">Status Pegawai:</span>
-                            <span className="font-bold text-slate-800">{formData.status_pegawai || '-'}</span>
-                          </div>
-                          <div className="flex justify-between border-b border-slate-200 pb-2">
-                            <span className="text-slate-500 font-medium">Kontak HP:</span>
-                            <span className="font-bold text-slate-800">{formData.no_hp || '-'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-500 font-medium">Email:</span>
-                            <span className="font-bold text-slate-800">{formData.email || '-'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-              </div>
-
-              {/* Bottom Footer Actions */}
-              <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-white px-5 py-4 dark:border-slate-700 dark:bg-[#1B2433]">
-                <button
-                  type="button"
-                  onClick={closeFormModal}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
-                >
-                  <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                    <X className="size-3.5 text-white" strokeWidth={2.2} />
-                  </div>
-                  <span>Batal</span>
-                </button>
-
-                <div className="flex items-center gap-2.5">
-                  {currentStep > 1 && !isUnitPersonnelManager && (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 text-white px-4 py-2.5 text-xs font-extrabold border border-blue-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
-                    >
-                      <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                        <ArrowLeft className="size-3.5 text-white" strokeWidth={2.2} />
-                      </div>
-                      <span>Kembali</span>
-                    </button>
-                  )}
-                  {currentStep < 4 && !isUnitPersonnelManager && (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentStep((s) => Math.min(4, s + 1))}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer"
-                    >
-                      <span>Selanjutnya</span>
-                      <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                        <ArrowRight className="size-3.5 text-white" strokeWidth={2.2} />
-                      </div>
-                    </button>
-                  )}
-                  {(currentStep === 4 || isEditMode || isUnitPersonnelManager) && (
-                    <button
-                      type="button"
-                      onClick={handleFormSubmit}
-                      disabled={isMutating}
-                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white px-5 py-2.5 text-xs font-extrabold border border-emerald-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 disabled:opacity-50 cursor-pointer"
-                    >
-                      {isMutating ? (
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      ) : (
-                        <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
-                          <Save className="size-3.5 text-white" strokeWidth={2.2} />
-                        </div>
-                      )}
-                      <span>{isEditMode ? 'Simpan Perubahan' : 'Simpan Pegawai'}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 5. MODAL WIZARD: TAMBAH / EDIT PEGAWAI (TailGrids + SSOT) */}
+      <EmployeeFormModal
+        isOpen={isFormModalOpen}
+        onClose={closeFormModal}
+        isEditMode={isEditMode}
+        currentStep={currentStep}
+        setCurrentStep={setCurrentStep}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleFormSubmit}
+        isSubmitting={isMutating}
+        unitsList={unitsList}
+        positionsList={positionsList}
+        statusPegawaiOptions={statusPegawaiOptions}
+        maritalStatusOptions={maritalStatusOptions}
+        lastEducationOptions={lastEducationOptions}
+        handleFotoUpload={handleFotoUpload}
+        isUnitPersonnelManager={isUnitPersonnelManager}
+        isGlobalPersonnelManager={isGlobalPersonnelManager}
+        canDeleteEmployee={canDeleteEmployee}
+        toggleEmployeeStatus={toggleEmployeeStatus}
+        onDeleteTarget={setDeleteTarget}
+      />
 
       {/* 6. MODAL DETAIL PEGAWAI (WITH 7 TABS) */}
       {detailEmployee && (
@@ -3371,17 +2870,29 @@ export default function EmployeesPage() {
                     </div>
                     <div>
                       <span className="text-slate-400 block mb-0.5">Jenis Kelamin</span>
-                      <span className="font-bold text-slate-800">{detailEmployee.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</span>
+                      <span className="font-bold text-slate-800">{detailEmployee.jenis_kelamin === 'L' ? 'Laki-laki (L)' : 'Perempuan (P)'}</span>
                     </div>
                     <div>
                       <span className="text-slate-400 block mb-0.5">Tempat, Tanggal Lahir</span>
-                      <span className="font-bold text-slate-800">{detailEmployee.tempat_lahir}, {detailEmployee.tanggal_lahir || '-'}</span>
+                      <span className="font-bold text-slate-800">{[detailEmployee.tempat_lahir, detailEmployee.tanggal_lahir].filter(Boolean).join(', ') || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block mb-0.5">Agama</span>
+                      <span className="font-bold text-slate-800">{detailEmployee.agama || 'Islam'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block mb-0.5">Status Perkawinan</span>
+                      <span className="font-bold text-slate-800">{detailEmployee.status_perkawinan || detailEmployee.metadata?.status_perkawinan || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block mb-0.5">Pendidikan Terakhir</span>
+                      <span className="font-bold text-slate-800">{detailEmployee.pendidikan_terakhir || detailEmployee.metadata?.pendidikan_terakhir || '-'}</span>
                     </div>
                     <div>
                       <span className="text-slate-400 block mb-0.5">No HP / WhatsApp</span>
                       <span className="font-bold text-slate-800">{detailEmployee.no_hp || '-'}</span>
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <span className="text-slate-400 block mb-0.5">Email</span>
                       <span className="font-bold text-slate-800">{detailEmployee.email || '-'}</span>
                     </div>
@@ -4747,92 +4258,6 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* Notification Toast Stack — TailGrids Modern Vivid Style */}
-      <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite" aria-atomic="true">
-        {notifications.map((notification) => {
-          const isDanger = notification.tone === 'error' || notification.tone === 'danger'
-          const isWarning = notification.tone === 'warning'
-          const isInfo = notification.tone === 'info'
-          const isSuccess = !isDanger && !isWarning && !isInfo
-
-          return (
-            <div
-              key={notification.id}
-              className={cn(
-                "relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]",
-                isSuccess && "border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50",
-                isDanger && "border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50",
-                isWarning && "border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50",
-                isInfo && "border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50"
-              )}
-            >
-              {/* Top Accent Gradient Line */}
-              <div
-                className={cn(
-                  "absolute top-0 left-0 right-0 h-1",
-                  isSuccess && "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600",
-                  isDanger && "bg-gradient-to-r from-rose-500 via-rose-600 to-red-700",
-                  isWarning && "bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600",
-                  isInfo && "bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600"
-                )}
-              />
-
-              <div className="flex items-start gap-3 mt-0.5">
-                {/* Squircle Icon Badge */}
-                <div
-                  className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
-                    isSuccess && "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30",
-                    isDanger && "bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30",
-                    isWarning && "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30",
-                    isInfo && "bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30"
-                  )}
-                >
-                  {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                  {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
-                  {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
-                  {isInfo && <Info className="size-5" strokeWidth={2.3} />}
-                </div>
-
-                {/* Text Body */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                      {notification.title}
-                    </h4>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border",
-                        isSuccess && "bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80",
-                        isDanger && "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80",
-                        isWarning && "bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80",
-                        isInfo && "bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80"
-                      )}
-                    >
-                      {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
-                    </span>
-                  </div>
-                  {notification.message && (
-                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                      {notification.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* Dismiss Button */}
-                <button
-                  type="button"
-                  onClick={() => setNotifications((current) => current.filter((item) => item.id !== notification.id))}
-                  className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                  aria-label="Tutup notifikasi"
-                >
-                  <X className="size-4" strokeWidth={2.2} />
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
     </PageContainer>
   )
 }

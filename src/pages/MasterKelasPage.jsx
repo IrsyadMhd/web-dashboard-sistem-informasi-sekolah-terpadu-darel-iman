@@ -37,7 +37,7 @@ import {
 import { cn } from '../lib/utils'
 import { kelasService } from '../services/kelasService'
 import { studentService } from '../services/studentService'
-import { ActionDropdown, AppBadge, PersonIdentityCell } from '../components/app'
+import { ActionDropdown, AppBadge, PersonIdentityCell, useToast } from '../components/app'
 import AppDataTable from '../components/app/AppDataTable'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -52,102 +52,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/tailgrids/core/dialog'
-import { Badge } from '../components/tailgrids/core/badge'
-import { Button } from '../components/tailgrids/core/button'
+} from '../components/ui/dialog'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
 import PersonAvatar from '../components/ui/PersonAvatar'
 
-// ── Toast Stack ──────────────────────────────────────────────────────────────
-function ToastStack({ items, onDismiss }) {
-  if (!items.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
-      {items.map((n) => {
-        const isDanger = n.tone === 'danger' || n.tone === 'error'
-        const isWarning = n.tone === 'warning'
-        const isInfo = n.tone === 'info'
-        const isSuccess = !isDanger && !isWarning && !isInfo
 
-        return (
-          <div
-            key={n.id}
-            className={cn(
-              "relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300",
-              isSuccess && "border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50",
-              isDanger && "border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50",
-              isWarning && "border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50",
-              isInfo && "border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50"
-            )}
-          >
-            {/* Top Accent Gradient Line */}
-            <div
-              className={cn(
-                "absolute top-0 left-0 right-0 h-1",
-                isSuccess && "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600",
-                isDanger && "bg-gradient-to-r from-rose-500 via-rose-600 to-red-700",
-                isWarning && "bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600",
-                isInfo && "bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600"
-              )}
-            />
-
-            <div className="flex items-start gap-3 mt-0.5">
-              {/* Squircle Icon Badge */}
-              <div
-                className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
-                  isSuccess && "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30",
-                  isDanger && "bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30",
-                  isWarning && "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30",
-                  isInfo && "bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30"
-                )}
-              >
-                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
-                {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
-                {isInfo && <Info className="size-5" strokeWidth={2.3} />}
-              </div>
-
-              {/* Text Body */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                    {n.title}
-                  </h4>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border",
-                      isSuccess && "bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80",
-                      isDanger && "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80",
-                      isWarning && "bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80",
-                      isInfo && "bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80"
-                    )}
-                  >
-                    {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
-                  </span>
-                </div>
-                {n.message && (
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                    {n.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Dismiss Button */}
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                aria-label="Tutup notifikasi"
-              >
-                <X className="size-4" strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 const UNIT_COLORS = {
   TKIT: { bg: 'bg-emerald-800', text: 'text-white', border: 'border-emerald-700' },
@@ -350,14 +260,8 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
 
-  // Toast Notification Stack
-  const [toasts, setToasts] = useState([])
-  const pushToast = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setToasts((prev) => [...prev, { id, title, message, tone }])
-    window.setTimeout(() => setToasts((prev) => prev.filter((n) => n.id !== id)), 6000)
-  }
-  const dismissToast = (id) => setToasts((prev) => prev.filter((n) => n.id !== id))
+  // Global Toast
+  const { pushToast } = useToast()
 
   // Role Access Check for Unit Pendidikan Filter
   const canSeeUnitFilter = useMemo(() => {
@@ -1869,7 +1773,12 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                     const recordNo = (paginationInfo.current_page - 1) * perPage + index + 1
 
                     return (
-                      <tr key={item.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all duration-150">
+                      <tr
+                        key={item.id}
+                        onClick={() => { setDetailKelas(item); setIsDetailModalOpen(true) }}
+                        title="Klik baris untuk melihat detail kelas"
+                        className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all duration-150 cursor-pointer"
+                      >
                         {/* NO */}
                         <td className="py-3.5 px-4 text-center text-slate-500 dark:text-slate-400 font-bold">
                           {recordNo}
@@ -1925,7 +1834,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                         <td className="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-300">
                           <button
                             type="button"
-                            onClick={() => openSiswaModal(item)}
+                            onClick={(e) => { e.stopPropagation(); openSiswaModal(item) }}
                             className="group/btn inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/50 px-2.5 py-1 text-left font-bold text-slate-800 hover:border-emerald-300 hover:bg-emerald-100/60 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-slate-200 dark:hover:bg-emerald-900/60 transition-all cursor-pointer shadow-2xs"
                             title="Klik untuk melihat data siswa, wali kelas & pindah kelas"
                           >
@@ -1941,7 +1850,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                         </td>
 
                         {/* AKSI */}
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <span className="inline-flex justify-center">
                             <ActionDropdown
                               onView={() => { setDetailKelas(item); setIsDetailModalOpen(true) }}
@@ -2603,7 +2512,7 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
                     <div className="flex items-center gap-3">
                       <PersonAvatar
                         src={selectedKelasSiswa.wali_kelas?.photo_url || selectedKelasSiswa.wali_kelas?.avatar_url || selectedKelasSiswa.wali_kelas?.foto}
-                        name={selectedKelasSiswa.wali_kelas?.nama_tampil || selectedKelasSiswa.wali_kelas?.name || 'Wali Kelas'}
+                        name={selectedKelasSiswa.wali_kelas?.nama_tampil || selectedKelasSiswa.wali_kelas?.name || 'Belum Ditugaskan'}
                         size="detail"
                       />
                       <div>
@@ -3282,8 +3191,6 @@ export default function MasterKelasPage({ embedded = false, hidePageHeader = fal
         )}
       </AnimatePresence>
 
-      {/* Semantic Toast Notification Stack */}
-      <ToastStack items={toasts} onDismiss={dismissToast} />
     </PageContainer>
   )
 }

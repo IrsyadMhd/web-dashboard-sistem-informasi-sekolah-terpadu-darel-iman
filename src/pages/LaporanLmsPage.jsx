@@ -83,16 +83,27 @@ export default function LaporanLmsPage() {
     load()
   }, [load])
 
+  const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'submitted' | 'pending'
+
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return data.rows
+    let result = data.rows
+    if (statusFilter === 'pending') {
+      result = result.filter((r) => {
+        const s = (r.status || '').toLowerCase()
+        const hasScore = r.nilai != null && r.nilai !== '' && r.score != null && r.score !== ''
+        return s === 'pending' || s === 'submitted' || !hasScore
+      })
+    }
+
+    if (!search.trim()) return result
     const q = search.toLowerCase()
-    return data.rows.filter((r) => {
+    return result.filter((r) => {
       const siswaName = (r.siswa?.full_name || r.student?.full_name || '').toLowerCase()
       const tugasTitle = (r.penugasan?.judul || r.assignment?.title || '').toLowerCase()
       const statusStr = (r.status || '').toLowerCase()
       return siswaName.includes(q) || tugasTitle.includes(q) || statusStr.includes(q)
     })
-  }, [data.rows, search])
+  }, [data.rows, search, statusFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / perPage))
   const paginatedRows = useMemo(() => {
@@ -225,22 +236,37 @@ export default function LaporanLmsPage() {
           subtitle="Tugas dari guru"
           variant="warning"
           delay={50}
+          active={statusFilter === 'all'}
+          onClick={() => {
+            setStatusFilter('all')
+            setCurrentPage(1)
+          }}
         />
         <MasterStatCard
           icon={CheckCircle2}
           label="Tugas Dikumpulkan"
           value={stats.submission}
-          subtitle="Tugas terkirim siswa"
+          subtitle={stats.assignment > 0 ? `${stats.submission} dari ${stats.assignment} tugas (${((stats.submission / stats.assignment) * 100).toFixed(1)}%)` : 'Tugas terkirim siswa'}
           variant="success"
           delay={100}
+          active={statusFilter === 'submitted'}
+          onClick={() => {
+            setStatusFilter(statusFilter === 'submitted' ? 'all' : 'submitted')
+            setCurrentPage(1)
+          }}
         />
         <MasterStatCard
           icon={Clock}
           label="Belum Dinilai"
           value={stats.pending}
-          subtitle="Perlu penilaan guru"
+          subtitle={stats.submission > 0 ? `${stats.pending} dari ${stats.submission} tugas (${((stats.pending / stats.submission) * 100).toFixed(1)}%)` : 'Perlu penilaian guru'}
           variant="danger"
           delay={150}
+          active={statusFilter === 'pending'}
+          onClick={() => {
+            setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending')
+            setCurrentPage(1)
+          }}
         />
         <MasterStatCard
           icon={Award}
@@ -251,6 +277,42 @@ export default function LaporanLmsPage() {
           delay={200}
         />
       </MasterStatsGrid>
+
+      {/* KPI Definition & Drilldown Transparency Banner */}
+      <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-white p-4 text-xs dark:border-emerald-800/60 dark:bg-[#13221f] dark:from-[#13221f] dark:to-[#1B2433]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-emerald-600 px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
+                Formula KPI LMS
+              </span>
+              <span className="font-bold text-slate-800 dark:text-slate-100">
+                Pengumpulan: {stats.assignment > 0 ? `${((stats.submission / stats.assignment) * 100).toFixed(1)}%` : '—'} • Belum Dinilai: {stats.submission > 0 ? `${((stats.pending / stats.submission) * 100).toFixed(1)}%` : '—'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              <strong className="text-slate-700 dark:text-slate-200">Tugas Dikumpulkan:</strong> (Tugas Terkumpul / Total Tugas Diberikan) &times; 100% ({stats.submission}/{stats.assignment}) • <strong className="text-slate-700 dark:text-slate-200">Belum Dinilai:</strong> (Tugas Antrean Koreksi / Total Tugas Terkumpul) &times; 100% ({stats.pending}/{stats.submission}).
+            </p>
+          </div>
+          {statusFilter !== 'all' && (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="rounded-lg bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300/80">
+                Filter Aktif: {statusFilter === 'pending' ? 'Belum Dinilai' : 'Semua Terkumpul'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('all')
+                  setCurrentPage(1)
+                }}
+                className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer"
+              >
+                Reset Filter
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* TAILGRIDS EMERALD DATATABLE CONTAINER */}
       <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">

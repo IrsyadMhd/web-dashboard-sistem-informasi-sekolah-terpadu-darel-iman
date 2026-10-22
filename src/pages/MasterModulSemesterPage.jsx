@@ -27,13 +27,16 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { modulSemesterService } from '../services/modulSemesterService'
+import { codeGeneratorService } from '../services/codeGeneratorService'
+import { useToast } from '../components/app'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import { ActionDropdown, AppBadge, AppDrawer, AppModal, PersonIdentityCell } from '../components/app'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import AppTabs from '../components/app/AppTabs'
 import CsvImportModal from '../components/master-data/CsvImportModal'
 import { useAuthStore } from '../stores/authStore'
-import { isGlobalAccessManager } from '../auth/portalResolver'
+import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import {
   MasterActionButton,
   MasterDataSection,
@@ -269,60 +272,7 @@ function HarmonizedDuplicateModal({ isOpen, onClose, onConfirm, item, isSubmitti
   )
 }
 
-function ToastStack({ toasts, onDismiss }) {
-  return (
-    <aside
-      aria-label="Notifikasi sistem"
-      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0"
-    >
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-              toast.type === 'error'
-                ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                : toast.type === 'warning'
-                ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
-                : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-            }`}
-          >
-            <div
-              className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                toast.type === 'error'
-                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : toast.type === 'warning'
-                  ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-              }`}
-            >
-              {toast.type === 'error' ? (
-                <AlertTriangle className="size-4.5" />
-              ) : toast.type === 'warning' ? (
-                <AlertTriangle className="size-4.5" />
-              ) : (
-                <Check className="size-4.5" />
-              )}
-            </div>
-            <div className="flex-1 pt-0.5">
-              <p className="text-xs font-bold leading-relaxed">{toast.message}</p>
-            </div>
-            <button
-              onClick={() => onDismiss(toast.id)}
-              className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
-            >
-              <X className="size-4" />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </aside>
-  )
-}
+
 
 export default function MasterModulSemesterPage({ embedded = false, hidePageHeader = false, hideBreadcrumb = false }) {
   const queryClient = useQueryClient()
@@ -347,28 +297,18 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
   const [formData, setFormData] = useState(initialFormState())
   const [formErrors, setFormErrors] = useState({})
 
-  // Harmonized Modals & Toasts
-  const [toasts, setToasts] = useState([])
-  const [deleteItem, setDeleteItem] = useState(null)
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const [duplicateItem, setDuplicateItem] = useState(null)
-  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
-
-  const pushToast = (message, type = 'success') => {
-    const id = Date.now() + Math.random().toString(36).slice(2, 6)
-    setToasts((prev) => [...prev, { id, message, type }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
-  }
-
-  const dismissToast = (id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }
+  // Global Toast
+  const { pushToast } = useToast()
 
   // Drawer Detail
   const [detailModul, setDetailModul] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  // Harmonized Modals
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [deleteItem, setDeleteItem] = useState(null)
+  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
+  const [duplicateItem, setDuplicateItem] = useState(null)
 
   // Query Data List
   const { data: responseData, isLoading, isError, refetch } = useQuery({
@@ -425,12 +365,14 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
     return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
   }, [user])
 
-  // Broad access check: Superadmin, Admin, Pengurus Yayasan see all units.
+  const userLevel = useMemo(() => getUserRoleLevel(user), [user])
+
+  // Broad access check: Superadmin, Admin, Pengurus Yayasan (Level 1-2) see all units.
   // Kepala Sekolah, Guru, TU, etc. are restricted to their own unit.
   const canViewAllUnits = useMemo(() => {
     if (!user || userRoles.length === 0) return false
-    return isGlobalAccessManager(userRoles)
-  }, [user, userRoles])
+    return userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
+  }, [user, userRoles, userLevel])
 
   const userUnitId = useMemo(() => {
     const candidateIds = [
@@ -818,11 +760,18 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
     }))
   }
 
-  const handleGenerateKode = () => {
-    const rand = Math.floor(1000 + Math.random() * 9000)
-    const unitCode = options.unit_pendidikan?.find((u) => u.id === formData.unit_pendidikan_id)?.code || 'SDIT'
-    const code = `MDS-${new Date().getFullYear()}${new Date().getMonth() + 1}-${unitCode}-${rand}`
-    setFormData((prev) => ({ ...prev, kode_modul: code }))
+  const handleGenerateKode = async () => {
+    try {
+      const res = await codeGeneratorService.preview('modul_code', {
+        unit_id: formData.unit_pendidikan_id || null,
+        academic_year_id: formData.tahun_ajaran_id || null,
+      })
+      if (res?.preview_code) {
+        setFormData((prev) => ({ ...prev, kode_modul: res.preview_code }))
+      }
+    } catch (err) {
+      console.warn('Gagal memuat preview kode modul:', err)
+    }
   }
 
   const handleSubmitForm = (e) => {
@@ -1000,7 +949,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
         }}
       />
       {!shouldHideBreadcrumb && <AppBreadcrumb items={[{ label: 'Master Data', href: '/dashboard' }, { label: 'Modul Semester' }]} />}
-      <MasterDataPage className="education-unit-page" hideBreadcrumb>
+      <MasterDataPage hideBreadcrumb>
       {!shouldHideHeader && (
         <MasterPageHeader
           tone="brand"
@@ -1130,7 +1079,7 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
                 <th className="py-4 px-4 text-center w-16 sm:w-28 bg-transparent">AKSI</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-sm">
+            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
               {modulList.map((item, index) => {
                   const badgeStyle = getUnitBadgeStyle(item.unit_pendidikan?.code || item.jenjang)
                   const recordNo = ((meta.current_page || 1) - 1) * (meta.per_page || 15) + index + 1
@@ -1252,27 +1201,20 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
       >
         <div className="-m-6">
             {/* Navigation Tabs */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/50 px-6 gap-2 text-xs font-bold overflow-x-auto">
-              {[
-                { key: 'umum', label: '1. Informasi Umum' },
-                { key: 'pembelajaran', label: '2. Pembelajaran' },
-                { key: 'target', label: '3. Target & Pengaturan' },
-                { key: 'materi', label: '4. Detail Materi' },
-                { key: 'bobot', label: '5. Bobot Penilaian' },
-              ].map((tab) => (
-                <button
-                  type="button"
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`py-3 px-3 border-b-2 transition whitespace-nowrap ${
-                    activeTab === tab.key
-                      ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400 font-extrabold'
-                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="border-b border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/30 px-6">
+              <AppTabs
+                variant="underline"
+                tabs={[
+                  { id: 'umum', label: '1. Informasi Umum' },
+                  { id: 'pembelajaran', label: '2. Pembelajaran' },
+                  { id: 'target', label: '3. Target & Pengaturan' },
+                  { id: 'materi', label: '4. Detail Materi' },
+                  { id: 'bobot', label: '5. Bobot Penilaian' },
+                ]}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                ariaLabel="Langkah Formulir Modul Semester"
+              />
             </div>
 
             {/* Modal Body */}
@@ -2544,7 +2486,6 @@ export default function MasterModulSemesterPage({ embedded = false, hidePageHead
         isSubmitting={duplikasiMutation.isLoading}
       />
 
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </MasterDataPage>
     </PageContainer>
   )

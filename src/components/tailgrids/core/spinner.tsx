@@ -1,34 +1,24 @@
 "use client";
 
+import React from "react";
+import { Spinner as HeroSpinner } from "@heroui/react";
 import { cn } from "@/utils/cn";
-import { RefreshCircle1Clockwise } from "@tailgrids/icons";
-import { cva, type VariantProps } from "class-variance-authority";
-import type { ComponentProps } from "react";
 
-const spinnerVariants = cva("animate-spin text-current shrink-0", {
-  variants: {
-    size: {
-      xs: "size-3.5",
-      sm: "size-4",
-      md: "size-5",
-      lg: "size-6",
-      xl: "size-8"
-    }
-  },
-  defaultVariants: {
-    size: "md"
-  }
-});
+export interface SpinnerProps {
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  className?: string;
+  color?: string;
+}
 
-export interface SpinnerProps
-  extends ComponentProps<"svg">,
-    VariantProps<typeof spinnerVariants> {}
-
-export function Spinner({ size, className, ...props }: SpinnerProps) {
+export function Spinner({ size = "md", className, ...props }: SpinnerProps) {
+  const heroSize = size === "xs" || size === "sm" ? "sm" : size === "lg" || size === "xl" ? "lg" : "md";
   return (
-    <RefreshCircle1Clockwise
-      className={cn(spinnerVariants({ size }), className)}
+    <HeroSpinner
+      size={heroSize}
+      className={cn("text-current shrink-0", className)}
       {...props}
     />
   );
 }
+
+export default Spinner;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react'
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -42,6 +42,7 @@ import {
   HeartHandshake,
   HelpCircle,
   History,
+  Info,
   Layers,
   Lock,
   MessageSquare,
@@ -385,6 +386,48 @@ const MateriModalForm = React.memo(function MateriModalForm({
   )
 })
 
+export const calculateScheduleStatus = (schedule, selectedDate = '') => {
+  if (!schedule) return { label: 'Selesai', isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
+  const today = new Date()
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const todayDayName = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(today)
+  const dayName = schedule.day_name || schedule.nama_hari || { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Ahad' }[schedule.day_of_week] || schedule.day || schedule.hari || ''
+  const isToday = dayName ? dayName.toLowerCase() === todayDayName.toLowerCase() : true
+
+  const effDate = selectedDate || todayKey
+  if (effDate < todayKey) {
+    return { label: 'Selesai', isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
+  }
+  if (effDate > todayKey) {
+    return { label: 'Akan Datang', isActive: false, className: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' }
+  }
+  if (!isToday) {
+    return { label: `Hari ${dayName || 'Lain'}`, isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
+  }
+
+  const currentMinutes = today.getHours() * 60 + today.getMinutes()
+  const toMinutes = (value = '00:00') => {
+    const [hours, minutes] = String(value || '00:00').slice(0, 5).split(':').map(Number)
+    return (hours || 0) * 60 + (minutes || 0)
+  }
+  const startTimeStr = schedule.start_time || schedule.time_start || schedule.jam_mulai || '00:00'
+  const endTimeStr = schedule.end_time || schedule.time_end || schedule.jam_selesai || '00:00'
+  const startMinutes = toMinutes(startTimeStr)
+  const endMinutes = toMinutes(endTimeStr)
+
+  if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+    return {
+      label: 'Berlangsung',
+      isActive: true,
+      className: 'bg-emerald-100 text-emerald-800 font-extrabold ring-1 ring-emerald-500/60 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-400'
+    }
+  }
+  if (currentMinutes > endMinutes) {
+    return { label: 'Selesai', isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
+  }
+  return { label: 'Berikutnya', isActive: false, className: 'bg-amber-100 text-amber-700 font-bold dark:bg-amber-950 dark:text-amber-300' }
+}
+
 export default function TeacherTeachingWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -455,6 +498,7 @@ export default function TeacherTeachingWorkspacePage() {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('2026/2027')
   const [selectedSemester, setSelectedSemester] = useState('Ganjil')
   const [selectedDate, setSelectedDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const getScheduleStatus = useCallback((schedule) => calculateScheduleStatus(schedule, selectedDate), [selectedDate])
 
   const isAdminOrSuperAdmin = React.useMemo(() => hasAnyRole(userRoles, [
     ...ROLES.SUPER_ADMIN, ...ROLES.ADMIN
@@ -507,6 +551,7 @@ export default function TeacherTeachingWorkspacePage() {
   const [presensiModalSchedule, setPresensiModalSchedule] = useState(null)
   const [showMulaiMengajarModal, setShowMulaiMengajarModal] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
+  const [isSavingAttendance, setIsSavingAttendance] = useState(false)
 
   // Tahfizh Form Interactive Search Popup Modals
   const [showStudentSearchModal, setShowStudentSearchModal] = useState(false)
@@ -599,6 +644,16 @@ export default function TeacherTeachingWorkspacePage() {
   const [selectedHistorySession, setSelectedHistorySession] = useState(null)
   const [showHistorySessionModal, setShowHistorySessionModal] = useState(false)
   const [historySessionStudentSearch, setHistorySessionStudentSearch] = useState('')
+  const [isEditingHistorySession, setIsEditingHistorySession] = useState(false)
+  const [editedAttendanceMap, setEditedAttendanceMap] = useState({})
+  const [isSavingHistoryEdit, setIsSavingHistoryEdit] = useState(false)
+
+  // Schedule Detail Modal states (for timeline card student & attendance inspection)
+  const [scheduleDetailStudents, setScheduleDetailStudents] = useState([])
+  const [scheduleDetailAttendance, setScheduleDetailAttendance] = useState({})
+  const [loadingScheduleDetail, setLoadingScheduleDetail] = useState(false)
+  const [scheduleDetailSearch, setScheduleDetailSearch] = useState('')
+
   const [penilaianPage, setPenilaianPage] = useState(1)
   const penilaianPerPage = 10
 
@@ -766,6 +821,47 @@ export default function TeacherTeachingWorkspacePage() {
     setMaterialPage(1)
   }, [selectedClass, materialStatusFilter, materialMapelFilter, debouncedMaterialSearch])
 
+  // Auto-sync selectedClass when navigating with URL query params or when switching to 'presensi'
+  useEffect(() => {
+    const qClassId = searchParams.get('class_id')
+    const qScheduleId = searchParams.get('schedule_id')
+    const pool = allTeacherSchedules.length > 0 ? allTeacherSchedules : schedules
+
+    if (qScheduleId && pool.length > 0) {
+      const match = pool.find((s) => String(s.id) === String(qScheduleId))
+      if (match) {
+        const cid = match.kelas_id || match.class_id || match.kelas?.id || match.class?.id
+        if (cid && String(cid) !== String(selectedClass)) {
+          setSelectedClass(String(cid))
+          fetchStudentsForClass(String(cid))
+        }
+        setPresensiModalSchedule(match)
+        return
+      }
+    }
+
+    if (qClassId && classes.length > 0) {
+      if (classes.some((c) => String(c.id) === String(qClassId)) && String(qClassId) !== String(selectedClass)) {
+        setSelectedClass(String(qClassId))
+        fetchStudentsForClass(String(qClassId))
+        return
+      }
+    }
+
+    // When on presensi tab and no class was explicitly chosen yet, auto-lock onto currently ongoing schedule
+    if (activeTab === 'presensi' && pool.length > 0) {
+      const activeNow = pool.find((s) => calculateScheduleStatus(s, selectedDate).isActive)
+      if (activeNow) {
+        const cid = activeNow.kelas_id || activeNow.class_id || activeNow.kelas?.id || activeNow.class?.id
+        if (cid && String(cid) !== String(selectedClass)) {
+          setSelectedClass(String(cid))
+          setPresensiModalSchedule(activeNow)
+          fetchStudentsForClass(String(cid))
+        }
+      }
+    }
+  }, [searchParams, activeTab, allTeacherSchedules, schedules, classes, selectedDate])
+
   useEffect(() => {
     setTahfizhPage(1)
   }, [selectedClass, selectedTahfizhUnit, debouncedTahfizhSearch, activeTab])
@@ -826,23 +922,74 @@ export default function TeacherTeachingWorkspacePage() {
         }
       }
 
-      const resClasses = await api.get('/teacher/classes')
+      const [resClasses, resAllSch] = await Promise.all([
+        api.get('/teacher/classes'),
+        api.get('/teacher/schedules').catch(() => null),
+      ])
+
+      const schList = resAllSch?.data?.data || []
+      if (schList.length > 0) {
+        setAllTeacherSchedules(schList)
+        setSchedules(schList)
+      }
+
       let initialClassId = ''
       if (resClasses?.data?.data) {
-        setClasses(resClasses.data.data)
-        if (resClasses.data.data.length > 0) {
-          initialClassId = (!selectedClass || selectedClass === 'all')
-            ? String(resClasses.data.data[0].id)
-            : selectedClass
-          if (!selectedClass || selectedClass === 'all') {
-            setSelectedClass(initialClassId)
+        const clsList = resClasses.data.data
+        setClasses(clsList)
+
+        // 1. Check URL query parameters (class_id or schedule_id)
+        const paramClassId = searchParams.get('class_id')
+        const paramScheduleId = searchParams.get('schedule_id')
+        let matchedByParam = null
+        if (paramScheduleId && schList.length > 0) {
+          matchedByParam = schList.find((s) => String(s.id) === String(paramScheduleId))
+        }
+        if (matchedByParam) {
+          const cid = matchedByParam.kelas_id || matchedByParam.class_id || matchedByParam.kelas?.id || matchedByParam.class?.id
+          if (cid) initialClassId = String(cid)
+          setPresensiModalSchedule(matchedByParam)
+        } else if (paramClassId && clsList.some((c) => String(c.id) === String(paramClassId))) {
+          initialClassId = String(paramClassId)
+        }
+
+        // 2. If no valid param, auto-detect the currently active KBM schedule right now
+        if (!initialClassId && schList.length > 0) {
+          const activeNowSch = schList.find((s) => {
+            const st = calculateScheduleStatus(s, selectedDate)
+            return st.isActive
+          })
+          if (activeNowSch) {
+            const cid = activeNowSch.kelas_id || activeNowSch.class_id || activeNowSch.kelas?.id || activeNowSch.class?.id
+            if (cid) {
+              initialClassId = String(cid)
+              setPresensiModalSchedule(activeNowSch)
+            }
           }
         }
-      }
-      const resAllSch = await api.get('/teacher/schedules').catch(() => null)
-      if (resAllSch?.data?.data) {
-        setAllTeacherSchedules(resAllSch.data.data)
-        setSchedules(resAllSch.data.data)
+
+        // 3. Fallback to next upcoming schedule today
+        if (!initialClassId && schList.length > 0) {
+          const upcomingSch = schList.find((s) => {
+            const st = calculateScheduleStatus(s, selectedDate)
+            return st.label === 'Berikutnya'
+          })
+          if (upcomingSch) {
+            const cid = upcomingSch.kelas_id || upcomingSch.class_id || upcomingSch.kelas?.id || upcomingSch.class?.id
+            if (cid) initialClassId = String(cid)
+          }
+        }
+
+        // 4. Fallback to first class in list
+        if (!initialClassId && clsList.length > 0) {
+          initialClassId = (!selectedClass || selectedClass === 'all')
+            ? String(clsList[0].id)
+            : selectedClass
+        }
+
+        if (initialClassId) {
+          setSelectedClass(initialClassId)
+        }
       }
 
       // Eagerly fetch core operational dataset so Master KPI cards show real database counts immediately
@@ -1240,25 +1387,25 @@ export default function TeacherTeachingWorkspacePage() {
       const targetStudent = student
         || (paginatedAttendanceStudents && paginatedAttendanceStudents.length > 0 ? paginatedAttendanceStudents[0] : null)
         || (students && students.length > 0 ? students[0] : null)
-        || {
-          nama_lengkap: 'Santri Darel Iman',
-          nis: '2026001',
-          kelas: { nama_kelas: selectedClassName || 'Kelas X SMA Terpadu' }
-        }
+
+      if (!targetStudent) {
+        addToast('warning', 'Peringatan', 'Tidak ada data siswa/santri yang dipilih untuk mencetak lembar evaluasi.')
+        return
+      }
 
       const studentDisplayName = targetStudent.nama_lengkap || targetStudent.full_name || targetStudent.name || 'Santri'
       addToast('info', 'Mencetak Evaluasi Pekanan', `Menyiapkan dialog cetak lembar evaluasi mingguan untuk ${studentDisplayName}...`)
 
       const studentTahfizh = (tahfizhLogs || []).find((t) => t.id === targetStudent?.id || t.student_id === targetStudent?.id)
-      const lastSurah = studentTahfizh?.hafalan_surah_name || studentTahfizh?.last_surah || "Ali 'Imran ayat 135-137"
-      const lastDepositDate = studentTahfizh?.record_date || 'Jumat, 14 Agustus 2026'
-      const totalLines = studentTahfizh?.total_lines != null ? studentTahfizh.total_lines : 34
-      const targetLines = studentTahfizh?.target_lines != null ? studentTahfizh.target_lines : 15
+      const lastSurah = studentTahfizh?.hafalan_surah_name || studentTahfizh?.last_surah || '-'
+      const lastDepositDate = studentTahfizh?.record_date || '-'
+      const totalLines = studentTahfizh?.total_lines != null ? studentTahfizh.total_lines : 0
+      const targetLines = studentTahfizh?.target_lines != null ? studentTahfizh.target_lines : 0
 
       const notes = (studentNotes || []).filter((n) => n.student_id === targetStudent?.id)
       const teacherNotesText = notes.length > 0
         ? notes.map((n) => `${n.title ? n.title + ': ' : ''}${n.content || ''}`).join(' · ')
-        : "Alhamdulillah ananda menunjukkan kedisiplinan belajar yang sangat baik dan capaian hafalan Al-Qur'an melampaui target pekanan (34 dari target 15 baris). Mohon Ayah/Bunda senantiasa memantau dan mendampingi muraja'ah di rumah."
+        : "Belum ada catatan evaluasi khusus guru pada periode ini."
 
       const weeklyAttendance = [
         { dayDate: 'Senin, 10 Agustus 2026', time: '07:30 - 08:50', subject: 'Ekonomi', status: 'Hadir' },
@@ -1413,22 +1560,48 @@ export default function TeacherTeachingWorkspacePage() {
   }
 
   const changeTab = (tabName) => {
+    if (tabName === 'presensi') {
+      const pool = allTeacherSchedules.length > 0 ? allTeacherSchedules : schedules
+      const activeNow = pool.find((s) => calculateScheduleStatus(s, selectedDate).isActive)
+      if (activeNow) {
+        const cid = activeNow.kelas_id || activeNow.class_id || activeNow.kelas?.id || activeNow.class?.id
+        if (cid) {
+          setSelectedClass(String(cid))
+          setPresensiModalSchedule(activeNow)
+          fetchStudentsForClass(String(cid))
+          setSearchParams({ tab: 'presensi', class_id: String(cid), schedule_id: String(activeNow.id) })
+          return
+        }
+      }
+    }
     setSearchParams({ tab: tabName })
   }
 
   const getCurrentClassId = () => (selectedClass && selectedClass !== 'all') ? selectedClass : (classes[0]?.id || '')
 
   const getCurrentSchedule = () => {
-    const classId = getCurrentClassId()
     const pool = allTeacherSchedules.length > 0 ? allTeacherSchedules : schedules
-    if (!classId) return pool[0] || null
+    if (pool.length === 0) return null
 
-    const matchingSchedule = pool.find((schedule) => {
-      const scheduleClassId = schedule.class_id || schedule.kelas_id || schedule.kelas?.id || schedule.class?.id
-      return scheduleClassId && (String(scheduleClassId) === String(classId) || String(schedule.kelas?.id) === String(classId) || String(schedule.class?.id) === String(classId))
-    })
+    // 1. If currently ongoing KBM schedule exists and matches selectedClass (or no selectedClass), prioritize it
+    const activeOngoing = pool.find((s) => calculateScheduleStatus(s, selectedDate).isActive)
+    if (activeOngoing) {
+      if (!selectedClass || selectedClass === 'all') return activeOngoing
+      const ongoingClassId = activeOngoing.class_id || activeOngoing.kelas_id || activeOngoing.kelas?.id || activeOngoing.class?.id
+      if (String(ongoingClassId) === String(selectedClass)) return activeOngoing
+    }
 
-    return matchingSchedule || schedules[0] || pool[0] || null
+    // 2. Find schedule matching current selected class
+    const classId = getCurrentClassId()
+    if (classId) {
+      const matchingSchedule = pool.find((schedule) => {
+        const scheduleClassId = schedule.class_id || schedule.kelas_id || schedule.kelas?.id || schedule.class?.id
+        return scheduleClassId && (String(scheduleClassId) === String(classId) || String(schedule.kelas?.id) === String(classId) || String(schedule.class?.id) === String(classId))
+      })
+      if (matchingSchedule) return matchingSchedule
+    }
+
+    return activeOngoing || schedules[0] || pool[0] || null
   }
 
   const getCurrentSubjectId = () => {
@@ -1480,10 +1653,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'jadwal',
       title: 'Jadwal Mengajar',
       icon: Calendar,
-      tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/60',
+      iconBox: 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40',
+      cardClass: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/40 dark:to-slate-900 dark:border-emerald-800/60 hover:border-emerald-400 hover:shadow-md',
       count: schedules.length,
       badge: `${schedules.length} Sesi`,
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/70',
       sub: 'Pertemuan Terjadwal',
       progress: schedules.length > 0 ? 100 : 0,
       quickText: 'Lihat Jadwal',
@@ -1492,10 +1666,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'mulai-mengajar',
       title: 'Mulai Mengajar',
       icon: Play,
-      tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/60',
+      iconBox: 'bg-gradient-to-br from-teal-500 via-emerald-600 to-emerald-700 text-white shadow-md shadow-teal-600/30 border border-teal-300/40',
+      cardClass: 'border-teal-200/90 bg-gradient-to-br from-teal-50/80 to-white dark:from-teal-950/40 dark:to-slate-900 dark:border-teal-800/60 hover:border-teal-400 hover:shadow-md',
       count: 'Sesi',
       badge: 'Sesi Aktif',
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+      badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/70',
       sub: 'Mulai Sesi Kelas',
       progress: 100,
       quickText: 'Mulai Mengajar',
@@ -1504,10 +1679,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'presensi',
       title: 'Presensi Siswa',
       icon: UserCheck,
-      tone: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200/60',
+      iconBox: 'bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 text-white shadow-md shadow-blue-600/30 border border-sky-300/40',
+      cardClass: 'border-sky-200/90 bg-gradient-to-br from-sky-50/80 to-white dark:from-sky-950/40 dark:to-slate-900 dark:border-sky-800/60 hover:border-sky-400 hover:shadow-md',
       count: students.length,
       badge: `${students.length} Siswa`,
-      badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+      badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200/70',
       sub: selectedClassName ? `Kelas ${selectedClassName}` : 'Rombel Aktif',
       progress: students.length > 0 ? 100 : 0,
       quickText: 'Input Presensi',
@@ -1516,10 +1692,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'materi',
       title: 'Materi Belajar',
       icon: BookOpen,
-      tone: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200/60',
+      iconBox: 'bg-gradient-to-br from-purple-500 via-purple-600 to-indigo-700 text-white shadow-md shadow-purple-600/30 border border-purple-300/40',
+      cardClass: 'border-purple-200/90 bg-gradient-to-br from-purple-50/80 to-white dark:from-purple-950/40 dark:to-slate-900 dark:border-purple-800/60 hover:border-purple-400 hover:shadow-md',
       count: materials.length,
       badge: `${materials.length} Modul`,
-      badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
+      badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200/70',
       sub: 'Materi Pembelajaran',
       progress: materials.length > 0 ? 100 : 0,
       quickText: 'Buat Materi',
@@ -1528,10 +1705,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'penugasan',
       title: 'Penugasan',
       icon: FileText,
-      tone: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200/60',
+      iconBox: 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white shadow-md shadow-amber-600/30 border border-amber-300/40',
+      cardClass: 'border-amber-200/90 bg-gradient-to-br from-amber-50/80 to-white dark:from-amber-950/40 dark:to-slate-900 dark:border-amber-800/60 hover:border-amber-400 hover:shadow-md',
       count: assignments.length,
       badge: `${assignments.length} Tugas`,
-      badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+      badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200/70',
       sub: 'Evaluasi & Tugas',
       progress: assignments.length > 0 ? 100 : 0,
       quickText: 'Buat Tugas',
@@ -1540,10 +1718,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'penilaian',
       title: 'Penilaian',
       icon: BarChart3,
-      tone: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200/60',
+      iconBox: 'bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white shadow-md shadow-rose-600/30 border border-rose-300/40',
+      cardClass: 'border-rose-200/90 bg-gradient-to-br from-rose-50/80 to-white dark:from-rose-950/40 dark:to-slate-900 dark:border-rose-800/60 hover:border-rose-400 hover:shadow-md',
       count: `${gradedStudentCount}/${students.length}`,
       badge: students.length > 0 && gradedStudentCount === students.length ? 'Lengkap' : `${gradedStudentCount} Dinilai`,
-      badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
+      badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200/70',
       sub: 'Nilai Rapor & Harian',
       progress: students.length > 0 ? Math.round((gradedStudentCount / students.length) * 100) : 0,
       quickText: 'Input Nilai',
@@ -1552,10 +1731,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'tahfizh',
       title: 'Tahfizh Al-Qur\'an',
       icon: GraduationCap,
-      tone: 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border-teal-200/60',
+      iconBox: 'bg-gradient-to-br from-teal-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-teal-600/30 border border-teal-300/40',
+      cardClass: 'border-teal-200/90 bg-gradient-to-br from-teal-50/80 to-white dark:from-teal-950/40 dark:to-slate-900 dark:border-teal-800/60 hover:border-teal-400 hover:shadow-md',
       count: tahfizhLogs.length,
       badge: `${tahfizhLogs.length} Setoran`,
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/70',
       sub: 'Progress Hafalan',
       progress: tahfizhLogs.length > 0 ? 100 : 0,
       quickText: 'Input Tahfizh',
@@ -1564,10 +1744,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'rekapan-tahfizh',
       title: 'Rekapan Tahfizh',
       icon: FileSpreadsheet,
-      tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/60',
+      iconBox: 'bg-gradient-to-br from-emerald-600 via-teal-600 to-teal-800 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40',
+      cardClass: 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/80 to-white dark:from-emerald-950/40 dark:to-slate-900 dark:border-emerald-800/60 hover:border-emerald-400 hover:shadow-md',
       count: 'Laporan',
       badge: 'Rekap & Cetak',
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/70',
       sub: 'Rekapitulasi Hafalan',
       progress: 100,
       quickText: 'Buka Rekapan',
@@ -1576,10 +1757,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'mutabaah',
       title: 'Mutabaah Yaumiyyah',
       icon: Heart,
-      tone: 'bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 border-pink-200/60',
+      iconBox: 'bg-gradient-to-br from-pink-500 via-rose-500 to-rose-600 text-white shadow-md shadow-pink-600/30 border border-pink-300/40',
+      cardClass: 'border-pink-200/90 bg-gradient-to-br from-pink-50/80 to-white dark:from-pink-950/40 dark:to-slate-900 dark:border-pink-800/60 hover:border-pink-400 hover:shadow-md',
       count: 'Dinamis',
       badge: 'Sesuai Template',
-      badgeColor: 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300',
+      badgeColor: 'bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300 border border-pink-200/70',
       sub: 'Worship Checklist',
       progress: 0,
       quickText: 'Input Mutabaah',
@@ -1588,10 +1770,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'catatan',
       title: 'Catatan Siswa',
       icon: MessageSquare,
-      tone: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-200/60',
+      iconBox: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white shadow-md shadow-indigo-600/30 border border-indigo-300/40',
+      cardClass: 'border-indigo-200/90 bg-gradient-to-br from-indigo-50/80 to-white dark:from-indigo-950/40 dark:to-slate-900 dark:border-indigo-800/60 hover:border-indigo-400 hover:shadow-md',
       count: studentNotes.length,
       badge: `${studentNotes.length} Catatan`,
-      badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
+      badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/70',
       sub: 'Perkembangan Siswa',
       progress: studentNotes.length > 0 ? 100 : 0,
       quickText: 'Tambah Catatan',
@@ -1600,10 +1783,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'chat',
       title: 'Komunikasi Orang Tua',
       icon: MessageSquare,
-      tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/60',
+      iconBox: 'bg-gradient-to-br from-teal-500 via-cyan-600 to-teal-700 text-white shadow-md shadow-teal-600/30 border border-teal-300/40',
+      cardClass: 'border-teal-200/90 bg-gradient-to-br from-teal-50/80 to-white dark:from-teal-950/40 dark:to-slate-900 dark:border-teal-800/60 hover:border-teal-400 hover:shadow-md',
       count: 'Pesan',
       badge: 'Chat Guru',
-      badgeColor: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+      badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/70',
       sub: 'Pesan Masuk & Diskusi',
       progress: 100,
       quickText: 'Buka Chat',
@@ -1612,10 +1796,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'log-absensi',
       title: 'Log Absensi Guru',
       icon: Clock,
-      tone: 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border-teal-200/60',
+      iconBox: 'bg-gradient-to-br from-teal-600 via-emerald-600 to-teal-800 text-white shadow-md shadow-teal-600/30 border border-teal-300/40',
+      cardClass: 'border-teal-200/90 bg-gradient-to-br from-teal-50/80 to-white dark:from-teal-950/40 dark:to-slate-900 dark:border-teal-800/60 hover:border-teal-400 hover:shadow-md',
       count: `${teacherLogAbsensi.length} Hari`,
       badge: teacherLogAbsensi.length > 0 ? 'Tercatat' : 'Belum Ada',
-      badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300',
+      badgeColor: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-200/70',
       sub: 'Log Kehadiran Saya',
       progress: teacherLogAbsensi.length > 0 ? 100 : 0,
       quickText: 'Lihat Log Absen',
@@ -1624,10 +1809,11 @@ export default function TeacherTeachingWorkspacePage() {
       id: 'jadwal-lengkap',
       title: 'Jadwal Lengkap',
       icon: CalendarDays,
-      tone: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200/60',
+      iconBox: 'bg-gradient-to-br from-sky-500 via-indigo-600 to-blue-700 text-white shadow-md shadow-sky-600/30 border border-sky-300/40',
+      cardClass: 'border-sky-200/90 bg-gradient-to-br from-sky-50/80 to-white dark:from-sky-950/40 dark:to-slate-900 dark:border-sky-800/60 hover:border-sky-400 hover:shadow-md',
       count: selectedSemester || 'Semester',
       badge: 'Resmi',
-      badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300',
+      badgeColor: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-200/70',
       sub: selectedAcademicYear || 'Tahun Ajaran',
       progress: 100,
       quickText: 'Lihat Detail',
@@ -1641,39 +1827,121 @@ export default function TeacherTeachingWorkspacePage() {
       return
     }
     if (cardItem.id === 'presensi') {
-      openPresensiModal(getCurrentSchedule() || schedules[0] || null)
+      const target = getCurrentSchedule() || schedules[0] || null
+      if (!target || !getScheduleStatus(target).isActive) {
+        addToast(
+          'warning',
+          'Di Luar Jam KBM',
+          'Tombol presensi hanya aktif pada jadwal KBM yang sedang berlangsung saat ini.'
+        )
+        return
+      }
+      openPresensiModal(target)
       changeTab('presensi')
       return
     }
     changeTab(cardItem.id)
   }
 
+  // Helper to fetch and sync existing saved attendance from server
+  const fetchAttendanceForSchedule = async (scheduleObj) => {
+    const targetSchedule = scheduleObj || presensiModalSchedule || getCurrentSchedule()
+    if (!targetSchedule) return
+
+    const targetClassId = targetSchedule.kelas_id || targetSchedule.class_id || targetSchedule.kelas?.id || targetSchedule.class?.id || selectedClass
+    if (!targetClassId || targetClassId === 'all') return
+
+    const todayDate = new Date().toISOString().split('T')[0]
+
+    try {
+      const res = await api.get('/teacher/attendance', {
+        params: {
+          class_id: targetClassId,
+          date: todayDate,
+        },
+      })
+      const sessions = res?.data?.data || []
+      if (Array.isArray(sessions) && sessions.length > 0) {
+        const activeSession = sessions.find((s) => String(s.schedule_id) === String(targetSchedule.id)) || sessions[0]
+        if (activeSession && Array.isArray(activeSession.attendances) && activeSession.attendances.length > 0) {
+          const mapServerStatus = (s) => {
+            if (!s) return 'Belum Dicatat'
+            const lower = String(s).toLowerCase().trim()
+            if (lower === 'hadir') return 'Hadir'
+            if (lower === 'izin') return 'Izin'
+            if (lower === 'sakit') return 'Sakit'
+            if (lower === 'alpha' || lower === 'alpa') return 'Alpha'
+            if (lower === 'terlambat') return 'Terlambat'
+            return 'Belum Dicatat'
+          }
+
+          setAttendanceData((prev) => {
+            const next = { ...prev }
+            activeSession.attendances.forEach((att) => {
+              const sid = att.siswa_id || att.student_id
+              if (sid) {
+                next[sid] = {
+                  status: mapServerStatus(att.status_hadir),
+                  notes: att.keterangan || att.notes || '',
+                  check_in_time: att.waktu_presensi || att.arrival_time || '',
+                  method: att.recorded_method || att.verification_status || '',
+                }
+              }
+            })
+            return next
+          })
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch existing attendance session:', err?.message)
+    }
+  }
+
   // Open Dedicated Presensi Pop-up Modal for Schedule
-  const openPresensiModal = (scheduleObj) => {
+  const openPresensiModal = async (scheduleObj) => {
     const targetSchedule = scheduleObj || getCurrentSchedule() || schedules[0] || null
+    if (targetSchedule) {
+      const scheduleStatus = getScheduleStatus(targetSchedule)
+      if (!scheduleStatus.isActive) {
+        addToast(
+          'warning',
+          'Jadwal KBM Tidak Aktif',
+          `Presensi hanya dapat diakses saat jam KBM berlangsung (${(targetSchedule.start_time || targetSchedule.time_start || '00:00').slice(0, 5)} - ${(targetSchedule.end_time || targetSchedule.time_end || '00:00').slice(0, 5)} WIB). Status saat ini: ${scheduleStatus.label}.`
+        )
+        return
+      }
+    }
     setPresensiModalSchedule(targetSchedule)
     if (targetSchedule) {
-      const schClassId = targetSchedule.kelas_id || targetSchedule.class_id || targetSchedule.kelas?.id || targetSchedule.class?.id
-      if (schClassId && String(schClassId) !== String(selectedClass)) {
+      const schClassId = targetSchedule.kelas_id || targetSchedule.class_id || targetSchedule.kelas?.id || targetSchedule.class?.id ||
+        (classes.find((c) => (c.nama_kelas || c.name) === getScheduleClass(targetSchedule))?.id)
+      if (schClassId) {
         setSelectedClass(String(schClassId))
-        fetchStudentsForClass(String(schClassId))
+        await fetchStudentsForClass(String(schClassId))
       } else {
-        fetchStudentsForClass(schClassId || selectedClass)
+        await fetchStudentsForClass(selectedClass)
       }
     } else {
-      fetchStudentsForClass(selectedClass)
+      await fetchStudentsForClass(selectedClass)
     }
+    await fetchAttendanceForSchedule(targetSchedule)
     setShowAktivitasModal(false)
     setShowPresensiModal(true)
   }
 
   const handleModalClassChange = (newClassId) => {
     setSelectedClass(newClassId)
-    if (newClassId !== 'all') {
-      const match = (schedules || []).find((s) => {
+    if (newClassId && newClassId !== 'all') {
+      const targetSubjId = presensiModalSchedule?.subject_id || presensiModalSchedule?.subject?.id
+      const pool = (allTeacherSchedules && allTeacherSchedules.length > 0) ? allTeacherSchedules : schedules
+      const match = pool.find((s) => {
         const sCid = s.kelas_id || s.class_id || s.kelas?.id || s.class?.id
-        return String(sCid) === String(newClassId)
-      }) || (allTeacherSchedules || []).find((s) => {
+        const sSubjId = s.subject_id || s.subject?.id
+        const isClassMatch = String(sCid) === String(newClassId)
+        if (!isClassMatch) return false
+        if (targetSubjId && sSubjId) return String(sSubjId) === String(targetSubjId)
+        return true
+      }) || pool.find((s) => {
         const sCid = s.kelas_id || s.class_id || s.kelas?.id || s.class?.id
         return String(sCid) === String(newClassId)
       })
@@ -2035,7 +2303,7 @@ export default function TeacherTeachingWorkspacePage() {
   }
 
   const handleSaveAttendance = async () => {
-
+    if (isSavingAttendance) return
     const activeSchedule = presensiModalSchedule || getCurrentSchedule()
 
     if (!activeSchedule) {
@@ -2043,16 +2311,39 @@ export default function TeacherTeachingWorkspacePage() {
       return
     }
 
+    const scheduleStatus = getScheduleStatus(activeSchedule)
+    if (!scheduleStatus.isActive) {
+      addToast(
+        'warning',
+        'Di Luar Jam KBM',
+        `Presensi hanya dapat disimpan saat jam KBM berlangsung (${(activeSchedule.start_time || activeSchedule.time_start || '00:00').slice(0, 5)} - ${(activeSchedule.end_time || activeSchedule.time_end || '00:00').slice(0, 5)} WIB). Status saat ini: ${scheduleStatus.label}.`
+      )
+      return
+    }
+
+    setIsSavingAttendance(true)
     try {
+      const normalizeStatus = (st) => {
+        if (!st) return 'Belum Dicatat'
+        const lower = String(st).toLowerCase().trim()
+        if (lower === 'hadir') return 'Hadir'
+        if (lower === 'izin') return 'Izin'
+        if (lower === 'sakit') return 'Sakit'
+        if (lower === 'alpha' || lower === 'alpa') return 'Alpha'
+        if (lower === 'terlambat') return 'Terlambat'
+        return 'Belum Dicatat'
+      }
+
       const payload = {
         class_schedule_id: activeSchedule.id,
         date: new Date().toISOString().split('T')[0],
-        meeting_number: meetingNumber,
-        topic: attendanceTopic,
+        meeting_number: Number(meetingNumber) || 1,
+        topic: attendanceTopic || 'Pembelajaran Tematik & KBM',
+        method: selectedMethod || 'rollcall',
         students: Object.keys(attendanceData).map((stId) => ({
           student_id: stId,
-          status: attendanceData[stId].status,
-          notes: attendanceData[stId].notes,
+          status: normalizeStatus(attendanceData[stId]?.status),
+          notes: attendanceData[stId]?.notes || null,
         })),
       }
       const response = await api.post('/teacher/attendance', payload)
@@ -2062,6 +2353,8 @@ export default function TeacherTeachingWorkspacePage() {
     } catch (err) {
       const message = err?.response?.data?.message || 'Terjadi kesalahan saat menyimpan presensi siswa.'
       addToast('error', 'Gagal Simpan', message)
+    } finally {
+      setIsSavingAttendance(false)
     }
   }
 
@@ -2280,6 +2573,158 @@ export default function TeacherTeachingWorkspacePage() {
     addToast('success', 'Export Berhasil', `Data presensi pertemuan ke-${session.meeting_number || 1} berhasil diekspor ke format Excel (.csv).`)
   }
 
+  const handleStartEditHistorySession = () => {
+    if (!selectedHistorySession) return
+    const initialMap = {}
+    const attList = selectedHistorySession.attendances || []
+    attList.forEach((item) => {
+      const sId = item.siswa_id || item.student_id || item.siswa?.id || item.id
+      const rawStatus = (item.status_hadir || item.status || 'Hadir').toLowerCase()
+      const normalizedStatus = rawStatus === 'alpa' || rawStatus === 'alpha' ? 'Alpha'
+        : rawStatus === 'izin' ? 'Izin'
+        : rawStatus === 'sakit' ? 'Sakit'
+        : rawStatus === 'terlambat' ? 'Terlambat'
+        : rawStatus === 'hadir' ? 'Hadir'
+        : 'Belum Dicatat'
+      initialMap[sId] = {
+        status: normalizedStatus,
+        notes: item.keterangan || item.notes || '',
+      }
+    })
+    setEditedAttendanceMap(initialMap)
+    setIsEditingHistorySession(true)
+  }
+
+  const handleSaveHistoryCorrection = async () => {
+    if (!selectedHistorySession) return
+    setIsSavingHistoryEdit(true)
+    try {
+      const session = selectedHistorySession
+      const attList = session.attendances || []
+      const payload = {
+        class_schedule_id: session.schedule_id || session.schedule?.id,
+        date: session.attendance_date,
+        meeting_number: session.meeting_number || 1,
+        topic: session.topic || session.learning_material || 'Presensi Pembelajaran Harian',
+        method: session.attendance_method || 'rollcall',
+        students: attList.map((item) => {
+          const sId = item.siswa_id || item.student_id || item.siswa?.id || item.id
+          const edit = editedAttendanceMap[sId]
+          return {
+            student_id: sId,
+            status: edit?.status || item.status_hadir || item.status || 'Hadir',
+            notes: edit?.notes || item.keterangan || 'Koreksi presensi sesi KBM oleh guru',
+          }
+        }),
+      }
+
+      await api.post('/teacher/attendance', payload)
+      addToast('success', 'Koreksi Disimpan', `Data presensi pertemuan ke-${session.meeting_number || 1} berhasil diperbarui.`)
+
+      // Update selectedHistorySession locally
+      setSelectedHistorySession((prev) => {
+        if (!prev) return prev
+        const updatedAttendances = (prev.attendances || []).map((att) => {
+          const sId = att.siswa_id || att.student_id || att.siswa?.id || att.id
+          const edit = editedAttendanceMap[sId]
+          if (edit) {
+            return {
+              ...att,
+              status_hadir: edit.status,
+              status: edit.status,
+              keterangan: edit.notes,
+            }
+          }
+          return att
+        })
+        return {
+          ...prev,
+          attendances: updatedAttendances,
+        }
+      })
+      setIsEditingHistorySession(false)
+      fetchHistorySessions()
+    } catch (err) {
+      console.error('Failed to save attendance correction:', err)
+      addToast('error', 'Gagal Menyimpan Koreksi', err?.response?.data?.message || 'Terjadi kesalahan saat menyimpan perubahan data presensi.')
+    } finally {
+      setIsSavingHistoryEdit(false)
+    }
+  }
+
+  const openScheduleDetail = async (schedule) => {
+    if (!schedule) return
+    const schClassId = schedule.kelas_id || schedule.class_id || schedule.kelas?.id || schedule.class?.id ||
+      (classes.find((c) => (c.nama_kelas || c.name) === getScheduleClass(schedule))?.id)
+
+    setDetailData({
+      title: `Jadwal: ${getScheduleSubject(schedule)}`,
+      category: 'Jadwal Mengajar',
+      items: [
+        { label: 'Hari', value: getScheduleDay(schedule) },
+        { label: 'Rombel', value: getScheduleClass(schedule) },
+        { label: 'Jam Pelajaran', value: `${(schedule.start_time || schedule.time_start || '00:00').slice(0, 5)} - ${(schedule.end_time || schedule.time_end || '00:00').slice(0, 5)} WIB` },
+        { label: 'Ruangan', value: getScheduleRoom(schedule) },
+      ],
+      rawSchedule: schedule,
+    })
+    setScheduleDetailSearch('')
+    setShowDetailModal(true)
+
+    setLoadingScheduleDetail(true)
+    try {
+      let classStudents = []
+      if (schClassId) {
+        const res = await api.get('/teacher/students', {
+          params: { class_id: schClassId, per_page: 100 }
+        }).catch(() => null)
+        const raw = res?.data?.data
+        classStudents = Array.isArray(raw) ? raw : raw?.data || []
+        if (classStudents.length === 0) {
+          classStudents = students.filter((st) => {
+            const sCid = st.kelas_id || st.class_id || st.kelas?.id
+            return !!sCid && String(sCid) === String(schClassId)
+          })
+        }
+      }
+      setScheduleDetailStudents(classStudents)
+
+      const todayDate = new Date().toISOString().split('T')[0]
+      const attMap = {}
+      if (schClassId) {
+        const attRes = await api.get('/teacher/attendance', {
+          params: { class_id: schClassId, date: todayDate }
+        }).catch(() => null)
+        const sessions = attRes?.data?.data || []
+        const activeSession = Array.isArray(sessions) ? (sessions.find((s) => String(s.schedule_id) === String(schedule.id)) || sessions[0]) : null
+        if (activeSession && Array.isArray(activeSession.attendances)) {
+          activeSession.attendances.forEach((att) => {
+            const sid = att.siswa_id || att.student_id
+            if (sid) {
+              attMap[sid] = {
+                status: att.status_hadir || att.status || 'Belum Dicatat',
+                notes: att.keterangan || att.notes || '',
+                time: att.waktu_presensi || '',
+              }
+            }
+          })
+        }
+      }
+      if (Object.keys(attMap).length === 0 && attendanceData && Object.keys(attendanceData).length > 0) {
+        classStudents.forEach((st) => {
+          if (attendanceData[st.id]) {
+            attMap[st.id] = attendanceData[st.id]
+          }
+        })
+      }
+      setScheduleDetailAttendance(attMap)
+    } catch (err) {
+      console.warn('Error loading schedule detail students:', err)
+    } finally {
+      setLoadingScheduleDetail(false)
+    }
+  }
+
   const handleExportHistorySessionsSummary = () => {
     if (!historySessions || historySessions.length === 0) {
       addToast('warning', 'Data Sesi Kosong', 'Tidak ada sesi pembelajaran pada periode ini untuk diekspor.')
@@ -2413,7 +2858,7 @@ export default function TeacherTeachingWorkspacePage() {
       date: todayStr,
       topic: attendanceTopic || `Materi KBM Pertemuan ke-${meetingNumber || 1}`,
       status: curRecord.status || 'Belum Dicatat',
-      time: curRecord.check_in_time || (curRecord.status === 'Hadir' ? '07:15 WIB' : '-'),
+      time: curRecord.check_in_time || (curRecord.status === 'Hadir' ? 'Tercatat' : '-'),
       method: curRecord.method || (curRecord.status === 'Hadir' ? 'Roll Call Guru' : 'Belum dicatat'),
       notes: curRecord.notes || (curRecord.status === 'Hadir' ? 'Hadir tepat waktu' : '-'),
       isCurrent: true,
@@ -2435,7 +2880,7 @@ export default function TeacherTeachingWorkspacePage() {
 
       const timeStr = att?.waktu_presensi
         ? new Date(att.waktu_presensi).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
-        : (titleStatus === 'Hadir' ? '07:15 WIB' : '-')
+        : '-'
 
       return {
         id: session.id,
@@ -3395,7 +3840,7 @@ export default function TeacherTeachingWorkspacePage() {
                 ...(nextAtt[matchStudent.id] || {}),
                 status: matchedStatus,
                 method: 'Import File',
-                check_in_time: matchedStatus === 'Hadir' ? '07:15' : '-',
+                check_in_time: '-',
                 notes: rawNotes,
               }
               parsedCount++
@@ -4062,6 +4507,48 @@ export default function TeacherTeachingWorkspacePage() {
     return matched.length > 0 ? matched : classes
   }, [classes, materialMapelFilter, allTeacherSchedules, schedules, materials])
 
+  // Daftar rombel unik yang spesifik diajar untuk Mapel pada sesi Presensi (presensiModalSchedule)
+  const presensiModalClasses = useMemo(() => {
+    const activeSchedule = presensiModalSchedule || getCurrentSchedule() || schedules[0] || null
+    if (!activeSchedule) return classes
+
+    const activeSubjId = activeSchedule.subject_id || activeSchedule.subject?.id
+    const activeSubjName = getScheduleSubject(activeSchedule)
+    const pool = (allTeacherSchedules && allTeacherSchedules.length > 0) ? allTeacherSchedules : schedules
+
+    const matchingClassIds = new Set()
+    pool.forEach((s) => {
+      const sSubjId = s.subject_id || s.subject?.id
+      const sSubjName = getScheduleSubject(s)
+      const isSameSubject = (activeSubjId && sSubjId && String(sSubjId) === String(activeSubjId)) ||
+        (activeSubjName && sSubjName && sSubjName.trim().toLowerCase() === activeSubjName.trim().toLowerCase())
+      
+      if (isSameSubject) {
+        const cId = s.kelas_id || s.class_id || s.kelas?.id || s.class?.id
+        if (cId) matchingClassIds.add(String(cId))
+      }
+    })
+
+    // Pastikan ID rombel dari jadwal aktif selalu masuk
+    const directClassId = activeSchedule.kelas_id || activeSchedule.class_id || activeSchedule.kelas?.id || activeSchedule.class?.id
+    if (directClassId) matchingClassIds.add(String(directClassId))
+
+    const matched = classes.filter((c) => matchingClassIds.has(String(c.id)))
+    return matched.length > 0 ? matched : classes
+  }, [presensiModalSchedule, allTeacherSchedules, schedules, classes])
+
+  const modalActiveClassName = useMemo(() => {
+    const activeSchedule = presensiModalSchedule || getCurrentSchedule()
+    if (selectedClass && selectedClass !== 'all') {
+      const found = classes.find((c) => String(c.id) === String(selectedClass))
+      if (found?.nama_kelas || found?.name) return found.nama_kelas || found.name
+    }
+    if (activeSchedule) {
+      return getScheduleClass(activeSchedule)
+    }
+    return selectedClassName
+  }, [presensiModalSchedule, selectedClass, classes, selectedClassName])
+
   // Handler interaksi 2-arah: saat memilih Rombel
   const handleWorkspaceClassChange = (newClassId) => {
     setSelectedClass(newClassId)
@@ -4317,16 +4804,92 @@ export default function TeacherTeachingWorkspacePage() {
 
   const getAutomaticTahfizhTarget = (latestLog) => {
     if (!latestLog || !quranSurahs.length) return null
-    const needsRepeat = ['kelancaran', 'tajwid', 'makhraj'].some((key) => String(latestLog.metadata?.[key] || '').toLowerCase() === 'perlu bimbingan')
-    if (needsRepeat) return { surahNumber: Number(latestLog.hafalan_surah_number), ayatStart: Number(latestLog.hafalan_ayah_start), ayatEnd: Number(latestLog.hafalan_ayah_end), repeated: true }
+
+    // Helper untuk mengecek apakah suatu nilai evaluasi mengindikasikan perlu pengulangan
+    const isRepeatEvaluation = (val) => {
+      if (val === null || val === undefined) return false
+      const normalized = String(val).trim().toLowerCase()
+      // Variasi yang sah dan teridentifikasi: 'perlu bimbingan', 'bimbingan', 'kurang', 'd'
+      return ['perlu bimbingan', 'bimbingan', 'kurang', 'd'].includes(normalized)
+    }
+
+    // Ambil nilai dari field langsung (accessor) atau dari metadata (object/JSON string)
+    const getEvaluationValue = (log, key) => {
+      if (!log) return null
+      if (log[key] !== undefined && log[key] !== null && String(log[key]).trim() !== '') {
+        return log[key]
+      }
+      let meta = log.metadata
+      if (typeof meta === 'string') {
+        try {
+          meta = JSON.parse(meta)
+        } catch {
+          meta = null
+        }
+      }
+      if (meta && typeof meta === 'object') {
+        const val = meta[key]
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          return val
+        }
+      }
+      return null
+    }
+
+    const needsRepeat = ['kelancaran', 'tajwid', 'makhraj'].some((key) => {
+      const val = getEvaluationValue(latestLog, key)
+      return isRepeatEvaluation(val)
+    })
 
     const currentSurah = quranSurahs.find((surah) => Number(surah.nomor) === Number(latestLog.hafalan_surah_number))
+    const surahName = currentSurah?.nama_latin || latestLog.hafalan_surah_name || `Surah ${latestLog.hafalan_surah_number}`
+
+    if (needsRepeat) {
+      return {
+        surahNumber: Number(latestLog.hafalan_surah_number),
+        surah_name: surahName,
+        ayatStart: Number(latestLog.hafalan_ayah_start),
+        ayat_start: Number(latestLog.hafalan_ayah_start),
+        ayatEnd: Number(latestLog.hafalan_ayah_end),
+        ayat_end: Number(latestLog.hafalan_ayah_end),
+        repeated: true,
+      }
+    }
+
     const previousRangeSize = Math.max(Number(latestLog.hafalan_ayah_end) - Number(latestLog.hafalan_ayah_start) + 1, 1)
     const nextAyah = Number(latestLog.hafalan_ayah_end) + 1
-    if (currentSurah && nextAyah <= Number(currentSurah.jumlah_ayat)) return { surahNumber: Number(currentSurah.nomor), ayatStart: nextAyah, ayatEnd: Math.min(nextAyah + previousRangeSize - 1, Number(currentSurah.jumlah_ayat)), repeated: false }
+    if (currentSurah && nextAyah <= Number(currentSurah.jumlah_ayat)) {
+      return {
+        surahNumber: Number(currentSurah.nomor),
+        surah_name: currentSurah.nama_latin,
+        ayatStart: nextAyah,
+        ayat_start: nextAyah,
+        ayatEnd: Math.min(nextAyah + previousRangeSize - 1, Number(currentSurah.jumlah_ayat)),
+        ayat_end: Math.min(nextAyah + previousRangeSize - 1, Number(currentSurah.jumlah_ayat)),
+        repeated: false,
+      }
+    }
 
     const nextSurah = quranSurahs.find((surah) => Number(surah.nomor) === Number(latestLog.hafalan_surah_number) + 1)
-    return nextSurah ? { surahNumber: Number(nextSurah.nomor), ayatStart: 1, ayatEnd: Math.min(previousRangeSize, Number(nextSurah.jumlah_ayat)), repeated: false } : { surahNumber: Number(latestLog.hafalan_surah_number), ayatStart: Number(latestLog.hafalan_ayah_start), ayatEnd: Number(latestLog.hafalan_ayah_end), repeated: true }
+    return nextSurah
+      ? {
+          surahNumber: Number(nextSurah.nomor),
+          surah_name: nextSurah.nama_latin,
+          ayatStart: 1,
+          ayat_start: 1,
+          ayatEnd: Math.min(previousRangeSize, Number(nextSurah.jumlah_ayat)),
+          ayat_end: Math.min(previousRangeSize, Number(nextSurah.jumlah_ayat)),
+          repeated: false,
+        }
+      : {
+          surahNumber: Number(latestLog.hafalan_surah_number),
+          surah_name: surahName,
+          ayatStart: Number(latestLog.hafalan_ayah_start),
+          ayat_start: Number(latestLog.hafalan_ayah_start),
+          ayatEnd: Number(latestLog.hafalan_ayah_end),
+          ayat_end: Number(latestLog.hafalan_ayah_end),
+          repeated: true,
+        }
   }
   const automaticTahfizhTarget = getAutomaticTahfizhTarget(previousTahfizhLog)
   const sortedTahfizhLeaderboard = React.useMemo(() => {
@@ -4366,8 +4929,45 @@ export default function TeacherTeachingWorkspacePage() {
         .filter((log) => log.student_id === student.id || log.student?.id === student.id)
         .sort((first, second) => String(second.record_date || '').localeCompare(String(first.record_date || '')))
       const latest = studentLogs[0] || null
-      const totalAyat = studentLogs.reduce((total, log) => total + Math.max(Number(log.hafalan_ayah_end || 0) - Number(log.hafalan_ayah_start || 0) + 1, 0), 0)
-      const completedSurahs = new Set(studentLogs.map((log) => log.hafalan_surah_number).filter(Boolean)).size
+
+      // Hitung hanya setoran hafalan baru (Ziyadah) tervalidasi dengan interval merging
+      const ziyadahLogs = studentLogs.filter((log) => {
+        const rawT = String(log.metadata?.type || log.type || (log.hafalan_surah_number ? 'Ziyadah' : 'Murajaah')).toLowerCase()
+        return rawT !== 'murajaah' && rawT !== 'murojaah' && !!log.hafalan_surah_number
+      })
+
+      const surahMap = {}
+      ziyadahLogs.forEach((log) => {
+        const sNum = log.hafalan_surah_number
+        if (!surahMap[sNum]) surahMap[sNum] = []
+        const start = Number(log.hafalan_ayah_start || 1)
+        const end = Number(log.hafalan_ayah_end || start)
+        if (start <= end) surahMap[sNum].push({ start, end })
+      })
+
+      let totalAyat = 0
+      let completedSurahs = 0
+      Object.entries(surahMap).forEach(([sNum, ranges]) => {
+        if (!ranges.length) return
+        ranges.sort((a, b) => a.start - b.start)
+        const merged = [ranges[0]]
+        for (let i = 1; i < ranges.length; i++) {
+          const cur = ranges[i]
+          const prev = merged[merged.length - 1]
+          if (cur.start <= prev.end + 1) {
+            prev.end = Math.max(prev.end, cur.end)
+          } else {
+            merged.push(cur)
+          }
+        }
+        const surahAyats = merged.reduce((acc, r) => acc + (r.end - r.start + 1), 0)
+        totalAyat += surahAyats
+        const qSurah = quranSurahs.find((s) => Number(s.nomor) === Number(sNum))
+        if (qSurah && surahAyats >= Number(qSurah.jumlah_ayat)) {
+          completedSurahs++
+        }
+      })
+
       const unitName = student.unit_name || student.education_unit?.name || student.unit?.name || student.kelas?.unit_pendidikan?.name || 'Unit Sekolah'
       const className = student.class_name || student.kelas?.nama_kelas || selectedClassName || 'Kelas -'
 
@@ -4420,16 +5020,20 @@ export default function TeacherTeachingWorkspacePage() {
       )
     }
 
-    // Sort descending by highest Tahfizh hafalan ("hafalan tahfizh terbanyak")
+    // Sort descending by highest Tahfizh hafalan with deterministic tie-breaking
     return list.sort((a, b) => {
       if (b.totalAyat !== a.totalAyat) return b.totalAyat - a.totalAyat
       if (b.completedSurahs !== a.completedSurahs) return b.completedSurahs - a.completedSurahs
-      return b.totalSetoran - a.totalSetoran
+      const nameCompare = (a.student.nama_lengkap || '').localeCompare(b.student.nama_lengkap || '')
+      if (nameCompare !== 0) return nameCompare
+      return (a.student.id || '').localeCompare(b.student.id || '')
     })
-  }, [students, tahfizhLogs, selectedTahfizhUnit, debouncedTahfizhSearch, isPengurusYayasan, isKepalaSekolahOrDivisiPendidikan, teacherProfile, user, selectedClassName])
+  }, [students, tahfizhLogs, selectedTahfizhUnit, debouncedTahfizhSearch, isPengurusYayasan, isKepalaSekolahOrDivisiPendidikan, teacherProfile, user, selectedClassName, quranSurahs])
 
   const top5TahfizhStudents = React.useMemo(() => {
-    return sortedTahfizhLeaderboard.slice(0, 5)
+    return sortedTahfizhLeaderboard
+      .filter((item) => (item.totalAyat || 0) > 0 || (item.totalSetoran || 0) > 0)
+      .slice(0, 5)
   }, [sortedTahfizhLeaderboard])
 
   const unitStatsSummary = React.useMemo(() => {
@@ -4442,8 +5046,14 @@ export default function TeacherTeachingWorkspacePage() {
       map[uName].totalStudents += 1
       map[uName].totalSetoran += item.totalSetoran
       map[uName].totalAyat += item.totalAyat
+      if (item.totalAyat > (map[uName].topStudent?.totalAyat || 0)) {
+        map[uName].topStudent = item
+      }
     })
-    return Object.values(map)
+    return Object.values(map).sort((a, b) => {
+      if (b.totalAyat !== a.totalAyat) return b.totalAyat - a.totalAyat
+      return a.unitName.localeCompare(b.unitName)
+    })
   }, [sortedTahfizhLeaderboard])
 
   const totalTahfizhPages = Math.max(1, Math.ceil(sortedTahfizhLeaderboard.length / TAHFIZH_PER_PAGE))
@@ -4493,47 +5103,7 @@ export default function TeacherTeachingWorkspacePage() {
     return { date, dateKey, log }
   })
 
-  const getScheduleStatus = (schedule) => {
-    const today = new Date()
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    const todayDayName = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(today)
-    const scheduleDay = getScheduleDay(schedule)
-    const isToday = scheduleDay.toLowerCase() === todayDayName.toLowerCase()
 
-    if (selectedDate < todayKey) {
-      return { label: 'Selesai', isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
-    }
-    if (selectedDate > todayKey) {
-      return { label: 'Akan Datang', isActive: false, className: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' }
-    }
-
-    // Jika jadwal bukan hari ini (misal melihat filter semua hari atau hari lain)
-    if (!isToday) {
-      return { label: `Hari ${scheduleDay}`, isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
-    }
-
-    const currentMinutes = today.getHours() * 60 + today.getMinutes()
-    const toMinutes = (value = '00:00') => {
-      const [hours, minutes] = String(value || '00:00').slice(0, 5).split(':').map(Number)
-      return (hours || 0) * 60 + (minutes || 0)
-    }
-    const startTimeStr = schedule.start_time || schedule.time_start || schedule.jam_mulai || '00:00'
-    const endTimeStr = schedule.end_time || schedule.time_end || schedule.jam_selesai || '00:00'
-    const startMinutes = toMinutes(startTimeStr)
-    const endMinutes = toMinutes(endTimeStr)
-
-    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
-      return {
-        label: 'Berlangsung',
-        isActive: true,
-        className: 'bg-emerald-100 text-emerald-800 font-extrabold ring-1 ring-emerald-500/60 dark:bg-emerald-950 dark:text-emerald-300 dark:ring-emerald-400'
-      }
-    }
-    if (currentMinutes > endMinutes) {
-      return { label: 'Selesai', isActive: false, className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }
-    }
-    return { label: 'Berikutnya', isActive: false, className: 'bg-amber-100 text-amber-700 font-bold dark:bg-amber-950 dark:text-amber-300' }
-  }
 
   return (
     <PageContainer className="teacher-workspace-page space-y-6 pb-12">
@@ -4704,34 +5274,186 @@ export default function TeacherTeachingWorkspacePage() {
 
 
 
-      <MasterStatsGrid className="grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <MasterStatCard icon={CalendarDays} label="Jadwal Mengajar" value={schedules.length} description={`${new Set(schedules.map(getScheduleSubject)).size} mata pelajaran`} variant="success" delay={40} />
-        <MasterStatCard icon={Users} label="Siswa Terdaftar" value={students.length} description={`Rombel ${selectedClassName}`} variant="info" delay={80} />
-        <MasterStatCard icon={BookOpen} label="Materi Terbit" value={publishedMaterials} description={`${materials.length} total materi`} variant="warning" delay={120} />
-        <MasterStatCard icon={FileText} label="Penugasan Aktif" value={activeAssignments} description={`${assignments.length} total penugasan`} variant="primary" delay={160} />
-        <MasterStatCard icon={GraduationCap} label="Catatan & Tahfizh" value={tahfizhLogs.length + studentNotes.length} description="Total pendampingan" variant="danger" delay={200} />
-      </MasterStatsGrid>
+      {/* ── 5 MODERN COLOR-TINTED KPI CARDS ────────────────────────────────────────── */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4" aria-label="Metrik Utama Guru">
+        {[
+          {
+            key: 'jadwal',
+            label: 'Jadwal Mengajar',
+            value: schedules.length,
+            description: `${new Set(schedules.map(getScheduleSubject)).size} mata pelajaran`,
+            badge: `${schedules.length} Sesi Terjadwal`,
+            icon: CalendarDays,
+            isActive: activeTab === 'jadwal' || activeTab === 'jadwal-lengkap',
+            onClick: () => changeTab(activeTab === 'jadwal-lengkap' ? 'jadwal' : 'jadwal-lengkap'),
+            card: 'border-2 border-emerald-300/80 bg-gradient-to-br from-emerald-50/95 via-teal-50/60 to-white hover:border-emerald-500 shadow-sm shadow-emerald-500/10 dark:border-emerald-700/60 dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-slate-900',
+            glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+            iconBox: 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40',
+            tag: 'bg-emerald-100/90 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60',
+            title: 'text-emerald-800 dark:text-emerald-300',
+            val: 'text-emerald-900 dark:text-emerald-100',
+            sub: 'text-emerald-700/90 dark:text-emerald-400/80',
+            cta: 'text-emerald-700 dark:text-emerald-400',
+            activeRing: 'ring-2 ring-emerald-500 shadow-md border-emerald-500',
+          },
+          {
+            key: 'siswa',
+            label: 'Siswa Terdaftar',
+            value: students.length,
+            description: `Rombel ${selectedClassName}`,
+            badge: `${students.length} Siswa`,
+            icon: Users,
+            isActive: activeTab === 'presensi',
+            onClick: () => changeTab('presensi'),
+            card: 'border-2 border-sky-300/80 bg-gradient-to-br from-sky-50/95 via-blue-50/60 to-white hover:border-sky-500 shadow-sm shadow-sky-500/10 dark:border-sky-700/60 dark:from-sky-950/50 dark:via-blue-950/30 dark:to-slate-900',
+            glow: 'bg-sky-400/20 group-hover:bg-sky-400/30',
+            iconBox: 'bg-gradient-to-br from-sky-500 via-sky-600 to-blue-700 text-white shadow-md shadow-sky-600/30 border border-sky-300/40',
+            tag: 'bg-sky-100/90 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/60',
+            title: 'text-sky-800 dark:text-sky-300',
+            val: 'text-sky-900 dark:text-sky-100',
+            sub: 'text-sky-700/90 dark:text-sky-400/80',
+            cta: 'text-sky-700 dark:text-sky-400',
+            activeRing: 'ring-2 ring-sky-500 shadow-md border-sky-500',
+          },
+          {
+            key: 'materi',
+            label: 'Materi Terbit',
+            value: publishedMaterials,
+            description: `${materials.length} total materi`,
+            badge: `${publishedMaterials} Terbit`,
+            icon: BookOpen,
+            isActive: activeTab === 'materi',
+            onClick: () => changeTab('materi'),
+            card: 'border-2 border-amber-300/80 bg-gradient-to-br from-amber-50/95 via-orange-50/60 to-white hover:border-amber-500 shadow-sm shadow-amber-500/10 dark:border-amber-700/60 dark:from-amber-950/50 dark:via-orange-950/30 dark:to-slate-900',
+            glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+            iconBox: 'bg-gradient-to-br from-amber-500 via-amber-600 to-orange-700 text-white shadow-md shadow-amber-600/30 border border-amber-300/40',
+            tag: 'bg-amber-100/90 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60',
+            title: 'text-amber-800 dark:text-amber-300',
+            val: 'text-amber-900 dark:text-amber-100',
+            sub: 'text-amber-700/90 dark:text-amber-400/80',
+            cta: 'text-amber-700 dark:text-amber-400',
+            activeRing: 'ring-2 ring-amber-500 shadow-md border-amber-500',
+          },
+          {
+            key: 'penugasan',
+            label: 'Penugasan Aktif',
+            value: activeAssignments,
+            description: `${assignments.length} total penugasan`,
+            badge: `${activeAssignments} Aktif`,
+            icon: FileText,
+            isActive: activeTab === 'penugasan',
+            onClick: () => changeTab('penugasan'),
+            card: 'border-2 border-indigo-300/80 bg-gradient-to-br from-indigo-50/95 via-purple-50/60 to-white hover:border-indigo-500 shadow-sm shadow-indigo-500/10 dark:border-indigo-700/60 dark:from-indigo-950/50 dark:via-purple-950/30 dark:to-slate-900',
+            glow: 'bg-indigo-400/20 group-hover:bg-indigo-400/30',
+            iconBox: 'bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-700 text-white shadow-md shadow-indigo-600/30 border border-indigo-300/40',
+            tag: 'bg-indigo-100/90 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60',
+            title: 'text-indigo-800 dark:text-indigo-300',
+            val: 'text-indigo-900 dark:text-indigo-100',
+            sub: 'text-indigo-700/90 dark:text-indigo-400/80',
+            cta: 'text-indigo-700 dark:text-indigo-400',
+            activeRing: 'ring-2 ring-indigo-500 shadow-md border-indigo-500',
+          },
+          {
+            key: 'catatan',
+            label: 'Catatan & Tahfizh',
+            value: tahfizhLogs.length + studentNotes.length,
+            description: 'Total pendampingan',
+            badge: `${tahfizhLogs.length + studentNotes.length} Log`,
+            icon: GraduationCap,
+            isActive: activeTab === 'tahfizh' || activeTab === 'catatan' || activeTab === 'rekapan-tahfizh',
+            onClick: () => changeTab('tahfizh'),
+            card: 'border-2 border-rose-300/80 bg-gradient-to-br from-rose-50/95 via-pink-50/60 to-white hover:border-rose-500 shadow-sm shadow-rose-500/10 dark:border-rose-700/60 dark:from-rose-950/50 dark:via-pink-950/30 dark:to-slate-900',
+            glow: 'bg-rose-400/20 group-hover:bg-rose-400/30',
+            iconBox: 'bg-gradient-to-br from-rose-500 via-rose-600 to-pink-700 text-white shadow-md shadow-rose-600/30 border border-rose-300/40',
+            tag: 'bg-rose-100/90 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/60',
+            title: 'text-rose-800 dark:text-rose-300',
+            val: 'text-rose-900 dark:text-rose-100',
+            sub: 'text-rose-700/90 dark:text-rose-400/80',
+            cta: 'text-rose-700 dark:text-rose-400',
+            activeRing: 'ring-2 ring-rose-500 shadow-md border-rose-500',
+          },
+        ].map((kpi) => {
+          const Icon = kpi.icon
+          return (
+            <motion.article
+              key={kpi.label}
+              whileHover={{ scale: 1.025, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              onClick={kpi.onClick}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && kpi.onClick()}
+              className={`group relative overflow-hidden rounded-[20px] p-4 sm:p-4.5 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between ${kpi.card} ${kpi.isActive ? kpi.activeRing : ''}`}
+            >
+              {/* Ambient Glow */}
+              <div className={`pointer-events-none absolute -top-8 -right-8 h-24 w-24 rounded-full blur-2xl transition-all ${kpi.glow}`} />
+
+              <div>
+                {/* Header with 3D Gradient Icon Box & Pill Tag */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className={`size-10 sm:size-10.5 rounded-2xl flex items-center justify-center shrink-0 ${kpi.iconBox}`}>
+                    <Icon className="size-5" />
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${kpi.tag}`}>
+                    {kpi.badge}
+                  </span>
+                </div>
+
+                {/* Metric Label & Value */}
+                <span className={`text-[11px] font-extrabold uppercase tracking-wider block mb-1 ${kpi.title}`}>{kpi.label}</span>
+                <strong className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums block ${kpi.val}`}>
+                  {kpi.value}
+                </strong>
+                <p className={`text-xs font-semibold mt-1 line-clamp-1 ${kpi.sub}`}>
+                  {kpi.description}
+                </p>
+              </div>
+
+              {/* Click Affordance Footer */}
+              <div className="flex items-center justify-between text-[11px] font-bold pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
+                <span className={`inline-flex items-center gap-1 text-[10px] ${kpi.isActive ? 'font-black underline' : 'font-medium opacity-80'}`}>
+                  {kpi.isActive ? '● Sedang Aktif' : 'Buka Modul'}
+                </span>
+                <span className={`inline-flex items-center gap-0.5 font-extrabold group-hover:translate-x-0.5 transition-transform ${kpi.cta}`}>
+                  Lihat <ChevronRight className="h-3 w-3" />
+                </span>
+              </div>
+            </motion.article>
+          )
+        })}
+      </section>
 
 
 
       {/* ── CARD AKSI CEPAT & NAVIGASI MODUL ────────────────────────────────────────── */}
-      <section className="rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-[var(--shadow-soft-xl)] dark:border-slate-800 dark:bg-[#1B2433]" aria-label="Aksi Cepat Workspace Guru">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-              <Zap className="h-5 w-5" />
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]" aria-label="Aksi Cepat Workspace Guru">
+        {/* Dual multi-tone ambient glow */}
+        <div className="pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-gradient-to-br from-emerald-500/20 via-teal-400/15 to-transparent blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-gradient-to-tr from-teal-500/15 via-emerald-400/15 to-transparent blur-2xl" />
+
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-800/60">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 border border-emerald-300/40">
+              <Zap className="size-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Aksi Cepat & Navigasi Modul</h3>
-              <p className="text-xs text-slate-500">Klik modul di bawah untuk berpindah antar fitur pengajaran guru secara langsung.</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-black tracking-tight text-slate-900 dark:text-white">Aksi Cepat &amp; Navigasi Modul</h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                  <Sparkles className="size-3 text-amber-500 animate-pulse" />
+                  Alur Kerja Guru
+                </span>
+              </div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Pilih modul untuk berpindah fitur pengajaran guru secara langsung &amp; terintegrasi.</p>
             </div>
           </div>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-            {cardModulesList.length} Modul Aksi
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-xs shadow-emerald-600/20">
+            {cardModulesList.length} Modul Terintegrasi
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" role="tablist" aria-label="Modul pengajaran">
+        <div className="relative z-10 p-4 sm:p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" role="tablist" aria-label="Modul pengajaran">
           {cardModulesList.map((mod) => {
             const Icon = mod.icon
             const isActive = activeTab === mod.id
@@ -4747,15 +5469,15 @@ export default function TeacherTeachingWorkspacePage() {
                 aria-selected={isActive}
                 className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all text-center group cursor-pointer ${
                   isActive
-                    ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/60 shadow-md ring-2 ring-emerald-600/30'
-                    : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md'
+                    ? 'border-emerald-600 dark:border-emerald-500 bg-gradient-to-b from-emerald-50/95 to-teal-50/70 dark:from-emerald-950/80 dark:to-teal-950/60 shadow-md ring-2 ring-emerald-600/30'
+                    : (mod.cardClass || 'border-emerald-100/80 dark:border-slate-800/90 bg-white dark:bg-slate-900/60 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30 hover:border-emerald-300 dark:hover:border-emerald-700/80 hover:shadow-md')
                 }`}
               >
-                <div className={`p-2.5 rounded-xl border ${mod.tone || 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/60'} mb-2 shrink-0 group-hover:scale-110 transition ${isActive ? 'ring-2 ring-emerald-500/40' : ''}`}>
-                  <Icon className="w-5 h-5" />
+                <div className={`p-2.5 rounded-2xl ${mod.iconBox || 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-600/20'} mb-2 shrink-0 group-hover:scale-110 transition ${isActive ? 'ring-2 ring-emerald-500/40 shadow-xs' : ''}`}>
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
                 <span className={`font-bold text-[11px] leading-tight transition-colors ${
-                  isActive ? 'text-emerald-900 dark:text-emerald-200 font-black' : 'text-slate-700 dark:text-slate-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-400'
+                  isActive ? 'text-emerald-900 dark:text-emerald-200 font-black' : 'text-slate-800 dark:text-slate-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400'
                 }`}>
                   {mod.title}
                 </span>
@@ -4777,25 +5499,60 @@ export default function TeacherTeachingWorkspacePage() {
           {/* TAB 1: JADWAL MENGAJAR */}
           {activeTab === 'jadwal' && (
             <div className="space-y-5">
-              <div className="overflow-hidden rounded-[22px] border border-emerald-200/70 bg-gradient-to-br from-emerald-700 via-emerald-700 to-teal-800 p-5 text-white shadow-[var(--shadow-soft-xl)] sm:p-6">
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              {/* TailGrids Modern Hero Card Banner */}
+              <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+                {/* Ambient Glows */}
+                <div className="pointer-events-none absolute -left-12 -top-12 h-44 w-44 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+                <div className="pointer-events-none absolute -right-12 -bottom-12 h-44 w-44 rounded-full bg-gradient-to-tl from-teal-500/25 via-emerald-400/20 to-transparent blur-3xl" />
+
+                <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="rounded-2xl border border-white/20 bg-white/15 p-3 backdrop-blur-sm"><CalendarDays className="h-6 w-6" /></div>
+                    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-500/25 ring-4 ring-emerald-500/10">
+                      <CalendarDays className="h-7 w-7" />
+                    </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-100">Agenda Mengajar</p>
-                      <h2 className="mt-1 text-xl font-extrabold sm:text-2xl">{selectedDateDay}, {selectedDate}</h2>
-                      <p className="mt-1 text-sm text-emerald-100">{selectedClassName} • {teacherName}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs">
+                          <CalendarRange className="h-3 w-3" />
+                          Agenda Mengajar Harian
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/80 bg-emerald-50/90 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:border-emerald-700/80 dark:bg-emerald-950/80 dark:text-emerald-300">
+                          TA 2026/2027 • Ganjil
+                        </span>
+                      </div>
+                      <h2 className="mt-2 text-xl font-black text-slate-900 dark:text-white sm:text-2xl tracking-tight">
+                        {selectedDateDay}, {selectedDate}
+                      </h2>
+                      <p className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-bold">
+                          <Users className="h-3.5 w-3.5" />
+                          {selectedClassName}
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-600">•</span>
+                        <span>{teacherName}</span>
+                      </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 sm:min-w-[330px]">
+
+                  <div className="grid grid-cols-3 gap-2.5 sm:min-w-[340px]">
                     {[
-                      { value: selectedDaySchedules.length, label: `Sesi ${selectedDateDay}` },
-                      { value: sortedSchedules.length, label: 'Total Sesi Mingguan' },
-                      { value: new Set(sortedSchedules.map(getScheduleSubject)).size, label: 'Mata Pelajaran' },
+                      { value: selectedDaySchedules.length, label: `Sesi ${selectedDateDay}`, sub: 'Hari ini' },
+                      { value: sortedSchedules.length, label: 'Total Sesi', sub: 'Mingguan' },
+                      { value: new Set(sortedSchedules.map(getScheduleSubject)).size, label: 'Mata Pelajaran', sub: 'Aktif diampu' },
                     ].map((summary) => (
-                      <div key={summary.label} className="rounded-2xl border border-white/15 bg-white/10 px-3 py-3 text-center backdrop-blur-sm">
-                        <strong className="block text-xl">{summary.value}</strong>
-                        <span className="text-[10px] font-semibold text-emerald-100">{summary.label}</span>
+                      <div
+                        key={summary.label}
+                        className="rounded-2xl border border-emerald-300/60 bg-white/80 dark:bg-slate-900/80 dark:border-emerald-800/60 p-3 text-center shadow-xs backdrop-blur-sm transition hover:border-emerald-400"
+                      >
+                        <strong className="block text-xl font-black text-emerald-700 dark:text-emerald-300">
+                          {summary.value}
+                        </strong>
+                        <span className="block text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                          {summary.label}
+                        </span>
+                        <span className="block text-[9px] font-medium text-slate-400 dark:text-slate-500">
+                          {summary.sub}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -4803,24 +5560,28 @@ export default function TeacherTeachingWorkspacePage() {
               </div>
 
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-start">
-                <section className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[var(--shadow-soft-xl)] dark:border-slate-700/80 dark:bg-[#1B2433] sm:p-5 xl:col-span-7">
-                  <div className="mb-4 flex flex-col gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+                <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-7">
+                  {/* Header toolbar */}
+                  <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-white">
-                          <Clock className="h-4 w-4 text-emerald-600" />
-                          Timeline {timelineFilter === 'semua' ? 'Semua Hari' : (timelineFilter === 'auto' ? (selectedDaySchedules.length > 0 ? selectedDateDay : (sortedSchedules.length > 0 ? 'Seluruh Jadwal' : selectedDateDay)) : timelineFilter)}
-                        </h3>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {selectedDaySchedules.length === 0 && sortedSchedules.length > 0 && (timelineFilter === 'auto' || timelineFilter === 'semua')
-                            ? `Menampilkan seluruh jadwal mengajar aktif untuk ${selectedClassName}.`
-                            : 'Urutan sesi mengajar berdasarkan jam mulai.'}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xs">
+                          <Clock className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                            Timeline {timelineFilter === 'semua' ? 'Semua Hari' : (timelineFilter === 'auto' ? (selectedDaySchedules.length > 0 ? selectedDateDay : (sortedSchedules.length > 0 ? 'Seluruh Jadwal' : selectedDateDay)) : timelineFilter)}
+                          </h3>
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                            {selectedDaySchedules.length === 0 && sortedSchedules.length > 0 && (timelineFilter === 'auto' || timelineFilter === 'semua')
+                              ? `Menampilkan seluruh jadwal mengajar aktif untuk ${selectedClassName}.`
+                              : 'Urutan sesi mengajar berdasarkan jam mulai.'}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          size="xs"
-                          variant="ghost"
+                        <button
+                          type="button"
                           onClick={() => {
                             printCleanTable({
                               title: `Jadwal Mengajar Guru - ${teacherName || 'Guru'}`,
@@ -4838,13 +5599,13 @@ export default function TeacherTeachingWorkspacePage() {
                               unit: teacherProfile?.unit || user?.employee?.unit || user?.unit,
                             })
                           }}
-                          className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/90 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 shadow-xs transition hover:bg-emerald-100 hover:border-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-900/80 cursor-pointer"
                           title="Cetak matriks jadwal mengajar mingguan"
                         >
                           <Printer className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                          Cetak Jadwal
-                        </Button>
-                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                          <span>Cetak Jadwal</span>
+                        </button>
+                        <span className="rounded-full border border-emerald-200/90 bg-emerald-100/80 px-3 py-1 text-[11px] font-black text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
                           {timelineSchedules.length} sesi ditampilkan
                         </span>
                       </div>
@@ -4852,14 +5613,14 @@ export default function TeacherTeachingWorkspacePage() {
 
                     {/* Quick Timeline Day Filter Pills */}
                     {sortedSchedules.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <div className="mt-3.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-emerald-100/70 dark:border-emerald-900/40">
                         <button
                           type="button"
                           onClick={() => setTimelineFilter('hari_ini')}
-                          className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition cursor-pointer ${
                             timelineFilter === 'hari_ini'
-                              ? 'bg-[#0E5C44] text-white shadow-xs'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                              : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                           }`}
                         >
                           Hari Ini ({selectedDateDay}: {selectedDaySchedules.length})
@@ -4867,10 +5628,10 @@ export default function TeacherTeachingWorkspacePage() {
                         <button
                           type="button"
                           onClick={() => setTimelineFilter('semua')}
-                          className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${
+                          className={`rounded-xl px-3 py-1.5 text-[11px] font-bold transition cursor-pointer ${
                             timelineFilter === 'semua' || (timelineFilter === 'auto' && selectedDaySchedules.length === 0)
-                              ? 'bg-[#0E5C44] text-white shadow-xs'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                              : 'border border-slate-200/80 bg-slate-100/80 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/70 hover:text-emerald-800 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                           }`}
                         >
                           Semua Hari ({sortedSchedules.length})
@@ -4886,10 +5647,10 @@ export default function TeacherTeachingWorkspacePage() {
                                 setTimelineFilter(d.name)
                                 setWeeklySelectedDay(d.short)
                               }}
-                              className={`rounded-lg px-2 py-1 text-[11px] font-bold transition ${
+                              className={`rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition cursor-pointer ${
                                 timelineFilter === d.name
-                                  ? 'bg-[#0E5C44] text-white shadow-xs'
-                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs shadow-emerald-600/20'
+                                  : 'border border-emerald-200/80 bg-emerald-50/70 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-800/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60'
                               }`}
                             >
                               {d.name} ({count})
@@ -4900,186 +5661,249 @@ export default function TeacherTeachingWorkspacePage() {
                     )}
                   </div>
 
-                  {/* Banner if no schedule TODAY for selected class */}
-                  {selectedDaySchedules.length === 0 && sortedSchedules.length > 0 && timelineFilter === 'hari_ini' && (
-                    <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                        <div className="text-xs space-y-1.5 flex-1">
-                          <p className="font-extrabold text-slate-900 dark:text-white">
-                            Tidak ada jam mengajar pada hari {selectedDateDay} untuk {selectedClassName}.
-                          </p>
-                          <p className="text-slate-600 dark:text-slate-400">
-                            Jadwal mengajar kelas ini tersedia pada hari: <strong className="text-emerald-700 dark:text-emerald-300">{activeScheduleDays.join(', ')}</strong> (Total {sortedSchedules.length} sesi mingguan).
-                          </p>
-                          <div className="pt-1">
-                            <button
-                              type="button"
-                              onClick={() => setTimelineFilter('semua')}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition"
-                            >
-                              Tampilkan Semua Sesi ({sortedSchedules.length})
-                            </button>
+                  <div className="p-4 sm:p-5">
+                    {/* Banner if no schedule TODAY for selected class */}
+                    {selectedDaySchedules.length === 0 && sortedSchedules.length > 0 && timelineFilter === 'hari_ini' && (
+                      <div className="mb-4 rounded-2xl border-2 border-amber-300/80 bg-gradient-to-r from-amber-50/90 via-amber-50/50 to-orange-50/80 p-4 dark:border-amber-700/70 dark:bg-gradient-to-r dark:from-amber-950/40 dark:to-slate-900 text-amber-900 dark:text-amber-200 shadow-xs">
+                        <div className="flex items-start gap-3">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs mt-0.5">
+                            <AlertCircle className="size-5" />
+                          </div>
+                          <div className="text-xs space-y-1.5 flex-1">
+                            <p className="font-extrabold text-slate-900 dark:text-white text-sm">
+                              Tidak ada jam mengajar pada hari {selectedDateDay} untuk {selectedClassName}.
+                            </p>
+                            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                              Jadwal mengajar kelas ini tersedia pada hari: <strong className="text-emerald-700 dark:text-emerald-300 font-bold">{activeScheduleDays.join(', ')}</strong> (Total {sortedSchedules.length} sesi mingguan).
+                            </p>
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setTimelineFilter('semua')}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                              >
+                                <CalendarDays className="h-3.5 w-3.5" />
+                                Tampilkan Semua Sesi ({sortedSchedules.length})
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {loading ? (
-                    <div className="space-y-3" aria-label="Memuat jadwal">
-                      {[1, 2, 3].map((item) => <div key={item} className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />)}
-                    </div>
-                  ) : timelineSchedules.length === 0 ? (
-                    <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 text-center dark:border-slate-700 dark:bg-slate-900/40">
-                      <Calendar className="mb-3 h-9 w-9 text-slate-300" />
-                      <h4 className="font-bold text-slate-800 dark:text-white">Belum ada jadwal mengajar</h4>
-                      <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
-                        Jadwal untuk {selectedClassName} belum tersedia pada sistem. Silakan hubungi waka kurikulum atau pilih rombel lain.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {timelineSchedules.map((schedule, index) => {
-                        const status = getScheduleStatus(schedule)
-                        const scheduleDay = getScheduleDay(schedule)
-                        return (
-                          <article
-                            key={schedule.id || index}
-                            className={`group relative overflow-hidden rounded-2xl border transition hover:-translate-y-0.5 hover:shadow-md ${
-                              status.isActive
-                                ? 'border-2 border-emerald-500/80 bg-emerald-50/50 shadow-md shadow-emerald-500/10 dark:border-emerald-500/70 dark:bg-emerald-950/25'
-                                : 'border-slate-200 bg-slate-50/70 hover:border-emerald-300 hover:bg-white dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-emerald-700 dark:hover:bg-slate-900'
-                            } p-4`}
+                    {loading ? (
+                      <div className="space-y-3" aria-label="Memuat jadwal">
+                        {[1, 2, 3].map((item) => (
+                          <div key={item} className="h-28 animate-pulse rounded-2xl bg-emerald-50/50 dark:bg-slate-800/60 border border-emerald-100 dark:border-slate-800" />
+                        ))}
+                      </div>
+                    ) : timelineSchedules.length === 0 ? (
+                      <div className="flex min-h-60 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-200/80 bg-gradient-to-b from-emerald-50/40 via-teal-50/20 to-transparent px-6 py-10 text-center dark:border-emerald-800/60 dark:bg-slate-900/50">
+                        <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-600 shadow-sm dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-400 mb-3.5">
+                          <Calendar className="h-7 w-7" />
+                        </div>
+                        <h4 className="text-base font-extrabold text-slate-900 dark:text-white">Belum Ada Jadwal Mengajar</h4>
+                        <p className="mt-1.5 max-w-sm text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          Jadwal untuk <span className="font-bold text-emerald-700 dark:text-emerald-400">{selectedClassName}</span> belum tersedia pada sistem atau tidak cocok dengan filter hari saat ini.
+                        </p>
+                        {sortedSchedules.length > 0 && timelineFilter !== 'semua' && (
+                          <button
+                            type="button"
+                            onClick={() => setTimelineFilter('semua')}
+                            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 transition cursor-pointer"
                           >
-                            <div className={`absolute inset-y-0 left-0 ${status.isActive ? 'w-1.5 bg-emerald-500' : 'w-1 bg-emerald-600'}`} />
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                              <div className="flex min-w-[115px] items-center gap-2 text-emerald-700 dark:text-emerald-300 sm:block">
-                                <span className="inline-block rounded-md bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 text-[10px] font-black text-emerald-800 dark:text-emerald-300 mb-1">
-                                  {scheduleDay}
-                                </span>
-                                <strong className="text-base font-extrabold sm:block">{(schedule.start_time || schedule.time_start || '00:00').slice(0, 5)}</strong>
-                                <span className="text-xs font-semibold text-slate-400 sm:block">s.d. {(schedule.end_time || schedule.time_end || '00:00').slice(0, 5)} WIB</span>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h4 className="truncate font-extrabold text-slate-900 dark:text-white">{getScheduleSubject(schedule)}</h4>
-                                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${status.className}`}>{status.label}</span>
+                            <CalendarDays className="h-4 w-4" />
+                            Tampilkan Semua Hari ({sortedSchedules.length} Sesi)
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {timelineSchedules.map((schedule, index) => {
+                          const status = getScheduleStatus(schedule)
+                          const scheduleDay = getScheduleDay(schedule)
+                          return (
+                            <article
+                              key={schedule.id || index}
+                              className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                                status.isActive
+                                  ? 'border-2 border-emerald-500 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white shadow-md shadow-emerald-500/10 dark:border-emerald-500/70 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900'
+                                  : 'border-slate-200/90 bg-white hover:border-emerald-300 hover:bg-emerald-50/30 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700 dark:hover:bg-slate-900'
+                              } p-4`}
+                            >
+                              <div className={`absolute inset-y-0 left-0 ${status.isActive ? 'w-1.5 bg-gradient-to-b from-emerald-500 to-teal-600' : 'w-1 bg-emerald-600/70'}`} />
+                              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                                <div
+                                  onClick={() => openScheduleDetail(schedule)}
+                                  className="flex min-w-[125px] items-center gap-2 text-emerald-800 dark:text-emerald-300 sm:block cursor-pointer hover:opacity-85 transition"
+                                  title="Klik untuk melihat detail jadwal & presensi siswa"
+                                >
+                                  <span className="inline-block rounded-md bg-emerald-100/90 dark:bg-emerald-950 px-2 py-0.5 text-[10px] font-black text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 mb-1">
+                                    {scheduleDay}
+                                  </span>
+                                  <strong className="text-base font-black sm:block">{(schedule.start_time || schedule.time_start || '00:00').slice(0, 5)}</strong>
+                                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 sm:block">s.d. {(schedule.end_time || schedule.time_end || '00:00').slice(0, 5)} WIB</span>
                                 </div>
-                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                                  <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{getScheduleClass(schedule)}</span>
-                                  <span className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5" />{getScheduleRoom(schedule)}</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h4 className="truncate font-extrabold text-slate-900 dark:text-white">{getScheduleSubject(schedule)}</h4>
+                                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${status.className}`}>{status.label}</span>
+                                  </div>
+                                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                    <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{getScheduleClass(schedule)}</span>
+                                    <span className="flex items-center gap-1.5"><Layers className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{getScheduleRoom(schedule)}</span>
+                                  </div>
+                                </div>
+                                <div className="flex shrink-0 gap-2 sm:flex-col">
+                                  <button
+                                    type="button"
+                                    onClick={() => openPresensiModal(schedule)}
+                                    disabled={!status.isActive}
+                                    title={status.isActive ? 'Buka Presensi Sesi KBM' : `Presensi Tidak Aktif (${status.label})`}
+                                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition sm:flex-none ${
+                                      status.isActive
+                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm shadow-emerald-600/25 cursor-pointer'
+                                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed opacity-60'
+                                    }`}
+                                  >
+                                    <UserCheck className="h-3.5 w-3.5" />
+                                    <span>{status.isActive ? 'Presensi' : `Presensi (${status.label})`}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openScheduleDetail(schedule)}
+                                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-200/80 bg-white px-3.5 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-50 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-200 dark:hover:bg-slate-700/80 sm:flex-none cursor-pointer"
+                                    title="Lihat data siswa & presensi jadwal ini"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" /> Detail
+                                  </button>
                                 </div>
                               </div>
-                              <div className="flex shrink-0 gap-2 sm:flex-col">
-                                <button onClick={() => openPresensiModal(schedule)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#0E5C44] px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-800 sm:flex-none"><UserCheck className="h-3.5 w-3.5" /> Presensi</button>
-                                <button onClick={() => {
-                                  setDetailData({ title: `Jadwal: ${getScheduleSubject(schedule)}`, category: 'Jadwal Mengajar', items: [
-                                    { label: 'Hari', value: getScheduleDay(schedule) },
-                                    { label: 'Rombel', value: getScheduleClass(schedule) },
-                                    { label: 'Jam', value: `${(schedule.start_time || schedule.time_start || '00:00').slice(0, 5)} - ${(schedule.end_time || schedule.time_end || '00:00').slice(0, 5)} WIB` },
-                                    { label: 'Ruangan', value: getScheduleRoom(schedule) },
-                                  ] })
-                                  setShowDetailModal(true)
-                                }} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-emerald-950/40 sm:flex-none"><Eye className="h-3.5 w-3.5" /> Detail</button>
-                              </div>
-                            </div>
-                          </article>
+                            </article>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-slate-900 xl:col-span-5">
+                  {/* Header toolbar */}
+                  <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 p-4 sm:p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xs">
+                        <CalendarRange className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Jadwal Mingguan</h3>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Pilih hari untuk melihat agenda secara cepat.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 sm:p-5 space-y-4">
+                    <div className="grid grid-cols-5 gap-1.5 rounded-2xl bg-emerald-50/70 p-1.5 border border-emerald-200/70 dark:bg-slate-800/80 dark:border-slate-700/80" role="tablist" aria-label="Hari jadwal mingguan">
+                      {scheduleDays.map((day) => {
+                        const dayCount = sortedSchedules.filter((s) => getScheduleDay(s).toLowerCase() === day.name.toLowerCase()).length
+                        return (
+                          <button
+                            key={day.short}
+                            onClick={() => {
+                              setWeeklySelectedDay(day.short)
+                              setTimelineFilter(day.name)
+                            }}
+                            role="tab"
+                            aria-selected={weeklySelectedDay === day.short}
+                            className={`rounded-xl px-2 py-2 text-[11px] font-bold transition flex flex-col items-center justify-center cursor-pointer ${
+                              weeklySelectedDay === day.short
+                                ? 'bg-white text-emerald-800 shadow-xs border border-emerald-200/60 dark:bg-slate-900 dark:text-emerald-300 dark:border-emerald-700/60'
+                                : 'text-slate-600 hover:text-emerald-800 hover:bg-white/60 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            <span>{day.short}</span>
+                            <span className={`mt-0.5 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full ${
+                              dayCount > 0
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'text-slate-400 dark:text-slate-600'
+                            }`}>
+                              {dayCount}
+                            </span>
+                          </button>
                         )
                       })}
                     </div>
-                  )}
-                </section>
 
-                <section className="rounded-[20px] border border-slate-200/80 bg-white p-4 shadow-[var(--shadow-soft-xl)] dark:border-slate-700/80 dark:bg-[#1B2433] sm:p-5 xl:col-span-5">
-                  <div className="border-b border-slate-100 pb-4 dark:border-slate-800">
-                    <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-white"><CalendarRange className="h-4 w-4 text-emerald-600" /> Jadwal Mingguan</h3>
-                    <p className="mt-1 text-xs text-slate-500">Pilih hari untuk melihat agenda secara cepat.</p>
-                  </div>
-                  <div className="mt-4 grid grid-cols-5 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900" role="tablist" aria-label="Hari jadwal mingguan">
-                    {scheduleDays.map((day) => {
-                      const dayCount = sortedSchedules.filter((s) => getScheduleDay(s).toLowerCase() === day.name.toLowerCase()).length
-                      return (
-                        <button
-                          key={day.short}
-                          onClick={() => {
-                            setWeeklySelectedDay(day.short)
-                            setTimelineFilter(day.name)
-                          }}
-                          role="tab"
-                          aria-selected={weeklySelectedDay === day.short}
-                          className={`rounded-xl px-2 py-1.5 text-[11px] font-bold transition flex flex-col items-center justify-center ${
-                            weeklySelectedDay === day.short
-                              ? 'bg-white text-emerald-700 shadow-sm dark:bg-slate-800 dark:text-emerald-300'
-                              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                          }`}
-                        >
-                          <span>{day.short}</span>
-                          <span className={`mt-0.5 text-[9px] font-extrabold px-1 rounded-full ${
-                            dayCount > 0
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'text-slate-400 dark:text-slate-600'
-                          }`}>
-                            {dayCount}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <div className="mt-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Hari Terpilih</p>
-                      <h4 className="font-extrabold text-slate-900 dark:text-white">{visibleWeeklyDay}</h4>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                      {weeklySchedules.length} sesi
-                    </span>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {weeklySchedules.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center dark:border-slate-700">
-                        <CheckCircle2 className="mx-auto mb-2 h-7 w-7 text-emerald-400" />
-                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Tidak ada sesi di hari {visibleWeeklyDay}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {activeScheduleDays.length > 0
-                            ? `Jadwal rombel ini tersedia di hari: ${activeScheduleDays.join(', ')}`
-                            : 'Agenda mengajar kosong pada hari ini.'}
-                        </p>
-                        {activeScheduleDays.length > 0 && (
-                          <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-                            {activeScheduleDays.map((dName) => {
-                              const dObj = scheduleDays.find((d) => d.name.toLowerCase() === dName.toLowerCase())
-                              return (
-                                <button
-                                  key={dName}
-                                  type="button"
-                                  onClick={() => {
-                                    if (dObj) setWeeklySelectedDay(dObj.short)
-                                    setTimelineFilter(dName)
-                                  }}
-                                  className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-emerald-300 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800 transition"
-                                >
-                                  Pindah ke {dName}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )}
+                    <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-emerald-50/60 via-teal-50/40 to-emerald-50/60 dark:from-emerald-950/40 dark:via-slate-900 dark:to-emerald-950/40 border border-emerald-100/90 dark:border-emerald-800/60 px-3.5 py-2.5">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700/80 dark:text-emerald-400">Hari Terpilih</p>
+                        <h4 className="font-extrabold text-slate-900 dark:text-white">{visibleWeeklyDay}</h4>
                       </div>
-                    ) : weeklySchedules.map((schedule, index) => (
-                      <button key={schedule.id || index} onClick={() => {
-                        setDetailData({ title: `Jadwal: ${getScheduleSubject(schedule)}`, category: visibleWeeklyDay, items: [
-                          { label: 'Waktu', value: `${(schedule.start_time || schedule.time_start || '00:00').slice(0, 5)} - ${(schedule.end_time || schedule.time_end || '00:00').slice(0, 5)} WIB` },
-                          { label: 'Rombel', value: getScheduleClass(schedule) },
-                          { label: 'Ruangan', value: getScheduleRoom(schedule) },
-                        ] })
-                        setShowDetailModal(true)
-                      }} className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left transition hover:border-emerald-300 hover:bg-emerald-50/60 dark:border-slate-800 dark:hover:bg-emerald-950/20">
-                        <div className="rounded-xl bg-emerald-100 px-2.5 py-2 text-center text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"><Clock className="mx-auto h-3.5 w-3.5" /><span className="mt-0.5 block text-[10px] font-extrabold">{(schedule.start_time || schedule.time_start || '00:00').slice(0, 5)}</span></div>
-                        <div className="min-w-0 flex-1"><strong className="block truncate text-sm text-slate-900 dark:text-white">{getScheduleSubject(schedule)}</strong><span className="mt-0.5 block truncate text-xs text-slate-500">{getScheduleClass(schedule)} • {getScheduleRoom(schedule)}</span></div>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
-                      </button>
-                    ))}
+                      <span className="rounded-full bg-emerald-100/90 px-3 py-1 text-[11px] font-extrabold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-700/60">
+                        {weeklySchedules.length} sesi
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {weeklySchedules.length === 0 ? (
+                        <div className="rounded-2xl border-2 border-dashed border-emerald-200/80 bg-gradient-to-b from-emerald-50/30 via-teal-50/15 to-transparent px-4 py-8 text-center dark:border-emerald-800/60 dark:bg-slate-900/40">
+                          <div className="mx-auto mb-2.5 flex size-12 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
+                            <CheckCircle2 className="h-6 w-6" />
+                          </div>
+                          <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">Tidak ada sesi di hari {visibleWeeklyDay}</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {activeScheduleDays.length > 0
+                              ? `Jadwal rombel ini tersedia di hari: ${activeScheduleDays.join(', ')}`
+                              : 'Agenda mengajar kosong pada hari ini.'}
+                          </p>
+                          {activeScheduleDays.length > 0 && (
+                            <div className="mt-3.5 flex flex-wrap justify-center gap-1.5">
+                              {activeScheduleDays.map((dName) => {
+                                const dObj = scheduleDays.find((d) => d.name.toLowerCase() === dName.toLowerCase())
+                                return (
+                                  <button
+                                    key={dName}
+                                    type="button"
+                                    onClick={() => {
+                                      if (dObj) setWeeklySelectedDay(dObj.short)
+                                      setTimelineFilter(dName)
+                                    }}
+                                    className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold text-[11px] border border-emerald-200 dark:border-emerald-800 transition cursor-pointer"
+                                  >
+                                    Pindah ke {dName}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        weeklySchedules.map((schedule, index) => (
+                          <button
+                            key={schedule.id || index}
+                            type="button"
+                            onClick={() => openScheduleDetail(schedule)}
+                            className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200/90 bg-white p-3 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-50/40 hover:shadow-xs dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-emerald-700 dark:hover:bg-slate-900 cursor-pointer"
+                            title="Klik untuk melihat detail jadwal & presensi siswa"
+                          >
+                            <div className="flex size-11 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 text-emerald-800 border border-emerald-200/80 dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-300 dark:border-emerald-800/70">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span className="mt-0.5 block text-[10px] font-black">{(schedule.start_time || schedule.time_start || '00:00').slice(0, 5)}</span>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <strong className="block truncate text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+                                {getScheduleSubject(schedule)}
+                              </strong>
+                              <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
+                                {getScheduleClass(schedule)} • {getScheduleRoom(schedule)}
+                              </span>
+                            </div>
+                            <div className="flex size-7 items-center justify-center rounded-lg bg-slate-100 text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-500 dark:group-hover:bg-emerald-950 dark:group-hover:text-emerald-300 transition-colors">
+                              <ChevronRight className="h-4 w-4" />
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </section>
               </div>
@@ -6881,7 +7705,7 @@ export default function TeacherTeachingWorkspacePage() {
               </div>
 
               {/* TOP 5 CARDS ("5 Terbaik di 5 Card") */}
-              {top5TahfizhStudents.length > 0 && (
+              {top5TahfizhStudents.length > 0 ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -7016,6 +7840,26 @@ export default function TeacherTeachingWorkspacePage() {
                       )
                     })}
                   </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border-2 border-dashed border-amber-300/80 bg-amber-50/50 p-6 text-center dark:border-amber-900/40 dark:bg-amber-950/20">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 shadow-xs">
+                    <Trophy className="h-6 w-6" />
+                  </div>
+                  <h4 className="mt-3 text-sm font-black text-slate-900 dark:text-white">
+                    Belum Ada Data Peringkat 5 Terbaik
+                  </h4>
+                  <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+                    Papan peringkat 5 Terbaik akan otomatis dihitung dan ditampilkan setelah santri mulai menyetorkan hafalan (saat ini seluruh santri masih 0 ayat).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openTahfizhForm()}
+                    className="mt-3.5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition hover:from-emerald-700 hover:to-teal-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Input Setoran Tahfizh Pertama
+                  </button>
                 </div>
               )}
 
@@ -7412,220 +8256,495 @@ export default function TeacherTeachingWorkspacePage() {
           )}
 
           {/* TAB 9: LOG ABSENSI GURU (READ ONLY) */}
-          {activeTab === 'log-absensi' && (
-            <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
-              {/* Toolbar Header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm">
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Log Absensi Guru</h3>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                        <Lock className="h-3 w-3" /> Read Only
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Riwayat Kehadiran Resmi Pengajar: <strong className="text-slate-700 dark:text-slate-200">{teacherName}</strong>
-                    </p>
-                  </div>
-                </div>
+          {activeTab === 'log-absensi' && (() => {
+            const logTotalCount = teacherLogAbsensi.length
+            const logHadirCount = teacherLogAbsensi.filter((l) => l.status === 'Hadir').length
+            const logTerlambatCount = teacherLogAbsensi.filter((l) => l.status === 'Terlambat').length
+            const logIzinSakitCount = teacherLogAbsensi.filter((l) => l.status === 'Izin' || l.status === 'Sakit').length
+            const logDisiplinRate = logTotalCount > 0 ? Math.round((logHadirCount / logTotalCount) * 100) : 100
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleProcessExport()}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50/80 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300 shadow-xs cursor-pointer active:scale-95"
-                  >
-                    <Download className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> Export PDF
-                  </button>
-                </div>
-              </div>
+            return (
+              <div className="space-y-5">
+                {/* ── MODERN HERO CARD BANNER LOG ABSENSI ────────────────── */}
+                <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+                  <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
 
-              {/* Filter Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/15 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 px-4 py-2.5 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 sm:px-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={teacherLogMonth}
-                    onChange={(e) => setTeacherLogMonth(e.target.value)}
-                    className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    <option value="semua">Semua Bulan</option>
-                    {Array.from({ length: 6 }).map((_, i) => {
-                      const d = new Date()
-                      d.setMonth(d.getMonth() - i)
-                      const val = d.toISOString().slice(0, 7)
-                      const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
-                      return <option key={val} value={val}>{label}</option>
-                    })}
-                  </select>
-                  <select
-                    value={teacherLogStatus}
-                    onChange={(e) => setTeacherLogStatus(e.target.value)}
-                    className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 outline-none transition focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                  >
-                    <option value="semua">Semua Status</option>
-                    <option value="Hadir">Hadir</option>
-                    <option value="Terlambat">Terlambat</option>
-                    <option value="Izin">Izin</option>
-                    <option value="Sakit">Sakit</option>
-                  </select>
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Total <strong className="text-emerald-700 dark:text-emerald-300">{filteredTeacherLogs.length}</strong> catatan kehadiran
-                </div>
-              </div>
-
-              {/* Datatable */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 text-slate-700 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-slate-300">
-                    <tr>
-                      <th className="px-4 py-3 font-bold">Tanggal & Hari</th>
-                      <th className="px-4 py-3 font-bold">Jam Masuk</th>
-                      <th className="px-4 py-3 font-bold">Jam Pulang</th>
-                      <th className="px-4 py-3 font-bold">Durasi Working</th>
-                      <th className="px-4 py-3 font-bold">Status</th>
-                      <th className="px-4 py-3 font-bold">Metode & Perangkat</th>
-                      <th className="px-4 py-3 font-bold text-center">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredTeacherLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="p-3 font-bold text-slate-900 dark:text-white">
-                          {log.date}
-                          <span className="block text-[10px] text-slate-400 font-normal">{log.day}</span>
-                        </td>
-                        <td className="p-3 font-mono font-bold text-emerald-700 dark:text-emerald-400">{log.check_in ? `${log.check_in} WIB` : '-'}</td>
-                        <td className="p-3 font-mono font-bold text-slate-700 dark:text-slate-300">{log.check_out ? `${log.check_out} WIB` : '-'}</td>
-                        <td className="p-3 font-mono">{log.duration || '-'}</td>
-                        <td className="p-3">
-                          <span className={`px-2.5 py-0.5 font-bold text-[10px] rounded-full ${
-                            log.status === 'Hadir' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                            log.status === 'Terlambat' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
-                            log.status === 'Izin' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' :
-                            log.status === 'Sakit' ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' :
-                            'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
-                          }`}>
-                            {log.status}
+                  <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                        <Clock className="size-6 sm:size-7 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                            <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                            Log Kehadiran Pengajar
                           </span>
-                        </td>
-                        <td className="p-3">
-                          {log.method || '-'}
-                          <span className="block text-[10px] text-slate-400">{log.device || '-'}</span>
-                        </td>
-                        <td className="p-3 text-center">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/90 dark:bg-amber-950/80 px-3 py-1 text-xs font-bold text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60">
+                            <Lock className="size-3" /> Data Presensi Resmi
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                            Tahun Ajaran {selectedAcademicYear || '2026/2027'}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/90 dark:bg-teal-950/80 px-3 py-1 text-xs font-bold text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60">
+                            Semester {selectedSemester || 'Ganjil'}
+                          </span>
+                        </div>
+                        <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                          Buku Log &amp; Riwayat Presensi Guru
+                        </h2>
+                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                          Rekam jejak kehadiran kedinasan guru resmi — Pemantauan jam check-in, check-out, akumulasi jam kerja, verifikasi perangkat biometrik/QR, dan sertifikasi disiplin kerja terpadu.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Summary Metric Badges */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:min-w-[420px]">
+                      <div className="rounded-2xl border border-emerald-500/25 bg-white/80 dark:bg-slate-800/80 px-3 py-2 text-center backdrop-blur-md shadow-xs">
+                        <strong className="block text-lg sm:text-xl font-black text-emerald-700 dark:text-emerald-400">
+                          {logTotalCount}
+                        </strong>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Total Hari Kerja</span>
+                      </div>
+                      <div className="rounded-2xl border border-teal-500/25 bg-white/80 dark:bg-slate-800/80 px-3 py-2 text-center backdrop-blur-md shadow-xs">
+                        <strong className="block text-lg sm:text-xl font-black text-teal-700 dark:text-teal-400">
+                          {logHadirCount}
+                        </strong>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Tepat Waktu</span>
+                      </div>
+                      <div className="rounded-2xl border border-amber-500/25 bg-white/80 dark:bg-slate-800/80 px-3 py-2 text-center backdrop-blur-md shadow-xs">
+                        <strong className="block text-lg sm:text-xl font-black text-amber-700 dark:text-amber-400">
+                          {logTerlambatCount}
+                        </strong>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Terlambat</span>
+                      </div>
+                      <div className="rounded-2xl border border-sky-500/25 bg-white/80 dark:bg-slate-800/80 px-3 py-2 text-center backdrop-blur-md shadow-xs">
+                        <strong className="block text-lg sm:text-xl font-black text-sky-700 dark:text-sky-400">
+                          {logIzinSakitCount}
+                        </strong>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Izin / Sakit</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── 4 QUICK INTERACTIVE KPI CARDS ──────────────────────────── */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                  {/* Card 1: Total Presensi (Emerald) */}
+                  <div
+                    onClick={() => setTeacherLogStatus('semua')}
+                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
+                      teacherLogStatus === 'semua'
+                        ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-teal-500/20 border-2 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/20'
+                        : 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 border-2 border-emerald-500/25 hover:border-emerald-500/60 shadow-sm shadow-emerald-500/5 hover:shadow-md hover:shadow-emerald-500/15 hover:-translate-y-0.5'
+                    }`}
+                  >
+                    <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-emerald-400/20 blur-2xl group-hover:scale-125 transition-transform" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Total Riwayat Log</span>
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md shadow-emerald-600/30">
+                        <Clock className="size-4.5 text-white" />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                      {logTotalCount}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="inline-flex items-center rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                        {teacherLogMonth === 'semua' ? 'Semua Bulan' : teacherLogMonth}
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Semua Data</span>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Hadir Tepat Waktu (Teal) */}
+                  <div
+                    onClick={() => setTeacherLogStatus('Hadir')}
+                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
+                      teacherLogStatus === 'Hadir'
+                        ? 'bg-gradient-to-br from-teal-500/20 via-teal-500/10 to-cyan-500/20 border-2 border-teal-500 ring-2 ring-teal-500/30 shadow-lg shadow-teal-500/20'
+                        : 'bg-gradient-to-br from-teal-500/10 via-teal-500/5 to-cyan-500/10 border-2 border-teal-500/25 hover:border-teal-500/60 shadow-sm shadow-teal-500/5 hover:shadow-md hover:shadow-teal-500/15 hover:-translate-y-0.5'
+                    }`}
+                  >
+                    <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-teal-400/20 blur-2xl group-hover:scale-125 transition-transform" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Tepat Waktu</span>
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-700 text-white shadow-md shadow-teal-600/30">
+                        <CheckCircle2 className="size-4.5 text-white" />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-2xl sm:text-3xl font-black text-teal-700 dark:text-teal-400">
+                      {logHadirCount}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="inline-flex items-center rounded-full bg-teal-100/90 dark:bg-teal-950/80 px-2 py-0.5 text-[10px] font-bold text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60">
+                        {logDisiplinRate}% Ketepatan
+                      </span>
+                      <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400">Hadir On-Time</span>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Terlambat (Amber) */}
+                  <div
+                    onClick={() => setTeacherLogStatus('Terlambat')}
+                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
+                      teacherLogStatus === 'Terlambat'
+                        ? 'bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-orange-500/20 border-2 border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/20'
+                        : 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 border-2 border-amber-500/25 hover:border-amber-500/60 shadow-sm shadow-amber-500/5 hover:shadow-md hover:shadow-amber-500/15 hover:-translate-y-0.5'
+                    }`}
+                  >
+                    <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-amber-400/20 blur-2xl group-hover:scale-125 transition-transform" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Terlambat Masuk</span>
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-600/30">
+                        <AlertCircle className="size-4.5 text-white" />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-400">
+                      {logTerlambatCount}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="inline-flex items-center rounded-full bg-amber-100/90 dark:bg-amber-950/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60">
+                        Perlu Evaluasi
+                      </span>
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Disiplin Jam</span>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Izin & Sakit (Sky) */}
+                  <div
+                    onClick={() => setTeacherLogStatus(teacherLogStatus === 'Izin' ? 'Sakit' : 'Izin')}
+                    className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
+                      teacherLogStatus === 'Izin' || teacherLogStatus === 'Sakit'
+                        ? 'bg-gradient-to-br from-sky-500/20 via-sky-500/10 to-indigo-500/20 border-2 border-sky-500 ring-2 ring-sky-500/30 shadow-lg shadow-sky-500/20'
+                        : 'bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-indigo-500/10 border-2 border-sky-500/25 hover:border-sky-500/60 shadow-sm shadow-sky-500/5 hover:shadow-md hover:shadow-sky-500/15 hover:-translate-y-0.5'
+                    }`}
+                  >
+                    <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-sky-400/20 blur-2xl group-hover:scale-125 transition-transform" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Izin &amp; Sakit</span>
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-700 text-white shadow-md shadow-sky-600/30">
+                        <FileText className="size-4.5 text-white" />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-2xl sm:text-3xl font-black text-sky-700 dark:text-sky-400">
+                      {logIzinSakitCount}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="inline-flex items-center rounded-full bg-sky-100/90 dark:bg-sky-950/80 px-2 py-0.5 text-[10px] font-bold text-sky-800 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/60">
+                        Keterangan Resmi
+                      </span>
+                      <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400">Tervalidasi</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── TAILGRIDS EMERALD DATATABLE CONTAINER ──────────────────── */}
+                <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+                  {/* Toolbar Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-600/30 border border-emerald-300/40">
+                        <Clock className="size-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">Log Presensi Guru</h3>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100/90 dark:bg-amber-950/70 border border-amber-300/80 dark:border-amber-800/60 px-2.5 py-0.5 text-[10px] font-extrabold text-amber-800 dark:text-amber-300">
+                            <Lock className="size-3" /> Read Only
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Riwayat Kehadiran Resmi Pengajar: <strong className="text-slate-700 dark:text-slate-200">{teacherName}</strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleProcessExport()}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 px-3.5 py-2 text-xs font-extrabold shadow-xs transition cursor-pointer active:scale-95"
+                      >
+                        <Download className="size-3.5 text-amber-600 dark:text-amber-400" /> Export PDF
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Filter Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/15 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 px-4 py-3 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 sm:px-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={teacherLogMonth}
+                        onChange={(e) => setTeacherLogMonth(e.target.value)}
+                        className="h-9.5 rounded-xl border border-emerald-200/90 bg-white px-3 text-xs font-bold text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-slate-800 dark:text-slate-200"
+                      >
+                        <option value="semua">Semua Bulan</option>
+                        {Array.from({ length: 6 }).map((_, i) => {
+                          const d = new Date()
+                          d.setMonth(d.getMonth() - i)
+                          const val = d.toISOString().slice(0, 7)
+                          const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })
+                          return <option key={val} value={val}>{label}</option>
+                        })}
+                      </select>
+
+                      <div className="flex items-center rounded-xl bg-white dark:bg-slate-900 p-1 border border-emerald-200/80 dark:border-emerald-800/80 shadow-xs">
+                        {['semua', 'Hadir', 'Terlambat', 'Izin', 'Sakit'].map((st) => (
                           <button
-                            onClick={() => {
-                              setDetailData({
-                                title: `Log Absensi: ${log.date}`,
-                                category: 'Log Absensi Guru (Read-Only)',
-                                items: [
-                                  { label: 'Tanggal', value: log.date },
-                                  { label: 'Hari', value: log.day },
-                                  { label: 'Jam Masuk', value: log.check_in || '-' },
-                                  { label: 'Jam Pulang', value: log.check_out || '-' },
-                                  { label: 'Durasi', value: log.duration || '-' },
-                                  { label: 'Status', value: log.status || '-' },
-                                  { label: 'Metode', value: log.method || '-' },
-                                  { label: 'Lokasi', value: log.location || '-' },
-                                ]
-                              })
-                              setShowDetailModal(true)
-                            }}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-bold flex items-center justify-center gap-1 mx-auto"
+                            key={st}
+                            type="button"
+                            onClick={() => setTeacherLogStatus(st)}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                              teacherLogStatus === st
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                            }`}
                           >
-                            <Eye className="w-3.5 h-3.5" /> Detail
+                            {st === 'semua' ? 'Semua' : st}
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredTeacherLogs.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="p-8 text-center text-slate-400">
-                          Tidak ada catatan absensi untuk periode atau filter yang dipilih.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      Menampilkan <strong className="text-emerald-700 dark:text-emerald-300 font-extrabold">{filteredTeacherLogs.length}</strong> catatan kehadiran
+                    </div>
+                  </div>
+
+                  {/* Datatable */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 text-slate-800 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:border-emerald-800/60 dark:text-slate-200">
+                        <tr>
+                          <th className="px-4 py-3.5 font-extrabold">Tanggal &amp; Hari</th>
+                          <th className="px-4 py-3.5 font-extrabold">Jam Masuk</th>
+                          <th className="px-4 py-3.5 font-extrabold">Jam Pulang</th>
+                          <th className="px-4 py-3.5 font-extrabold">Durasi Kerja</th>
+                          <th className="px-4 py-3.5 font-extrabold">Status Kehadiran</th>
+                          <th className="px-4 py-3.5 font-extrabold">Metode &amp; Perangkat</th>
+                          <th className="px-4 py-3.5 font-extrabold text-center">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                        {filteredTeacherLogs.map((log) => (
+                          <tr key={log.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition">
+                            <td className="p-3.5 font-bold text-slate-900 dark:text-white">
+                              {log.date}
+                              <span className="block text-[10px] text-slate-400 font-normal">{log.day}</span>
+                            </td>
+                            <td className="p-3.5 font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                              {log.check_in ? `${log.check_in} WIB` : '-'}
+                            </td>
+                            <td className="p-3.5 font-mono font-bold text-slate-700 dark:text-slate-300">
+                              {log.check_out ? `${log.check_out} WIB` : '-'}
+                            </td>
+                            <td className="p-3.5 font-mono text-slate-600 dark:text-slate-300 font-semibold">
+                              {log.duration || '-'}
+                            </td>
+                            <td className="p-3.5">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 font-extrabold text-[10px] rounded-full border ${
+                                log.status === 'Hadir' ? 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' :
+                                log.status === 'Terlambat' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
+                                log.status === 'Izin' ? 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
+                                log.status === 'Sakit' ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
+                                'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                              }`}>
+                                {log.status === 'Hadir' && <CheckCircle2 className="size-3" />}
+                                {log.status === 'Terlambat' && <Clock className="size-3" />}
+                                {log.status === 'Izin' && <Info className="size-3" />}
+                                {log.status === 'Sakit' && <Heart className="size-3" />}
+                                {log.status}
+                              </span>
+                            </td>
+                            <td className="p-3.5">
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">{log.method || '-'}</span>
+                              <span className="block text-[10px] text-slate-400">{log.device || '-'}</span>
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDetailData({
+                                    title: `Log Absensi: ${log.date}`,
+                                    category: 'Log Absensi Guru (Read-Only)',
+                                    items: [
+                                      { label: 'Tanggal', value: log.date },
+                                      { label: 'Hari', value: log.day },
+                                      { label: 'Jam Masuk', value: log.check_in || '-' },
+                                      { label: 'Jam Pulang', value: log.check_out || '-' },
+                                      { label: 'Durasi', value: log.duration || '-' },
+                                      { label: 'Status', value: log.status || '-' },
+                                      { label: 'Metode', value: log.method || '-' },
+                                      { label: 'Lokasi', value: log.location || '-' },
+                                    ]
+                                  })
+                                  setShowDetailModal(true)
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 transition hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300 shadow-xs cursor-pointer active:scale-95 mx-auto"
+                              >
+                                <Eye className="size-3.5" /> Detail
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {filteredTeacherLogs.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="p-10 text-center text-slate-400">
+                              <Clock className="mx-auto mb-2 size-8 text-slate-300 dark:text-slate-600" />
+                              Tidak ada catatan absensi untuk periode atau filter yang dipilih.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Datatable Footer */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-emerald-100 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 px-5 py-3.5">
+                    <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                      Total <strong className="text-emerald-700 dark:text-emerald-400">{filteredTeacherLogs.length}</strong> data terekam pada server
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                      Sinkronisasi Otomatis Mesin Absensi &amp; Mobile App
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* TAB 10: JADWAL LENGKAP (READ ONLY) */}
-          {activeTab === 'jadwal-lengkap' && (
-            <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
-              {/* Toolbar Header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm">
-                    <CalendarDays className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Jadwal Pelajaran Lengkap Sekolah</h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Master Kalender & Schedule Matrix Sekolah</p>
-                  </div>
-                </div>
+          {activeTab === 'jadwal-lengkap' && (() => {
+            const rawPool = (allTeacherSchedules && allTeacherSchedules.length > 0)
+              ? allTeacherSchedules
+              : (schedules && schedules.length > 0 ? schedules : [])
 
-                <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
-                  {['Hari', 'Minggu', 'Bulan', 'Semester'].map((subt) => (
-                    <button
-                      key={subt}
-                      onClick={() => setJadwalLengkapTab(subt)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
-                        jadwalLengkapTab === subt
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm'
-                          : 'text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {subt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Sub Tab Views */}
-              <div className="p-4 sm:p-5 space-y-4">
-              {(() => {
-                const rawPool = (allTeacherSchedules && allTeacherSchedules.length > 0)
-                  ? allTeacherSchedules
-                  : (schedules && schedules.length > 0 ? schedules : [])
-
-                const classFilteredPool = (selectedClass && selectedClass !== 'all')
-                  ? rawPool.filter((s) => {
-                      const cId = s.kelas_id || s.class_id || s.kelas?.id || s.class?.id
-                      return String(cId) === String(selectedClass)
-                    })
-                  : rawPool
-
-                // Strict: jika rombel spesifik dipilih, gunakan classFilteredPool saja (meski kosong)
-                // Jangan fallback ke semua jadwal — itu yang menyebabkan semua rombel tampil saat filter aktif
-                const pool = (selectedClass && selectedClass !== 'all')
-                  ? classFilteredPool
-                  : (rawPool.length > 0 ? rawPool : (schedules && schedules.length > 0 ? schedules : []))
-
-                const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
-
-                const dayMapping = {
-                  1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Ahad'
-                }
-
-                const getDayStr = (s) => s.day_name || s.nama_hari || dayMapping[s.day_of_week] || 'Senin'
-
-                const sortedPool = [...pool].sort((a, b) => {
-                  const dayOrder = { 'Senin': 1, 'Selasa': 2, 'Rabu': 3, 'Kamis': 4, 'Jumat': 5, 'Sabtu': 6, 'Ahad': 7 }
-                  const da = dayOrder[getDayStr(a)] || 99
-                  const db = dayOrder[getDayStr(b)] || 99
-                  if (da !== db) return da - db
-                  return (a.start_time || a.time_start || '').localeCompare(b.start_time || b.time_start || '')
+            const classFilteredPool = (selectedClass && selectedClass !== 'all')
+              ? rawPool.filter((s) => {
+                  const cId = s.kelas_id || s.class_id || s.kelas?.id || s.class?.id
+                  return String(cId) === String(selectedClass)
                 })
+              : rawPool
 
-                return (
-                  <>
+            // Strict: jika rombel spesifik dipilih, gunakan classFilteredPool saja (meski kosong)
+            // Jangan fallback ke semua jadwal — itu yang menyebabkan semua rombel tampil saat filter aktif
+            const pool = (selectedClass && selectedClass !== 'all')
+              ? classFilteredPool
+              : (rawPool.length > 0 ? rawPool : (schedules && schedules.length > 0 ? schedules : []))
+
+            const daysList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+
+            const dayMapping = {
+              1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis', 5: 'Jumat', 6: 'Sabtu', 7: 'Ahad'
+            }
+
+            const getDayStr = (s) => s.day_name || s.nama_hari || dayMapping[s.day_of_week] || 'Senin'
+
+            const sortedPool = [...pool].sort((a, b) => {
+              const dayOrder = { 'Senin': 1, 'Selasa': 2, 'Rabu': 3, 'Kamis': 4, 'Jumat': 5, 'Sabtu': 6, 'Ahad': 7 }
+              const da = dayOrder[getDayStr(a)] || 99
+              const db = dayOrder[getDayStr(b)] || 99
+              if (da !== db) return da - db
+              return (a.start_time || a.time_start || '').localeCompare(b.start_time || b.time_start || '')
+            })
+
+            const totalSesi = pool.length
+            const totalMapel = new Set(pool.map(getScheduleSubject)).size
+            const totalRombel = new Set(pool.map((s) => s.kelas?.name || s.kelas?.nama_kelas || s.kelas_id)).size
+
+            return (
+              <div className="space-y-5">
+                {/* ── MODERN HERO CARD BANNER JADWAL LENGKAP ────────────────── */}
+                <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+                  <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+                  <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                        <CalendarDays className="size-6 sm:size-7 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                            <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                            Master Kalender &amp; Schedule Matrix
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                            Tahun Ajaran {selectedAcademicYear || '2026/2027'}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/90 dark:bg-teal-950/80 px-3 py-1 text-xs font-bold text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60">
+                            Semester {selectedSemester || 'Ganjil'}
+                          </span>
+                        </div>
+                        <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                          Jadwal Pelajaran Lengkap Sekolah
+                        </h2>
+                        <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                          Tinjauan komprehensif seluruh persebaran jam KBM guru — Tampilan fleksibel filter harian, matriks mingguan, estimasi beban bulanan, dan tabel semesteran terintegrasi.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Summary Metric Badges */}
+                    <div className="grid grid-cols-3 gap-2.5 sm:min-w-[340px]">
+                      <div className="rounded-2xl border border-emerald-500/25 bg-white/80 dark:bg-slate-800/80 px-3.5 py-2.5 text-center backdrop-blur-md shadow-xs">
+                        <strong className="block text-xl font-black text-emerald-700 dark:text-emerald-400">
+                          {totalSesi}
+                        </strong>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Total Sesi KBM</span>
+                      </div>
+                      <div className="rounded-2xl border border-emerald-500/25 bg-white/80 dark:bg-slate-800/80 px-3.5 py-2.5 text-center backdrop-blur-md shadow-xs">
+                        <strong className="block text-xl font-black text-teal-700 dark:text-teal-400">
+                          {totalMapel}
+                        </strong>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Mata Pelajaran</span>
+                      </div>
+                      <div className="rounded-2xl border border-emerald-500/25 bg-white/80 dark:bg-slate-800/80 px-3.5 py-2.5 text-center backdrop-blur-md shadow-xs">
+                        <strong className="block text-xl font-black text-indigo-700 dark:text-indigo-400">
+                          {totalRombel || (classes.length > 0 ? classes.length : 1)}
+                        </strong>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Rombel Kelas</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── DATATABLE & MATRIX CONTAINER ──────────────────────────── */}
+                <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+                  {/* Toolbar Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-200/90 dark:border-emerald-800/60 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-4 py-3 sm:px-5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-600/30 border border-emerald-300/40">
+                        <CalendarDays className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Matriks &amp; Kalender Jadwal</h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Mode Tinjauan: <span className="font-bold text-emerald-700 dark:text-emerald-400">{jadwalLengkapTab}</span></p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 rounded-2xl bg-emerald-100/60 dark:bg-slate-800/80 p-1 border border-emerald-200/80 dark:border-slate-700/80">
+                      {['Hari', 'Minggu', 'Bulan', 'Semester'].map((subt) => (
+                        <button
+                          key={subt}
+                          onClick={() => setJadwalLengkapTab(subt)}
+                          className={`rounded-xl px-3.5 py-1.5 text-xs font-extrabold transition-all duration-150 cursor-pointer ${
+                            jadwalLengkapTab === subt
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/30 ring-1 ring-emerald-300/40'
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-400'
+                          }`}
+                        >
+                          {subt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sub Tab Views */}
+                  <div className="p-4 sm:p-5 space-y-4">
                     {/* 1. SUB-TAB HARI */}
                     {jadwalLengkapTab === 'Hari' && (
                       <div className="space-y-4">
@@ -7637,10 +8756,10 @@ export default function TeacherTeachingWorkspacePage() {
                                 key={d}
                                 type="button"
                                 onClick={() => setSelectedHariFilter(d)}
-                                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition ${
+                                className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition-all duration-150 cursor-pointer ${
                                   selectedHariFilter === d
-                                    ? 'bg-[#0E5C44] text-white shadow-sm'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-1 ring-emerald-300/40'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300'
                                 }`}
                               >
                                 {d}
@@ -7665,7 +8784,7 @@ export default function TeacherTeachingWorkspacePage() {
                           return (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               {filtered.map((s, i) => (
-                                <div key={s.id || i} className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex justify-between items-center text-xs shadow-sm hover:border-emerald-300 transition">
+                                <div key={s.id || i} className="p-4 rounded-2xl border border-emerald-100/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 flex justify-between items-center text-xs shadow-xs hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-md transition">
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                       <span className="px-2.5 py-0.5 bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950 dark:text-emerald-300 font-extrabold text-[10px] rounded-md">
@@ -7682,13 +8801,24 @@ export default function TeacherTeachingWorkspacePage() {
                                       Kelas: <strong className="text-slate-700 dark:text-slate-200">{s.kelas?.name || s.kelas?.nama_kelas || selectedClassName || 'Kelas'}</strong> • Ruang: {s.kelas?.ruangan || s.room_name || '-'}
                                     </p>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => openPresensiModal(s)}
-                                    className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 font-bold text-[11px] border border-emerald-200 dark:border-emerald-800 transition"
-                                  >
-                                    Presensi Sesi
-                                  </button>
+                                  {(() => {
+                                    const sStatus = getScheduleStatus(s)
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => openPresensiModal(s)}
+                                        disabled={!sStatus.isActive}
+                                        title={sStatus.isActive ? 'Presensi Sesi KBM' : `Presensi Tidak Aktif (${sStatus.label})`}
+                                        className={`px-3 py-1.5 rounded-xl font-bold text-[11px] border transition ${
+                                          sStatus.isActive
+                                            ? 'bg-emerald-50 hover:bg-emerald-100 text-[#0E5C44] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/80 border-emerald-200 dark:border-emerald-800 cursor-pointer'
+                                            : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60'
+                                        }`}
+                                      >
+                                        {sStatus.isActive ? 'Presensi Sesi' : `Presensi (${sStatus.label})`}
+                                      </button>
+                                    )
+                                  })()}
                                 </div>
                               ))}
                             </div>
@@ -7704,7 +8834,7 @@ export default function TeacherTeachingWorkspacePage() {
                           <p className="text-xs text-slate-500 font-semibold">
                             Matriks Jadwal Mengajar Mingguan Resmi (Senin s.d. Sabtu)
                           </p>
-                          <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 text-[11px] font-bold">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1 text-xs font-extrabold text-white shadow-xs">
                             Total: {sortedPool.length} Sesi KBM / Minggu
                           </span>
                         </div>
@@ -7718,9 +8848,9 @@ export default function TeacherTeachingWorkspacePage() {
                             return (
                               <div
                                 key={day}
-                                className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-3.5 space-y-2.5"
+                                className="rounded-2xl border border-emerald-100/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-3.5 space-y-2.5 shadow-2xs"
                               >
-                                <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-2">
+                                <div className="flex items-center justify-between border-b border-emerald-100 dark:border-slate-800 pb-2">
                                   <div className="flex items-center gap-1.5">
                                     <CalendarDays className="w-4 h-4 text-emerald-600" />
                                     <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider">{day}</h4>
@@ -7775,7 +8905,7 @@ export default function TeacherTeachingWorkspacePage() {
                       <div className="space-y-5">
                         {/* KPI Cards Beban Bulanan */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                          <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
+                          <div className="p-4 rounded-2xl border border-emerald-100/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
                             <span className="text-[10px] uppercase font-bold text-slate-400">Sesi Mengajar / Minggu</span>
                             <div className="text-xl font-black text-slate-900 dark:text-white mt-1">
                               {sortedPool.length} Sesi
@@ -7783,7 +8913,7 @@ export default function TeacherTeachingWorkspacePage() {
                             <span className="text-[10px] text-emerald-600 font-medium">Tatap muka terjadwal</span>
                           </div>
 
-                          <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
+                          <div className="p-4 rounded-2xl border border-emerald-100/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
                             <span className="text-[10px] uppercase font-bold text-slate-400">Estimasi Beban / Bulan</span>
                             {(() => {
                               const _now = new Date()
@@ -7803,7 +8933,7 @@ export default function TeacherTeachingWorkspacePage() {
                             })()}
                           </div>
 
-                          <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
+                          <div className="p-4 rounded-2xl border border-emerald-100/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
                             <span className="text-[10px] uppercase font-bold text-slate-400">Jumlah Rombel Diampu</span>
                             <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1">
                               {new Set(sortedPool.map((s) => s.kelas?.name || s.kelas_id)).size} Kelas
@@ -7811,7 +8941,7 @@ export default function TeacherTeachingWorkspacePage() {
                             <span className="text-[10px] text-slate-400 font-medium">Distribusi mengajar</span>
                           </div>
 
-                          <div className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
+                          <div className="p-4 rounded-2xl border border-emerald-100/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
                             <span className="text-[10px] uppercase font-bold text-slate-400">Mata Pelajaran Aktif</span>
                             <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
                               {new Set(sortedPool.map((s) => s.subject?.name || s.subject_id)).size} Mapel
@@ -7821,13 +8951,13 @@ export default function TeacherTeachingWorkspacePage() {
                         </div>
 
                         {/* Kalender Agenda Sekolah PostgreSQL */}
-                        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 sm:p-5 space-y-3">
+                        <div className="rounded-2xl border border-emerald-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-4 sm:p-5 space-y-3 shadow-xs">
                           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                             <div>
                               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                                <CalendarRange className="w-4 h-4 text-emerald-600" /> Kalender Agenda & Kegiatan Akademik Sekolah
+                                <CalendarRange className="w-4 h-4 text-emerald-600" /> Kalender Agenda &amp; Kegiatan Akademik Sekolah
                               </h4>
-                              <p className="text-[11px] text-slate-400">Data resmi kegiatan, KBM Ramadhan 1448 H, PTS/PAS & Libur Sekolah dari PostgreSQL</p>
+                              <p className="text-[11px] text-slate-400">Data resmi kegiatan, KBM Ramadhan 1448 H, PTS/PAS &amp; Libur Sekolah dari PostgreSQL</p>
                             </div>
                             <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-[#0E5C44] dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-extrabold">
                               {academicCalendarEvents.length} Agenda Terjadwal
@@ -7879,19 +9009,19 @@ export default function TeacherTeachingWorkspacePage() {
                           </span>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
                           <table className="w-full text-left text-xs">
-                            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 text-slate-700 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-slate-300">
+                            <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-100 font-extrabold">
                               <tr>
-                                <th className="px-4 py-3 font-bold">Hari</th>
-                                <th className="px-4 py-3 font-bold">Mata Pelajaran</th>
-                                <th className="px-4 py-3 font-bold">Jam Mengajar</th>
-                                <th className="px-4 py-3 font-bold">Kelas / Rombel</th>
-                                <th className="px-4 py-3 font-bold">Ruangan</th>
-                                <th className="px-4 py-3 font-bold text-center">Beban (JP)</th>
+                                <th className="px-4 py-3 font-extrabold">Hari</th>
+                                <th className="px-4 py-3 font-extrabold">Mata Pelajaran</th>
+                                <th className="px-4 py-3 font-extrabold">Jam Mengajar</th>
+                                <th className="px-4 py-3 font-extrabold">Kelas / Rombel</th>
+                                <th className="px-4 py-3 font-extrabold">Ruangan</th>
+                                <th className="px-4 py-3 font-extrabold text-center">Beban (JP)</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 font-medium">
                               {sortedPool.length === 0 ? (
                                 <tr>
                                   <td colSpan={6} className="p-8 text-center text-slate-400">
@@ -7900,7 +9030,7 @@ export default function TeacherTeachingWorkspacePage() {
                                 </tr>
                               ) : (
                                 sortedPool.map((item, idx) => (
-                                  <tr key={item.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
+                                  <tr key={item.id || idx} className="hover:bg-emerald-50/40 dark:hover:bg-slate-800/40 transition">
                                     <td className="p-3 font-bold text-emerald-700 dark:text-emerald-400">
                                       {getDayStr(item)}
                                     </td>
@@ -7922,7 +9052,7 @@ export default function TeacherTeachingWorkspacePage() {
                                       {item.kelas?.ruangan || item.room_name || '-'}
                                     </td>
                                     <td className="p-3 text-center">
-                                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-bold text-[10px]">
+                                      <span className="px-2 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-[10px]">
                                         {item.subject?.jam_pelajaran ? `${item.subject.jam_pelajaran} JP` : '-'}
                                       </span>
                                     </td>
@@ -7931,7 +9061,7 @@ export default function TeacherTeachingWorkspacePage() {
                               )}
                             </tbody>
                             {sortedPool.length > 0 && (
-                              <tfoot className="bg-slate-50/80 dark:bg-slate-800/60 font-bold text-xs border-t border-slate-200 dark:border-slate-700">
+                              <tfoot className="bg-emerald-50/50 dark:bg-slate-800/60 font-bold text-xs border-t border-emerald-200/80 dark:border-emerald-800/60">
                                 <tr>
                                   <td colSpan={3} className="p-3 text-slate-700 dark:text-slate-300">
                                     Total Beban Mengajar Semester: {sortedPool.length} Sesi Terjadwal
@@ -7946,12 +9076,11 @@ export default function TeacherTeachingWorkspacePage() {
                         </div>
                       </div>
                     )}
-                  </>
-                )
-              })()}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* TAB CHAT: KOMUNIKASI ORANG TUA */}
           {activeTab === 'chat' && (
@@ -8663,6 +9792,26 @@ export default function TeacherTeachingWorkspacePage() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={() => {
+                      if (isEditingHistorySession) {
+                        setIsEditingHistorySession(false)
+                      } else {
+                        handleStartEditHistorySession()
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold shadow-xs transition cursor-pointer ${
+                      isEditingHistorySession
+                        ? 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'
+                        : 'border-amber-500/40 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300'
+                    }`}
+                    title={isEditingHistorySession ? 'Batalkan mode koreksi' : 'Koreksi kesalahan data presensi sesi ini'}
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    <span>{isEditingHistorySession ? 'Batal Koreksi' : 'Koreksi Presensi'}</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => handlePrintSingleHistorySession(session)}
                     title="Cetak Berita Acara & Presensi Sesi Ini"
                     className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 shadow-xs transition hover:bg-emerald-50 hover:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300 cursor-pointer"
@@ -8693,13 +9842,35 @@ export default function TeacherTeachingWorkspacePage() {
 
                   <button
                     type="button"
-                    onClick={() => setShowHistorySessionModal(false)}
+                    onClick={() => {
+                      setIsEditingHistorySession(false)
+                      setShowHistorySessionModal(false)
+                    }}
                     className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
                   >
                     <X className="h-5 w-5" />
                   </button>
                 </div>
               </div>
+
+              {/* Mode Koreksi Alert Banner */}
+              {isEditingHistorySession && (
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border-b border-amber-300/80 px-4 py-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span><strong>Mode Koreksi Aktif:</strong> Ubah status kehadiran atau keterangan siswa yang salah input di bawah, lalu klik Simpan Koreksi.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveHistoryCorrection}
+                    disabled={isSavingHistoryEdit}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer shrink-0"
+                  >
+                    {isSavingHistoryEdit ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    <span>Simpan Koreksi</span>
+                  </button>
+                </div>
+              )}
 
               {/* Sub-header Stats & Search */}
               <div className="shrink-0 border-b border-slate-100 p-4 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
@@ -8751,7 +9922,7 @@ export default function TeacherTeachingWorkspacePage() {
                           <th className="py-2.5 px-3 w-12 text-center">No</th>
                           <th className="py-2.5 px-3">Nama Siswa</th>
                           <th className="py-2.5 px-3">NISN</th>
-                          <th className="py-2.5 px-3 text-center">Status</th>
+                          <th className="py-2.5 px-3 text-center">Status Kehadiran</th>
                           <th className="py-2.5 px-3">Waktu Presensi</th>
                           <th className="py-2.5 px-3">Metode</th>
                           <th className="py-2.5 px-3">Catatan / Keterangan</th>
@@ -8759,13 +9930,18 @@ export default function TeacherTeachingWorkspacePage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {filteredAttList.map((item, idx) => {
-                          const rawStatus = (item.status_hadir || item.status || 'Belum Dicatat').toLowerCase()
+                          const sId = item.siswa_id || item.student_id || item.siswa?.id || item.id
+                          const currentEdit = editedAttendanceMap[sId]
+                          const activeStatus = isEditingHistorySession
+                            ? (currentEdit?.status || item.status_hadir || item.status || 'Hadir')
+                            : (item.status_hadir || item.status || 'Belum Dicatat')
+                          const rawStatus = String(activeStatus).toLowerCase()
                           const statusClass = statusBadgeStyle[rawStatus] || 'bg-slate-100 text-slate-700 border-slate-300'
                           const studentName = item.siswa?.full_name || item.siswa?.nama_lengkap || item.siswa?.name || item.student_name || 'Siswa'
                           const nisn = item.siswa?.nisn || item.student_nisn || '-'
                           const waktu = item.waktu_presensi
                             ? new Date(item.waktu_presensi).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
-                            : (rawStatus === 'hadir' ? '07:15 WIB' : '-')
+                            : '-'
 
                           return (
                             <tr key={item.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
@@ -8773,13 +9949,57 @@ export default function TeacherTeachingWorkspacePage() {
                               <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{studentName}</td>
                               <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">{nisn}</td>
                               <td className="py-2.5 px-3 text-center">
-                                <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold capitalize ${statusClass}`}>
-                                  {item.status_hadir || item.status || 'Belum Dicatat'}
-                                </span>
+                                {isEditingHistorySession ? (
+                                  <select
+                                    value={activeStatus}
+                                    onChange={(e) => {
+                                      const newStatus = e.target.value
+                                      setEditedAttendanceMap((prev) => ({
+                                        ...prev,
+                                        [sId]: {
+                                          ...(prev[sId] || {}),
+                                          status: newStatus,
+                                        },
+                                      }))
+                                    }}
+                                    className="rounded-lg border-2 border-emerald-500 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-black text-emerald-950 dark:text-white outline-none cursor-pointer focus:ring-2 focus:ring-emerald-400"
+                                  >
+                                    <option value="Hadir">Hadir</option>
+                                    <option value="Terlambat">Terlambat</option>
+                                    <option value="Izin">Izin</option>
+                                    <option value="Sakit">Sakit</option>
+                                    <option value="Alpha">Alpha</option>
+                                  </select>
+                                ) : (
+                                  <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold capitalize ${statusClass}`}>
+                                    {item.status_hadir || item.status || 'Belum Dicatat'}
+                                  </span>
+                                )}
                               </td>
                               <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{waktu}</td>
                               <td className="py-2.5 px-3 text-slate-500">{item.recorded_method || 'Presensi KBM'}</td>
-                              <td className="py-2.5 px-3 text-slate-500">{item.keterangan || '-'}</td>
+                              <td className="py-2.5 px-3 text-slate-500">
+                                {isEditingHistorySession ? (
+                                  <input
+                                    type="text"
+                                    value={currentEdit?.notes ?? (item.keterangan || '')}
+                                    onChange={(e) => {
+                                      const newNotes = e.target.value
+                                      setEditedAttendanceMap((prev) => ({
+                                        ...prev,
+                                        [sId]: {
+                                          ...(prev[sId] || {}),
+                                          notes: newNotes,
+                                        },
+                                      }))
+                                    }}
+                                    placeholder="Catatan koreksi / alasan..."
+                                    className="h-7 w-full min-w-[150px] rounded-lg border border-slate-300 bg-white px-2 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                                  />
+                                ) : (
+                                  item.keterangan || '-'
+                                )}
+                              </td>
                             </tr>
                           )
                         })}
@@ -8792,34 +10012,233 @@ export default function TeacherTeachingWorkspacePage() {
               {/* Footer Modal */}
               <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40">
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handlePrintSingleHistorySession(session)}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:from-emerald-700 hover:to-teal-700 cursor-pointer"
-                  >
-                    <Printer className="h-4 w-4" /> Cetak Lembar Presensi Sesi
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleExportSingleHistorySessionCsv(session)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-white px-3.5 py-2 text-xs font-bold text-emerald-700 shadow-xs hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300 cursor-pointer"
-                  >
-                    <Download className="h-4 w-4" /> Export Excel (.csv)
-                  </button>
+                  {isEditingHistorySession ? (
+                    <button
+                      type="button"
+                      onClick={handleSaveHistoryCorrection}
+                      disabled={isSavingHistoryEdit}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 px-4 py-2 text-xs font-bold text-white shadow-md transition cursor-pointer"
+                    >
+                      {isSavingHistoryEdit ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" /> Menyimpan Koreksi...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" /> Simpan Koreksi Presensi
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handlePrintSingleHistorySession(session)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:from-emerald-700 hover:to-teal-700 cursor-pointer"
+                      >
+                        <Printer className="h-4 w-4" /> Cetak Lembar Presensi Sesi
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleExportSingleHistorySessionCsv(session)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-white px-3.5 py-2 text-xs font-bold text-emerald-700 shadow-xs hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300 cursor-pointer"
+                      >
+                        <Download className="h-4 w-4" /> Export Excel (.csv)
+                      </button>
+                    </>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowHistorySessionModal(false)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
-                >
-                  Tutup
-                </button>
+                <div className="flex items-center gap-2">
+                  {isEditingHistorySession && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingHistorySession(false)}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingHistorySession(false)
+                      setShowHistorySessionModal(false)
+                    }}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 cursor-pointer"
+                  >
+                    Tutup
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )
       })()}
+
+      {/* MODAL SESI KBM AKTIF — MULAI MENGAJAR (BUG-GURU-001) */}
+      <AppModal
+        isOpen={showMulaiMengajarModal}
+        onClose={() => setShowMulaiMengajarModal(false)}
+        title="Sesi KBM Aktif — Mulai Mengajar"
+        description={`Pusat kendali sesi belajar-mengajar hari ini • ${formattedLiveDate} • Jam: ${formattedLiveTime}`}
+        icon={Play}
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-4">
+          {/* BANNER REALTIME: GURU PENGAMPU & WAKTU */}
+          <div className="rounded-2xl border-2 border-emerald-500/25 bg-gradient-to-br from-emerald-50/90 via-teal-50/50 to-emerald-50/80 p-4 shadow-sm dark:border-emerald-800/60 dark:bg-slate-900/80">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md">
+                  <Play className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    {teacherName || 'Guru Pengampu'}
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    {selectedClassName} • {teacherProfile?.niy || user?.employee?.niy || 'NIY Pendidik'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  Live {formattedLiveTime}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* DAFTAR JADWAL / SESI */}
+          {sortedSchedules.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-slate-700">
+              <Calendar className="mx-auto h-10 w-10 text-slate-400 mb-2" />
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                Belum Ada Jadwal Mengajar Aktif
+              </h4>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                Ustadz/Ustadzah belum memiliki penugasan jam mengajar resmi untuk rombel ini. Silakan hubungi Waka Kurikulum atau Bagian Tata Usaha.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <span>
+                  {selectedDaySchedules.length > 0
+                    ? `Sesi Mengajar Hari Ini (${selectedDateDay}): ${selectedDaySchedules.length} Sesi`
+                    : `Jadwal Mengajar Terdaftar (${sortedSchedules.length} Sesi Mingguan)`}
+                </span>
+                <span className="text-[11px] text-slate-400">Pilih sesi untuk membuka KBM</span>
+              </div>
+
+              {(selectedDaySchedules.length > 0 ? selectedDaySchedules : sortedSchedules).map((sch, idx) => {
+                const isToday = getScheduleDay(sch).toLowerCase() === selectedDateDay.toLowerCase()
+                const schSubject = getScheduleSubject(sch)
+                const schHours = getScheduleLessonHours(sch)
+                const schRoom = getScheduleRoom(sch)
+                const schClass = sch.kelas?.nama_kelas || sch.kelas?.name || sch.class_name || selectedClassName
+
+                return (
+                  <div
+                    key={sch.id || idx}
+                    className="rounded-2xl border-2 border-emerald-500/20 bg-white p-4 shadow-sm hover:border-emerald-500/40 transition-all dark:border-emerald-800/40 dark:bg-slate-800/90"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase ${
+                            isToday
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
+                          }`}>
+                            {getScheduleDay(sch)}
+                          </span>
+                          <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                            {schSubject}
+                          </span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            • {schClass}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300 flex-wrap">
+                          <span className="flex items-center gap-1 font-mono font-semibold">
+                            <Clock className="h-3.5 w-3.5 text-emerald-600" /> {schHours}
+                          </span>
+                          <span>•</span>
+                          <span>Ruang: <strong>{schRoom}</strong></span>
+                        </div>
+                      </div>
+
+                      {/* AKSI SESI KBM */}
+                      {(() => {
+                        const schStatus = getScheduleStatus(sch)
+                        return (
+                          <div className="flex items-center gap-2 flex-wrap shrink-0">
+                            <button
+                              type="button"
+                              disabled={!schStatus.isActive}
+                              onClick={() => {
+                                setShowMulaiMengajarModal(false)
+                                openPresensiModal(sch)
+                              }}
+                              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold shadow-sm transition ${
+                                schStatus.isActive
+                                  ? 'bg-[#0E5C44] hover:bg-emerald-800 text-white cursor-pointer'
+                                  : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed opacity-60'
+                              }`}
+                            >
+                              <UserCheck className="h-4 w-4" />
+                              <span>{schStatus.isActive ? 'Buka Presensi Kelas' : `Presensi (${schStatus.label})`}</span>
+                            </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowMulaiMengajarModal(false)
+                            const cid = sch.class_id || sch.kelas_id || sch.kelas?.id || sch.class?.id
+                            if (cid) setSelectedClass(String(cid))
+                            changeTab('materi')
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer"
+                        >
+                          <BookOpen className="h-4 w-4 text-emerald-600" /> Materi
+                        </button>
+                      </div>
+                    )
+                  })()}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* FOOTER MODAL */}
+          <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                setShowMulaiMengajarModal(false)
+                changeTab('jadwal')
+              }}
+              className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1"
+            >
+              <Calendar className="h-3.5 w-3.5" /> Lihat Jadwal Lengkap
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMulaiMengajarModal(false)}
+              className="px-4 py-2 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      </AppModal>
 
       {/* DEDICATED PRESENSI SESSION MODAL POP-UP */}
       {/* MODAL POPUP PRESENSI PEMBELAJARAN SISWA */}
@@ -8827,7 +10246,7 @@ export default function TeacherTeachingWorkspacePage() {
         isOpen={showPresensiModal}
         onClose={() => setShowPresensiModal(false)}
         title="Presensi Pembelajaran Siswa"
-        description={`${selectedClassName?.startsWith('Semua') ? selectedClassName : `Rombel ${selectedClassName}`} • Mapel: ${presensiModalSchedule?.subject?.name || presensiModalSchedule?.subject?.nama_mapel || getScheduleSubject(getCurrentSchedule() || {}) || 'Mata Pelajaran'} • Jam Pelajaran: ${getScheduleLessonHours(presensiModalSchedule)} • Waktu Sekarang: ${formattedLiveTime}`}
+        description={`Rombel: ${modalActiveClassName} • Mapel: ${presensiModalSchedule?.subject?.name || presensiModalSchedule?.subject?.nama_mapel || getScheduleSubject(presensiModalSchedule || {}) || 'Mata Pelajaran'} • Jam Pelajaran: ${getScheduleLessonHours(presensiModalSchedule)} • Waktu Sekarang: ${formattedLiveTime}`}
         icon={UserCheck}
         maxWidth="max-w-4xl"
       >
@@ -8878,41 +10297,40 @@ export default function TeacherTeachingWorkspacePage() {
               </div>
             </div>
 
-            {/* Baris Kedua: Filter Rombel & Mata Pelajaran */}
+            {/* Baris Kedua: Rombel & Mata Pelajaran */}
             <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <label htmlFor="presensi-modal-rombel-select" className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
-                  <Filter className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Filter Rombel:</span>
-                </label>
-                <div className="inline-flex items-center gap-2 rounded-xl bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold border border-emerald-300/80 dark:border-emerald-700 shadow-xs">
-                  <Users className="h-3.5 w-3.5 text-emerald-600" />
-                  <select
-                    id="presensi-modal-rombel-select"
-                    value={selectedClass}
-                    onChange={(e) => handleModalClassChange(e.target.value)}
-                    className="bg-transparent font-extrabold text-xs text-emerald-950 dark:text-emerald-100 outline-none cursor-pointer pr-1"
-                  >
-                    <option value="all" className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                      Semua Rombel
-                    </option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                        {c.nama_kelas || c.name} {c.kode_kelas ? `· ${c.kode_kelas}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <span className="text-xs font-extrabold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                  <GraduationCap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Rombel:</span>
+                </span>
+                {presensiModalClasses.length > 1 ? (
+                  <div className="inline-flex items-center gap-2 rounded-xl bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold border border-emerald-300/80 dark:border-emerald-700 shadow-xs">
+                    <Users className="h-3.5 w-3.5 text-emerald-600" />
+                    <select
+                      id="presensi-modal-rombel-select"
+                      value={selectedClass}
+                      onChange={(e) => handleModalClassChange(e.target.value)}
+                      className="bg-transparent font-extrabold text-xs text-emerald-950 dark:text-emerald-100 outline-none cursor-pointer pr-1"
+                    >
+                      {presensiModalClasses.map((c) => (
+                        <option key={c.id} value={c.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                          {c.nama_kelas || c.name} {c.kode_kelas ? `· ${c.kode_kelas}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 rounded-xl bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-black border border-emerald-400/90 dark:border-emerald-600 shadow-xs text-emerald-950 dark:text-emerald-100">
+                    <Users className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>{modalActiveClassName}</span>
+                  </div>
+                )}
                 <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  {(() => {
-                    const count = (selectedClass && selectedClass !== 'all')
-                      ? students.filter((st) => {
-                          const sCid = st.kelas_id || st.class_id || st.kelas?.id
-                          return !!sCid && String(sCid) === String(selectedClass)
-                        }).length
-                      : students.length
-                    return `(${count} Siswa Terdaftar)`
-                  })()}
+                  {`(${students.filter((st) => {
+                    const sCid = st.kelas_id || st.class_id || st.kelas?.id
+                    return !selectedClass || selectedClass === 'all' || (!!sCid && String(sCid) === String(selectedClass))
+                  }).length} Siswa Terdaftar)`}
                 </span>
               </div>
 
@@ -9107,24 +10525,28 @@ export default function TeacherTeachingWorkspacePage() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                    <Filter className="h-3 w-3 text-emerald-600" />
-                    <span className="text-[11px] text-slate-400 font-medium">Rombel:</span>
-                    <select
-                      value={selectedClass}
-                      onChange={(e) => handleModalClassChange(e.target.value)}
-                      className="bg-transparent text-xs font-extrabold text-emerald-900 dark:text-emerald-300 outline-none cursor-pointer"
-                    >
-                      <option value="all" className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                        Semua Rombel
-                      </option>
-                      {classes.map((c) => (
-                        <option key={c.id} value={c.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                          {c.nama_kelas || c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {presensiModalClasses.length > 1 ? (
+                    <div className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      <Filter className="h-3 w-3 text-emerald-600" />
+                      <span className="text-[11px] text-slate-400 font-medium">Rombel:</span>
+                      <select
+                        value={selectedClass}
+                        onChange={(e) => handleModalClassChange(e.target.value)}
+                        className="bg-transparent text-xs font-extrabold text-emerald-900 dark:text-emerald-300 outline-none cursor-pointer"
+                      >
+                        {presensiModalClasses.map((c) => (
+                          <option key={c.id} value={c.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                            {c.nama_kelas || c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/80 bg-emerald-50/70 px-2.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                      <GraduationCap className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>{modalActiveClassName}</span>
+                    </div>
+                  )}
                   <div className="relative min-w-[180px]">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <input
@@ -9281,16 +10703,37 @@ export default function TeacherTeachingWorkspacePage() {
             >
               Batal
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                handleSaveAttendance()
-                setShowPresensiModal(false)
-              }}
-              className="px-5 py-2.5 bg-[#0E5C44] hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-2 transition"
-            >
-              <CheckCircle2 className="w-4 h-4" /> Simpan Presensi Pembelajaran
-            </button>
+            {(() => {
+              const modalSchStatus = presensiModalSchedule ? getScheduleStatus(presensiModalSchedule) : null
+              const isModalInactive = modalSchStatus && !modalSchStatus.isActive
+              return (
+                <button
+                  type="button"
+                  disabled={isSavingAttendance || isModalInactive}
+                  onClick={handleSaveAttendance}
+                  title={isModalInactive ? `Presensi tidak aktif (${modalSchStatus.label})` : 'Simpan Presensi Pembelajaran'}
+                  className={`px-5 py-2.5 text-xs font-bold rounded-xl shadow-md flex items-center gap-2 transition ${
+                    isModalInactive
+                      ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed shadow-none'
+                      : 'bg-[#0E5C44] hover:bg-emerald-800 disabled:opacity-50 text-white cursor-pointer'
+                  }`}
+                >
+                  {isSavingAttendance ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> Menyimpan Presensi...
+                    </>
+                  ) : isModalInactive ? (
+                    <>
+                      <Clock className="w-4 h-4" /> Presensi Tidak Aktif ({modalSchStatus.label})
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" /> Simpan Presensi Pembelajaran
+                    </>
+                  )}
+                </button>
+              )
+            })()}
           </div>
         </div>
       </AppModal>
@@ -10179,7 +11622,8 @@ export default function TeacherTeachingWorkspacePage() {
                             </p>
                             {automaticTahfizhTarget && (
                               <p className="mt-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold leading-relaxed">
-                                ⚡ Lanjutan Otomatis: <strong>Surah {automaticTahfizhTarget.surah_name} (Mulai Ayat {automaticTahfizhTarget.ayat_start})</strong>. Silakan pilih <strong>Ayat Terakhir</strong> untuk setoran baru.
+                                {automaticTahfizhTarget.repeated ? '🔁 Mengulang Target: ' : '⚡ Lanjutan Otomatis: '}
+                                <strong>Surah {automaticTahfizhTarget.surah_name} (Mulai Ayat {automaticTahfizhTarget.ayat_start})</strong>. {automaticTahfizhTarget.repeated ? 'Evaluasi sebelumnya memerlukan bimbingan, silakan setorkan kembali rentang ayat ini.' : 'Silakan pilih Ayat Terakhir untuk setoran baru.'}
                               </p>
                             )}
                           </div>
@@ -10917,96 +12361,388 @@ export default function TeacherTeachingWorkspacePage() {
       )}
 
       {/* DETAIL DRAWER / MODAL */}
-      {showDetailModal && detailData && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className={`bg-white dark:bg-[#1B2433] w-full ${detailData.category === 'Materi Belajar' ? 'max-w-2xl max-h-[85vh] overflow-y-auto' : 'max-w-md'} rounded-[22px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 relative animate-in fade-in zoom-in duration-200`}>
-            <button
-              onClick={() => setShowDetailModal(false)}
-              className="absolute right-5 top-5 p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {showDetailModal && detailData && (() => {
+        const isSchedule = !!detailData.rawSchedule || detailData.category === 'Jadwal Mengajar'
+        const schedule = detailData.rawSchedule
+        const schStatus = schedule ? getScheduleStatus(schedule) : null
 
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-emerald-100 dark:bg-emerald-950 text-[#0E5C44] dark:text-emerald-300 rounded-xl">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                  {detailData.category}
-                </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                  {detailData.title}
-                </h3>
-              </div>
-            </div>
+        if (isSchedule && schedule) {
+          const filteredScheduleStudents = scheduleDetailStudents.filter((st) => {
+            if (!scheduleDetailSearch.trim()) return true
+            const q = scheduleDetailSearch.toLowerCase()
+            const name = (st.nama_lengkap || st.full_name || st.name || '').toLowerCase()
+            const nis = (st.nis || st.nisn || '').toLowerCase()
+            return name.includes(q) || nis.includes(q)
+          })
 
-            {/* Video Embed */}
-            {detailData.video && (
-              <div className="pt-2">
-                <VideoEmbedPlayer
-                  url={detailData.video}
-                  title={`Video: ${detailData.title}`}
-                />
-              </div>
-            )}
+          const totalStudents = scheduleDetailStudents.length
+          let hadirCount = 0
+          let terlambatCount = 0
+          let izinCount = 0
+          let sakitCount = 0
+          let alphaCount = 0
+          let belumDicatatCount = 0
 
-            {/* PDF Embed */}
-            {detailData.file && (
-              <div className="pt-2">
-                <PdfDocumentViewer
-                  url={detailData.file}
-                  title={`Dokumen: ${detailData.title}`}
-                  height="400px"
-                />
-              </div>
-            )}
+          scheduleDetailStudents.forEach((st) => {
+            const rec = scheduleDetailAttendance[st.id]
+            const status = (rec?.status || 'Belum Dicatat').toLowerCase()
+            if (status === 'hadir') hadirCount++
+            else if (status === 'terlambat') terlambatCount++
+            else if (status === 'izin') izinCount++
+            else if (status === 'sakit') sakitCount++
+            else if (status === 'alpa' || status === 'alpha') alphaCount++
+            else belumDicatatCount++
+          })
 
-            {/* External Link */}
-            {detailData.link && (
-              <div className="pt-2">
-                <a
-                  href={detailData.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs border border-emerald-200 transition-colors dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Buka Tautan Materi di Tab Baru
-                </a>
-              </div>
-            )}
+          const tidakHadirCount = izinCount + sakitCount + alphaCount
 
-            <div className="space-y-2 border-t border-b border-slate-100 dark:border-slate-800 py-3 text-xs">
-              {detailData.items.map((it, idx) => (
-                <div key={idx} className="flex justify-between py-1 border-b border-slate-50 dark:border-slate-800/50 last:border-0">
-                  <span className="text-slate-500 font-medium">{it.label}</span>
-                  <span className="font-bold text-slate-900 dark:text-white text-right">{it.value}</span>
+          return (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" role="dialog" aria-modal="true">
+              <div className="bg-white dark:bg-[#1B2433] w-full max-w-4xl max-h-[92vh] flex flex-col rounded-[22px] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative animate-in fade-in zoom-in duration-200">
+                {/* Header Modal */}
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-4 sm:p-5 dark:border-slate-700 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-700 text-white rounded-xl shadow-sm">
+                      <CalendarRange className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                          Detail Jadwal Mengajar KBM
+                        </span>
+                        {schStatus && (
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${schStatus.className}`}>
+                            {schStatus.label}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
+                        {getScheduleSubject(schedule)}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {schStatus?.isActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDetailModal(false)
+                          openPresensiModal(schedule)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0E5C44] hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                        title="Buka Lembar Presensi Pembelajaran"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Buka Presensi</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailModal(false)}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
 
-            <div className="flex justify-end items-center gap-2 pt-1">
-              {detailData.rawStudent && (
-                <button
-                  type="button"
-                  onClick={() => handlePrintWeeklyEvaluation(detailData.rawStudent)}
-                  className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition cursor-pointer"
-                  title="Cetak Lembar Evaluasi Mingguan Santri Resmi"
-                >
-                  <Printer className="w-4 h-4" /> Cetak Evaluasi Pekanan
-                </button>
-              )}
+                {/* Info Bar Jadwal */}
+                <div className="shrink-0 bg-slate-50/70 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800 p-3 sm:p-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div className="rounded-xl bg-white dark:bg-slate-800/80 p-2.5 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Hari & Jam</span>
+                      <strong className="text-slate-900 dark:text-white mt-0.5 block truncate">
+                        {getScheduleDay(schedule)} • {(schedule.start_time || schedule.time_start || '00:00').slice(0, 5)} - {(schedule.end_time || schedule.time_end || '00:00').slice(0, 5)} WIB
+                      </strong>
+                    </div>
+
+                    <div className="rounded-xl bg-white dark:bg-slate-800/80 p-2.5 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rombel / Kelas</span>
+                      <strong className="text-emerald-700 dark:text-emerald-300 mt-0.5 block truncate">
+                        {getScheduleClass(schedule)}
+                      </strong>
+                    </div>
+
+                    <div className="rounded-xl bg-white dark:bg-slate-800/80 p-2.5 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ruangan</span>
+                      <strong className="text-slate-900 dark:text-white mt-0.5 block truncate">
+                        {getScheduleRoom(schedule)}
+                      </strong>
+                    </div>
+
+                    <div className="rounded-xl bg-white dark:bg-slate-800/80 p-2.5 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Guru Pengampu</span>
+                      <strong className="text-slate-900 dark:text-white mt-0.5 block truncate">
+                        {teacherName}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ringkasan Kehadiran Siswa & Pencarian */}
+                <div className="shrink-0 border-b border-slate-100 p-4 dark:border-slate-800 bg-white dark:bg-[#1B2433]">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    {/* KPI Pills Kehadiran */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        <Users className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Total: {totalStudents} Siswa</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-100 px-3 py-1.5 text-xs font-black text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>Hadir: {hadirCount}</span>
+                      </span>
+                      {terlambatCount > 0 && (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-100 px-3 py-1.5 text-xs font-black text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
+                          <Clock className="h-3.5 w-3.5 text-amber-600" />
+                          <span>Terlambat: {terlambatCount}</span>
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black ${
+                        tidakHadirCount > 0
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300'
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
+                        <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                        <span>Tidak Hadir: {tidakHadirCount}</span>
+                        {tidakHadirCount > 0 && (
+                          <span className="text-[10px] font-semibold opacity-90">
+                            ({izinCount} Izin, {sakitCount} Sakit, {alphaCount} Alpha)
+                          </span>
+                        )}
+                      </span>
+                      {belumDicatatCount > 0 && (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          <AlertCircle className="h-3.5 w-3.5 text-slate-400" />
+                          <span>Belum Dicatat: {belumDicatatCount}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Pencarian Siswa */}
+                    <div className="relative min-w-[200px] max-w-xs">
+                      <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        value={scheduleDetailSearch}
+                        onChange={(e) => setScheduleDetailSearch(e.target.value)}
+                        placeholder="Cari siswa / NISN..."
+                        className="h-8 w-full rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-xs outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tabel Siswa & Status Kehadirannya */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  {loadingScheduleDetail ? (
+                    <div className="py-12 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+                      <RefreshCw className="h-5 w-5 animate-spin text-emerald-600" />
+                      <span>Memuat data siswa dan presensi jadwal...</span>
+                    </div>
+                  ) : filteredScheduleStudents.length === 0 ? (
+                    <div className="py-12 text-center text-xs text-slate-500">
+                      {scheduleDetailStudents.length === 0
+                        ? 'Belum ada data siswa yang terdaftar di rombel ini.'
+                        : 'Tidak ada siswa yang cocok dengan kata kunci pencarian.'}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                      <table className="w-full text-left text-xs">
+                        <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          <tr>
+                            <th className="py-2.5 px-3 w-12 text-center">No</th>
+                            <th className="py-2.5 px-3">Nama Siswa</th>
+                            <th className="py-2.5 px-3">NIS / NISN</th>
+                            <th className="py-2.5 px-3 text-center">L/P</th>
+                            <th className="py-2.5 px-3 text-center">Status Kehadiran</th>
+                            <th className="py-2.5 px-3">Waktu Presensi</th>
+                            <th className="py-2.5 px-3">Keterangan / Catatan</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {filteredScheduleStudents.map((st, idx) => {
+                            const rec = scheduleDetailAttendance[st.id] || {}
+                            const rawStatus = (rec.status || 'Belum Dicatat').toLowerCase()
+                            const statusPillClass =
+                              rawStatus === 'hadir'
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
+                                : rawStatus === 'terlambat'
+                                ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300'
+                                : rawStatus === 'izin'
+                                ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950 dark:text-sky-300'
+                                : rawStatus === 'sakit'
+                                ? 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-950 dark:text-violet-300'
+                                : rawStatus === 'alpa' || rawStatus === 'alpha'
+                                ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300'
+                                : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300'
+
+                            const gender = st.gender || st.jenis_kelamin || '-'
+                            const genderLabel = gender.toLowerCase().startsWith('l') ? 'L' : gender.toLowerCase().startsWith('p') ? 'P' : '-'
+
+                            return (
+                              <tr key={st.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                                <td className="py-2.5 px-3 text-center font-semibold text-slate-400">{idx + 1}</td>
+                                <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-[10px] font-black text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                      {(st.nama_lengkap || st.full_name || 'S').slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <span className="truncate">{st.nama_lengkap || st.full_name || st.name}</span>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
+                                  {st.nis || st.nisn || '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-center font-bold text-slate-500">
+                                  {genderLabel}
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold capitalize ${statusPillClass}`}>
+                                    {rec.status || 'Belum Dicatat'}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-mono text-[11px]">
+                                  {rec.time || rec.check_in_time || '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-slate-500 text-[11px]">
+                                  {rec.notes || '-'}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Modal */}
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40">
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    Menampilkan <strong className="text-emerald-700 dark:text-emerald-300">{filteredScheduleStudents.length}</strong> dari <strong>{scheduleDetailStudents.length}</strong> siswa rombel {getScheduleClass(schedule)}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {schStatus?.isActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDetailModal(false)
+                          openPresensiModal(schedule)
+                        }}
+                        className="px-4 py-2 bg-[#0E5C44] hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                      >
+                        <UserCheck className="w-4 h-4" /> Buka Presensi Sesi KBM
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailModal(false)}
+                      className="px-4 py-2 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        // Default Modal for Non-Schedule items (Materi, Evaluasi, etc.)
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+            <div className={`bg-white dark:bg-[#1B2433] w-full ${detailData.category === 'Materi Belajar' ? 'max-w-2xl max-h-[85vh] overflow-y-auto' : 'max-w-md'} rounded-[22px] p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 relative animate-in fade-in zoom-in duration-200`}>
               <button
                 onClick={() => setShowDetailModal(false)}
-                className="px-4 py-2 bg-[#0E5C44] hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer"
+                className="absolute right-5 top-5 p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
-                Tutup Detail
+                <X className="w-5 h-5" />
               </button>
+
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-emerald-100 dark:bg-emerald-950 text-[#0E5C44] dark:text-emerald-300 rounded-xl">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    {detailData.category}
+                  </span>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
+                    {detailData.title}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Video Embed */}
+              {detailData.video && (
+                <div className="pt-2">
+                  <VideoEmbedPlayer
+                    url={detailData.video}
+                    title={`Video: ${detailData.title}`}
+                  />
+                </div>
+              )}
+
+              {/* PDF Embed */}
+              {detailData.file && (
+                <div className="pt-2">
+                  <PdfDocumentViewer
+                    url={detailData.file}
+                    title={`Dokumen: ${detailData.title}`}
+                    height="400px"
+                  />
+                </div>
+              )}
+
+              {/* External Link */}
+              {detailData.link && (
+                <div className="pt-2">
+                  <a
+                    href={detailData.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs border border-emerald-200 transition-colors dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Buka Tautan Materi di Tab Baru
+                  </a>
+                </div>
+              )}
+
+              <div className="space-y-2 border-t border-b border-slate-100 dark:border-slate-800 py-3 text-xs">
+                {detailData.items.map((it, idx) => (
+                  <div key={idx} className="flex justify-between py-1 border-b border-slate-50 dark:border-slate-800/50 last:border-0">
+                    <span className="text-slate-500 font-medium">{it.label}</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-right">{it.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end items-center gap-2 pt-1">
+                {detailData.rawStudent && (
+                  <button
+                    type="button"
+                    onClick={() => handlePrintWeeklyEvaluation(detailData.rawStudent)}
+                    className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                    title="Cetak Lembar Evaluasi Mingguan Santri Resmi"
+                  >
+                    <Printer className="w-4 h-4" /> Cetak Evaluasi Pekanan
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-4 py-2 bg-[#0E5C44] hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer"
+                >
+                  Tutup Detail
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* FACE RECOGNITION MODAL */}
       {showFaceModal && (

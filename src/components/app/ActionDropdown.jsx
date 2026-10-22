@@ -8,7 +8,7 @@ import {
 } from '../tailgrids/core/dropdown'
 import { Eye, MenuMeatballs1, Pencil1, Trash1, ClockThree } from '@tailgrids/icons'
 import { useAuthStore } from '../../stores/authStore'
-import { hasAnyRole } from '../../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../../auth/portalResolver'
 
 /**
  * ActionDropdown - Canonical action menu for table rows and card items based on TailGrids DropdownMenu.
@@ -29,7 +29,7 @@ export default function ActionDropdown({
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || (user?.role ? [user.role] : [])
   const permissions = user?.permissions || []
-  const isSuperAdmin = hasAnyRole(roles, ['Super Admin'])
+  const isSuperAdmin = getUserRoleLevel(user) === ROLE_LEVELS.SUPER_ADMIN // Level 1
 
   const checkPerm = (requiredPerm) => {
     if (!requiredPerm || isSuperAdmin) return true
@@ -62,7 +62,9 @@ export default function ActionDropdown({
         aria-label="Menu Aksi"
         className="flex size-9 sm:size-10 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all duration-150 active:scale-95 cursor-pointer"
       >
-        {trigger || <MenuMeatballs1 className="size-5 text-white" />}
+        <span title="Menu Aksi" className="flex items-center justify-center size-full">
+          {trigger || <MenuMeatballs1 className="size-5 text-white" />}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="p-1.5 border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 min-w-36 shadow-lg rounded-xl">
         {canView && (

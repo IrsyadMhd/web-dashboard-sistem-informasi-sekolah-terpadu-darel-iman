@@ -13,38 +13,20 @@ import {
   CheckSquare,
   Square
 } from 'lucide-react'
-
-/**
- * Helper: Ambil data geocoding dari OpenStreetMap Nominatim
- */
-async function fetchNominatimSearch(query) {
-  if (!query || !query.trim()) return null
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      query.trim()
-    )}&limit=1&countrycodes=id&addressdetails=1`
-    const res = await fetch(url, {
-      headers: {
-        'Accept-Language': 'id',
-      }
-    })
-    const data = await res.json()
-    if (Array.isArray(data) && data.length > 0) {
-      return data[0]
-    }
-    return null
-  } catch (err) {
-    console.error('Nominatim query error for:', query, err)
-    return null
-  }
-}
+import {
+  getMapboxToken,
+  getMapTileConfig,
+  searchAddressGeocoding,
+  reverseGeocodeCoords,
+} from '../../utils/mapboxHelper'
 
 /**
  * InteractiveMapPicker
  * Komponen peta interaktif untuk sinkronisasi dua arah:
- * 1. Ketik alamat di formulir -> Pin otomatis berpindah ke titik lokasi tersebut (multi-stage geocoding dengan debounce).
- * 2. Geser pin / klik peta -> Koordinat (lat/lng) dan seluruh field alamat (jalan, kelurahan, kecamatan, kota, provinsi, kode pos) otomatis terisi!
- * 3. Opsi toggle: Pengguna bebas memilih apakah pin menimpa teks alamat formulir atau mempertahankan teks alamat manual.
+ * 1. Mendukung Mapbox (dengan token dinamis dari database) serta fallback ke OpenStreetMap.
+ * 2. Ketik alamat di formulir -> Pin otomatis berpindah ke titik lokasi tersebut (multi-stage geocoding dengan debounce).
+ * 3. Geser pin / klik peta -> Koordinat (lat/lng) dan seluruh field alamat (jalan, kelurahan, kecamatan, kota, provinsi, kode pos) otomatis terisi!
+ * 4. Opsi toggle: Pengguna bebas memilih apakah pin menimpa teks alamat formulir atau mempertahankan teks alamat manual.
  */
 export default function InteractiveMapPicker({
   latitude,
@@ -64,12 +46,27 @@ export default function InteractiveMapPicker({
   const circleRef = useRef(null)
 
   const [isLoaded, setIsLoaded] = useState(false)
+  const [mapboxToken, setMapboxToken] = useState('')
+  const tileLayerRef = useRef(null)
   const [customSearch, setCustomSearch] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false)
   const [lastDetectedAddress, setLastDetectedAddress] = useState('')
   const [searchFeedback, setSearchFeedback] = useState(null)
   const [syncAddressWithPin, setSyncAddressWithPin] = useState(true)
+
+  // Ambil token Mapbox dinamis dari database
+  useEffect(() => {
+    let isMounted = true
+    getMapboxToken().then((token) => {
+      if (isMounted && token) {
+        setMapboxToken(token)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Refs to prevent unnecessary effect triggers & cycles
   const syncAddressWithPinRef = useRef(syncAddressWithPin)
@@ -123,38 +120,27 @@ export default function InteractiveMapPicker({
     }
   }, [])
 
-  // Reverse geocoding function via Nominatim OSM
+  // Reverse geocoding function via Mapbox (fallback Nominatim OSM)
   const performReverseGeocode = useCallback(async (lat, lng, shouldUpdateFields = true) => {
     if (!lat || !lng) return
     setIsReverseGeocoding(true)
 
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
-      const res = await fetch(url, {
-        headers: {
-          'Accept-Language': 'id',
-        }
-      })
-      const data = await res.json()
+      const data = await reverseGeocodeCoords(lat, lng, mapboxToken)
 
-      if (data && data.address) {
-        const addr = data.address
-        const road = addr.road || addr.pedestrian || addr.footway || addr.street || addr.path || ''
-        const houseNumber = addr.house_number ? ` No. ${addr.house_number}` : ''
-        const fullRoad = road ? `${road}${houseNumber}` : (data.display_name?.split(',')[0] || '')
-        const display = data.display_name || ''
+      if (data) {
+        const fullRoad = data.road || ''
+        const display = data.displayName || ''
+        const provinsi = data.province || ''
+        const kota = data.city || ''
+        const kecamatan = data.district || ''
+        const kelurahan = data.subdistrict || ''
+        const postcode = data.postalCode || ''
 
-        const provinsi = addr.state || addr.province || addr.state_district || ''
-        const kota = addr.city || addr.regency || addr.county || addr.municipality || addr.town || ''
-        const kecamatan = addr.subdistrict || addr.city_district || addr.township || addr.district || ''
-        const kelurahan = addr.village || addr.hamlet || addr.neighbourhood || addr.suburb || ''
-        const postcode = addr.postcode || ''
-
-        const addressSummary = [fullRoad, kelurahan, kecamatan, kota, provinsi].filter(Boolean).join(', ')
+        const addressSummary = data.summary || [fullRoad, kelurahan, kecamatan, kota, provinsi].filter(Boolean).join(', ')
         setLastDetectedAddress(addressSummary || display)
 
         if (shouldUpdateFields) {
-          // Set flag so auto-geocode does not re-trigger when form field updates
           isInternalPinMoveRef.current = true
           lastGeocodedTextRef.current = fullRoad || addressSummary
 
@@ -170,7 +156,7 @@ export default function InteractiveMapPicker({
           })
           setSearchFeedback({
             type: 'success',
-            text: `Alamat & koordinat berhasil disinkronkan dari pin: ${addressSummary || display}`
+            text: `Alamat & koordinat berhasil disinkronkan (${data.source === 'mapbox' ? 'Mapbox' : 'OSM'}): ${addressSummary || display}`
           })
         } else {
           setSearchFeedback({
@@ -188,7 +174,24 @@ export default function InteractiveMapPicker({
     } finally {
       setIsReverseGeocoding(false)
     }
-  }, [])
+  }, [mapboxToken])
+
+  // Update tile layer dynamically if mapboxToken is resolved after map load
+  useEffect(() => {
+    if (mapInstanceRef.current && mapboxToken && window.L) {
+      if (tileLayerRef.current) {
+        mapInstanceRef.current.removeLayer(tileLayerRef.current)
+      }
+      const tileCfg = getMapTileConfig(mapboxToken)
+      const newLayer = window.L.tileLayer(tileCfg.url, {
+        attribution: tileCfg.attribution,
+        maxZoom: tileCfg.maxZoom,
+        tileSize: tileCfg.tileSize,
+        zoomOffset: tileCfg.zoomOffset,
+      }).addTo(mapInstanceRef.current)
+      tileLayerRef.current = newLayer
+    }
+  }, [mapboxToken])
 
   // 2. Initialize Map Instance (Only run once when Leaflet is loaded)
   useEffect(() => {
@@ -213,10 +216,14 @@ export default function InteractiveMapPicker({
       scrollWheelZoom: true,
     })
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19,
+    const tileCfg = getMapTileConfig(mapboxToken)
+    const tileLayer = L.tileLayer(tileCfg.url, {
+      attribution: tileCfg.attribution,
+      maxZoom: tileCfg.maxZoom,
+      tileSize: tileCfg.tileSize,
+      zoomOffset: tileCfg.zoomOffset,
     }).addTo(map)
+    tileLayerRef.current = tileLayer
 
     // Draggable marker
     const marker = L.marker([initialLat, initialLng], {
@@ -364,7 +371,7 @@ export default function InteractiveMapPicker({
 
       let matchedItem = null
       for (const candidate of uniqueCandidates) {
-        const item = await fetchNominatimSearch(candidate)
+        const item = await searchAddressGeocoding(candidate, mapboxToken)
         if (item) {
           matchedItem = item
           break
@@ -372,8 +379,8 @@ export default function InteractiveMapPicker({
       }
 
       if (matchedItem) {
-        const parsedLat = Number(parseFloat(matchedItem.lat).toFixed(7))
-        const parsedLng = Number(parseFloat(matchedItem.lon).toFixed(7))
+        const parsedLat = Number(Number(matchedItem.lat).toFixed(7))
+        const parsedLng = Number(Number(matchedItem.lng).toFixed(7))
 
         // Pindahkan pin dan lingkaran di peta
         if (mapInstanceRef.current && markerRef.current && circleRef.current) {
@@ -385,19 +392,15 @@ export default function InteractiveMapPicker({
         // Update koordinat ke form parent
         onLocationChangeRef.current?.({ lat: parsedLat, lng: parsedLng })
 
-        const addr = matchedItem.address || {}
-        const road = addr.road || addr.pedestrian || addr.footway || addr.street || addr.path || ''
-        const houseNumber = addr.house_number ? ` No. ${addr.house_number}` : ''
-        const fullRoad = road ? `${road}${houseNumber}` : (cleanAddress || matchedItem.display_name?.split(',')[0] || '')
-        const display = matchedItem.display_name || ''
+        const fullRoad = matchedItem.road || ''
+        const display = matchedItem.displayName || ''
+        const provinsi = matchedItem.province || ''
+        const kota = matchedItem.city || ''
+        const kecamatan = matchedItem.district || ''
+        const kelurahan = matchedItem.subdistrict || ''
+        const postcode = matchedItem.postalCode || ''
 
-        const provinsi = addr.state || addr.province || addr.state_district || ''
-        const kota = addr.city || addr.regency || addr.county || addr.municipality || addr.town || ''
-        const kecamatan = addr.subdistrict || addr.city_district || addr.township || addr.district || ''
-        const kelurahan = addr.village || addr.hamlet || addr.neighbourhood || addr.suburb || ''
-        const postcode = addr.postcode || ''
-
-        const summary = [fullRoad, kelurahan, kecamatan, kota, provinsi].filter(Boolean).join(', ')
+        const summary = matchedItem.summary || [fullRoad, kelurahan, kecamatan, kota, provinsi].filter(Boolean).join(', ')
         setLastDetectedAddress(summary || display)
 
         if (shouldUpdateFields) {
@@ -416,7 +419,7 @@ export default function InteractiveMapPicker({
 
         setSearchFeedback({
           type: 'success',
-          text: `Titik peta ditemukan: ${display}`
+          text: `Titik peta ditemukan (${matchedItem.source === 'mapbox' ? 'Mapbox' : 'OSM'}): ${display}`
         })
       } else {
         setSearchFeedback({

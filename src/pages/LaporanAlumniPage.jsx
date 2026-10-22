@@ -964,9 +964,14 @@ export default function LaporanAlumniPage() {
               icon={TrendingUp}
               label="Lanjut Studi / Karir"
               value={angka(lanjutStudiVal)}
-              subtitle="Tujuan kelulusan tercatat"
+              subtitle={totalAlumniVal > 0 ? `${lanjutStudiVal} dari ${totalAlumniVal} alumni (${((lanjutStudiVal / totalAlumniVal) * 100).toFixed(1)}%)` : 'Tujuan kelulusan tercatat'}
               variant="warning"
               delay={150}
+              active={tujuanKelulusan !== 'semua'}
+              onClick={() => {
+                setTujuanKelulusan(tujuanKelulusan === 'semua' ? 'PTN' : 'semua')
+                setHalaman(1)
+              }}
             />
             <MasterStatCard
               icon={Award}
@@ -977,6 +982,42 @@ export default function LaporanAlumniPage() {
               delay={200}
             />
           </MasterStatsGrid>
+
+          {/* KPI Definition & Drilldown Transparency Banner */}
+          <div className="mt-4 rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-white p-4 text-xs dark:border-emerald-800/60 dark:bg-[#13221f] dark:from-[#13221f] dark:to-[#1B2433]">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-lg bg-emerald-600 px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
+                    Formula Capaian Lanjut Studi
+                  </span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
+                    Rasio Lanjut Studi/Karir: {totalAlumniVal > 0 ? `${((lanjutStudiVal / totalAlumniVal) * 100).toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                  <strong className="text-slate-700 dark:text-slate-200">Rumus:</strong> (Alumni Terdata Melanjutkan Studi / Total Alumni Terdata) &times; 100% • <strong className="text-slate-700 dark:text-slate-200">Pembilang:</strong> {lanjutStudiVal} alumni • <strong className="text-slate-700 dark:text-slate-200">Penyebut Basis:</strong> {totalAlumniVal} alumni terdata.
+                </p>
+              </div>
+              {tujuanKelulusan !== 'semua' && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="rounded-lg bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300/80">
+                    Filter: {tujuanKelulusan}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTujuanKelulusan('semua')
+                      setHalaman(1)
+                    }}
+                    className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer"
+                  >
+                    Reset Filter
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </motion.div>
 
         {/* ── 3-Column Equal Grid Section ───────────────────────────────────── */}

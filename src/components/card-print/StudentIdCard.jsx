@@ -13,14 +13,14 @@ export default function StudentIdCard({
   isPrint = false,
   cardSide = 'front',
   backTitle = 'TATA TERTIB SISWA',
-  backRules = '1. Kartu ini adalah kartu identitas resmi siswa Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam KBM sekolah.\n3. Apabila menemukan kartu ini, harap mengembalikan ke piket sekolah.\n4. QR Code digunakan untuk absensi gerbang & verifikasi SIMSIT.',
-  backAddress = 'Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: (0751) 123456 | Website: dareliman.or.id',
+  backRules,
+  backAddress,
   frameStyle = 'standard',
   photoShape = 'rounded',
   showPattern = true,
   showWave = true,
-  headerMotto = 'Berilmu, Berakhlak, Beramal',
-  footerMotto = 'Sekolah Unggulan\nBerbasis Al-Qur\'an',
+  headerMotto,
+  footerMotto,
   backShowQr = true,
 }) {
   const orientation = config.orientation || 'horizontal'

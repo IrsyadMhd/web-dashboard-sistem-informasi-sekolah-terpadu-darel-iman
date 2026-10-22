@@ -1,5 +1,7 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
+import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   QrCode,
@@ -40,83 +42,8 @@ import AppBadge from '../components/app/AppBadge'
 import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
 import { SquircleActionButton, MasterActionButton, MasterActionIconButton } from '../components/master-data'
+import AppTabs from '../components/app/AppTabs'
 
-// ── SEMANTIC TOAST STACK (§L Tailgrids_Pengaturan_Halaman) ───────────────────
-const TOAST_TONE = { success: 'success', error: 'error', danger: 'error', warning: 'warning', info: 'info' }
-
-function ToastStack({ items, onDismiss }) {
-  if (!items?.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none print:hidden" aria-live="polite" aria-atomic="true">
-      {items.map((n) => {
-        const tone = TOAST_TONE[n.type] || 'info'
-        const isDanger = tone === 'error' || tone === 'danger'
-        const isWarning = tone === 'warning'
-        const isInfo = tone === 'info'
-        const isSuccess = !isDanger && !isWarning && !isInfo
-        return (
-          <div
-            key={n.id}
-            className={cn(
-              'relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]',
-              isSuccess && 'border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50',
-              isDanger && 'border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50',
-              isWarning && 'border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50',
-              isInfo && 'border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50'
-            )}
-          >
-            <div className={cn(
-              'absolute top-0 left-0 right-0 h-1',
-              isSuccess && 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
-              isDanger && 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-700',
-              isWarning && 'bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600',
-              isInfo && 'bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600'
-            )} />
-            <div className="flex items-start gap-3 mt-0.5">
-              <div className={cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
-                isSuccess && 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30',
-                isDanger && 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30',
-                isWarning && 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30',
-                isInfo && 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30'
-              )}>
-                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
-                {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
-                {isInfo && <Eye className="size-5" strokeWidth={2.3} />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">{n.title}</h4>
-                  <span className={cn(
-                    'inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border',
-                    isSuccess && 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80',
-                    isDanger && 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
-                    isWarning && 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80',
-                    isInfo && 'bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80'
-                  )}>
-                    {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
-                  </span>
-                </div>
-                {n.message && (
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{n.message}</p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                aria-label="Tutup notifikasi"
-              >
-                <X className="size-4" strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 // ── SUB-KOMPONEN MODERN KPI CARDS (§C Tailgrids_Pengaturan_Halaman) ──
 const MODERN_CARD_TONES = {
@@ -249,6 +176,23 @@ export default function GateAttendancePage() {
   })()
   const currentUser = storeUser || localUser
 
+  const authLevel = useMemo(() => getUserRoleLevel(currentUser), [currentUser])
+  const userRoles = useMemo(() => {
+    const raw = currentUser?.roles || currentUser?.role || []
+    const list = Array.isArray(raw) ? raw : [raw]
+    return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
+  }, [currentUser])
+  const isGuru = useMemo(() => {
+    if (authLevel === ROLE_LEVELS.GURU) return true
+    const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
+    const hasAdminOrKepsek = userRoles.some((r) => /admin|super|kepala[\s_]*sekolah|kepsek|waka|tata[\s_]*usaha|tu|operator|divisi|yayasan/i.test(r))
+    return hasGuru && !hasAdminOrKepsek
+  }, [authLevel, userRoles])
+
+  if (isGuru) {
+    return <Navigate to="/portal-guru/workspace" replace />
+  }
+
   const userRole = String(
     currentUser?.role || currentUser?.user_type || currentUser?.roles?.[0]?.name || ''
   ).toLowerCase()
@@ -288,16 +232,12 @@ export default function GateAttendancePage() {
   const [studentsList, setStudentsList] = useState([])
   const [loadingStudents, setLoadingStudents] = useState(false)
 
-  // Toast notifications state
-  const [toasts, setToasts] = useState([])
+  // Global toast integration
+  const toast = useToast()
   const pushToast = (type, title, message = '') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, type, title, message }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    const tone = type === 'error' || type === 'danger' ? 'error' : type === 'warning' ? 'warning' : 'success'
+    toast(message ? `${title}: ${message}` : title, tone)
   }
-  const dismissToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id))
 
   // Schedule Config State
   const [targetUnitForConfig, setTargetUnitForConfig] = useState('')
@@ -1011,45 +951,17 @@ export default function GateAttendancePage() {
       </motion.div>
 
       {/* Tabs */}
-      <motion.div variants={itemVariants} className="flex border-b border-slate-200 dark:border-slate-800 relative" role="tablist" aria-label="Mode terminal absensi">
-        <button
-          role="tab"
-          aria-selected={activeTab === 'scan'}
-          onClick={() => setActiveTab('scan')}
-          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded-t-lg ${
-            activeTab === 'scan'
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-          }`}
-        >
-          <QrCode className="h-4 w-4" /> Terminal Pemindaian
-          {activeTab === 'scan' && (
-            <motion.div
-              layoutId="activeTabUnderline"
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 dark:bg-emerald-400"
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            />
-          )}
-        </button>
-        <button
-          role="tab"
-          aria-selected={activeTab === 'logs'}
-          onClick={() => setActiveTab('logs')}
-          className={`relative flex items-center gap-2 px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded-t-lg ${
-            activeTab === 'logs'
-              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-          }`}
-        >
-          <Clock className="h-4 w-4" /> Log Real-Time Kedatangan & Pulang
-          {activeTab === 'logs' && (
-            <motion.div
-              layoutId="activeTabUnderline"
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 dark:bg-emerald-400"
-              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            />
-          )}
-        </button>
+      <motion.div variants={itemVariants}>
+        <AppTabs
+          tabs={[
+            { id: 'scan', label: 'Terminal Pemindaian', icon: QrCode },
+            { id: 'logs', label: 'Log Real-Time Kedatangan & Pulang', icon: Clock },
+          ]}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          variant="underline"
+          ariaLabel="Mode terminal absensi"
+        />
       </motion.div>
 
       <AnimatePresence mode="wait">
@@ -2117,8 +2029,6 @@ export default function GateAttendancePage() {
         )}
       </AnimatePresence>
 
-      {/* Toast Notification Stack (§L) */}
-      <ToastStack items={toasts} onDismiss={dismissToast} />
     </motion.div>
     </PageContainer>
   )

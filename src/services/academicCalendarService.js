@@ -1,6 +1,7 @@
 import { api } from './api'
 import { tahunAjaranService } from './tahunAjaranService'
 import { educationUnitService } from './educationUnitService'
+import { usePengaturanStore, resolveFoundationName } from '../stores/pengaturanStore'
 
 const USER_EVENTS_KEY = 'school_academic_calendar_user_events'
 const OLD_LEGACY_KEY = 'school_academic_calendar_events'
@@ -16,8 +17,9 @@ export const academicCalendarService = {
    * Mengambil daftar Unit Pendidikan resmi dari database API backend
    */
   getEducationUnits: async () => {
+    const fName = resolveFoundationName(usePengaturanStore.getState()?.pengaturan)
     let units = [
-      { value: 'Semua Unit', label: 'Semua Unit (Yayasan Dar El-Iman)' }
+      { value: 'Semua Unit', label: `Semua Unit (${fName})` }
     ]
 
     try {
@@ -97,25 +99,28 @@ export const academicCalendarService = {
       const { data: schoolInfoRes } = await api.get('/portal/school-information', {
         params: { type: 'calendar', ...params }
       })
-      const infoList = schoolInfoRes?.data || schoolInfoRes || []
+      const rawData = schoolInfoRes?.data?.data || schoolInfoRes?.data || schoolInfoRes || []
+      const infoList = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.data) ? rawData.data : [])
       if (Array.isArray(infoList)) {
         infoList.forEach((item) => {
           if (item.title) {
-            const startDate = item.event?.start_at || item.calendar_date || item.published_at || new Date().toISOString().split('T')[0]
-            const endDate = item.event?.end_at || startDate
+            const rawStart = item.event?.start_at || item.calendar_date || item.published_at || new Date().toISOString().split('T')[0]
+            const rawEnd = item.event?.end_at || item.expired_at || rawStart
+            const startStr = String(rawStart).split('T')[0].split(' ')[0]
+            const endStr = String(rawEnd).split('T')[0].split(' ')[0]
             realApiEvents.push({
               id: `api-info-${item.id}`,
               title: item.title,
               category: item.category || 'kegiatan',
               customCategoryLabel: item.custom_category || '',
-              color: item.color || 'sky',
-              startDate: String(startDate).split('T')[0],
-              endDate: String(endDate).split('T')[0],
-              unit: item.education_unit || 'Semua Unit',
+              color: item.color || (item.category === 'ujian' ? 'purple' : item.category === 'mulai_kbm' ? 'emerald' : item.category === 'libur_sekolah' ? 'rose' : 'sky'),
+              startDate: startStr,
+              endDate: endStr,
+              unit: item.education_unit || item.target_unit_name || 'Semua Unit',
               targetModule: item.target_url || '/dashboard/berita-informasi',
               audience: item.audience || 'Semua Civitas',
               isPublished: true,
-              notes: item.content || item.description || ''
+              notes: item.content || item.summary || ''
             })
           }
         })

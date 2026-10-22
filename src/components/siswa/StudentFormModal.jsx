@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   GraduationCap,
@@ -38,6 +38,9 @@ import { educationUnitService } from '../../services/educationUnitService'
 import { kelasService } from '../../services/kelasService'
 import { tahunAjaranService } from '../../services/tahunAjaranService'
 import { modaTransportasiService, FALLBACK_MODA_TRANSPORTASI } from '../../services/modaTransportasiService'
+import { businessOptionService } from '../../services/businessOptionService'
+import { studentStatusService } from '../../services/studentStatusService'
+import { codeGeneratorService } from '../../services/codeGeneratorService'
 import { api } from '../../services/api'
 import { useProvinsiList, useKotaOptions, useKecamatanOptions, useKelurahanOptions } from '../../hooks/useWilayah'
 import PersonAvatar, { resolveAvatarUrl } from '../ui/PersonAvatar'
@@ -49,7 +52,7 @@ const defaultForm = () => ({
   nik_ayah: '', nama_ayah: '', tempat_lahir_ayah: '', tgl_lahir_ayah: '', telfon_ayah: '', hp_ayah: '', pendidikan_terakhir_ayah: '', pekerjaan_ayah: '', instansi_pekerjaan_ayah: '', jabatan_pekerjaan_ayah: '', alamat_instansi_ayah: '', keahlian_ayah: '', penghasilan_ayah: '', alamat_ayah: '', nomor_wa_ayah: '', medsos_ayah: '',
   nik_ibu: '', nama_ibu: '', tempat_lahir_ibu: '', tgl_lahir_ibu: '', telfon_ibu: '', hp_ibu: '', pendidikan_terakhir_ibu: '', pekerjaan_ibu: '', instansi_pekerjaan_ibu: '', jabatan_pekerjaan_ibu: '', alamat_instansi_ibu: '', keahlian_ibu: '', penghasilan_ibu: '', alamat_ibu: '', nomor_wa_ibu: '', medsos_ibu: '',
   status_pernikahan_wali: '', tanggungan_anak_wali: '', nik_wali: '', nama_wali: '', tempat_lahir_wali: '', tgl_lahir_wali: '', telfon_wali: '', hp_wali: '', pendidikan_terakhir_wali: '', pekerjaan_wali: '', instansi_pekerjaan_wali: '', jabatan_pekerjaan_wali: '', alamat_instansi_wali: '', keahlian_wali: '', penghasilan_wali: '', alamat_wali: '', nomor_wa_wali: '', medsos_wali: '',
-  unit_id: '', unit_pendidikan: '', nis_pembayaran: '', tahun_ajaran_masuk: '', kelas_id: '', keterangan_kelas: '', tahun_ajaran_berjalan: '', status_siswa: 'aktif', status_orang_tua: 'Umum', niy_ortu_jika_pegawai: '', wali_kelas: '', niy_wali_kelas: '',
+  unit_id: '', unit_pendidikan: '', no_va: '', va_bsi_bank: 'Bank Syariah Indonesia (BSI)', nis_pembayaran: '', tahun_ajaran_masuk: '', kelas_id: '', keterangan_kelas: '', tahun_ajaran_berjalan: '', status_siswa: 'aktif', status_orang_tua: 'Umum', niy_ortu_jika_pegawai: '', wali_kelas: '', niy_wali_kelas: '',
 })
 
 const toYesNo = (value) => {
@@ -68,6 +71,12 @@ const formatRp = (val) => {
 const cleanRp = (val) => {
   if (val === null || val === undefined || val === '') return ''
   return String(val).replace(/\D/g, '')
+}
+
+export const isPnsOccupation = (occ) => {
+  if (!occ) return false
+  const str = String(occ).toLowerCase()
+  return str.includes('pegawai negeri') || str.includes('pns') || str.includes('asn')
 }
 
 export const OCCUPATION_OPTIONS_AYAH = [
@@ -215,6 +224,14 @@ const Select = ({
           {...props}
         >
           <option value="">{placeholder}</option>
+          {safeOptions.length === 0 && (
+            <option value="" disabled>
+              (Belum ada data opsi master — kelola di Pengaturan Opsi Bisnis)
+            </option>
+          )}
+          {value && !safeOptions.some((opt) => (typeof opt === 'string' ? opt === value : (opt?.value ?? opt?.id ?? opt?.name) === value)) && (
+            <option value={value}>{value} (Data Historis)</option>
+          )}
           {safeOptions.map((opt, idx) =>
             typeof opt === 'string' ? (
               <option key={`opt-str-${opt}-${idx}`} value={opt}>
@@ -371,7 +388,9 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
           unit_pendidikan: initialData.unit || meta.unit_pendidikan || '',
           jenis_pendaftaran: meta.jenis_pendaftaran || (meta.unit_asal_id ? 'pindahan_internal' : (meta.sekolah_asal ? 'pindahan_eksternal' : 'baru')),
           unit_asal_id: meta.unit_asal_id || '',
-          nis_pembayaran: meta.nis_pembayaran || '',
+          no_va: meta.no_va || meta.nis_pembayaran || '',
+          va_bsi_bank: meta.va_bsi_bank || 'Bank Syariah Indonesia (BSI)',
+          nis_pembayaran: meta.nis_pembayaran || meta.no_va || '',
           tahun_ajaran_masuk: meta.tahun_ajaran_masuk || '',
           kelas_id: initialData.kelas_id || meta.kelas_id || '',
           keterangan_kelas: meta.keterangan_kelas || '',
@@ -517,21 +536,107 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
     setFormData(prev => ({ ...prev, [name]: finalValue }))
   }
 
+  const handleAutoGenerateVa = () => {
+    const rawNis = formData.nis || formData.no_pendaftaran || ''
+    const cleanNis = String(rawNis).replace(/\D/g, '')
+    if (!cleanNis) {
+      setStepError(
+        'NIS Siswa Kosong',
+        'Mohon lengkapi NIS Siswa pada Langkah 1 terlebih dahulu untuk mengenerate No. Virtual Account (VA BSI).',
+        0
+      )
+      return
+    }
+
+    const bsiPrefix = '9023'
+    const generatedVa = `${bsiPrefix}${cleanNis}`
+    setFormData(prev => ({
+      ...prev,
+      no_va: generatedVa,
+      nis_pembayaran: generatedVa,
+      va_bsi_bank: 'Bank Syariah Indonesia (BSI)',
+    }))
+    setModalError(null)
+  }
+
   const [activeUnits, setActiveUnits] = useState([])
   const [activeClasses, setActiveClasses] = useState([])
   const [academicYears, setAcademicYears] = useState([])
-  const [modaList, setModaList] = useState(FALLBACK_MODA_TRANSPORTASI)
+  const [modaList, setModaList] = useState([])
+  const [occupationList, setOccupationList] = useState([])
+  const [residenceList, setResidenceList] = useState([])
+  const [educationList, setEducationList] = useState([])
+  const [maritalList, setMaritalList] = useState([])
+  const [studentStatusList, setStudentStatusList] = useState([])
+
+  useEffect(() => {
+    let isMounted = true
+    const fetchDynamicOptions = async () => {
+      try {
+        const [occRes, resRes, eduRes, marRes, stuStatusRes] = await Promise.allSettled([
+          businessOptionService.getDropdown('parent_occupation'),
+          businessOptionService.getDropdown('residence_type'),
+          businessOptionService.getDropdown('last_education'),
+          businessOptionService.getDropdown('marital_status'),
+          studentStatusService.getDropdown(),
+        ])
+        if (isMounted) {
+          if (occRes.status === 'fulfilled' && Array.isArray(occRes.value?.data)) {
+            setOccupationList(occRes.value.data.map(item => item.name || item.nama || item.label || item))
+          }
+          if (resRes.status === 'fulfilled' && Array.isArray(resRes.value?.data)) {
+            setResidenceList(resRes.value.data.map(item => item.name || item.nama || item.label || item))
+          }
+          if (eduRes.status === 'fulfilled' && Array.isArray(eduRes.value?.data)) {
+            setEducationList(eduRes.value.data.map(item => item.name || item.nama || item.label || item))
+          }
+          if (marRes.status === 'fulfilled' && Array.isArray(marRes.value?.data)) {
+            setMaritalList(marRes.value.data.map(item => item.name || item.nama || item.label || item))
+          }
+          if (stuStatusRes.status === 'fulfilled' && Array.isArray(stuStatusRes.value?.data)) {
+            setStudentStatusList(stuStatusRes.value.data.map(item => item.value ?? item.code ?? item.name ?? item.nama ?? item.label ?? item))
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal memuat opsi status siswa dinamis:', err)
+      }
+    }
+    fetchDynamicOptions()
+    return () => { isMounted = false }
+  }, [])
+
+  const studentStatusOptions = useMemo(() => {
+    if (studentStatusList && studentStatusList.length > 0) {
+      return studentStatusList
+    }
+    return []
+  }, [studentStatusList])
+
+  useEffect(() => {
+    if (isOpen && !initialData && formData.unit_id && !formData.nis) {
+      codeGeneratorService.preview('student_nis', { unit_id: formData.unit_id })
+        .then(res => {
+          if (res?.preview_code) {
+            setFormData(prev => ({
+              ...prev,
+              nis: prev.nis ? prev.nis : res.preview_code
+            }))
+          }
+        })
+        .catch(() => {})
+    }
+  }, [isOpen, initialData, formData.unit_id])
 
   useEffect(() => {
     let isMounted = true
     const fetchModa = async () => {
       try {
         const res = await modaTransportasiService.getAll()
-        if (isMounted && res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (isMounted && res?.data && Array.isArray(res.data)) {
           setModaList(res.data.map(m => m.nama || m.name || m))
         }
       } catch (err) {
-        console.warn('Fallback ke default moda transportasi', err)
+        console.warn('Gagal memuat moda transportasi:', err)
       }
     }
     fetchModa()
@@ -1088,7 +1193,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                     <Input label="RW" name="rw" icon={Hash} placeholder="002" {...getProps('rw')} />
                     <Input label="Dusun" name="dusun" icon={MapPin} placeholder="Nama dusun" {...getProps('dusun')} />
                     <Input label="Kode Pos" name="kode_pos" icon={Hash} placeholder="25114" {...getProps('kode_pos')} />
-                    <Select label="Jenis Tempat Tinggal" name="jenis_tempat_tinggal" icon={Building} options={['Bersama Orang Tua', 'Wali', 'Asrama', 'Kos', 'Panti Asuhan', 'Lainnya']} {...getProps('jenis_tempat_tinggal')} />
+                    <Select label="Jenis Tempat Tinggal" name="jenis_tempat_tinggal" icon={Building} options={residenceList} {...getProps('jenis_tempat_tinggal')} />
                     <Input label="Jarak Tempuh ke Sekolah" name="jarak_tempuh_ke_sekolah" icon={Compass} placeholder="Contoh: 3 km" {...getProps('jarak_tempuh_ke_sekolah')} />
                     <Select
                       label="Moda Transportasi"
@@ -1280,16 +1385,16 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                     <Input label="Tanggal Lahir Ayah" name="tgl_lahir_ayah" type="date" icon={Calendar} {...getProps('tgl_lahir_ayah')} />
                     <Input label="Telepon Ayah" name="telfon_ayah" icon={Phone} placeholder="Nomor telepon rumah" {...getProps('telfon_ayah')} />
                     <Input label="No HP / WA Ayah" name="hp_ayah" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('hp_ayah')} />
-                    <Select label="Pendidikan Terakhir Ayah" name="pendidikan_terakhir_ayah" icon={GraduationCap} options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_ayah')} />
+                    <Select label="Pendidikan Terakhir Ayah" name="pendidikan_terakhir_ayah" icon={GraduationCap} options={educationList} {...getProps('pendidikan_terakhir_ayah')} />
                     <Select
                       label="Pekerjaan Ayah"
                       name="pekerjaan_ayah"
                       icon={Briefcase}
                       placeholder="-- Pilih Pekerjaan Ayah --"
-                      options={OCCUPATION_OPTIONS_AYAH}
+                      options={occupationList}
                       {...getProps('pekerjaan_ayah')}
                     />
-                    {formData.pekerjaan_ayah === 'Pegawai Negeri' && (
+                    {isPnsOccupation(formData.pekerjaan_ayah) && (
                       <>
                         <Input label="Instansi Pekerjaan Ayah" name="instansi_pekerjaan_ayah" icon={Building2} placeholder="Contoh: Dinas Pendidikan / Kementerian" {...getProps('instansi_pekerjaan_ayah')} />
                         <Input label="Jabatan Pekerjaan Ayah" name="jabatan_pekerjaan_ayah" icon={Briefcase} placeholder="Contoh: Staf / Kepala Seksi" {...getProps('jabatan_pekerjaan_ayah')} />
@@ -1320,16 +1425,16 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                     <Input label="Tanggal Lahir Ibu" name="tgl_lahir_ibu" type="date" icon={Calendar} {...getProps('tgl_lahir_ibu')} />
                     <Input label="Telepon Ibu" name="telfon_ibu" icon={Phone} placeholder="Nomor telepon rumah" {...getProps('telfon_ibu')} />
                     <Input label="No HP / WA Ibu" name="hp_ibu" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('hp_ibu')} />
-                    <Select label="Pendidikan Terakhir Ibu" name="pendidikan_terakhir_ibu" icon={GraduationCap} options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_ibu')} />
+                    <Select label="Pendidikan Terakhir Ibu" name="pendidikan_terakhir_ibu" icon={GraduationCap} options={educationList} {...getProps('pendidikan_terakhir_ibu')} />
                     <Select
                       label="Pekerjaan Ibu"
                       name="pekerjaan_ibu"
                       icon={Briefcase}
                       placeholder="-- Pilih Pekerjaan Ibu --"
-                      options={OCCUPATION_OPTIONS_IBU}
+                      options={occupationList}
                       {...getProps('pekerjaan_ibu')}
                     />
-                    {formData.pekerjaan_ibu === 'Pegawai Negeri' && (
+                    {isPnsOccupation(formData.pekerjaan_ibu) && (
                       <>
                         <Input label="Instansi Pekerjaan Ibu" name="instansi_pekerjaan_ibu" icon={Building2} placeholder="Contoh: Puskesmas / RSUD / Dinas" {...getProps('instansi_pekerjaan_ibu')} />
                         <Input label="Jabatan Pekerjaan Ibu" name="jabatan_pekerjaan_ibu" icon={Briefcase} placeholder="Contoh: Bidan / Staf Administrasi" {...getProps('jabatan_pekerjaan_ibu')} />
@@ -1352,7 +1457,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                     Isi data di bawah ini hanya jika siswa tinggal bersama wali (selain ayah/ibu kandung).
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Select label="Status Pernikahan Wali" name="status_pernikahan_wali" icon={Users} options={['Menikah', 'Belum Menikah', 'Cerai Hidup', 'Cerai Mati']} {...getProps('status_pernikahan_wali')} />
+                    <Select label="Status Pernikahan Wali" name="status_pernikahan_wali" icon={Users} options={maritalList} {...getProps('status_pernikahan_wali')} />
                     <Input label="Tanggungan Anak Wali" name="tanggungan_anak_wali" type="number" min="0" icon={Users} {...getProps('tanggungan_anak_wali')} />
                     <Input
                       label="NIK Wali"
@@ -1369,16 +1474,16 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                     <Input label="Tanggal Lahir Wali" name="tgl_lahir_wali" type="date" icon={Calendar} {...getProps('tgl_lahir_wali')} />
                     <Input label="Telepon Wali" name="telfon_wali" icon={Phone} placeholder="Nomor telepon rumah" {...getProps('telfon_wali')} />
                     <Input label="No HP / WA Wali" name="hp_wali" icon={Phone} placeholder="08xx-xxxx-xxxx" {...getProps('hp_wali')} />
-                    <Select label="Pendidikan Terakhir Wali" name="pendidikan_terakhir_wali" icon={GraduationCap} options={['SD/MI','SMP/MTs','SMA/SMK/MA','D1/D2/D3','S1/D4','S2','S3','Tidak Sekolah']} {...getProps('pendidikan_terakhir_wali')} />
+                    <Select label="Pendidikan Terakhir Wali" name="pendidikan_terakhir_wali" icon={GraduationCap} options={educationList} {...getProps('pendidikan_terakhir_wali')} />
                     <Select
                       label="Pekerjaan Wali"
                       name="pekerjaan_wali"
                       icon={Briefcase}
                       placeholder="-- Pilih Pekerjaan Wali --"
-                      options={OCCUPATION_OPTIONS_WALI}
+                      options={occupationList}
                       {...getProps('pekerjaan_wali')}
                     />
-                    {formData.pekerjaan_wali === 'Pegawai Negeri' && (
+                    {isPnsOccupation(formData.pekerjaan_wali) && (
                       <>
                         <Input label="Instansi Pekerjaan Wali" name="instansi_pekerjaan_wali" icon={Building2} placeholder="Nama Instansi / Kantor" {...getProps('instansi_pekerjaan_wali')} />
                         <Input label="Jabatan Pekerjaan Wali" name="jabatan_pekerjaan_wali" icon={Briefcase} placeholder="Jabatan di Instansi" {...getProps('jabatan_pekerjaan_wali')} />
@@ -1403,7 +1508,44 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Select label="Unit Pendidikan" name="unit_id" required icon={School} options={unitOptions} {...getProps('unit_id')} />
                     <Select label="Pilih Kelas" name="kelas_id" icon={Building} options={classOptions} {...getProps('kelas_id')} />
-                    <Input label="NIS Pembayaran" name="nis_pembayaran" icon={Hash} placeholder="NIS Pembayaran" {...getProps('nis_pembayaran')} />
+                    {/* Sinergi Virtual Account Bank Syariah Indonesia (BSI) */}
+                    <div className="sm:col-span-2 rounded-2xl border border-emerald-500/30 bg-emerald-50/50 p-4 dark:border-emerald-700/40 dark:bg-emerald-950/20">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="size-4 text-emerald-600 dark:text-emerald-400" />
+                          <h5 className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                            Nomor Virtual Account Bank Syariah Indonesia (VA BSI)
+                          </h5>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAutoGenerateVa}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+                        >
+                          <Sparkles className="size-3.5" />
+                          Generate Otomatis VA
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Input
+                          label="No. Virtual Account (VA BSI)"
+                          name="no_va"
+                          icon={CreditCard}
+                          placeholder="Contoh: 9023xxxxxxxx"
+                          {...getProps('no_va')}
+                        />
+                        <Input
+                          label="NIS Pembayaran (Sinkron)"
+                          name="nis_pembayaran"
+                          icon={Hash}
+                          placeholder="NIS Pembayaran"
+                          {...getProps('nis_pembayaran')}
+                        />
+                      </div>
+                      <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                        Nomor VA BSI ini dapat dibayar orang tua via BSI Mobile, ATM BSI, maupun transfer antar bank (Kode Bank BSI: 451).
+                      </p>
+                    </div>
                     <Select
                       label="Tahun Ajaran Masuk"
                       name="tahun_ajaran_masuk"
@@ -1421,7 +1563,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                       options={academicYearOptions}
                       {...getProps('tahun_ajaran_berjalan')}
                     />
-                    <Select label="Status Siswa" name="status_siswa" icon={ShieldCheck} options={['aktif', 'lulus', 'mutasi', 'berhenti']} {...getProps('status_siswa')} />
+                    <Select label="Status Siswa" name="status_siswa" icon={ShieldCheck} options={studentStatusOptions} {...getProps('status_siswa')} />
                     <Select label="Status Orang Tua" name="status_orang_tua" icon={Users} options={['Umum', 'Pegawai']} {...getProps('status_orang_tua')} />
                     <Input label="NIY Ortu (Jika Pegawai)" name="niy_ortu_jika_pegawai" icon={Hash} placeholder="NIY Pegawai" {...getProps('niy_ortu_jika_pegawai')} />
                     <Input label="Wali Kelas" name="wali_kelas" readOnly icon={User} placeholder="Terisi dari data kelas" {...getProps('wali_kelas')} />

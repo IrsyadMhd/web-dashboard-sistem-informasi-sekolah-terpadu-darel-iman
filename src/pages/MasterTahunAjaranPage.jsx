@@ -33,6 +33,7 @@ import TahunAjaranFormModal from '../components/tahun-ajaran/TahunAjaranFormModa
 import TahunAjaranDetailModal from '../components/tahun-ajaran/TahunAjaranDetailModal'
 import TahunAjaranImportModal from '../components/tahun-ajaran/TahunAjaranImportModal'
 import PageContainer from '../components/app/PageContainer'
+import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
@@ -126,104 +127,7 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
   )
 }
 
-// ── 2. SEMANTIC TOAST NOTIFICATION STACK (ZERO SWEETALERT2) ───────────────────
-function ToastStack({ items, onDismiss }) {
-  if (!items || items.length === 0) return null
 
-  return (
-    <div
-      className="fixed bottom-5 right-5 z-[80] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full"
-      aria-live="polite"
-    >
-      <AnimatePresence>
-        {items.map((n) => {
-          const isSuccess = n.tone === 'success' || !n.tone
-          const isDanger = n.tone === 'danger' || n.tone === 'error'
-          const isWarning = n.tone === 'warning'
-          const isInfo = n.tone === 'info'
-
-          return (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, y: 15, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.9 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                'pointer-events-auto relative overflow-hidden rounded-2xl border p-4 shadow-xl backdrop-blur-md',
-                isSuccess && 'border-emerald-200 bg-white/95 text-emerald-950 dark:border-emerald-800 dark:bg-[#182232]/95 dark:text-emerald-200',
-                isDanger && 'border-rose-200 bg-white/95 text-rose-950 dark:border-rose-800 dark:bg-[#182232]/95 dark:text-rose-200',
-                isWarning && 'border-amber-200 bg-white/95 text-amber-950 dark:border-amber-800 dark:bg-[#182232]/95 dark:text-amber-200',
-                isInfo && 'border-sky-200 bg-white/95 text-sky-950 dark:border-sky-800 dark:bg-[#182232]/95 dark:text-sky-200'
-              )}
-            >
-              {/* Top accent border */}
-              <div
-                className={cn(
-                  'absolute top-0 left-0 right-0 h-1',
-                  isSuccess && 'bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600',
-                  isDanger && 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-700',
-                  isWarning && 'bg-gradient-to-r from-amber-500 to-orange-600',
-                  isInfo && 'bg-gradient-to-r from-sky-500 to-blue-600'
-                )}
-              />
-
-              <div className="flex items-start gap-3">
-                <div
-                  className={cn(
-                    'flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
-                    isSuccess && 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/25',
-                    isDanger && 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/25',
-                    isWarning && 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/25',
-                    isInfo && 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/25'
-                  )}
-                >
-                  {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                  {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
-                  {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
-                  {isInfo && <Info className="size-5" strokeWidth={2.3} />}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                      {n.title}
-                    </h4>
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border',
-                        isSuccess && 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80',
-                        isDanger && 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
-                        isWarning && 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80',
-                        isInfo && 'bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80'
-                      )}
-                    >
-                      {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
-                    </span>
-                  </div>
-                  {n.message && (
-                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                      {n.message}
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onDismiss(n.id)}
-                  className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-                  aria-label="Tutup notifikasi"
-                >
-                  <X className="size-4" strokeWidth={2.2} />
-                </button>
-              </div>
-            </motion.div>
-          )
-        })}
-      </AnimatePresence>
-    </div>
-  )
-}
 
 // ── 3. KOMPONEN UTAMA HALAMAN MASTER TAHUN AJARAN ─────────────────────────────
 export default function MasterTahunAjaranPage({
@@ -249,7 +153,6 @@ export default function MasterTahunAjaranPage({
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [pendingSavePayload, setPendingSavePayload] = useState(null)
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false)
-  const [notifications, setNotifications] = useState([])
   const perPage = 15
 
   // Query Data
@@ -278,11 +181,8 @@ export default function MasterTahunAjaranPage({
   const meta = query.data?.meta || {}
   const stats = query.data?.statistik || {}
 
-  const notify = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setNotifications((items) => [...items, { id, title, message, tone }])
-    window.setTimeout(() => setNotifications((items) => items.filter((item) => item.id !== id)), 5500)
-  }
+  const toast = useToast()
+  const notify = (title, message, tone = 'success') => toast(title, message, tone)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['tahun-ajaran-list'] })
   const apiError = (err, fallback) =>
@@ -487,11 +387,6 @@ export default function MasterTahunAjaranPage({
 
   return (
     <PageContainer maxW="7xl">
-      {/* Toast Notification Stack */}
-      <ToastStack
-        items={notifications}
-        onDismiss={(id) => setNotifications((items) => items.filter((n) => n.id !== id))}
-      />
 
       {/* Print & PDF Modal */}
       <PrintOptionModal
@@ -797,8 +692,8 @@ export default function MasterTahunAjaranPage({
                         className="accent-emerald-600 size-4"
                       />
                       <div>
-                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{opt.label}</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">{opt.desc}</p>
+                        <span className="block text-xs font-bold text-slate-800 dark:text-slate-100">{opt.label}</span>
+                        <span className="block text-[11px] text-slate-500 dark:text-slate-400">{opt.desc}</span>
                       </div>
                     </label>
                   ))}

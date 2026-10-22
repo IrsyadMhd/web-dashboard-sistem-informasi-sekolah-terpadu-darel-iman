@@ -314,21 +314,30 @@ export default function TataUsahaKpiModal({ type, isOpen, onClose, initialTab = 
 
           {/* Absensi Tab Switcher */}
           {config.tabs && (
-            <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-emerald-500/20 bg-emerald-50/50 p-2 dark:border-emerald-800/40 dark:bg-emerald-950/30">
-              {config.tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-2xl px-4 py-2 text-xs font-extrabold transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25'
-                      : 'bg-white/80 text-slate-600 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-300'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div
+              role="tablist"
+              aria-label="Filter kategori absensi"
+              className="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-50/50 p-1.5 dark:border-emerald-800/40 dark:bg-emerald-950/30 overflow-x-auto no-scrollbar max-w-full"
+            >
+              {config.tabs.map((tab) => {
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`rounded-xl px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-400/40 scale-[1.01]'
+                        : 'border border-transparent bg-white/80 text-slate-600 hover:bg-emerald-100/80 hover:text-emerald-800 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-300 font-bold'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              })}
             </div>
           )}
 

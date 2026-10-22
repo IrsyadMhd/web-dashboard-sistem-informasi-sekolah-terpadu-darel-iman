@@ -36,28 +36,28 @@ const ICON_MAP = {
 
 const STYLE_MAP = {
   success: {
-    wrapper: 'bg-white border border-emerald-200 shadow-emerald-100',
+    wrapper: 'bg-white dark:bg-[#1B2433] border border-emerald-200 dark:border-emerald-800/80 shadow-emerald-100 dark:shadow-none',
     bar: 'bg-emerald-500',
-    title: 'text-emerald-800',
-    message: 'text-emerald-700',
+    title: 'text-emerald-800 dark:text-emerald-300',
+    message: 'text-emerald-700 dark:text-emerald-400',
   },
   error: {
-    wrapper: 'bg-white border border-rose-200 shadow-rose-100',
+    wrapper: 'bg-white dark:bg-[#1B2433] border border-rose-200 dark:border-rose-800/80 shadow-rose-100 dark:shadow-none',
     bar: 'bg-rose-500',
-    title: 'text-rose-800',
-    message: 'text-rose-700',
+    title: 'text-rose-800 dark:text-rose-300',
+    message: 'text-rose-700 dark:text-rose-400',
   },
   logout: {
-    wrapper: 'bg-white border border-slate-200 shadow-slate-100',
+    wrapper: 'bg-white dark:bg-[#1B2433] border border-slate-200 dark:border-slate-800 shadow-slate-100 dark:shadow-none',
     bar: 'bg-slate-500',
-    title: 'text-slate-800',
-    message: 'text-slate-600',
+    title: 'text-slate-800 dark:text-slate-200',
+    message: 'text-slate-600 dark:text-slate-400',
   },
   warning: {
-    wrapper: 'bg-white border border-amber-200 shadow-amber-100',
+    wrapper: 'bg-white dark:bg-[#1B2433] border border-amber-200 dark:border-amber-800/80 shadow-amber-100 dark:shadow-none',
     bar: 'bg-amber-500',
-    title: 'text-amber-800',
-    message: 'text-amber-700',
+    title: 'text-amber-800 dark:text-amber-300',
+    message: 'text-amber-700 dark:text-amber-400',
   },
 }
 

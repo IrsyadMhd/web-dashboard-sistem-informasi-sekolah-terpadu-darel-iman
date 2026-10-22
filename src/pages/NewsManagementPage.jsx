@@ -27,8 +27,7 @@ import { educationUnitService } from '../services/educationUnitService'
 import { dashboardPemantauanService } from '../services/dashboardPemantauanService'
 
 // TailGrids Core Components
-import { Badge } from '@/components/tailgrids/core/badge'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '../components/ui/button'
 import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
 import {
   Dialog,
@@ -173,8 +172,9 @@ export default function NewsManagementPage() {
     )
 
     const uCode = user.unit_code || user.unit_name || user.unit || ''
-    let assignedId = 'sdit1'
-    let assignedName = 'SDIT 01 Dar El-Iman'
+    const defaultUnit = unitOptions.find((u) => u.id !== 'all')
+    let assignedId = defaultUnit?.id || ''
+    let assignedName = defaultUnit?.name || (uCode ? String(uCode) : 'Unit Sekolah')
 
     const matchedFromDb = unitOptions.find(u =>
       u.id !== 'all' && (
@@ -617,9 +617,9 @@ export default function NewsManagementPage() {
         </motion.div>
 
         {/* 1. SINGLE UNIFIED DATATABLE CARD CONTAINER (FILTER BAR & DATATABLE DIGABUNGKAN DENGAN GRADASI ZAMRUD) */}
-        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* BARIS 1: HEADER CARD TITLE + SOFT PASTEL SQUIRCLE ACTION BUTTONS */}
-        <div className="flex flex-col gap-4 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-5 sm:p-6 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-5 sm:p-6 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">

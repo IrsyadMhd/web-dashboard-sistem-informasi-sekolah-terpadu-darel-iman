@@ -46,6 +46,7 @@ import JabatanFormModal from '../components/jabatan/JabatanFormModal'
 import JabatanDetailModal from '../components/jabatan/JabatanDetailModal'
 import JabatanImportModal from '../components/jabatan/JabatanImportModal'
 import PageContainer from '../components/app/PageContainer'
+import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
 import ActionDropdown from '../components/app/ActionDropdown'
@@ -62,7 +63,7 @@ import {
 } from '@/components/tailgrids/core/hover-card'
 import { useAuthStore } from '../stores/authStore'
 import { usePengaturanStore } from '../stores/pengaturanStore'
-import { hasAnyRole, isGlobalAccessManager, isUnitAccessManager } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { useDebounce } from '../hooks/useDebounce'
 import { cn } from '../lib/utils'
 
@@ -156,60 +157,6 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
   )
 }
 
-// ── TOAST NOTIFICATION STACK ──────────────────────────────────────────────────
-function ToastStack({ toasts, onDismiss }) {
-  return (
-    <aside
-      aria-label="Notifikasi sistem"
-      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0"
-    >
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-              toast.type === 'error'
-                ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-            }`}
-          >
-            <div
-              className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                toast.type === 'error'
-                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-              }`}
-            >
-              {toast.type === 'error' ? (
-                <AlertTriangle className="size-4" strokeWidth={2.2} />
-              ) : (
-                <CheckCircle2 className="size-4" strokeWidth={2.2} />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.title}</p>
-              {toast.message && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{toast.message}</p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => onDismiss(toast.id)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 transition-colors cursor-pointer"
-            >
-              <X className="size-4" />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </aside>
-  )
-}
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -232,10 +179,11 @@ export default function MasterJabatanPage() {
   const user = useAuthStore((state) => state.user)
   const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
   const roles = user?.roles || (user?.role ? [user.role] : [])
-  const isKepalaSekolah = hasAnyRole(roles, ['Kepala Sekolah', 'kepala_sekolah', 'kepsek'])
-  const canManageGlobalPositions = isGlobalAccessManager(roles)
-  const canManageUnitPositions = isUnitAccessManager(roles)
-  const canEditPosition = canManageGlobalPositions || canManageUnitPositions
+  const userLevel = getUserRoleLevel(user)
+  const isKepalaSekolah = userLevel === ROLE_LEVELS.KEPALA_SEKOLAH // Level 4
+  const canManageGlobalPositions = userLevel <= ROLE_LEVELS.YAYASAN // Level 1-2: Admin Sistem & Yayasan
+  const canManageUnitPositions = userLevel === ROLE_LEVELS.OPERATOR || userLevel === ROLE_LEVELS.KEPALA_SEKOLAH // Level 3-4: Operator & Kepsek/Divisi
+  const canEditPosition = userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH // Level 1 s/d 4
 
   const isPengurusYayasanRow = (row) => {
     if (!row) return false
@@ -286,16 +234,8 @@ export default function MasterJabatanPage() {
   const [selectedJabatanIds, setSelectedJabatanIds] = useState([])
   const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false)
 
-  // Toast Notifications (Zero SweetAlert2)
-  const [toasts, setToasts] = useState([])
-  const pushToast = (title, message = '', type = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setToasts((prev) => [...prev, { id, title, message, type }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4500)
-  }
-  const dismissToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id))
+  // Global Toast
+  const { pushToast } = useToast()
 
   // Query Options Dropdown
   const { data: options = {} } = useQuery({
@@ -2155,8 +2095,6 @@ export default function MasterJabatanPage() {
         )}
       </AnimatePresence>
 
-      {/* Toast Notification Stack */}
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </PageContainer>
   )
 }

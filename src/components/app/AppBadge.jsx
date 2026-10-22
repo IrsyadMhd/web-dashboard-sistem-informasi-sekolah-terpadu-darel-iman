@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils'
 const badgeVariants = {
   primary: 'bg-[#0E5C44]/10 text-[#0E5C44] border-[#0E5C44]/20 font-bold dark:bg-[#3FBF75]/20 dark:text-[#3FBF75] dark:border-[#3FBF75]/30',
   secondary: 'bg-slate-100 text-slate-700 border-slate-200/80 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
+  gray: 'bg-slate-100 text-slate-700 border-slate-200/80 font-semibold dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
   success: 'bg-[#0E5C44]/10 text-[#0E5C44] border-[#0E5C44]/20 font-bold dark:bg-[#3FBF75]/20 dark:text-[#3FBF75] dark:border-[#3FBF75]/30',
   warning: 'bg-amber-50 text-amber-700 border-amber-200/80 font-bold dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80',
   danger: 'bg-rose-50 text-rose-700 border-rose-200/80 font-bold dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
@@ -17,6 +18,7 @@ const badgeVariants = {
 const dotColors = {
   primary: 'bg-[#0E5C44] dark:bg-[#3FBF75]',
   secondary: 'bg-slate-400',
+  gray: 'bg-slate-400',
   success: 'bg-emerald-500',
   warning: 'bg-amber-500',
   danger: 'bg-rose-500',
@@ -27,20 +29,25 @@ const dotColors = {
 }
 
 export function getStatusVariant(status) {
-  const normalized = String(status ?? '').toLowerCase().replace(/[_-]/g, ' ')
-  if (['active', 'aktif', 'success', 'paid', 'lunas', 'hadir', 'approved', 'disetujui'].includes(normalized)) return 'success'
-  if (['pending', 'menunggu', 'proses', 'in progress', 'draft'].includes(normalized)) return 'warning'
-  if (['inactive', 'nonaktif', 'failed', 'gagal', 'rejected', 'ditolak', 'absent', 'alpa'].includes(normalized)) return 'danger'
-  if (['info', 'informasi'].includes(normalized)) return 'info'
+  const normalized = String(status ?? '').toLowerCase().replace(/[_-]/g, ' ').trim()
+  if (['active', 'aktif', 'success', 'paid', 'lunas', 'hadir', 'tepat waktu', 'hadir dalam toleransi', 'approved', 'disetujui'].includes(normalized)) return 'success'
+  if (['pending', 'menunggu', 'proses', 'in progress', 'draft', 'terlambat'].includes(normalized)) return 'warning'
+  if (['inactive', 'nonaktif', 'failed', 'gagal', 'rejected', 'ditolak', 'absent', 'alpa', 'alpha'].includes(normalized)) return 'danger'
+  if (['info', 'informasi', 'izin', 'sakit', 'pulang', 'sudah pulang'].includes(normalized)) return 'info'
   return 'secondary'
 }
 
 /**
  * AppBadge - canonical badge.
- * variant: primary | secondary | success | warning | danger | info | purple | neutral | outline
- * dot: menampilkan titik status di depan label
+ * @param {Object} props
+ * @param {'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'neutral' | 'outline'} [props.variant]
+ * @param {string} [props.status]
+ * @param {boolean} [props.dot]
+ * @param {string} [props.className]
+ * @param {React.ReactNode} [props.children]
+ * @param {string} [props.size]
  */
-export default function AppBadge({ variant, status, dot = false, className = '', children, ...props }) {
+export default function AppBadge({ variant = undefined, status = undefined, dot = false, className = '', children = null, ...props }) {
   const resolvedVariant = variant || (status ? getStatusVariant(status) : 'secondary')
   return (
     <Badge className={cn(badgeVariants[resolvedVariant], className)} {...props}>

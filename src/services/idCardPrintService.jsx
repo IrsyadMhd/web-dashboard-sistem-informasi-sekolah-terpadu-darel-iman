@@ -4,6 +4,7 @@ import { flushSync } from 'react-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { toPng } from 'html-to-image'
 import { getCardLogoUrl } from '../utils/cardLogoHelper'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 
 import StudentCardHorizontal from '../components/card-print/StudentCardHorizontal'
 import StudentCardVertical from '../components/card-print/StudentCardVertical'
@@ -232,14 +233,17 @@ export function printStudentIdCard({
   photoShape = 'rounded',
   showPattern = true,
   showWave = true,
-  headerMotto = 'Berilmu, Berakhlak, Beramal',
-  footerMotto = 'Sekolah Unggulan\nBerbasis Al-Qur\'an',
+  headerMotto,
+  footerMotto,
   backTitle = 'TATA TERTIB SISWA',
-  backRules = '1. Kartu ini adalah kartu identitas resmi siswa Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam KBM sekolah.\n3. Apabila menemukan kartu ini, harap mengembalikan ke piket sekolah.\n4. QR Code digunakan untuk absensi gerbang & verifikasi SIMSIT.',
-  backAddress = 'Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: (0751) 123456 | Website: dareliman.or.id',
+  backRules,
+  backAddress,
   backShowQr = true,
 }) {
   if (!data) return
+
+  const storePengaturan = usePengaturanStore?.getState?.()?.pengaturan || {}
+  const activePengaturan = { ...storePengaturan, ...pengaturan }
 
   const orientation = config.orientation || 'horizontal'
   injectGlobalPrintStyles(orientation)
@@ -256,7 +260,7 @@ export function printStudentIdCard({
     data,
     config,
     theme: t,
-    pengaturan,
+    pengaturan: activePengaturan,
     qrToken,
     formatDate,
     frameStyle,
@@ -381,16 +385,19 @@ export function printEmployeeIdCard({
   photoShape = 'rounded',
   showPattern = true,
   showWave = true,
-  headerMotto = 'Berilmu, Berakhlak, Beramal',
-  footerMotto = 'Generasi Beriman, Berilmu,\nBerakhlak Mulia',
+  headerMotto,
+  footerMotto,
   printSides = 'both',
   backTitle = 'KETENTUAN KARTU PEGAWAI',
-  backRules = '1. Kartu ini adalah milik resmi Yayasan Dar el-Iman.\n2. Wajib dibawa & dikenakan selama jam kerja.\n3. Apabila menemukan kartu ini, harap mengembalikan ke kantor yayasan.\n4. QR Code digunakan untuk absensi & verifikasi SIMSIT.',
-  backAddress = 'Jl. Gajah Mada No. 28 Padang, Sumatera Barat\nTelp: (0751) 123456 | Website: dareliman.or.id',
+  backRules,
+  backAddress,
   backShowQr = true,
 }) {
   const empData = employee || data
   if (!empData) return
+
+  const storePengaturan = usePengaturanStore?.getState?.()?.pengaturan || {}
+  const activePengaturan = { ...storePengaturan, ...pengaturan }
 
   const cardOrientation = orientation || config.orientation || 'horizontal'
   injectGlobalPrintStyles(cardOrientation)
@@ -404,7 +411,7 @@ export function printEmployeeIdCard({
   const commonProps = {
     employee: empData,
     template,
-    pengaturan,
+    pengaturan: activePengaturan,
     formatDate,
     qrPayload,
     layoutConfig,

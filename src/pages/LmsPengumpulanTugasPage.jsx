@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   UploadCloud,
@@ -38,6 +39,7 @@ import {
   PersonAvatar,
   PersonIdentityCell,
 } from '../components/app'
+import InAppEmbedViewerModal from '../components/portal/InAppEmbedViewerModal'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
@@ -69,55 +71,101 @@ const itemVariants = {
   },
 }
 
-function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', onClick }) {
-  const tones = {
-    emerald: {
-      card: 'border-emerald-100 bg-emerald-50/50 hover:border-emerald-200 dark:border-emerald-950/50 dark:bg-emerald-950/20',
-      title: 'text-emerald-700 dark:text-emerald-400',
-      icon: 'text-emerald-500',
-      val: 'text-emerald-600 dark:text-emerald-300',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-    },
-    teal: {
-      card: 'border-teal-100 bg-teal-50/50 hover:border-teal-200 dark:border-teal-950/50 dark:bg-teal-950/20',
-      title: 'text-teal-700 dark:text-teal-400',
-      icon: 'text-teal-500',
-      val: 'text-teal-600 dark:text-teal-300',
-      sub: 'text-teal-600/70 dark:text-teal-400/70',
-    },
-    blue: {
-      card: 'border-blue-100 bg-blue-50/50 hover:border-blue-200 dark:border-blue-950/50 dark:bg-blue-950/20',
-      title: 'text-blue-700 dark:text-blue-400',
-      icon: 'text-blue-500',
-      val: 'text-blue-600 dark:text-blue-300',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
-    },
-    amber: {
-      card: 'border-amber-100 bg-amber-50/50 hover:border-amber-200 dark:border-amber-950/50 dark:bg-amber-950/20',
-      title: 'text-amber-700 dark:text-amber-400',
-      icon: 'text-amber-500',
-      val: 'text-amber-600 dark:text-amber-300',
-      sub: 'text-amber-600/70 dark:text-amber-400/70',
-    },
-  }
-  const t = tones[tone] || tones.emerald
+const MODERN_CARD_TONES = {
+  emerald: {
+    card: 'border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white hover:border-emerald-400 dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900',
+    glow: 'bg-emerald-400/20 group-hover:bg-emerald-400/30',
+    iconBox: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/30',
+    tag: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    title: 'text-emerald-700 dark:text-emerald-400',
+    val: 'text-emerald-700 dark:text-emerald-300',
+    sub: 'text-emerald-600/80 dark:text-emerald-400/80',
+    cta: 'text-emerald-600/60 dark:text-emerald-500/60',
+  },
+  blue: {
+    card: 'border-blue-300/70 bg-gradient-to-br from-blue-50 via-cyan-50/60 to-white hover:border-blue-400 dark:border-blue-700/50 dark:from-blue-950/40 dark:via-cyan-950/20 dark:to-slate-900',
+    glow: 'bg-blue-400/20 group-hover:bg-blue-400/30',
+    iconBox: 'bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-blue-500/30',
+    tag: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',
+    title: 'text-blue-700 dark:text-blue-400',
+    val: 'text-blue-700 dark:text-blue-300',
+    sub: 'text-blue-600/80 dark:text-blue-400/80',
+    cta: 'text-blue-600/60 dark:text-blue-500/60',
+  },
+  amber: {
+    card: 'border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white hover:border-amber-400 dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900',
+    glow: 'bg-amber-400/20 group-hover:bg-amber-400/30',
+    iconBox: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-amber-500/30',
+    tag: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300',
+    title: 'text-amber-700 dark:text-amber-400',
+    val: 'text-amber-700 dark:text-amber-300',
+    sub: 'text-amber-600/80 dark:text-amber-400/80',
+    cta: 'text-amber-600/60 dark:text-amber-500/60',
+  },
+  teal: {
+    card: 'border-teal-300/70 bg-gradient-to-br from-teal-50 via-emerald-50/60 to-white hover:border-teal-400 dark:border-teal-700/50 dark:from-teal-950/40 dark:via-emerald-950/20 dark:to-slate-900',
+    glow: 'bg-teal-400/20 group-hover:bg-teal-400/30',
+    iconBox: 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-teal-500/30',
+    tag: 'bg-teal-100 text-teal-700 dark:bg-teal-900/60 dark:text-teal-300',
+    title: 'text-teal-700 dark:text-teal-400',
+    val: 'text-teal-700 dark:text-teal-300',
+    sub: 'text-teal-600/80 dark:text-teal-400/80',
+    cta: 'text-teal-600/60 dark:text-teal-500/60',
+  },
+}
+
+function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald', className = '', onClick }) {
+  const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
+  const isClickable = typeof onClick === 'function'
+
   return (
     <motion.div
       variants={itemVariants}
-      whileHover={{ scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={onClick}
-      className={`text-left rounded-2xl border ${t.card} p-5 shadow-xs transition-all hover:shadow-md ${onClick ? 'cursor-pointer' : 'cursor-default'} group`}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      className={`group relative overflow-hidden rounded-[18px] border-2 p-5 shadow-xs transition-[border-color,box-shadow] duration-150 text-left ${
+        isClickable ? 'cursor-pointer hover:shadow-md' : 'cursor-default'
+      } ${t.card} ${className}`}
     >
-      <div className="flex items-center justify-between">
-        <p className={`text-xs font-semibold ${t.title}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${t.icon} opacity-0 group-hover:opacity-100 transition-opacity`} />
+      {/* Ambient Glow */}
+      <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all ${t.glow}`} />
+
+      {/* Header with Icon Box & Tag */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm ${t.iconBox}`}>
+            <Icon className="h-4.5 w-4.5" />
+          </div>
+          <div>
+            <p className={`text-[11px] font-bold uppercase tracking-wider ${t.title}`}>{label}</p>
+          </div>
+        </div>
+        {tag && (
+          <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${t.tag}`}>
+            {tag}
+          </span>
+        )}
       </div>
-      <p className={`mt-2 text-2xl font-extrabold ${t.val}`}>{value ?? 0}</p>
+
+      {/* Value */}
+      <p className={`text-3xl font-black tabular-nums ${t.val}`}>
+        {value ?? '0'}
+      </p>
       {subtext && (
-        <p className={`mt-1.5 text-[10px] font-bold ${t.sub} flex items-center gap-0.5 truncate`}>
+        <p className={`mt-0.5 text-[11px] font-semibold ${t.sub}`}>
           {subtext}
+        </p>
+      )}
+
+      {/* CTA Footer */}
+      {isClickable && (
+        <p className={`mt-3 text-[10px] font-bold flex items-center gap-1 ${t.cta}`}>
+          <Eye className="h-3 w-3" /> Klik untuk memfilter
         </p>
       )}
     </motion.div>
@@ -127,6 +175,46 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', on
 export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const user = useAuthStore((state) => state.user)
   const activeUnit = useUnitStore((state) => state.activeUnit)
+
+  const userRoles = useMemo(() => {
+    if (!user?.roles) return []
+    return user.roles.map((r) => (typeof r === 'string' ? r : r.name || r.role_name || ''))
+  }, [user])
+
+  const isSupervisor = useMemo(() => {
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    const checkRole = (name) => rList.some((r) => r.includes(name)) || mainRole.includes(name)
+    return (
+      checkRole('super admin') ||
+      checkRole('superadmin') ||
+      checkRole('admin') ||
+      checkRole('operator') ||
+      checkRole('tata usaha') ||
+      checkRole('tata_usaha') ||
+      checkRole('tu') ||
+      checkRole('kepala sekolah') ||
+      checkRole('kepala_sekolah') ||
+      checkRole('kepsek') ||
+      checkRole('principal') ||
+      checkRole('waka') ||
+      checkRole('kurikulum') ||
+      checkRole('divisi pendidikan') ||
+      checkRole('divisi_pendidikan') ||
+      checkRole('kabid') ||
+      checkRole('yayasan')
+    )
+  }, [userRoles, user?.role])
+
+  const isTeacherOnly = useMemo(() => {
+    if (isSupervisor) return false
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    return (
+      rList.some((r) => r.includes('guru') || r.includes('wali_kelas') || r.includes('wali kelas') || r.includes('musyrif') || r.includes('pembimbing')) ||
+      mainRole.includes('guru')
+    )
+  }, [isSupervisor, userRoles, user?.role])
 
   const userUnitId = useMemo(() => {
     const candidateIds = [
@@ -145,6 +233,23 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
   }, [user])
 
   const [dataPengumpulan, setDataPengumpulan] = useState([])
+  const [embedViewer, setEmbedViewer] = useState({
+    isOpen: false,
+    url: '',
+    title: '',
+    subtitle: '',
+  })
+
+  const handleOpenEmbed = (url, title = 'Lampiran Tugas', subtitle = 'Pratinjau Dalam Aplikasi') => {
+    if (!url) return
+    setEmbedViewer({
+      isOpen: true,
+      url,
+      title,
+      subtitle,
+    })
+  }
+
   const [options, setOptions] = useState({
     penugasan: [],
     siswa: [],
@@ -555,7 +660,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
   )
 
   const pageContent = (
-    <div className="education-unit-page lms-pengumpulan-page space-y-6">
+    <div className="lms-pengumpulan-page space-y-6">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* Master Canonical Page Header (Hidden when embedded) */}
       {!embedded && !hidePageHeader && (
@@ -606,7 +711,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
 
       {/* KPI STATS CARDS */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiTintedCard
+        <ModernKpiCard
           icon={UploadCloud}
           label="Total Pengumpulan"
           value={stats.total || 0}
@@ -617,7 +722,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
             setPage(1)
           }}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={Award}
           label="Sudah Dinilai"
           value={stats.dinilai || 0}
@@ -628,7 +733,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
             setPage(1)
           }}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={Clock}
           label="Belum Dinilai"
           value={stats.dikumpulkan || stats.belum_dinilai || 0}
@@ -639,7 +744,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
             setPage(1)
           }}
         />
-        <KpiTintedCard
+        <ModernKpiCard
           icon={AlertTriangle}
           label="Terlambat Kumpul"
           value={stats.terlambat || 0}
@@ -655,128 +760,148 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
       {/* Tab Navigation (Pindahkan di atas card datatable) */}
       {tabNav && <div className="my-2">{typeof tabNav === 'function' ? tabNav() : tabNav}</div>}
 
-      {/* SEARCH & FILTER BAR (2-ROW LAYOUT) */}
-      <motion.div variants={itemVariants} className="rounded-[18px] border border-slate-200/80 bg-white p-4.5 shadow-sm dark:border-slate-700/80 dark:bg-[#1B2433] space-y-3.5">
-        {/* Baris 1: Full-width Search Input */}
-        <div className="relative w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Cari siswa, tugas, catatan, berkas..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-12 w-full rounded-full border border-slate-200 bg-white pl-11 pr-4 text-xs font-semibold text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-          />
-        </div>
+      {/* CANONICAL EMERALD DATATABLE CONTAINER */}
+      <motion.div variants={itemVariants}>
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
 
-        {/* Baris 2: Dropdown Filters & Reset Button */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5 flex-1">
-            <select
-              value={selectedPenugasan}
-              onChange={(e) => {
-                setSelectedPenugasan(e.target.value)
-                setPage(1)
-              }}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">Semua Penugasan</option>
-              {options.penugasan.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+          {/* Baris 1: Toolbar Header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3.5 sm:px-6 md:px-8 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-teal-950/30">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shrink-0 shadow-sm border border-emerald-300/40">
+                <FileCheck className="size-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                    Daftar Pengumpulan &amp; Submission Tugas
+                  </h3>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-800 dark:text-emerald-200 border border-emerald-300/60">
+                    {pagination.total || dataPengumpulan.length} Data
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pemeriksaan dan penilaian lembar kerja siswa
+                </p>
+              </div>
+            </div>
+            {pageActions}
+          </div>
 
-            <select
-              value={selectedSiswa}
-              onChange={(e) => {
-                setSelectedSiswa(e.target.value)
-                setPage(1)
-              }}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">Semua Siswa</option>
-              {options.siswa.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+          {/* Baris 2: Search Input Full-Width */}
+          <div className="p-4 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-emerald-950/30 border-b border-emerald-200/80 dark:border-emerald-800/60">
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
+              <input
+                type="text"
+                placeholder="Cari siswa, tugas, catatan, berkas..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 sm:h-11 w-full rounded-2xl border border-emerald-200/90 dark:border-emerald-800/60 bg-white dark:bg-[#151D2A] pl-10 pr-10 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 focus:border-[#0E5C44] transition-all shadow-xs"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
 
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value)
-                setPage(1)
-              }}
-              className="h-12 rounded-[14px] border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100"
-            >
-              <option value="">Semua Status</option>
-              {options.status.map((st) => (
-                <option key={st.id} value={st.id}>
-                  {st.label}
-                </option>
-              ))}
-            </select>
+          {/* Baris 3: Dropdown Filters & Reset Button */}
+          <div className="px-4 py-3 sm:px-6 md:px-8 flex flex-wrap items-center justify-between gap-2.5 bg-emerald-50/30 dark:bg-emerald-950/10 border-b border-emerald-200/80 dark:border-emerald-800/60">
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={selectedPenugasan}
+                onChange={(e) => {
+                  setSelectedPenugasan(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="">Semua Penugasan</option>
+                {options.penugasan.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedSiswa}
+                onChange={(e) => {
+                  setSelectedSiswa(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="">Semua Siswa</option>
+                {options.siswa.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9.5 rounded-xl border border-emerald-200/80 bg-white px-3 text-xs font-semibold text-slate-700 outline-none focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20 dark:border-emerald-800/70 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <option value="">Semua Status</option>
+                {options.status.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    {st.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {(search || selectedPenugasan || selectedSiswa || selectedStatus) && (
               <button
                 type="button"
                 onClick={handleResetFilter}
-                className="inline-flex h-12 items-center gap-1.5 rounded-[14px] border border-slate-200 bg-slate-50 px-3.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 dark:text-rose-400 transition-all cursor-pointer"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset</span>
+                <RotateCcw className="size-3" /> Reset Filter
               </button>
             )}
           </div>
-        </div>
-      </motion.div>
 
-      {/* MAIN DATATABLE SECTION */}
-      <motion.div variants={itemVariants}>
-      <section className="overflow-hidden rounded-[var(--master-card-radius,18px)] border border-slate-200/80 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1B2433]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 px-4 py-4 sm:px-6 md:px-8 dark:border-slate-700">
-          <div>
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">
-              Daftar Pengumpulan & Submission Tugas
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Pemeriksaan dan penilaian lembar kerja siswa
-            </p>
-          </div>
-          {pageActions}
-        </div>
+          <MasterDataTable className="!rounded-none !border-0 !shadow-none">
 
-        <MasterDataTable className="!rounded-none !border-0 !shadow-none">
-
-        {loading ? (
-          <div className="p-12 text-center text-slate-500 space-y-3 dark:text-slate-400">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#0E5C44] dark:text-[#3FBF75]" />
-            <p className="text-sm font-medium">Memuat data pengumpulan tugas...</p>
-          </div>
-        ) : dataPengumpulan.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 space-y-3 dark:text-slate-400">
-            <BookOpen className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600" />
-            <p className="text-base font-semibold text-slate-700 dark:text-slate-200">Belum ada pengumpulan tugas</p>
-            <p className="text-sm text-slate-400 dark:text-slate-500">Silakan tambahkan submission atau ubah kata kunci filter Anda.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto min-h-[340px] pb-12">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/70 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:bg-slate-800/50 dark:border-slate-800 dark:text-slate-400">
-                  <th className="py-3.5 px-4">Siswa</th>
-                  <th className="py-3.5 px-4">Penugasan & Mapel</th>
-                  <th className="py-3.5 px-4">File / Link</th>
-                  <th className="py-3.5 px-4">Waktu Kumpul</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Nilai & Catatan</th>
-                  <th className="py-3.5 px-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
+          {loading ? (
+            <div className="p-12 text-center text-slate-500 space-y-3 dark:text-slate-400">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#0E5C44] dark:text-[#3FBF75]" />
+              <p className="text-sm font-medium">Memuat data pengumpulan tugas...</p>
+            </div>
+          ) : dataPengumpulan.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 space-y-3 dark:text-slate-400">
+              <BookOpen className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600" />
+              <p className="text-base font-semibold text-slate-700 dark:text-slate-200">Belum ada pengumpulan tugas</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">Silakan tambahkan submission atau ubah kata kunci filter Anda.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto min-h-[340px] pb-12">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-black text-[11px] uppercase tracking-wider">
+                    <th className="py-3.5 pl-6 pr-4">Siswa</th>
+                    <th className="py-3.5 px-4">Penugasan &amp; Mapel</th>
+                    <th className="py-3.5 px-4">File / Link</th>
+                    <th className="py-3.5 px-4">Waktu Kumpul</th>
+                    <th className="py-3.5 px-4">Status</th>
+                    <th className="py-3.5 px-4">Nilai &amp; Catatan</th>
+                    <th className="py-3.5 pr-6 pl-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
                 {dataPengumpulan.map((item) => (
                   <tr
                     key={item.id}
@@ -837,27 +962,25 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
                     <td className="py-3.5 px-4">
                       <div className="flex flex-col gap-1 text-xs">
                         {item.file || item.file_path ? (
-                          <a
-                            href={item.file || item.file_path}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 font-medium hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEmbed(item.file || item.file_path, `Berkas Siswa: ${item.siswa?.nama || 'Siswa'}`, 'Pratinjau Berkas')}
+                            className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 font-semibold hover:underline dark:text-emerald-400 dark:hover:text-emerald-300 text-left cursor-pointer"
                           >
                             <File className="w-3.5 h-3.5" />
-                            Berkas Lampiran
-                          </a>
+                            <span>Berkas (In-App)</span>
+                          </button>
                         ) : null}
 
                         {item.link || item.url_link ? (
-                          <a
-                            href={item.link || item.url_link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-medium hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEmbed(item.link || item.url_link, `Tautan Siswa: ${item.siswa?.nama || 'Siswa'}`, 'Pratinjau Tautan')}
+                            className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-semibold hover:underline dark:text-blue-400 dark:hover:text-blue-300 text-left cursor-pointer"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
-                            Link Tautan External
-                          </a>
+                            <span>Tautan (In-App)</span>
+                          </button>
                         ) : null}
 
                         {!item.file && !item.file_path && !item.link && !item.url_link && (
@@ -910,7 +1033,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
 
         {/* Pagination */}
         {!loading && dataPengumpulan.length > 0 && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="p-4 border-t border-emerald-100/80 dark:border-emerald-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
             <div>
               Halaman <span className="font-semibold text-slate-700 dark:text-slate-200">{pagination.current_page}</span> dari{' '}
               <span className="font-semibold text-slate-700 dark:text-slate-200">{pagination.last_page}</span> (Total {pagination.total} data)
@@ -934,7 +1057,7 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
           </div>
         )}
         </MasterDataTable>
-      </section>
+        </div>
       </motion.div>
 
       {/* ROW DETAIL MODAL POPUP — Pengumpulan Tugas */}
@@ -1231,31 +1354,30 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
             {selectedDetail.file || selectedDetail.file_path ? (
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Berkas File</p>
-                <a
-                  href={selectedDetail.file || selectedDetail.file_path}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 font-medium hover:bg-emerald-100 transition-colors"
+                <button
+                  type="button"
+                  onClick={() => handleOpenEmbed(selectedDetail.file || selectedDetail.file_path, `Berkas: ${selectedDetail.siswa?.nama || 'Siswa'}`, 'Pratinjau File')}
+                  className="w-full flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 font-medium hover:bg-emerald-100 transition-colors cursor-pointer text-left"
                 >
-                  <File className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <File className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span className="flex-1 truncate">{selectedDetail.file || selectedDetail.file_path}</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+                  <Eye className="w-4 h-4 shrink-0" />
+                </button>
               </div>
             ) : null}
 
             {selectedDetail.link || selectedDetail.url_link ? (
               <div className="space-y-1">
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tautan External</p>
-                <a
-                  href={selectedDetail.link || selectedDetail.url_link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/60 rounded-xl border border-blue-200 dark:border-blue-900 text-blue-800 dark:text-blue-300 font-medium hover:bg-blue-100 transition-colors"
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tautan Dokumen / Video</p>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEmbed(selectedDetail.link || selectedDetail.url_link, `Tautan: ${selectedDetail.siswa?.nama || 'Siswa'}`, 'Pratinjau Tautan Web')}
+                  className="w-full flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/60 rounded-xl border border-blue-200 dark:border-blue-900 text-blue-800 dark:text-blue-300 font-medium hover:bg-blue-100 transition-colors cursor-pointer text-left"
                 >
-                  <ExternalLink className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <ExternalLink className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
                   <span className="flex-1 truncate">{selectedDetail.link || selectedDetail.url_link}</span>
-                </a>
+                  <Eye className="w-4 h-4 shrink-0" />
+                </button>
               </div>
             ) : null}
 
@@ -1341,9 +1463,22 @@ export default function LmsPengumpulanTugasPage({ embedded = false, hideBreadcru
         onImport={handleImport}
         templateFields={['siswa_id', 'penugasan_id', 'jawaban_teks', 'nilai', 'status']}
       />
+
+      {/* In-App Embed Viewer Modal */}
+      <InAppEmbedViewerModal
+        isOpen={embedViewer.isOpen}
+        url={embedViewer.url}
+        title={embedViewer.title}
+        subtitle={embedViewer.subtitle}
+        onClose={() => setEmbedViewer({ isOpen: false, url: '', title: '', subtitle: '' })}
+      />
       </motion.div>
     </div>
   )
+
+  if (!embedded && isTeacherOnly) {
+    return <Navigate to="/portal-guru/workspace?tab=penugasan" replace />
+  }
 
   return (
     <PageContainer maxW="7xl">

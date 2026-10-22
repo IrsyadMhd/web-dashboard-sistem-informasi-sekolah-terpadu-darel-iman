@@ -166,6 +166,11 @@ export default function TeacherAttendanceDashboardPage() {
 
   const finalizedCount = recentSessions.filter((s) => s.status === 'finalized').length
   const draftCount = recentSessions.filter((s) => s.status === 'draft').length
+  const [sessionFilter, setSessionFilter] = useState('all') // 'all' | 'finalized' | 'draft'
+
+  const filteredSessions = sessionFilter === 'all'
+    ? recentSessions
+    : recentSessions.filter((s) => s.status === sessionFilter)
 
   return (
     <PageContainer maxW="7xl">
@@ -265,21 +270,56 @@ export default function TeacherAttendanceDashboardPage() {
             <ModernKpiCard
               icon={ShieldCheck}
               label="Sesi Difinalisasi"
-              subtext="Presensi tersimpan permanen"
+              subtext={recentSessions.length > 0 ? `${finalizedCount} dari ${recentSessions.length} sesi (${Math.round((finalizedCount / recentSessions.length) * 100)}%)` : (schedules.length > 0 ? `${finalizedCount} dari ${schedules.length} sesi` : 'Presensi tersimpan permanen')}
               value={finalizedCount}
               tag={`${finalizedCount} Selesai`}
               tone="teal"
+              onClick={() => setSessionFilter(sessionFilter === 'finalized' ? 'all' : 'finalized')}
             />
             <ModernKpiCard
               icon={FileText}
               label="Presensi Draft"
-              subtext="Perlu verifikasi guru"
+              subtext={recentSessions.length > 0 ? `${draftCount} dari ${recentSessions.length} sesi perlu finalisasi` : (schedules.length > 0 ? `${draftCount} dari ${schedules.length} sesi` : 'Perlu verifikasi guru')}
               value={draftCount}
               tag={`${draftCount} Draft`}
               tone="amber"
+              onClick={() => setSessionFilter(sessionFilter === 'draft' ? 'all' : 'draft')}
             />
           </div>
         </motion.div>
+
+        {/* KPI Definition & Drilldown Transparency Banner */}
+        <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/50 to-white p-4 text-xs dark:border-emerald-800/60 dark:bg-[#13221f] dark:from-[#13221f] dark:to-[#1B2433]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="rounded-lg bg-teal-600 px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
+                  Formula KPI Sesi Mengajar
+                </span>
+                <span className="font-bold text-slate-800 dark:text-slate-100">
+                  Tingkat Finalisasi: {recentSessions.length > 0 ? `${Math.round((finalizedCount / recentSessions.length) * 100)}%` : '—'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                <strong className="text-slate-700 dark:text-slate-200">Rumus:</strong> (Sesi Berstatus Final / Total Sesi Terdata) &times; 100% • <strong className="text-slate-700 dark:text-slate-200">Pembilang:</strong> {finalizedCount} sesi final • <strong className="text-slate-700 dark:text-slate-200">Penyebut:</strong> {recentSessions.length || schedules.length} sesi total • <strong className="text-slate-700 dark:text-slate-200">Periode:</strong> Hari ini ({todayStr}).
+              </p>
+            </div>
+            {sessionFilter !== 'all' && (
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="rounded-lg bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300/80">
+                  Filter Sesi: {sessionFilter === 'finalized' ? 'Final' : 'Draft'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSessionFilter('all')}
+                  className="rounded-lg bg-slate-200 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition cursor-pointer"
+                >
+                  Reset Filter
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* ── Main Content Grid ── */}
         <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-3">
@@ -398,7 +438,7 @@ export default function TeacherAttendanceDashboardPage() {
                   </p>
                 ) : (
                   <div className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
-                    {recentSessions.map((session) => (
+                    {filteredSessions.map((session) => (
                       <div key={session.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">

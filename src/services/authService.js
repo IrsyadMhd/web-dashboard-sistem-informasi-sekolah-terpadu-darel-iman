@@ -47,8 +47,11 @@ export const authService = {
     return data
   },
 
-  impersonate: async (role) => {
-    const { data } = await api.post('/auth/impersonate', { role, device_name: 'web-dashboard-impersonation' })
+  impersonate: async (role, customToken = null) => {
+    const config = customToken
+      ? { headers: { Authorization: `Bearer ${customToken}` } }
+      : {}
+    const { data } = await api.post('/auth/impersonate', { role, device_name: 'web-dashboard-impersonation' }, config)
     return data
   },
 

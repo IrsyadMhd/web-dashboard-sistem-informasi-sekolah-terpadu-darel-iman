@@ -38,20 +38,30 @@ export default function TwoFactorAuthCard() {
   return (
     <Card className="w-full rounded-[22px] border-2 border-emerald-500/25 bg-white p-6 lg:p-8 shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] space-y-6">
       {/* Tabs */}
-      <div className="flex overflow-x-auto border-b border-slate-200 dark:border-slate-800 gap-1 pb-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`py-2 px-4 text-xs font-bold rounded-t-xl transition-all whitespace-nowrap ${
-              activeTab === tab
-                ? 'bg-emerald-50 text-emerald-800 border-b-2 border-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-500'
-                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      <div
+        role="tablist"
+        aria-label="Navigasi metode autentikasi dua faktor"
+        className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 overflow-x-auto no-scrollbar max-w-full shadow-2xs"
+      >
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab
+          return (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(tab)}
+              className={`rounded-xl px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+                isActive
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-400/40 scale-[1.01]'
+                  : 'border border-transparent text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-white/80 dark:hover:bg-slate-700/60 font-bold'
+              }`}
+            >
+              {tab}
+            </button>
+          )
+        })}
       </div>
 
       {/* 3 Columns Grid */}

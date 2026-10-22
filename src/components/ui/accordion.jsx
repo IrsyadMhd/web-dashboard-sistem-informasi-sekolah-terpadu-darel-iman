@@ -7,14 +7,14 @@ export function AccordionItem({ title, subtitle, icon, children, defaultOpen = f
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
   return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white overflow-hidden transition-all duration-200 dark:bg-slate-900 dark:border-slate-800">
+    <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden transition-all duration-200 dark:bg-[#1B2433] dark:border-slate-800">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition cursor-pointer dark:hover:bg-slate-800/50"
+        className="flex w-full items-center justify-between p-4 text-left hover:bg-slate-50 transition cursor-pointer dark:hover:bg-slate-800/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E5C44]/30"
       >
         <div className="flex items-center gap-3">
-          {icon && <div className="text-emerald-700 text-lg dark:text-emerald-400">{icon}</div>}
+          {icon && <div className="text-emerald-700 text-lg dark:text-[#3FBF75]">{icon}</div>}
           <div>
             <h4 className="text-xs md:text-sm font-bold text-slate-800 dark:text-white">{title}</h4>
             {subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}
@@ -23,7 +23,7 @@ export function AccordionItem({ title, subtitle, icon, children, defaultOpen = f
         <FaChevronDown
           className={cn(
             'text-xs text-slate-400 transition-transform duration-200',
-            isOpen && 'rotate-180 text-emerald-600'
+            isOpen && 'rotate-180 text-emerald-600 dark:text-[#3FBF75]'
           )}
         />
       </button>

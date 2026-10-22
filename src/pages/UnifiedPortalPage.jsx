@@ -164,6 +164,7 @@ function ExamWorkspace({ session, onClose, onFinished }) {
   const [answers, setAnswers] = useState(() => Object.fromEntries((session.jawaban_tersimpan || []).map((item) => [item.soal_id, {
     type: session.soal.find((question) => question.id === item.soal_id)?.tipe_soal || (item.jawaban_esai != null ? 'esai' : 'pg'), value: item.jawaban_esai ?? item.jawaban_dipilih ?? '',
   }])))
+  const [doubtful, setDoubtful] = useState({})
   const [remaining, setRemaining] = useState(session.ujian.sisa_waktu_detik)
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
@@ -172,6 +173,10 @@ function ExamWorkspace({ session, onClose, onFinished }) {
   const finishLock = useRef(false)
   const answersRef = useRef(answers)
   answersRef.current = answers
+
+  const toggleDoubtful = useCallback((qId) => {
+    setDoubtful((prev) => ({ ...prev, [qId]: !prev[qId] }))
+  }, [])
 
   const save = useCallback(async (silent = false) => {
     if (!silent) setSaving(true)
@@ -188,7 +193,9 @@ function ExamWorkspace({ session, onClose, onFinished }) {
 
   const finish = useCallback(async (automatic = false) => {
     if (finishLock.current) return
-    if (!automatic && !window.confirm('Yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah setelah dikumpulkan.')) return
+    const doubtCount = Object.values(doubtful).filter(Boolean).length
+    const doubtMsg = doubtCount > 0 ? `\nPerhatian: Ada ${doubtCount} soal yang masih ditandai ragu-ragu.` : ''
+    if (!automatic && !window.confirm(`Yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah setelah dikumpulkan.${doubtMsg}`)) return
     finishLock.current = true
     setSubmitting(true)
     try {
@@ -199,7 +206,7 @@ function ExamWorkspace({ session, onClose, onFinished }) {
       setError(err.response?.data?.message || 'Ujian belum berhasil dikumpulkan.')
       setSubmitting(false)
     }
-  }, [onFinished, session.sesi_id])
+  }, [doubtful, onFinished, session.sesi_id])
 
   useEffect(() => {
     const timer = window.setInterval(() => setRemaining((value) => {
@@ -241,11 +248,65 @@ function ExamWorkspace({ session, onClose, onFinished }) {
       <main className="grid min-h-0 flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[250px_1fr] lg:p-6">
         <aside className="hidden overflow-y-auto rounded-[18px] border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 lg:block">
           <div className="mb-3 flex items-center justify-between text-xs"><b>Navigasi soal</b><span>{answered}/{session.soal.length}</span></div>
-          <div className="grid grid-cols-5 gap-2">{session.soal.map((item, itemIndex) => <button key={item.id} onClick={() => setIndex(itemIndex)} className={`aspect-square rounded-lg text-xs font-bold ${itemIndex === index ? 'bg-[#0E5C44] text-white ring-2 ring-emerald-200' : answers[item.id]?.value ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>{itemIndex + 1}</button>)}</div>
-          <div className="mt-5 border-t border-slate-100 pt-4 text-[11px] text-slate-500 dark:border-slate-800"><ShieldCheck className="mb-2 h-5 w-5 text-emerald-600" />Jawaban disimpan otomatis setiap kali berubah.</div>
+          <div className="grid grid-cols-5 gap-2">
+            {session.soal.map((item, itemIndex) => {
+              const isCurrent = itemIndex === index
+              const isDoubt = Boolean(doubtful[item.id])
+              const isDone = Boolean(answers[item.id]?.value)
+
+              let colorClasses = 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+              if (isCurrent) {
+                colorClasses = isDoubt
+                  ? 'bg-amber-500 text-white ring-2 ring-amber-300'
+                  : 'bg-[#0E5C44] text-white ring-2 ring-emerald-200'
+              } else if (isDoubt) {
+                colorClasses = 'bg-amber-100 text-amber-800 border-2 border-amber-400 dark:bg-amber-950/80 dark:text-amber-200 dark:border-amber-600 font-black'
+              } else if (isDone) {
+                colorClasses = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+              }
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setIndex(itemIndex)}
+                  className={`relative flex aspect-square items-center justify-center rounded-lg text-xs font-bold transition ${colorClasses}`}
+                >
+                  {itemIndex + 1}
+                  {isDoubt && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2.5 border-t border-slate-100 pt-3 text-[10px] font-semibold text-slate-500 dark:border-slate-800">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Terjawab</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" />Ragu-ragu</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-700" />Belum</span>
+          </div>
+          <div className="mt-4 border-t border-slate-100 pt-4 text-[11px] text-slate-500 dark:border-slate-800"><ShieldCheck className="mb-2 h-5 w-5 text-emerald-600" />Jawaban disimpan otomatis setiap kali berubah.</div>
         </aside>
         <section className="min-h-0 overflow-y-auto rounded-[18px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-7">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800"><span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Soal {index + 1} dari {session.soal.length}</span><span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold dark:bg-slate-800">{question?.poin} poin</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Soal {index + 1} dari {session.soal.length}</span>
+              <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-bold dark:bg-slate-800">{question?.poin} poin</span>
+            </div>
+            {question && (
+              <button
+                type="button"
+                onClick={() => toggleDoubtful(question.id)}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-bold transition ${
+                  doubtful[question.id]
+                    ? 'border border-amber-400 bg-amber-500 text-white shadow-xs'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:border-amber-400 hover:text-amber-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                <AlertCircle className="h-3.5 w-3.5" />
+                {doubtful[question.id] ? 'Ragu-ragu (Ditandai)' : 'Tandai Ragu-ragu'}
+              </button>
+            )}
+          </div>
           {question ? <div className="mx-auto max-w-3xl py-6">
             <p className="whitespace-pre-wrap text-sm font-semibold leading-7 sm:text-base">{question.pertanyaan}</p>
             {question.tipe_soal === 'pg' && <div className="mt-6 space-y-3">{question.opsi.filter((option) => option.text).map((option) => <button key={option.key} onClick={() => selectAnswer(option.key)} className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left text-sm transition ${answers[question.id]?.value === option.key ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100 dark:bg-emerald-950/40' : 'border-slate-200 hover:border-emerald-300 dark:border-slate-700'}`}><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 font-bold dark:bg-slate-800">{option.key}</span><span className="pt-1">{option.text}</span></button>)}</div>}

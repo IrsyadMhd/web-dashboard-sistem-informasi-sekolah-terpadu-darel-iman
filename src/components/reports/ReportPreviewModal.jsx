@@ -2,14 +2,14 @@ import React from 'react'
 import { Printer, Download, ShieldCheck, Building2 } from 'lucide-react'
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogClose } from '@/components/tailgrids/core/dialog'
 import { Backdrop, OverlayWrapper } from '@/components/tailgrids/core/overlay'
-import { Button } from '@/components/tailgrids/core/button'
+import { Button } from '../ui/button'
 
 export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExportPdf }) {
   if (!isOpen || !reportData) return null
 
   const { report, summary, unit_recaps, details } = reportData
   const title = report?.title || 'Laporan Pengurus Yayasan'
-  const periodLabel = report?.period?.label || 'Periode Aktif'
+  const periodLabel = report?.period?.label || report?.period_name || report?.period || '-'
   const generatedAt = report?.generated_at ? new Date(report.generated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
 
   return (
@@ -86,20 +86,20 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
               <h4 className="font-bold text-xs uppercase text-[#0E5C44] dark:text-emerald-400 mb-2 border-l-2 border-[#0E5C44] pl-2">
                 Rekapitulasi Per Unit Pendidikan
               </h4>
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/80">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-[#0E5C44] text-white">
                     <tr>
                       {Object.keys(unit_recaps[0]).map((col, idx) => (
-                        <th key={idx} className="p-2 border border-[#0E5C44] font-semibold">{col.replace(/_/g, ' ')}</th>
+                        <th key={idx} className="p-2.5 border border-[#0E5C44] font-semibold">{col.replace(/_/g, ' ')}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700/80">
                     {unit_recaps.map((row, rIdx) => (
-                      <tr key={rIdx} className="border-b border-slate-200">
+                      <tr key={rIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                         {Object.values(row).map((val, cIdx) => (
-                          <td key={cIdx} className="p-2">{val}</td>
+                          <td key={cIdx} className="p-2.5">{val}</td>
                         ))}
                       </tr>
                     ))}
@@ -115,20 +115,20 @@ export function ReportPreviewModal({ isOpen, onClose, reportData, onPrint, onExp
               <h4 className="font-bold text-xs uppercase text-[#0E5C44] dark:text-emerald-400 mb-2 border-l-2 border-[#0E5C44] pl-2">
                 Pratinjau Data Rinci
               </h4>
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/80">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-100 dark:bg-slate-800">
+                  <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                     <tr>
                       {Object.keys(details[0]).filter(k => k !== 'id').map((col, idx) => (
-                        <th key={idx} className="p-2 font-bold">{col.replace(/_/g, ' ')}</th>
+                        <th key={idx} className="p-2.5 font-bold">{col.replace(/_/g, ' ')}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700/80">
                     {details.slice(0, 10).map((row, rIdx) => (
-                      <tr key={rIdx} className="border-b border-slate-200">
+                      <tr key={rIdx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                         {Object.entries(row).filter(([k]) => k !== 'id').map(([, val], cIdx) => (
-                          <td key={cIdx} className="p-2">{val}</td>
+                          <td key={cIdx} className="p-2.5">{val}</td>
                         ))}
                       </tr>
                     ))}

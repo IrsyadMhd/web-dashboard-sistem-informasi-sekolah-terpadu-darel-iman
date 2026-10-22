@@ -26,6 +26,9 @@ import {
   ShieldCheck,
   Building2,
   BookmarkCheck,
+  Heart,
+  Copy,
+  Check,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -41,22 +44,107 @@ import {
 } from 'recharts'
 
 import api from '../services/api'
+import { equranService } from '../services/equranService'
 import { useAuthStore } from '../stores/authStore'
+import { usePengaturanStore } from '../stores/pengaturanStore'
+import { resolveFoundationName } from '../utils/printHelper'
 
 // TailGrids Core UI Components
 import { Button } from '@/components/tailgrids/core/button'
 import { Badge } from '@/components/tailgrids/core/badge'
 import { Alert, AlertTitle, AlertDescription } from '@/components/tailgrids/core/alert'
 
+// Doa & Dzikir Harian Standar Pendidik
+const DEFAULT_TEACHER_DOAS = [
+  {
+    id: 'doa-belajar',
+    nama: 'Doa Sebelum Belajar & Memohon Tambahan Ilmu',
+    grup: 'Doa Pembelajaran',
+    ar: 'رَبِّ زِدْنِي عِلْمًا وَارْزُقْنِي فَهْمًا',
+    tr: "Rabbi zidnii 'ilman warzuqnii fahman",
+    idn: 'Ya Rabb-ku, tambahkanlah kepadaku ilmu pengetahuan, dan berilah aku rezeki pemahaman yang baik.',
+    tentang: 'Dibaca guru dan siswa sebelum memulai proses KBM agar ilmu yang diajarkan berkah dan mudah diserap.',
+    tag: 'KBM Harian',
+  },
+  {
+    id: 'sayyidul-istighfar',
+    nama: 'Sayyidul Istighfar (Dzikir Pagi & Petang)',
+    grup: 'Dzikir Pagi & Petang',
+    ar: 'اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ خَلَقْتَنِي وَأَنَا عَبْدُكَ وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لَا يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ',
+    tr: "Allahumma anta rabbii laa ilaaha illaa anta khalaqtanii wa ana 'abduka wa ana 'alaa 'ahdika wa wa'dika mastatha'tu, a'uudzu bika min syarri maa shana'tu, abu'u laka bini'matika 'alayya wa abu'u bidzanbii faghfir lii fainnahu laa yaghfirudz-dzunuuba illaa anta.",
+    idn: 'Ya Allah, Engkaulah Rabb-ku, tiada Tuhan yang berhak disembah selain Engkau. Engkaulah yang menciptakanku dan aku adalah hamba-Mu. Aku senantiasa setia pada perjanjian-Mu semampuku. Aku berlindung dari keburukan yang kuperbuat. Aku mengakui nikmat-Mu dan dosaku, maka ampunilah aku.',
+    tentang: 'Penghulu istighfar harian pendidik. Barangsiapa membacanya di pagi hari lalu meninggal sebelum petang, ia termasuk ahli surga (HR. Bukhari).',
+    tag: 'Dzikir Harian',
+  },
+  {
+    id: 'doa-kafaratul-majelis',
+    nama: 'Doa Penutup Majelis (Kafaratul Majelis)',
+    grup: 'Doa Penutup',
+    ar: 'سُبْحَانَكَ اللَّهُمَّ وَبِحَمْدِكَ، أَشْهَدُ أَنْ لاَ إِلَهَ إِلاَّ أَنْتَ، أَسْتَغْفِرُكَ وَأَتُوبُ إِلَيْكَ',
+    tr: 'Subhaanakallaahumma wa bihamdika, asyhadu allaa ilaaha illaa anta, astaghfiruka wa atuubu ilaik.',
+    idn: 'Maha Suci Engkau ya Allah, dan dengan memuji-Mu aku bersaksi bahwa tidak ada sesembahan yang berhak disembah selain Engkau, aku memohon ampunan kepada-Mu dan bertaubat kepada-Mu.',
+    tentang: 'Dibaca setiap selesai sesi KBM di kelas atau rapat majelis guru untuk melebur dosa dan kelalaian selama sesi.',
+    tag: 'Penutup KBM',
+  },
+]
+
 export default function TeacherMonitoringDashboardPage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [dashboardData, setDashboardData] = useState(null)
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  // State Doa & Dzikir Harian Pendidik
+  const [selectedDoaIdx, setSelectedDoaIdx] = useState(0)
+  const [copiedDoa, setCopiedDoa] = useState(false)
+  const [doaCollection, setDoaCollection] = useState(DEFAULT_TEACHER_DOAS)
+
+  // Fetch Doa dinamis dari backend equranService
+  useEffect(() => {
+    let isMounted = true
+    equranService.getDoas({ per_page: 8 })
+      .then((res) => {
+        if (!isMounted) return
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiItems = res.data.slice(0, 4).map((item) => ({
+            id: item.id,
+            nama: item.nama,
+            grup: item.grup || 'Doa Harian',
+            ar: item.ar || '',
+            tr: item.tr || '',
+            idn: item.idn || '',
+            tentang: item.tentang || '',
+            tag: item.tag || 'Katalog Doa',
+          }))
+          setDoaCollection((prev) => {
+            const names = new Set(prev.map((p) => p.nama))
+            const filtered = apiItems.filter((p) => !names.has(p.nama))
+            return [...prev, ...filtered]
+          })
+        }
+      })
+      .catch((err) => {
+        console.warn('Menggunakan doa standar pendidik:', err)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const handleCopyDoa = (text) => {
+    if (!text) return
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text)
+      setCopiedDoa(true)
+      setTimeout(() => setCopiedDoa(false), 2000)
+    }
+  }
 
   // Update clock every minute
   useEffect(() => {
@@ -101,21 +189,36 @@ export default function TeacherMonitoringDashboardPage() {
     return teacherLogs.find((l) => l.date === todayStr) || null
   }, [teacherLogs])
 
-  // Chart Data: Attendance Simulation / Real distribution
+  // Chart Data: Attendance Real distribution or empty state
   const attendanceChartData = useMemo(() => {
-    return [
-      { name: 'Senin', hadir: 94, sakit: 3, izin: 2, alpa: 1 },
-      { name: 'Selasa', hadir: 96, sakit: 2, izin: 1, alpa: 1 },
-      { name: 'Rabu', hadir: 92, sakit: 4, izin: 3, alpa: 1 },
-      { name: 'Kamis', hadir: 95, sakit: 2, izin: 2, alpa: 1 },
-      { name: 'Jumat', hadir: 98, sakit: 1, izin: 1, alpa: 0 },
-    ]
-  }, [])
+    if (dashboardData?.attendance_trend && Array.isArray(dashboardData.attendance_trend)) {
+      return dashboardData.attendance_trend
+    }
+    if (dashboardData?.charts?.attendance_trend && Array.isArray(dashboardData.charts.attendance_trend)) {
+      return dashboardData.charts.attendance_trend
+    }
+    if (Array.isArray(teacherLogs) && teacherLogs.length > 0) {
+      const dayMap = {}
+      teacherLogs.forEach((l) => {
+        const d = l.day || l.hari || (l.date ? new Date(l.date).toLocaleDateString('id-ID', { weekday: 'long' }) : 'Hari Ini')
+        if (!dayMap[d]) dayMap[d] = { name: d, hadir: 0, sakit: 0, izin: 0, alpa: 0 }
+        const st = String(l.status || '').toLowerCase()
+        if (st.includes('hadir')) dayMap[d].hadir++
+        else if (st.includes('sakit')) dayMap[d].sakit++
+        else if (st.includes('izin')) dayMap[d].izin++
+        else if (st.includes('alpa') || st.includes('alpha')) dayMap[d].alpa++
+        else dayMap[d].hadir++
+      })
+      return Object.values(dayMap)
+    }
+    return []
+  }, [dashboardData, teacherLogs])
 
   // Chart Data: Assignment Status
   const assignmentStatusData = useMemo(() => {
-    const pending = kpis.pending_grading_count || 4
-    const graded = 28
+    const pending = Number(kpis.pending_grading_count || 0)
+    const graded = Number(kpis.graded_count || 0)
+    if (pending === 0 && graded === 0) return []
     return [
       { name: 'Sudah Dinilai', value: graded, color: '#10B981' },
       { name: 'Perlu Dinilai', value: pending, color: '#F59E0B' },
@@ -250,7 +353,7 @@ export default function TeacherMonitoringDashboardPage() {
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Presensi Guru</div>
                   <div className="text-xs font-black text-slate-800 dark:text-slate-100">
-                    {todayLog ? `Hadir (${todayLog.check_in || '07:15'})` : 'Belum Check-In'}
+                    {todayLog ? (todayLog.check_in ? `Hadir (${todayLog.check_in})` : 'Hadir') : 'Belum Check-In'}
                   </div>
                 </div>
               </div>
@@ -472,6 +575,126 @@ export default function TeacherMonitoringDashboardPage() {
               </div>
             </div>
 
+            {/* Kartu Doa & Dzikir Harian Pendidik (Yaumiyah) */}
+            <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white p-5 shadow-xs dark:border-emerald-500/30 dark:bg-slate-800/95">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 pb-4 dark:border-emerald-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30">
+                    <Heart className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-black text-slate-900 dark:text-white">
+                        Doa & Dzikir Harian Pendidik
+                      </h2>
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                        Yaumiyah
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Bimbingan doa berkah sebelum mengajar, dzikir pagi, dan penutup majelis ilmu
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/dashboard/master-doa"
+                    className="inline-flex items-center gap-1 rounded-xl border border-emerald-500/30 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:text-emerald-300 transition"
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Katalog Doa
+                  </Link>
+                  <Link
+                    to="/dashboard/master-quran-surah"
+                    className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Al-Qur'an 30 Juz
+                  </Link>
+                </div>
+              </div>
+
+              {/* Tab Navigasi Pilihan Doa */}
+              <div className="mt-4 flex flex-wrap gap-1.5 border-b border-slate-200/60 pb-3 dark:border-slate-700/60">
+                {doaCollection.map((item, idx) => (
+                  <button
+                    key={item.id || idx}
+                    type="button"
+                    onClick={() => setSelectedDoaIdx(idx)}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                      selectedDoaIdx === idx
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-white/80 text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {item.nama.split('(')[0].trim()}
+                  </button>
+                ))}
+              </div>
+
+              {/* Konten Doa Aktif */}
+              {doaCollection[selectedDoaIdx] && (() => {
+                const currentDoa = doaCollection[selectedDoaIdx]
+                const fullShareText = `${currentDoa.nama}\n\n${currentDoa.ar}\n\nLatin:\n${currentDoa.tr}\n\nArtinya:\n"${currentDoa.idn}"\n\nFadhilah:\n${currentDoa.tentang}`
+                return (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-lg bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800 dark:bg-teal-950/70 dark:text-teal-300">
+                        {currentDoa.grup || 'Doa Harian'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyDoa(fullShareText)}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition cursor-pointer"
+                        title="Salin Teks Doa"
+                      >
+                        {copiedDoa ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-emerald-600 dark:text-emerald-400">Tersalin!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" />
+                            <span>Salin Teks</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Teks Arab */}
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50/40 p-4 dark:border-emerald-500/20 dark:bg-emerald-950/20">
+                      <p className="text-right font-serif text-xl sm:text-2xl leading-loose font-normal text-slate-900 dark:text-white" dir="rtl">
+                        {currentDoa.ar}
+                      </p>
+                    </div>
+
+                    {/* Transliterasi & Terjemahan */}
+                    <div className="space-y-1.5 rounded-2xl bg-white/70 p-3.5 border border-slate-200/60 dark:bg-slate-900/40 dark:border-slate-800">
+                      <p className="text-xs italic text-emerald-800 dark:text-emerald-300 font-medium">
+                        "{currentDoa.tr}"
+                      </p>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                        <span className="font-bold">Artinya: </span>{currentDoa.idn}
+                      </p>
+                    </div>
+
+                    {/* Fadhilah / Keutamaan Hadits */}
+                    {currentDoa.tentang && (
+                      <div className="flex items-start gap-2 rounded-xl bg-amber-50/80 p-2.5 text-[11px] text-amber-900 border border-amber-200/60 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-900/40">
+                        <Sparkles className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                        <div>
+                          <span className="font-bold">Keutamaan & Riwayat: </span>
+                          <span>{currentDoa.tentang}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+
             {/* Grafik Analitik Kehadiran Siswa */}
             <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/90">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-700/60">
@@ -491,26 +714,34 @@ export default function TeacherMonitoringDashboardPage() {
                 </div>
               </div>
 
-              <div className="mt-4 h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={attendanceChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.6} />
-                    <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
-                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748B' }} domain={[0, 100]} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#1E293B',
-                        borderRadius: '12px',
-                        border: 'none',
-                        color: '#FFF',
-                        fontSize: '11px',
-                      }}
-                    />
-                    <Bar dataKey="hadir" fill="#10B981" radius={[6, 6, 0, 0]} barSize={28} />
-                    <Bar dataKey="sakit" fill="#F59E0B" radius={[6, 6, 0, 0]} barSize={28} />
-                    <Bar dataKey="alpa" fill="#EF4444" radius={[6, 6, 0, 0]} barSize={28} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="mt-4 h-64 w-full flex items-center justify-center">
+                {attendanceChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={attendanceChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.6} />
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: '#64748B' }} domain={[0, 100]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1E293B',
+                          borderRadius: '12px',
+                          border: 'none',
+                          color: '#FFF',
+                          fontSize: '11px',
+                        }}
+                      />
+                      <Bar dataKey="hadir" fill="#10B981" radius={[6, 6, 0, 0]} barSize={28} />
+                      <Bar dataKey="sakit" fill="#F59E0B" radius={[6, 6, 0, 0]} barSize={28} />
+                      <Bar dataKey="alpa" fill="#EF4444" radius={[6, 6, 0, 0]} barSize={28} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center text-xs text-slate-400">
+                    <Calendar className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+                    <p className="font-semibold text-slate-500 dark:text-slate-400">Belum ada rekaman presensi mengajar</p>
+                    <p className="text-[11px] text-slate-400">Log kehadiran harian kelas akan ditampilkan di sini.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -529,30 +760,38 @@ export default function TeacherMonitoringDashboardPage() {
               </p>
 
               <div className="mt-4 h-48 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={assignmentStatusData}
-                      innerRadius={50}
-                      outerRadius={75}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {assignmentStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#1E293B',
-                        borderRadius: '12px',
-                        border: 'none',
-                        color: '#FFF',
-                        fontSize: '11px',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                {assignmentStatusData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={assignmentStatusData}
+                        innerRadius={50}
+                        outerRadius={75}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {assignmentStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1E293B',
+                          borderRadius: '12px',
+                          border: 'none',
+                          color: '#FFF',
+                          fontSize: '11px',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 text-center text-xs text-slate-400">
+                    <CheckCircle2 className="mb-2 h-8 w-8 text-emerald-400/80" />
+                    <p className="font-semibold text-slate-600 dark:text-slate-300">Semua tugas telah dinilai</p>
+                    <p className="text-[11px] text-slate-400">Tidak ada antrean koreksi tugas saat ini.</p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
@@ -560,7 +799,7 @@ export default function TeacherMonitoringDashboardPage() {
                   <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                     <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Sudah Selesai Dinilai
                   </span>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">28 Tugas</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">{Number(kpis.graded_count || 0)} Tugas</span>
                 </div>
                 <div className="flex items-center justify-between text-xs font-semibold">
                   <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
@@ -599,13 +838,13 @@ export default function TeacherMonitoringDashboardPage() {
                   announcements.slice(0, 3).map((item, idx) => (
                     <div key={item.id || idx} className="rounded-2xl bg-slate-50/80 p-3 dark:bg-slate-900/50">
                       <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                        <Building2 className="h-3 w-3" /> Yayasan Dar El-Iman
+                        <Building2 className="h-3 w-3" /> {item.target_unit || foundationName}
                       </div>
                       <h4 className="mt-1 text-xs font-bold text-slate-800 dark:text-slate-100 line-clamp-1">
-                        {item.judul || 'Agenda Rapat Guru Terpadu'}
+                        {item.judul || 'Pengumuman Guru'}
                       </h4>
                       <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-                        {item.konten || item.isi || 'Pemberitahuan pelaksanaan KBM semester ganjil tahun ajaran 2026/2027.'}
+                        {item.konten || item.isi || '-'}
                       </p>
                     </div>
                   ))
@@ -613,13 +852,13 @@ export default function TeacherMonitoringDashboardPage() {
               </div>
             </div>
 
-            {/* Pintasan Aksi Cepat ke Modul Workspace */}
+            {/* Pintasan Aksi Cepat ke Modul Workspace & Ibadah */}
             <div className="rounded-3xl border border-slate-200/80 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-800/90">
               <h3 className="text-xs font-black uppercase tracking-wider text-emerald-900 dark:text-emerald-300">
-                Pintasan Workspace Belajar
+                Pintasan Belajar & Ibadah
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Buka langsung modul kerja pengajaran:
+                Akses cepat modul pengajaran & ibadah harian:
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
@@ -653,6 +892,33 @@ export default function TeacherMonitoringDashboardPage() {
                 >
                   <MessageSquare className="h-4 w-4 text-rose-600 mb-1" />
                   <span>Catat Siswa</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/master-quran-surah')}
+                  className="col-span-2 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-emerald-500/5 p-2.5 text-left text-xs font-bold text-slate-800 hover:border-emerald-500 hover:bg-emerald-50/80 dark:border-emerald-700/60 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-emerald-600" />
+                    <span>Al-Qur'an (114 Surah)</span>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-emerald-600" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/master-doa')}
+                  className="rounded-xl border border-slate-200 bg-white p-2.5 text-left text-xs font-bold text-slate-800 hover:border-emerald-500 hover:bg-emerald-50/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer"
+                >
+                  <Heart className="h-4 w-4 text-rose-500 mb-1" />
+                  <span>Doa & Dzikir</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/dashboard/master-jadwal-sholat')}
+                  className="rounded-xl border border-slate-200 bg-white p-2.5 text-left text-xs font-bold text-slate-800 hover:border-emerald-500 hover:bg-emerald-50/50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition cursor-pointer"
+                >
+                  <Clock className="h-4 w-4 text-sky-600 mb-1" />
+                  <span>Jadwal Sholat</span>
                 </button>
               </div>
             </div>

@@ -33,7 +33,8 @@ const StudentFormModal = lazy(() => import('../components/siswa/StudentFormModal
 
 import StudentLeaderAnalyticsSection from '../components/siswa/StudentLeaderAnalyticsSection'
 import ActionDropdown from '../components/app/ActionDropdown'
-import { Button } from '../components/tailgrids/core/button'
+import { Button } from '../components/ui/button'
+import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppBadge from '../components/app/AppBadge'
 import AppDataTable from '../components/app/AppDataTable'
@@ -43,11 +44,13 @@ import { useAksiSiswa, useDaftarSiswa } from '../hooks/useStudents'
 import { educationUnitService } from '../services/educationUnitService'
 import { studentService } from '../services/studentService'
 import { studentMutationService } from '../services/studentMutationService'
+import { businessOptionService } from '../services/businessOptionService'
+import { studentStatusService } from '../services/studentStatusService'
 import PersonAvatar, { resolveAvatarUrl } from '../components/ui/PersonAvatar'
 import PersonIdentityCell from '../components/ui/PersonIdentityCell'
-import { hasAnyRole } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { useAuthStore } from '../stores/authStore'
-import { usePengaturanStore } from '../stores/pengaturanStore'
+import { usePengaturanStore, useTerminology } from '../stores/pengaturanStore'
 import PageContainer from '../components/app/PageContainer'
 import {
   Printer,
@@ -72,11 +75,11 @@ import {
   School,
   Save,
   ArrowRightLeft,
+  CreditCard,
 } from 'lucide-react'
 import { OverlayWrapper, Backdrop } from '../components/tailgrids/core/overlay'
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/tailgrids/core/dialog'
-import { Download1, Upload1, Plus as PlusIcon } from '@tailgrids/icons'
-import { handleApiExport } from '../utils/exportUtils'
+import { handleApiExport, downloadFileFromApi } from '../utils/exportUtils'
 import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
 import {
   MasterActionButton,
@@ -210,119 +213,26 @@ function KpiTintedCard({ icon: Icon, label, subtext, value, tone = 'emerald', ac
   )
 }
 
-// ── Toast Stack Notification System ──────────────────────────────────────────
-function ToastStack({ items, onDismiss }) {
-  if (!items || !items.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
-      {items.map((n) => {
-        const isDanger = n.tone === 'danger' || n.tone === 'error'
-        const isWarning = n.tone === 'warning'
-        const isInfo = n.tone === 'info'
-        const isSuccess = !isDanger && !isWarning && !isInfo
-
-        return (
-          <div
-            key={n.id}
-            className={cn(
-              "relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300",
-              isSuccess && "border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50",
-              isDanger && "border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50",
-              isWarning && "border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50",
-              isInfo && "border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50"
-            )}
-          >
-            {/* Top Accent Gradient Line */}
-            <div
-              className={cn(
-                "absolute top-0 left-0 right-0 h-1",
-                isSuccess && "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600",
-                isDanger && "bg-gradient-to-r from-rose-500 via-rose-600 to-red-700",
-                isWarning && "bg-gradient-to-r from-amber-400 via-amber-500 to-orange-600",
-                isInfo && "bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600"
-              )}
-            />
-
-            <div className="flex items-start gap-3 mt-0.5">
-              {/* Squircle Icon Badge */}
-              <div
-                className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm",
-                  isSuccess && "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30",
-                  isDanger && "bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30",
-                  isWarning && "bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30",
-                  isInfo && "bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30"
-                )}
-              >
-                {isSuccess && <CheckCircle2 className="size-5" strokeWidth={2.3} />}
-                {isDanger && <XCircle className="size-5" strokeWidth={2.3} />}
-                {isWarning && <AlertTriangle className="size-5" strokeWidth={2.3} />}
-                {isInfo && <Info className="size-5" strokeWidth={2.3} />}
-              </div>
-
-              {/* Text Body */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                    {n.title}
-                  </h4>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border",
-                      isSuccess && "bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80",
-                      isDanger && "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80",
-                      isWarning && "bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80",
-                      isInfo && "bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80"
-                    )}
-                  >
-                    {isSuccess ? 'Sukses' : isDanger ? 'Gagal' : isWarning ? 'Perhatian' : 'Info'}
-                  </span>
-                </div>
-                {n.message && (
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                    {n.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Dismiss Button */}
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="size-6 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors pointer-events-auto"
-                aria-label="Tutup notifikasi"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 export default function StudentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const user = useAuthStore((state) => state.user)
   const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
+  const terms = useTerminology()
   const permissions = user?.permissions || []
   const userRoles = useMemo(() => user?.roles || [], [user])
-  const isSuperAdmin = hasAnyRole(userRoles, ['Super Admin', 'super_admin'])
-  const isKepalaSekolah = useMemo(() => hasAnyRole(userRoles, ['Kepala Sekolah', 'kepala_sekolah', 'kepsek']), [userRoles])
-  const isDivisiPendidikan = useMemo(() => hasAnyRole(userRoles, ['Divisi Pendidikan', 'divisi_pendidikan']), [userRoles])
-  const isLeaderRole = useMemo(() => {
-    return (
-      isSuperAdmin ||
-      isKepalaSekolah ||
-      isDivisiPendidikan ||
-      hasAnyRole(userRoles, ['Yayasan', 'Pengurus Yayasan', 'Ketua Yayasan', 'sekretaris_yayasan', 'bendahara_yayasan'])
-    )
-  }, [isSuperAdmin, isKepalaSekolah, isDivisiPendidikan, userRoles])
+  const userLevel = useMemo(() => getUserRoleLevel(user), [user])
+  const isSuperAdmin = userLevel === ROLE_LEVELS.ADMIN_SISTEM // Level 1
+  const isKepalaSekolah = useMemo(() => userLevel === ROLE_LEVELS.KEPALA_SEKOLAH, [userLevel]) // Level 4
+  const isDivisiPendidikan = useMemo(() => userLevel === ROLE_LEVELS.DIVISI_PENDIDIKAN, [userLevel]) // Level 4
+  const isLeaderRole = useMemo(() => userLevel <= ROLE_LEVELS.KEPALA_SEKOLAH, [userLevel]) // Level <= 4 (Admin, Yayasan, Operator, Kepsek)
   const canCreateStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.create')
   const canUpdateStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.update')
   const canDeleteStudent = isSuperAdmin || isKepalaSekolah || permissions.includes('student.delete')
   const canExportStudent = isSuperAdmin || isKepalaSekolah || isDivisiPendidikan || permissions.includes('student.export')
+  const canManageVaBsi = isSuperAdmin || isLeaderRole || hasAnyRole(user, ['Super Admin', 'Admin', 'Operator', 'Tata Usaha', 'TU', 'Admin Madrasah', 'Admin Sekolah'])
+  const [showGenerateVaModal, setShowGenerateVaModal] = useState(false)
+  const [isGeneratingVa, setIsGeneratingVa] = useState(false)
+  const [forceOverwriteVa, setForceOverwriteVa] = useState(false)
   const [step, setStep] = useState(1)
 
   const userUnitId = user?.unit_id || user?.education_unit_id || user?.employee?.unit_id || user?.metadata?.education_unit_id || user?.metadata?.unit_id || ''
@@ -334,11 +244,32 @@ export default function StudentsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Dynamic Student Status Options (SSOT dari tabel student_statuses database)
+  const { data: studentStatusOptionsData } = useQuery({
+    queryKey: ['student-statuses-dropdown'],
+    queryFn: () => studentStatusService.getDropdown(),
+    staleTime: 10 * 60 * 1000,
+  })
+
+  const studentStatusOptions = useMemo(() => {
+    const raw = studentStatusOptionsData?.data || studentStatusOptionsData?.items || studentStatusOptionsData || []
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw.map((item) => ({
+        value: typeof item === 'string' ? item.toLowerCase() : String(item.code || item.value || item.name || '').toLowerCase(),
+        label: typeof item === 'string' ? item : (item.name || item.label || item.value || ''),
+      }))
+    }
+    return []
+  }, [studentStatusOptionsData])
+
   // Modal Control States
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showFormModal, setShowFormModal] = useState(false)
   const [showCetakModal, setShowCetakModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportFormat, setExportFormat] = useState('xlsx')
+  const [isExporting, setIsExporting] = useState(false)
   const [statCardModal, setStatCardModal] = useState({
     isOpen: false,
     title: '',
@@ -361,14 +292,8 @@ export default function StudentsPage() {
   const [formData, setFormData] = useState(initialForm())
   const [isEdit, setIsEdit] = useState(false)
 
-  // Toast Notification Stack
-  const [toasts, setToasts] = useState([])
-  const pushToast = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setToasts((prev) => [...prev, { id, title, message, tone }])
-    window.setTimeout(() => setToasts((prev) => prev.filter((n) => n.id !== id)), 6000)
-  }
-  const dismissToast = (id) => setToasts((prev) => prev.filter((n) => n.id !== id))
+  // Toast Notification Stack (Global)
+  const { pushToast } = useToast()
 
   // Delete Confirmation Dialog state
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -437,6 +362,7 @@ export default function StudentsPage() {
       setIsSubmittingMutasi(true)
       await studentMutationService.requestMutasi({
         student_id: studentToMutate.id,
+        target_unit_id: mutasiForm.unit_tujuan_id,
         unit_tujuan_id: mutasiForm.unit_tujuan_id,
         jenis_mutasi: 'pindah_unit_internal',
         alasan: mutasiForm.alasan,
@@ -461,6 +387,7 @@ export default function StudentsPage() {
     try {
       setIsProcessingApproval(true)
       await studentMutationService.approveMutasi(selectedIncomingForApproval.id, {
+        kelas_id: approvalKelasId,
         kelas_tujuan_id: approvalKelasId,
         catatan: approvalCatatan,
       })
@@ -485,6 +412,7 @@ export default function StudentsPage() {
     try {
       setIsProcessingApproval(true)
       await studentMutationService.rejectMutasi(selectedIncomingForApproval.id, {
+        catatan_penolakan: rejectReason,
         alasan_penolakan: rejectReason,
       })
       pushToast('Informasi', 'Pengajuan mutasi siswa ditolak dan dikembalikan ke unit asal.', 'info')
@@ -865,15 +793,19 @@ export default function StudentsPage() {
           meta.foto ||
           ''
 
-        const stRaw = String(meta.akademik?.status_siswa || (item.is_active ? 'aktif' : 'nonaktif')).toLowerCase()
+        const stRaw = String(meta.akademik?.status_siswa || item.status || (item.is_active ? 'aktif' : 'nonaktif')).toLowerCase()
         const statusText =
           stRaw === 'mutasi'
             ? 'Mutasi'
             : stRaw === 'lulus'
               ? 'Lulus'
-              : stRaw === 'aktif' || item.is_active
-                ? 'Aktif'
-                : 'Nonaktif'
+              : stRaw === 'berhenti'
+                ? 'Berhenti'
+                : stRaw === 'cuti'
+                  ? 'Cuti'
+                  : stRaw === 'aktif' || item.is_active
+                    ? 'Aktif'
+                    : 'Nonaktif'
 
         return {
           id: item.id,
@@ -1167,20 +1099,65 @@ export default function StudentsPage() {
   }
 
   // Server-side Multi-format Export Handler (.xlsx, .xls, .csv)
-  const handleExportExcel = async () => {
+  const handleOpenExportModal = () => {
     if (!canExportStudent) return
+    setShowExportModal(true)
+  }
 
-    const params = {}
-    if (searchQuery) params.search = searchQuery
-    if (unitFilter && unitFilter !== 'Semua') params.unit_id = unitFilter
-    if (kelasFilter && kelasFilter !== 'Semua') params.kelas_id = kelasFilter
+  const handleProcessExport = async (format = exportFormat) => {
+    if (!canExportStudent) return
+    try {
+      setIsExporting(true)
+      const params = {}
+      if (searchQuery) params.search = searchQuery
+      if (unitFilter && unitFilter !== 'Semua') params.unit_id = unitFilter
+      if (kelasFilter && kelasFilter !== 'Semua') params.kelas_id = kelasFilter
+      if (statusFilter && statusFilter !== 'Semua') params.status = statusFilter
 
-    await handleApiExport({
-      endpoint: '/students/export',
-      params,
-      title: 'Ekspor Data Siswa',
-      defaultFilename: `Data_Siswa_DarElIman_${new Date().toISOString().slice(0, 10)}`,
-    })
+      const defaultFilename = `Data_Siswa_${(sitePengaturan?.school_name || 'Sekolah').replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}`
+
+      const res = await downloadFileFromApi(
+        '/students/export',
+        params,
+        format,
+        defaultFilename
+      )
+      if (res?.success) {
+        setShowExportModal(false)
+      }
+    } catch (err) {
+      console.error('Export error:', err)
+      pushToast('Gagal Ekspor', err?.message || 'Terjadi kesalahan saat mengunduh berkas data siswa.', 'error')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Batch Generator VA Bank Syariah Indonesia (BSI)
+  const handleGenerateVaBsi = async () => {
+    try {
+      setIsGeneratingVa(true)
+      const res = await studentService.generateVaBsi({
+        unit_id: unitFilter && unitFilter !== 'Semua' ? unitFilter : undefined,
+        kelas_id: kelasFilter && kelasFilter !== 'Semua' ? kelasFilter : undefined,
+        force_overwrite: forceOverwriteVa,
+      })
+      pushToast(
+        'Berhasil Generate VA BSI',
+        res.message || `Sebanyak ${res.updated_count || 0} No. VA BSI siswa berhasil diproses.`,
+        'success'
+      )
+      setShowGenerateVaModal(false)
+      refetch()
+    } catch (err) {
+      pushToast(
+        'Gagal Generate VA BSI',
+        err.response?.data?.message || err.message || 'Terjadi kesalahan saat memproses Nomor VA BSI.',
+        'error'
+      )
+    } finally {
+      setIsGeneratingVa(false)
+    }
   }
 
   // Render Status Badge
@@ -1214,11 +1191,11 @@ export default function StudentsPage() {
   return (
     <PageContainer maxW="7xl" className="space-y-6 pb-12">
       <motion.div initial="hidden" animate="visible" variants={containerVariants}>
-        <MasterDataPage hideBreadcrumb className="education-unit-page student-master-page">
+        <MasterDataPage hideBreadcrumb>
 
         {/* Breadcrumb Navigation (Identik dengan Halaman Employees) */}
         <div className="print:hidden">
-          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Buku Induk Siswa' }]} />
+          <AppBreadcrumb items={[{ label: 'Dashboard', href: '/dashboard' }, { label: `Buku Induk ${terms.siswa || 'Siswa'}` }]} />
         </div>
 
         {/* Header Halaman Modern Hero Card */}
@@ -1235,7 +1212,7 @@ export default function StudentsPage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                    Buku Induk Siswa Terpadu
+                    Buku Induk {terms.siswa || 'Siswa'} Terpadu
                   </h1>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-sm shadow-emerald-600/25 border border-emerald-300/40">
                     <ShieldCheck className="h-3.5 w-3.5" />
@@ -1251,7 +1228,7 @@ export default function StudentsPage() {
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
               <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-100 px-3.5 py-1.5 text-xs font-black text-emerald-900 dark:border-emerald-700 dark:bg-gradient-to-r dark:from-emerald-950 dark:to-teal-950 dark:text-emerald-200 shadow-2xs">
                 <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Buku Induk Siswa</span>
+                <span>Buku Induk {terms.siswa || 'Siswa'}</span>
               </div>
             </div>
           </div>
@@ -1332,7 +1309,7 @@ export default function StudentsPage() {
             isDivisiPendidikan={isDivisiPendidikan}
             onSelectStudent={handleOpenDetail}
             onOpenImport={() => setShowImportModal(true)}
-            onOpenExport={handleExportExcel}
+            onOpenExport={handleOpenExportModal}
             onOpenAdd={handleOpenTambah}
             canExportStudent={canExportStudent}
             canCreateStudent={canCreateStudent}
@@ -1342,12 +1319,12 @@ export default function StudentsPage() {
         {/* Unified Master Data Section */}
         {/* Unified Master Data Container */}
         <AppDataTable
-          title="Daftar Siswa"
+          title={`Daftar ${terms.siswa || 'Siswa'}`}
           icon={GraduationCap}
           iconClassName="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 border border-emerald-300/40"
           actionColumnLabel=""
-          description="Data siswa sesuai filter dan kewenangan pengguna."
-          countLabel={`${Number(studentPagination.total || filteredStudents.length).toLocaleString('id-ID')} siswa`}
+          description={`Data ${terms.siswa?.toLowerCase() || 'siswa'} sesuai filter dan kewenangan pengguna.`}
+          countLabel={`${Number(studentPagination.total || filteredStudents.length).toLocaleString('id-ID')} ${terms.siswa?.toLowerCase() || 'siswa'}`}
           actions={
             <div className="flex items-center gap-2.5 flex-nowrap shrink-0 overflow-x-auto py-1">
               {/* Cetak Datatable Button - Vivid Indigo / Violet Squircle */}
@@ -1392,7 +1369,7 @@ export default function StudentsPage() {
                     title="Export Data Siswa"
                     aria-label="Export Data Siswa"
                     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
-                    onClick={handleExportExcel}
+                    onClick={handleOpenExportModal}
                   >
                     <Download className="size-5 text-white" strokeWidth={2.2} />
                   </button>
@@ -1428,13 +1405,32 @@ export default function StudentsPage() {
                 </div>
               </div>
 
+              {/* Generate VA BSI Siswa Button (Super Admin, Admin, Operator, TU) */}
+              {canManageVaBsi && (
+                <div className="group relative inline-flex">
+                  <button
+                    type="button"
+                    title="Generate Nomor Virtual Account (VA BSI) Siswa"
+                    aria-label="Generate Nomor Virtual Account (VA BSI) Siswa"
+                    className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-indigo-500/20"
+                    onClick={() => setShowGenerateVaModal(true)}
+                  >
+                    <CreditCard className="size-5 text-white" strokeWidth={2.2} />
+                  </button>
+                  <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                    <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
+                    Generate VA BSI
+                  </div>
+                </div>
+              )}
+
               {/* Tambah Button (Vivid Emerald / Teal Squircle) */}
               {canCreateStudent && (
                 <div className="group relative inline-flex">
                   <button
                     type="button"
-                    title="Tambah Siswa Baru"
-                    aria-label="Tambah Siswa Baru"
+                    title={`Tambah ${terms.siswa || 'Siswa'} Baru`}
+                    aria-label={`Tambah ${terms.siswa || 'Siswa'} Baru`}
                     className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                     onClick={handleOpenTambah}
                   >
@@ -1442,7 +1438,7 @@ export default function StudentsPage() {
                   </button>
                   <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
                     <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-                    Tambah Siswa
+                    Tambah {terms.siswa || 'Siswa'}
                   </div>
                 </div>
               )}
@@ -1513,10 +1509,11 @@ export default function StudentsPage() {
                 onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
               >
                 <option value="">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="mutasi">Mutasi</option>
-                <option value="lulus">Lulus</option>
-                <option value="nonaktif">Nonaktif</option>
+                {studentStatusOptions.map((opt) => (
+                  <option key={`status-opt-${opt.value}`} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </MasterFilterSelect>
             </>
           }
@@ -1562,7 +1559,13 @@ export default function StudentsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-200">
                 {paginatedStudents.map((item, idx) => (
-                  <tr key={item.id} className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50" style={{ animationDelay: `${Math.min(idx, 8) * 35}ms` }}>
+                  <tr
+                    key={item.id}
+                    onClick={() => handleOpenDetail(item)}
+                    title="Klik baris untuk melihat detail siswa"
+                    className="edu-row align-middle transition-colors hover:bg-emerald-50/40 dark:hover:bg-slate-800/50 cursor-pointer"
+                    style={{ animationDelay: `${Math.min(idx, 8) * 35}ms` }}
+                  >
                     <td className="px-2 py-3 text-center text-xs font-bold text-slate-400">
                       {(studentPagination.from || 1) + idx}
                     </td>
@@ -1590,7 +1593,7 @@ export default function StudentsPage() {
                       </div>
                     </td>
                     <td className="hidden whitespace-nowrap px-3 py-3 text-center sm:table-cell">{renderStatusBadge(item.status)}</td>
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center">
                         <ActionDropdown
                           onView={() => handleOpenDetail(item)}
@@ -1862,7 +1865,8 @@ export default function StudentsPage() {
                               <DRow label="Tahun Ajaran Masuk" val={meta.tahun_ajaran_masuk} />
                               <DRow label="Tahun Ajaran Berjalan" val={meta.tahun_ajaran_berjalan} />
                               <DRow label="Status Siswa" val={selectedStudent.status} />
-                              <DRow label="NIS Pembayaran" val={meta.nis_pembayaran} />
+                              <DRow label="No. Virtual Account (VA BSI)" val={meta.no_va || meta.nis_pembayaran} />
+                              <DRow label="NIS Pembayaran" val={meta.nis_pembayaran || meta.no_va} />
                               <DRow label="Wali Kelas" val={meta.wali_kelas} />
                               <DRow label="NIY Wali Kelas" val={meta.niy_wali_kelas} />
                               <DRow label="Status Orang Tua" val={meta.status_orang_tua} />
@@ -2218,6 +2222,150 @@ export default function StudentsPage() {
                           <span>Proses Import Data</span>
                         </>
                       )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* POP UP MODAL: DASHBOARD EXPORT DATA SISWA (TAILGRIDS HARMONIZED BATCH MODAL) */}
+        <AnimatePresence>
+          {showExportModal && (
+            <div
+              className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="student-export-title"
+              tabIndex={-1}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget && !isExporting) {
+                  setShowExportModal(false)
+                }
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-lg"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  {/* Top Accent Gradient Bar */}
+                  <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 shrink-0" />
+
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white p-2.5 shadow-md shadow-amber-500/30 border border-amber-300/30 shrink-0">
+                        <Download className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 id="student-export-title" className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Export Data {terms.siswa || 'Siswa'}</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800/60">
+                            <Sparkles className="size-3" />
+                            Unduh Data
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Pilih format berkas untuk mengekspor data master {terms.siswa?.toLowerCase() || 'siswa'} sesuai filter aktif
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isExporting}
+                      onClick={() => setShowExportModal(false)}
+                      aria-label="Tutup modal export"
+                      className="size-9 flex items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white border border-rose-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-rose-500/20 disabled:opacity-50"
+                    >
+                      <X className="size-4 text-white" strokeWidth={2.25} />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="modal-body space-y-4 p-6 text-sm text-slate-700 dark:text-slate-200 overflow-y-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { value: 'xlsx', label: 'Excel (.xlsx)', desc: 'Format Microsoft Excel Modern (Disarankan)' },
+                        { value: 'xls', label: 'Excel (.xls)', desc: 'Format Microsoft Excel Standard 97-2003' },
+                        { value: 'csv', label: 'CSV (.csv)', desc: 'Format Comma Separated Values universal' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setExportFormat(opt.value)}
+                          className={cn(
+                            "flex flex-col text-left gap-1 rounded-2xl border p-3.5 transition-all cursor-pointer",
+                            exportFormat === opt.value
+                              ? "border-emerald-500 bg-emerald-50/70 shadow-sm dark:border-emerald-600 dark:bg-emerald-950/40 ring-1 ring-emerald-500"
+                              : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:border-slate-700 dark:hover:bg-slate-800/40"
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-xs font-black text-slate-900 dark:text-white">{opt.label}</span>
+                            <div className={cn(
+                              "size-4 rounded-full border flex items-center justify-center",
+                              exportFormat === opt.value ? "border-emerald-600 bg-emerald-600" : "border-slate-300 dark:border-slate-600"
+                            )}>
+                              {exportFormat === opt.value && <div className="size-1.5 rounded-full bg-white" />}
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug mt-1">{opt.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Active Filters Summary Box */}
+                    <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 dark:bg-amber-950/30 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-300 space-y-1">
+                      <p className="font-bold flex items-center gap-1.5">
+                        <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400" />
+                        Cakupan Data Terfilter
+                      </p>
+                      <div className="text-[11px] text-amber-800/90 dark:text-amber-300/80 space-y-0.5">
+                        <p>Total target: <span className="font-bold text-amber-900 dark:text-amber-200">{Number(studentPagination.total || filteredStudents.length).toLocaleString('id-ID')} {terms.siswa?.toLowerCase() || 'siswa'}</span></p>
+                        {(unitFilter && unitFilter !== 'Semua') && (
+                          <p>• Unit Pendidikan: <span className="font-semibold">{rawUnits.find(u => String(u.id) === String(unitFilter))?.name || unitFilter}</span></p>
+                        )}
+                        {(kelasFilter && kelasFilter !== 'Semua') && (
+                          <p>• Rombel / Kelas: <span className="font-semibold">{availableClasses.find(c => String(c.id) === String(kelasFilter))?.name || kelasFilter}</span></p>
+                        )}
+                        {(statusFilter && statusFilter !== 'Semua') && (
+                          <p>• Status: <span className="font-semibold">{statusFilter}</span></p>
+                        )}
+                        {searchQuery && (
+                          <p>• Pencarian: &ldquo;<span className="font-semibold">{searchQuery}</span>&rdquo;</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="modal-footer flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/30 shrink-0">
+                    <button
+                      type="button"
+                      disabled={isExporting}
+                      onClick={() => setShowExportModal(false)}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                        <X className="size-3.5 text-white" strokeWidth={2.2} />
+                      </div>
+                      <span>Batal</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isExporting}
+                      onClick={() => handleProcessExport(exportFormat)}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white px-5 py-2.5 text-xs font-extrabold border border-amber-300/40 hover:scale-[1.03] transition-all duration-200 active:scale-95 cursor-pointer shadow-md shadow-amber-500/25 disabled:opacity-50"
+                    >
+                      <div className="flex size-5 items-center justify-center rounded-lg bg-white/20 text-white">
+                        <Download className="size-3.5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <span>{isExporting ? 'Memproses...' : 'Unduh Berkas'}</span>
                     </button>
                   </div>
                 </div>
@@ -3266,11 +3414,134 @@ export default function StudentsPage() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* MODAL GENERATE NOMOR VIRTUAL ACCOUNT (VA BSI) SISWA */}
+        <AnimatePresence>
+          {showGenerateVaModal && (
+            <div
+              className="overlay modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md"
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.94, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                className="modal-dialog font-sans my-auto w-full max-w-lg"
+              >
+                <div className="modal-content flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl shadow-indigo-950/20 dark:border-slate-800 dark:bg-[#182232] dark:shadow-black/60">
+                  <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 shrink-0" />
+
+                  {/* Header */}
+                  <div className="modal-header flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 text-white p-2.5 shadow-md shadow-indigo-500/30 border border-indigo-300/30 shrink-0">
+                        <CreditCard className="h-5 w-5 text-white" strokeWidth={2.25} />
+                      </div>
+                      <div>
+                        <h3 className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Generate VA BSI Siswa</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/80 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60">
+                            <Sparkles className="size-3" />
+                            Otomatis
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Pembuatan nomor Virtual Account BSI massal untuk siswa
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowGenerateVaModal(false)}
+                      className="size-8 flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                    {/* Ringkasan Konfigurasi BSI */}
+                    <div className="rounded-2xl border border-indigo-200/80 bg-indigo-50/60 p-4 text-xs dark:bg-indigo-950/30 dark:border-indigo-800/40 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-indigo-950 dark:text-indigo-200">Mitra Bank:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">Bank Syariah Indonesia (BSI)</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-indigo-950 dark:text-indigo-200">Kode Biller / Institusi:</span>
+                        <span className="font-mono font-extrabold text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                          {sitePengaturan?.bsi_va_prefix || '9023'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-indigo-950 dark:text-indigo-200">Format Pola VA:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {sitePengaturan?.bsi_va_format === '{PREFIX}{UNIT_CODE}{NIS}' ? 'Kode Biller + Unit + NIS' : 'Kode Biller + NIS'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-indigo-200/60 dark:border-indigo-800/40">
+                        <span className="font-bold text-indigo-950 dark:text-indigo-200">Cakupan Filter:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {unitFilter && unitFilter !== 'Semua' ? 'Unit Aktif Terfilter' : 'Seluruh Unit Pendidikan'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Opsi Timpa Data Lama */}
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-900">
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={forceOverwriteVa}
+                          onChange={(e) => setForceOverwriteVa(e.target.checked)}
+                          className="mt-0.5 size-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <div className="text-xs">
+                          <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                            Timpa juga siswa yang sudah memiliki Nomor VA
+                          </span>
+                          <span className="text-slate-500 dark:text-slate-400 block mt-0.5">
+                            Secara default, sistem hanya mengenerate nomor VA untuk siswa yang nomor VA / NIS pembayarannya masih kosong.
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      *Setelah digenerate, orang tua siswa akan langsung melihat Nomor Virtual Account ini di Portal Tagihan dan Aplikasi Mobile untuk pembayaran biaya pendidikan.
+                    </p>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between border-t border-slate-100 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                      type="button"
+                      disabled={isGeneratingVa}
+                      onClick={() => setShowGenerateVaModal(false)}
+                      className="rounded-2xl border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 text-xs font-bold cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isGeneratingVa}
+                      onClick={handleGenerateVaBsi}
+                      className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 text-white px-5 py-2 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition disabled:opacity-50 cursor-pointer"
+                    >
+                      {isGeneratingVa ? 'Memproses...' : 'Mulai Generate VA BSI'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
         </MasterDataPage>
       </motion.div>
 
-      {/* Toast Stack Notification Container */}
-      <ToastStack items={toasts} onDismiss={dismissToast} />
     </PageContainer>
   )
 }

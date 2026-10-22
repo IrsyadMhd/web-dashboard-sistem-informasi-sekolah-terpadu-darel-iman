@@ -1,10 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { ArrowBothDirectionHorizontal2 } from '@tailgrids/icons'
-import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../tailgrids/core/table'
-import { Pagination } from '../tailgrids/core/pagination'
-import { Checkbox } from '../tailgrids/core/checkbox'
+import { ChevronsUpDown, Layers } from 'lucide-react'
+import { TableRoot, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/table'
+import { Pagination } from '../ui/pagination'
+import { Checkbox } from '../ui/checkbox'
 import { cn } from '../../lib/utils'
-import { Layers } from 'lucide-react'
 import AppSearch from './AppSearch'
 import AppPagination from './AppPagination'
 import AppEmptyState from './AppEmptyState'
@@ -393,7 +392,7 @@ export default function AppDataTable({
                             className="inline-flex items-center gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer hover:text-slate-900 dark:hover:text-white text-[11px] font-extrabold"
                           >
                             <span>{col.label}</span>
-                            <ArrowBothDirectionHorizontal2 className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200 print:hidden', sortKey === col.key ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400 dark:text-slate-500')} />
+                            <ChevronsUpDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform duration-200 print:hidden', sortKey === col.key ? 'text-emerald-600 dark:text-emerald-400 rotate-180' : 'text-slate-400 dark:text-slate-500')} />
                           </button>
                         ) : (
                           col.label
@@ -412,15 +411,22 @@ export default function AppDataTable({
                 {visibleData.map((row, rowIdx) => {
                   const rowKey = row?.[keyField] ?? rowIdx
                   const selected = selectedKeys.includes(rowKey)
+                  const canClickRow = Boolean(onRowClick || onView)
+                  const handleRowClick = onRowClick
+                    ? () => onRowClick(row)
+                    : onView
+                    ? () => onView(row)
+                    : undefined
                   return (
                     <TableRow
                       key={rowKey}
                       data-state={selected ? 'selected' : undefined}
-                      onClick={onRowClick ? () => onRowClick(row) : undefined}
+                      onClick={handleRowClick}
+                      title={canClickRow ? 'Klik baris untuk melihat detail' : undefined}
                       className={cn(
                         'border-b border-emerald-100/90 dark:border-emerald-900/40 transition-all duration-200 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 hover:shadow-xs',
                         selected && 'bg-emerald-50/50 dark:bg-emerald-950/30',
-                        onRowClick && 'cursor-pointer'
+                        canClickRow && 'cursor-pointer'
                       )}
                     >
                       {onToggleSelect && (

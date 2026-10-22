@@ -28,9 +28,12 @@ import {
 import ActionDropdown from '../components/app/ActionDropdown'
 import { equranService } from '../services/equranService'
 import PageContainer from '../components/app/PageContainer'
+import { useToast } from '../components/app'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useDebounce } from '../hooks/useDebounce'
 import { Pagination } from '../components/tailgrids/core/pagination'
+import { printCleanTable, resolveFoundationName } from '../utils/printHelper'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 import {
   MasterActionButton,
   MasterDataPage,
@@ -281,63 +284,10 @@ function HarmonizedDeleteAllModal({ isOpen, onClose, onConfirm, isSubmitting }) 
   )
 }
 
-function ToastStack({ toasts, onDismiss }) {
-  return (
-    <aside
-      aria-label="Notifikasi sistem"
-      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0"
-    >
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-              toast.type === 'error'
-                ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                : toast.type === 'warning'
-                ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
-                : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-            }`}
-          >
-            <div
-              className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                toast.type === 'error'
-                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : toast.type === 'warning'
-                  ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-              }`}
-            >
-              {toast.type === 'error' ? (
-                <AlertTriangle className="size-4.5" />
-              ) : toast.type === 'warning' ? (
-                <AlertTriangle className="size-4.5" />
-              ) : (
-                <Check className="size-4.5" />
-              )}
-            </div>
-            <div className="flex-1 pt-0.5">
-              <p className="text-xs font-bold leading-relaxed">{toast.message}</p>
-            </div>
-            <button
-              onClick={() => onDismiss(toast.id)}
-              className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
-            >
-              <X className="size-4" />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </aside>
-  )
-}
-
 export default function MasterDoaPage() {
   const [doas, setDoas] = useState([])
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const [grupOptions, setGrupOptions] = useState([])
   const [tagOptions, setTagOptions] = useState([])
   const [stats, setStats] = useState({ total_doa: 0, total_grup: 0, total_tag: 0 })
@@ -365,25 +315,15 @@ export default function MasterDoaPage() {
   const [selectedDoa, setSelectedDoa] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
 
-  // Harmonized Modals & Toasts
-  const [toasts, setToasts] = useState([])
+  // Modal State for Delete
   const [deleteItem, setDeleteItem] = useState(null)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false)
   const [isDeletingAll, setIsDeletingAll] = useState(false)
 
-  const pushToast = (message, type = 'success') => {
-    const id = Date.now() + Math.random().toString(36).slice(2, 6)
-    setToasts((prev) => [...prev, { id, message, type }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
-  }
-
-  const dismissToast = (id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }
+  // Global Toast
+  const { pushToast } = useToast()
 
   // Fetch Doa list from Backend Database
   const fetchDoas = async () => {
@@ -668,7 +608,7 @@ export default function MasterDoaPage() {
         </div>
       </div>
 
-      <MasterDataPage className="education-unit-page doa-master-page space-y-6" hideBreadcrumb>
+      <MasterDataPage className="doa-master-page space-y-6" hideBreadcrumb>
       {/* Summary Cards Grid (ModernKpiCard with MODERN_CARD_TONES & Ambient Glow) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         <ModernKpiCard
@@ -755,7 +695,23 @@ export default function MasterDoaPage() {
                   type="button"
                   title="Cetak Kumpulan Doa"
                   aria-label="Cetak Kumpulan Doa"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    const rows = (filteredDoas || []).map((d, idx) => [
+                      idx + 1,
+                      d.judul || '-',
+                      d.grup || '-',
+                      d.arab || '-',
+                      d.terjemah || d.arti || '-',
+                      d.sumber || d.riwayat || '-',
+                    ])
+                    printCleanTable({
+                      title: 'KUMPULAN DOA & DZIKIR HARIAN',
+                      subtitle: `Data Master Panduan Doa ${foundationName}`,
+                      headers: ['No', 'Judul Doa', 'Kategori', 'Lafadz Arab', 'Terjemahan', 'Sumber/Riwayat'],
+                      rows,
+                      orientation: 'landscape',
+                    })
+                  }}
                   className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 transition-all duration-200 active:scale-95 cursor-pointer"
                 >
                   <Printer className="size-5 text-white" strokeWidth={2.2} />
@@ -1417,7 +1373,6 @@ export default function MasterDoaPage() {
         isSubmitting={isDeletingAll}
       />
 
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </MasterDataPage>
     </PageContainer>
   )

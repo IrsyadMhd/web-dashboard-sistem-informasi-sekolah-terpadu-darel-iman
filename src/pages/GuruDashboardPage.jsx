@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '../components/app/ToastProvider'
 import {
   Calendar,
   Users,
@@ -22,6 +23,7 @@ import {
   X,
   FileText,
   Paperclip,
+  ShieldAlert,
 } from 'lucide-react'
 
 import {
@@ -71,26 +73,19 @@ export default function GuruDashboardPage() {
   const [activeModal, setActiveModal] = useState(null)
   const [selectedScheduleDetail, setSelectedScheduleDetail] = useState(null)
 
+  const toast = useToast()
   // Quick Action Modal States
   const [quickModal, setQuickModal] = useState(null) // 'presensi' | 'materi' | 'penugasan' | 'pengumpulan-tugas' | 'jadwal'
-  const [quickAlert, setQuickAlert] = useState(null)
 
   // Form States for Presensi Modal
   const [presensiJadwalId, setPresensiJadwalId] = useState('')
   const [presensiTanggal, setPresensiTanggal] = useState(new Date().toISOString().split('T')[0])
   const [presensiCatatan, setPresensiCatatan] = useState('')
-  const [presensiSiswaList, setPresensiSiswaList] = useState([
-    { id: 1, nis: '20261001', nama: 'Ahmad Dahlan', gender: 'L', status: 'Hadir' },
-    { id: 2, nis: '20261002', nama: 'Fatimah Az-Zahra', gender: 'P', status: 'Hadir' },
-    { id: 3, nis: '20261003', nama: 'Muhammad Rizky', gender: 'L', status: 'Izin' },
-    { id: 4, nis: '20261004', nama: 'Siti Nurhaliza', gender: 'P', status: 'Hadir' },
-    { id: 5, nis: '20261005', nama: 'Budi Santoso', gender: 'L', status: 'Sakit' },
-    { id: 6, nis: '20261006', nama: 'Aisyah Putri', gender: 'P', status: 'Hadir' },
-  ])
+  const [presensiSiswaList, setPresensiSiswaList] = useState([])
 
   // Form States for Materi Modal
   const [materiJudul, setMateriJudul] = useState('')
-  const [materiKelasMapel, setMateriKelasMapel] = useState('Matematika - X IPA 1')
+  const [materiKelasMapel, setMateriKelasMapel] = useState('')
   const [materiDeskripsi, setMateriDeskripsi] = useState('')
   const [materiAttachmentUrl, setMateriAttachmentUrl] = useState('')
   const [materiVideoUrl, setMateriVideoUrl] = useState('')
@@ -98,30 +93,36 @@ export default function GuruDashboardPage() {
 
   // Form States for Penugasan Modal
   const [tugasJudul, setTugasJudul] = useState('')
-  const [tugasKelasMapel, setTugasKelasMapel] = useState('Matematika - X IPA 1')
+  const [tugasKelasMapel, setTugasKelasMapel] = useState('')
   const [tugasDeadline, setTugasDeadline] = useState('')
   const [tugasMaxScore, setTugasMaxScore] = useState(100)
   const [tugasInstruksi, setTugasInstruksi] = useState('')
   const [tugasAllowLate, setTugasAllowLate] = useState(true)
 
   // Form States for Pengumpulan Tugas / Penilaian Modal
-  const [selectedTugasId, setSelectedTugasId] = useState('1')
-  const [penilaianSiswaList, setPenilaianSiswaList] = useState([
-    { id: 1, nis: '20261001', nama: 'Ahmad Dahlan', status: 'Sudah Mengumpulkan', nilai: 88, catatan: 'Sangat baik, penjelasan runut' },
-    { id: 2, nis: '20261002', nama: 'Fatimah Az-Zahra', status: 'Sudah Mengumpulkan', nilai: 95, catatan: 'Lengkap dan akurat' },
-    { id: 3, nis: '20261003', nama: 'Muhammad Rizky', status: 'Sudah Mengumpulkan', nilai: 78, catatan: 'Perbaiki nomor 3' },
-    { id: 4, nis: '20261004', nama: 'Siti Nurhaliza', status: 'Belum Mengumpulkan', nilai: 0, catatan: 'Belum submit' },
-    { id: 5, nis: '20261005', nama: 'Budi Santoso', status: 'Sudah Mengumpulkan', nilai: 85, catatan: 'Tugas rapi' },
-  ])
+  const [selectedTugasId, setSelectedTugasId] = useState('')
+  const [penilaianSiswaList, setPenilaianSiswaList] = useState([])
 
   // State for Schedule Modal Search
   const [scheduleSearch, setScheduleSearch] = useState('')
 
+  // Form States for Catat Pelanggaran Modal (Tahap 1)
+  const [pelanggaranJadwalId, setPelanggaranJadwalId] = useState('')
+  const [pelanggaranSiswaList, setPelanggaranSiswaList] = useState([])
+  const [pelanggaranStudentId, setPelanggaranStudentId] = useState('')
+  const [pelanggaranKategoriId, setPelanggaranKategoriId] = useState('')
+  const [pelanggaranPoin, setPelanggaranPoin] = useState(5)
+  const [pelanggaranDeskripsi, setPelanggaranDeskripsi] = useState('')
+  const [pelanggaranRujukBk, setPelanggaranRujukBk] = useState(false)
+  const [pelanggaranSaving, setPelanggaranSaving] = useState(false)
+  const [disciplineCategories, setDisciplineCategories] = useState([])
+
   const triggerAlert = (type, title, message) => {
-    setQuickAlert({ type, title, message })
-    setTimeout(() => {
-      setQuickAlert(null)
-    }, 4500)
+    if (toast[type]) {
+      toast[type](title, message)
+    } else {
+      toast.push(type, message, title)
+    }
   }
 
   const fetchDashboard = async () => {
@@ -153,8 +154,22 @@ export default function GuruDashboardPage() {
   const academicContext = data?.academic_context || {}
   const kpis = data?.kpi || {}
   const schedulesToday = data?.schedules_today || []
-  const announcements = data?.announcements || []
   const teacherAttendanceLogs = data?.teacher_attendance_logs || []
+  const announcements = data?.announcements || []
+
+  const teacherClasses = useMemo(() => {
+    if (!Array.isArray(schedulesToday) || schedulesToday.length === 0) return []
+    const seen = new Set()
+    const result = []
+    schedulesToday.forEach((s) => {
+      const val = `${s.mapel || s.subject_name || 'Mapel'} - ${s.kelas || s.class_name || 'Kelas'}`
+      if (!seen.has(val)) {
+        seen.add(val)
+        result.push(val)
+      }
+    })
+    return result
+  }, [schedulesToday])
 
   const formatNumber = (num) => (num !== undefined && num !== null ? Number(num).toLocaleString('id-ID') : '0')
 
@@ -206,6 +221,102 @@ export default function GuruDashboardPage() {
     e?.preventDefault()
     triggerAlert('success', 'Penilaian Disimpan', `Data nilai tugas siswa telah berhasil diperbarui di sistem.`)
     setQuickModal(null)
+  }
+
+  const loadStudentsForSchedule = async (schId) => {
+    if (!schId) {
+      setPelanggaranSiswaList([])
+      setPelanggaranStudentId('')
+      return
+    }
+    const selectedSchedule = schedulesToday.find((s) => String(s.id) === String(schId))
+    const classId = selectedSchedule?.class_id || selectedSchedule?.kelas_id || selectedSchedule?.kelas?.id
+    try {
+      const res = await api.get('/teacher/students', { params: { class_id: classId } })
+      const list = res.data?.data?.data || res.data?.data || []
+      setPelanggaranSiswaList(list)
+      if (list.length > 0) {
+        setPelanggaranStudentId(list[0].id)
+      } else {
+        setPelanggaranStudentId('')
+      }
+    } catch (err) {
+      console.error('Failed to load students:', err)
+      setPelanggaranSiswaList([])
+      setPelanggaranStudentId('')
+    }
+  }
+
+  const handleOpenPelanggaranModal = async () => {
+    setQuickModal('pelanggaran')
+    setPelanggaranDeskripsi('')
+    setPelanggaranRujukBk(false)
+    const initialSchId = schedulesToday.length > 0 ? String(schedulesToday[0].id) : ''
+    setPelanggaranJadwalId(initialSchId)
+    if (initialSchId) {
+      loadStudentsForSchedule(initialSchId)
+    }
+    if (disciplineCategories.length === 0) {
+      try {
+        const res = await api.get('/teacher/discipline-categories?type=violation')
+        const items = res.data?.data || []
+        setDisciplineCategories(items)
+        if (items.length > 0) {
+          setPelanggaranKategoriId(items[0].id)
+          setPelanggaranPoin(Math.abs(items[0].point_weight || 5))
+        }
+      } catch (err) {
+        console.error('Failed to load discipline categories:', err)
+      }
+    }
+  }
+
+  const handlePelanggaranCategoryChange = (catId) => {
+    setPelanggaranKategoriId(catId)
+    const found = disciplineCategories.find((c) => String(c.id) === String(catId))
+    if (found) {
+      setPelanggaranPoin(Math.abs(found.point_weight || 5))
+    }
+  }
+
+  const handleSavePelanggaran = async (e) => {
+    e?.preventDefault()
+    if (!pelanggaranStudentId) {
+      triggerAlert('error', 'Santri Wajib Dipilih', 'Mohon pilih santri yang melanggar dari daftar kelas.')
+      return
+    }
+    if (!pelanggaranDeskripsi.trim()) {
+      triggerAlert('warning', 'Deskripsi Wajib Diisi', 'Mohon isi catatan atau kronologi pelanggaran santri.')
+      return
+    }
+    setPelanggaranSaving(true)
+    try {
+      const selectedSchedule = schedulesToday.find((s) => String(s.id) === String(pelanggaranJadwalId))
+      await api.post('/teacher/discipline-violations', {
+        student_id: pelanggaranStudentId,
+        category_id: pelanggaranKategoriId,
+        points: -Math.abs(pelanggaranPoin),
+        custom_points: pelanggaranPoin,
+        description: pelanggaranDeskripsi.trim(),
+        transaction_date: new Date().toISOString().split('T')[0],
+        status: pelanggaranRujukBk ? 'dirujuk_bk' : 'tercatat',
+        follow_up: pelanggaranRujukBk ? 'Dirujuk ke Guru BK / Wali Kelas' : null,
+        class_id: selectedSchedule?.class_id || selectedSchedule?.kelas_id || null,
+        schedule_id: pelanggaranJadwalId || null,
+      })
+      triggerAlert(
+        'success',
+        'Pelanggaran Berhasil Dicatat',
+        `Pelanggaran santri telah dicatat (-${pelanggaranPoin} poin) dan disinkronkan ke Catatan Siswa & Portal Orang Tua.`
+      )
+      setQuickModal(null)
+      setPelanggaranDeskripsi('')
+    } catch (err) {
+      console.error('Failed to save discipline violation:', err)
+      triggerAlert('error', 'Gagal Menyimpan', err.response?.data?.message || 'Gagal menyimpan catatan pelanggaran santri.')
+    } finally {
+      setPelanggaranSaving(false)
+    }
   }
 
   const scheduleColumns = [
@@ -280,15 +391,6 @@ export default function GuruDashboardPage() {
   return (
     <PageContainer maxW="7xl">
       <div className="space-y-6 pb-12">
-      {/* Toast Alert Banner */}
-      {quickAlert && (
-        <div className="fixed top-5 right-5 z-50 max-w-md animate-fade-in shadow-xl">
-          <Alert status={quickAlert.type === 'success' ? 'success' : 'error'} variant="solid">
-            <AlertTitle>{quickAlert.title}</AlertTitle>
-            <AlertDescription>{quickAlert.message}</AlertDescription>
-          </Alert>
-        </div>
-      )}
 
       {/* Breadcrumb Navigation */}
       <AppBreadcrumb items={[{ label: 'Portal Guru Mata Pelajaran' }]} />
@@ -367,7 +469,7 @@ export default function GuruDashboardPage() {
               <button
                 type="button"
                 aria-label="Input Presensi"
-                onClick={() => setQuickModal('presensi')}
+                onClick={() => navigate('/dashboard/absensi-pembelajaran')}
                 className="flex size-10 items-center justify-center rounded-2xl bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-500 dark:hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
               >
                 <CheckCircle2 className="size-5 transition-colors" />
@@ -383,7 +485,7 @@ export default function GuruDashboardPage() {
               <button
                 type="button"
                 aria-label="Tambah Materi"
-                onClick={() => setQuickModal('materi')}
+                onClick={() => navigate('/dashboard/lms/materi')}
                 className="flex size-10 items-center justify-center rounded-2xl bg-sky-100/90 text-sky-700 hover:bg-sky-600 hover:text-white dark:bg-sky-950/60 dark:text-sky-300 dark:hover:bg-sky-500 dark:hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
               >
                 <FilePlus className="size-5 transition-colors" />
@@ -399,7 +501,7 @@ export default function GuruDashboardPage() {
               <button
                 type="button"
                 aria-label="Buat Tugas"
-                onClick={() => setQuickModal('penugasan')}
+                onClick={() => navigate('/portal-guru/workspace?tab=penugasan')}
                 className="flex size-10 items-center justify-center rounded-2xl bg-purple-100/90 text-purple-700 hover:bg-purple-600 hover:text-white dark:bg-purple-950/60 dark:text-purple-300 dark:hover:bg-purple-500 dark:hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
               >
                 <BookMarked className="size-5 transition-colors" />
@@ -415,7 +517,7 @@ export default function GuruDashboardPage() {
               <button
                 type="button"
                 aria-label="Nilai Tugas"
-                onClick={() => setQuickModal('pengumpulan-tugas')}
+                onClick={() => navigate('/portal-guru/workspace?tab=penugasan')}
                 className="flex size-10 items-center justify-center rounded-2xl bg-amber-100/90 text-amber-700 hover:bg-amber-600 hover:text-white dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-500 dark:hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
               >
                 <FileCheck className="size-5 transition-colors" />
@@ -426,13 +528,29 @@ export default function GuruDashboardPage() {
               </div>
             </div>
 
-            {/* 5. Lihat Jadwal (Rose/Pink Squircle) */}
+            {/* 5. Catat Pelanggaran (Rose/Red Squircle) */}
+            <div className="group relative inline-flex">
+              <button
+                type="button"
+                aria-label="Catat Pelanggaran"
+                onClick={handleOpenPelanggaranModal}
+                className="flex size-10 items-center justify-center rounded-2xl bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-500 dark:hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+              >
+                <ShieldAlert className="size-5 transition-colors" />
+              </button>
+              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
+                <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
+                Catat Pelanggaran
+              </div>
+            </div>
+
+            {/* 6. Lihat Jadwal (Indigo/Violet Squircle) */}
             <div className="group relative inline-flex">
               <button
                 type="button"
                 aria-label="Lihat Jadwal"
-                onClick={() => setQuickModal('jadwal')}
-                className="flex size-10 items-center justify-center rounded-2xl bg-rose-100/90 text-rose-700 hover:bg-rose-600 hover:text-white dark:bg-rose-950/60 dark:text-rose-300 dark:hover:bg-rose-500 dark:hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                onClick={() => navigate('/portal-guru/workspace?tab=jadwal')}
+                className="flex size-10 items-center justify-center rounded-2xl bg-indigo-100/90 text-indigo-700 hover:bg-indigo-600 hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-500 dark:hover:text-white transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
               >
                 <CalendarDays className="size-5 transition-colors" />
               </button>
@@ -580,11 +698,7 @@ export default function GuruDashboardPage() {
                         </option>
                       ))
                     ) : (
-                      <>
-                        <option value="1">Matematika - Kelas X IPA 1 (07:30 - 09:00)</option>
-                        <option value="2">Fisika - Kelas XI MIPA 2 (09:15 - 10:45)</option>
-                        <option value="3">Informatika - Kelas X IPA 2 (11:00 - 12:30)</option>
-                      </>
+                      <option value="" disabled>(Belum ada jadwal mengajar aktif hari ini)</option>
                     )}
                   </select>
                 </div>
@@ -640,7 +754,12 @@ export default function GuruDashboardPage() {
 
               {/* Student Attendance List */}
               <div className="max-h-60 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
-                {presensiSiswaList.map((siswa) => (
+                {presensiSiswaList.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                    Belum ada siswa terdaftar pada rombel / sesi kelas ini.
+                  </div>
+                ) : (
+                  presensiSiswaList.map((siswa) => (
                   <div key={siswa.id} className="flex items-center justify-between p-2.5 hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
@@ -674,7 +793,8 @@ export default function GuruDashboardPage() {
                       })}
                     </div>
                   </div>
-                ))}
+                ))
+              )}
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -757,10 +877,14 @@ export default function GuruDashboardPage() {
                   onChange={(e) => setMateriKelasMapel(e.target.value)}
                   className="w-full rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium transition-all duration-300 ease-in-out focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/20 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/30 focus:outline-none"
                 >
-                  <option value="Matematika - X IPA 1">Matematika Wajib - Kelas X IPA 1</option>
-                  <option value="Matematika - X IPA 2">Matematika Wajib - Kelas X IPA 2</option>
-                  <option value="Fisika - XI MIPA 2">Fisika Peminatan - Kelas XI MIPA 2</option>
-                  <option value="Informatika - X IPA 1">Informatika - Kelas X IPA 1</option>
+                  <option value="">-- Pilih Target Kelas & Mapel --</option>
+                  {teacherClasses.length === 0 ? (
+                    <option value="" disabled>(Belum ada jadwal mengajar aktif)</option>
+                  ) : (
+                    teacherClasses.map((tc) => (
+                      <option key={tc} value={tc}>{tc}</option>
+                    ))
+                  )}
                 </select>
               </div>
 
@@ -895,10 +1019,14 @@ export default function GuruDashboardPage() {
                   onChange={(e) => setTugasKelasMapel(e.target.value)}
                   className="w-full rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium transition-all duration-300 ease-in-out focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/20 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/30 focus:outline-none"
                 >
-                  <option value="Matematika - X IPA 1">Matematika Wajib - Kelas X IPA 1</option>
-                  <option value="Matematika - X IPA 2">Matematika Wajib - Kelas X IPA 2</option>
-                  <option value="Fisika - XI MIPA 2">Fisika Peminatan - Kelas XI MIPA 2</option>
-                  <option value="Informatika - X IPA 1">Informatika - Kelas X IPA 1</option>
+                  <option value="">-- Pilih Target Kelas & Mapel --</option>
+                  {teacherClasses.length === 0 ? (
+                    <option value="" disabled>(Belum ada jadwal mengajar aktif)</option>
+                  ) : (
+                    teacherClasses.map((tc) => (
+                      <option key={tc} value={tc}>{tc}</option>
+                    ))
+                  )}
                 </select>
               </div>
 
@@ -1037,9 +1165,8 @@ export default function GuruDashboardPage() {
                   onChange={(e) => setSelectedTugasId(e.target.value)}
                   className="w-full rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium transition-all duration-300 ease-in-out focus:border-[#0E5C44] focus:ring-4 focus:ring-[#0E5C44]/20 dark:focus:border-[#3FBF75] dark:focus:ring-[#3FBF75]/30 focus:outline-none"
                 >
-                  <option value="1">Tugas 1: Latihan Persamaan Kuadrat (X IPA 1)</option>
-                  <option value="2">Tugas 2: Modul Eksponen & Logaritma (X IPA 2)</option>
-                  <option value="3">Tugas 3: Praktikum Hukum Newton (XI MIPA 2)</option>
+                  <option value="">-- Pilih Tugas yang Dinilai --</option>
+                  <option value="" disabled>(Belum ada penugasan yang aktif)</option>
                 </select>
               </div>
 
@@ -1055,7 +1182,14 @@ export default function GuruDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {penilaianSiswaList.map((item) => (
+                    {penilaianSiswaList.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                          Belum ada pengumpulan tugas dari siswa.
+                        </td>
+                      </tr>
+                    ) : (
+                      penilaianSiswaList.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                         <td className="px-3 py-2 font-bold text-slate-900 dark:text-slate-100">
                           {item.nama}
@@ -1099,7 +1233,8 @@ export default function GuruDashboardPage() {
                           />
                         </td>
                       </tr>
-                    ))}
+                    ))
+                  )}
                   </tbody>
                 </table>
               </div>
@@ -1173,17 +1308,18 @@ export default function GuruDashboardPage() {
 
             {/* Schedule Cards List */}
             <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-              {(schedulesToday.length > 0 ? schedulesToday : [
-                { id: 1, subject: { nama_mapel: 'Matematika Wajib' }, kelas: { nama_kelas: 'X IPA 1' }, room: 'Ruang A-101', time_start: '07:30', time_end: '09:00' },
-                { id: 2, subject: { nama_mapel: 'Fisika Peminatan' }, kelas: { nama_kelas: 'XI MIPA 2' }, room: 'Lab Fisika', time_start: '09:15', time_end: '10:45' },
-                { id: 3, subject: { nama_mapel: 'Informatika' }, kelas: { nama_kelas: 'X IPA 2' }, room: 'Lab Komputer 1', time_start: '11:00', time_end: '12:30' },
-              ])
-                .filter((sch) => {
-                  const mapel = sch.subject?.nama_mapel || sch.subject?.name || ''
-                  const kelas = sch.kelas?.nama_kelas || ''
-                  return mapel.toLowerCase().includes(scheduleSearch.toLowerCase()) || kelas.toLowerCase().includes(scheduleSearch.toLowerCase())
-                })
-                .map((sch) => (
+              {schedulesToday.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400 dark:text-slate-500 font-medium">
+                  Tidak ada jadwal mengajar aktif hari ini.
+                </div>
+              ) : (
+                schedulesToday
+                  .filter((sch) => {
+                    const mapel = sch.subject?.nama_mapel || sch.subject?.name || ''
+                    const kelas = sch.kelas?.nama_kelas || ''
+                    return mapel.toLowerCase().includes(scheduleSearch.toLowerCase()) || kelas.toLowerCase().includes(scheduleSearch.toLowerCase())
+                  })
+                  .map((sch) => (
                   <div
                     key={sch.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 transition hover:border-[#0E5C44]/40"
@@ -1225,7 +1361,8 @@ export default function GuruDashboardPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                ))
+              )}
             </div>
           </DialogBody>
 
@@ -1246,6 +1383,181 @@ export default function GuruDashboardPage() {
               </div>
             </div>
           </DialogFooter>
+        </Dialog>
+      )}
+
+      {/* 6. Modal Catat Pelanggaran & Poin Disiplin Santri (Tahap 1) */}
+      {quickModal === 'pelanggaran' && (
+        <Dialog
+          isOpen={quickModal === 'pelanggaran'}
+          onOpenChange={(open) => !open && !pelanggaranSaving && setQuickModal(null)}
+          className="w-full max-w-xl"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+              <ShieldAlert className="size-5 text-rose-600 dark:text-rose-400" />
+              Catat Pelanggaran & Poin Disiplin Santri
+            </DialogTitle>
+            <DialogDescription>
+              Catatan kedisiplinan ini otomatis tercatat di Buku Poin Santri dan disinkronkan ke Catatan Siswa di Portal Orang Tua.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSavePelanggaran}>
+            <DialogBody className="space-y-4 py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="pelanggaran-jadwal" className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                    Pilih Kelas / Jadwal Pertemuan <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    id="pelanggaran-jadwal"
+                    disabled={pelanggaranSaving}
+                    value={pelanggaranJadwalId}
+                    onChange={(e) => {
+                      setPelanggaranJadwalId(e.target.value)
+                      loadStudentsForSchedule(e.target.value)
+                    }}
+                    className="w-full rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium transition-all duration-300 ease-in-out focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 dark:focus:border-rose-400 dark:focus:ring-rose-400/30 focus:outline-none"
+                  >
+                    <option value="">-- Pilih Jadwal & Kelas --</option>
+                    {schedulesToday.map((sch) => (
+                      <option key={sch.id} value={sch.id}>
+                        {sch.subject?.nama_mapel || sch.subject?.name} - {sch.kelas?.nama_kelas || 'Kelas'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="pelanggaran-student" className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                    Pilih Santri <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    id="pelanggaran-student"
+                    disabled={pelanggaranSaving || pelanggaranSiswaList.length === 0}
+                    value={pelanggaranStudentId}
+                    onChange={(e) => setPelanggaranStudentId(e.target.value)}
+                    required
+                    className="w-full rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium transition-all duration-300 ease-in-out focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 dark:focus:border-rose-400 dark:focus:ring-rose-400/30 focus:outline-none"
+                  >
+                    {pelanggaranSiswaList.length > 0 ? (
+                      pelanggaranSiswaList.map((st) => (
+                        <option key={st.id} value={st.id}>
+                          {st.full_name || st.name} ({st.nis || st.nisn || '-'})
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>(Pilih jadwal kelas terlebih dahulu)</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="pelanggaran-kategori" className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                  Kategori Pelanggaran <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  id="pelanggaran-kategori"
+                  disabled={pelanggaranSaving}
+                  value={pelanggaranKategoriId}
+                  onChange={(e) => handlePelanggaranCategoryChange(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-medium transition-all duration-300 ease-in-out focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 dark:focus:border-rose-400 dark:focus:ring-rose-400/30 focus:outline-none"
+                >
+                  {disciplineCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      [{cat.code || 'VIO'}] {cat.name} ({cat.point_weight || -5} poin) - Level {cat.level || 'ringan'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="pelanggaran-poin" className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                    Bobot Poin Pengurangan <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-rose-600 font-bold dark:text-rose-400">
+                    Mengurangi total poin santri
+                  </span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-rose-600">-</span>
+                  <input
+                    id="pelanggaran-poin"
+                    type="number"
+                    min={1}
+                    max={100}
+                    disabled={pelanggaranSaving}
+                    value={pelanggaranPoin}
+                    onChange={(e) => setPelanggaranPoin(Math.max(1, parseInt(e.target.value || '1', 10)))}
+                    className="w-full pl-7 rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs font-black text-slate-900 dark:text-slate-100 transition-all duration-300 ease-in-out focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 dark:focus:border-rose-400 dark:focus:ring-rose-400/30 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="pelanggaran-deskripsi" className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                  Kronologi / Catatan Kejadian <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  id="pelanggaran-deskripsi"
+                  rows={3}
+                  disabled={pelanggaranSaving}
+                  value={pelanggaranDeskripsi}
+                  onChange={(e) => setPelanggaranDeskripsi(e.target.value)}
+                  placeholder="Tuliskan catatan detail kronologi pelanggaran saat jam pelajaran..."
+                  required
+                  className="w-full rounded-xl border border-slate-300/80 bg-white dark:bg-slate-800/80 dark:border-slate-700 px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 font-medium transition-all duration-300 ease-in-out focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 dark:focus:border-rose-400 dark:focus:ring-rose-400/30 focus:outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
+                <input
+                  type="checkbox"
+                  id="pelanggaranRujukBk"
+                  disabled={pelanggaranSaving}
+                  checked={pelanggaranRujukBk}
+                  onChange={(e) => setPelanggaranRujukBk(e.target.checked)}
+                  className="size-4 rounded text-rose-600 focus:ring-rose-500 cursor-pointer"
+                />
+                <label htmlFor="pelanggaranRujukBk" className="text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                  Rujuk kasus ini langsung ke Guru BK / Wali Kelas
+                </label>
+              </div>
+
+              <div className="rounded-xl bg-rose-50 p-3 text-[11px] text-rose-900 border border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60 flex items-start gap-2">
+                <AlertCircle className="size-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Transparan ke Orang Tua</p>
+                  <p className="text-[11px] text-rose-800 dark:text-rose-300">
+                    Catatan pelanggaran ini akan langsung muncul di <b>Portal Orang Tua (Web & Mobile App)</b> dan riwayat pembinaan santri.
+                  </p>
+                </div>
+              </div>
+            </DialogBody>
+
+            <DialogFooter className="mt-4 flex items-center justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={pelanggaranSaving}
+                onClick={() => setQuickModal(null)}
+                className="rounded-xl px-4 py-2 text-xs font-bold"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={pelanggaranSaving}
+                className="rounded-xl px-5 py-2 text-xs font-extrabold bg-gradient-to-r from-rose-600 to-red-600 text-white hover:from-rose-700 hover:to-red-700 shadow-md shadow-rose-600/20 active:scale-95"
+              >
+                <ShieldAlert className="size-4 mr-1.5" />
+                {pelanggaranSaving ? 'Menyimpan...' : 'Simpan Pelanggaran'}
+              </Button>
+            </DialogFooter>
+          </form>
         </Dialog>
       )}
     </div>

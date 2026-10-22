@@ -21,6 +21,8 @@ import {
   UserX,
   FileSpreadsheet,
   FileText,
+  CheckCircle2,
+  Calculator,
 } from 'lucide-react'
 import api from '../services/api'
 import { useAuthStore } from '../stores/authStore'
@@ -133,6 +135,66 @@ const MODAL_CONFIGS = {
     endpoint: '/teacher/student-notes',
     linkTo: '/portal-guru/workspace',
   },
+  kehadiran_guru: {
+    title: 'Data Kehadiran Guru Mengajar Hari Ini',
+    subtitle: 'Rincian Sesi Kehadiran Guru Mengajar dan Presensi Kelas Hari Ini',
+    icon: UserCheck,
+    endpoint: '/foundation/teachers',
+    linkTo: '/dashboard/laporan-absensi',
+    formula: 'Persentase Kehadiran Guru = (Sesi Guru Hadir Mengajar / Total Sesi Terjadwal) × 100%',
+    numeratorLabel: 'Sesi Guru Hadir Mengajar',
+    denominatorLabel: 'Total Sesi Terjadwal Hari Ini',
+  },
+  kehadiran_siswa: {
+    title: 'Data Kehadiran Siswa Hari Ini',
+    subtitle: 'Rincian Presensi Kedatangan dan Ketidakhadiran Siswa di Seluruh Unit',
+    icon: Users,
+    endpoint: '/foundation/students',
+    linkTo: '/dashboard/rekap-absensi-gerbang',
+    formula: 'Persentase Kehadiran Siswa = (Siswa Aktif Hadir / Total Siswa Aktif Terdaftar) × 100%',
+    numeratorLabel: 'Siswa Aktif Hadir Hari Ini',
+    denominatorLabel: 'Total Populasi Siswa Aktif',
+  },
+  monitoring_ibadah: {
+    title: 'Data Monitoring Ibadah Harian Santri',
+    subtitle: 'Rincian Evaluasi Mutaba’ah Yaumiyyah (Shalat, Tilawah, Muraja’ah)',
+    icon: HeartHandshake,
+    endpoint: '/foundation/students',
+    linkTo: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren',
+    formula: 'Tingkat Kepatuhan Ibadah = (Entri Ibadah Terlaksana / Total Target Jurnal Siswa) × 100%',
+    numeratorLabel: 'Entri Ibadah Terlaksana',
+    denominatorLabel: 'Total Target Jurnal Siswa',
+  },
+  input_nilai: {
+    title: 'Data Rekap & Leger Nilai Akademik',
+    subtitle: 'Rincian Entri Nilai Siswa, Leger Nilai Akhir, dan KKM per Rombel',
+    icon: CheckCircle2,
+    endpoint: '/foundation/classes',
+    linkTo: '/dashboard/laporan-akademik',
+    formula: 'Ketuntasan Leger Akademik = (Siswa Nilai Akhir ≥ KKM / Total Catatan Nilai) × 100%',
+    numeratorLabel: 'Catatan Siswa Tuntas',
+    denominatorLabel: 'Total Catatan Nilai di Leger',
+  },
+  input_tahfiz: {
+    title: 'Data Setoran Tahfizh Al-Qur’an Hari Ini',
+    subtitle: 'Rincian Setoran Hafalan Baru (Ziyadah), Muraja’ah, dan Ujian Juz',
+    icon: Sparkles,
+    endpoint: '/foundation/students',
+    linkTo: '/dashboard/laporan-tahfizh',
+    formula: 'Capaian Tahfizh = (Setoran Hafalan Hari Ini / Total Santri Binaan) × 100%',
+    numeratorLabel: 'Setoran Hafalan Tercatat',
+    denominatorLabel: 'Total Santri Terdaftar',
+  },
+  input_mutabaah: {
+    title: 'Data Jurnal Mutaba’ah Siswa Hari Ini',
+    subtitle: 'Rincian Jurnal Ibadah Harian Siswa Terverifikasi',
+    icon: HeartHandshake,
+    endpoint: '/foundation/students',
+    linkTo: '/dashboard/monitoring-tahfizh-ibadah-non-pesantren',
+    formula: 'Tingkat Partisipasi Jurnal = (Jurnal Terisi Hari Ini / Total Siswa Aktif) × 100%',
+    numeratorLabel: 'Jurnal Terisi Hari Ini',
+    denominatorLabel: 'Total Siswa Aktif',
+  },
 }
 
 const KEY_ALIASES = {
@@ -184,6 +246,13 @@ const KEY_ALIASES = {
   laporan: 'laporan_lintas_unit',
   laporan_lintas_unit: 'laporan_lintas_unit',
   total_konseling: 'total_konseling',
+
+  kehadiran_guru: 'kehadiran_guru',
+  kehadiran_siswa: 'kehadiran_siswa',
+  monitoring_ibadah: 'monitoring_ibadah',
+  input_nilai: 'input_nilai',
+  input_tahfiz: 'input_tahfiz',
+  input_mutabaah: 'input_mutabaah',
 }
 
 const kpiDataCache = new Map()
@@ -425,6 +494,16 @@ export default function KpiQuickViewModal({ type, isOpen, onClose, initialUnitId
         }
       >
         <div className="space-y-5">
+          {/* BANNER TRANSPARANSI FORMULA KPI */}
+          <RenderKpiFormulaBanner
+            config={config}
+            canAccessDetail={canAccessDetail}
+            onGoToDetail={() => {
+              onClose()
+              navigate(config.linkTo)
+            }}
+          />
+
           {/* 1. TOP SUMMARY CARDS & SPARKLINE OVERVIEW */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <RenderStatsOverview type={type} items={items} stats={stats} loading={loading} />
@@ -518,6 +597,63 @@ KpiQuickViewModal.propTypes = {
   onClose: PropTypes.func.isRequired,
 }
 
+// Sub-component: KPI Formula Transparency Banner
+function RenderKpiFormulaBanner({ config, canAccessDetail, onGoToDetail }) {
+  if (!config || !config.formula) return null
+
+  return (
+    <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/90 via-teal-50/50 to-emerald-50/90 p-4 dark:border-emerald-900/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
+              <Calculator className="h-3.5 w-3.5" />
+            </span>
+            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+              Transparansi Formula & Sumber Data KPI
+            </h4>
+          </div>
+          <p className="text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300 pl-8">
+            {config.formula}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-700 dark:text-slate-300 pl-8 md:pl-0">
+          {config.numeratorLabel && (
+            <span className="inline-flex items-center gap-1 rounded-lg bg-white/80 dark:bg-slate-800/80 px-2.5 py-1 border border-emerald-200 dark:border-emerald-800">
+              <span className="text-slate-400">Pembilang:</span>
+              <strong className="text-emerald-700 dark:text-emerald-300">{config.numeratorLabel}</strong>
+            </span>
+          )}
+          {config.denominatorLabel && (
+            <span className="inline-flex items-center gap-1 rounded-lg bg-white/80 dark:bg-slate-800/80 px-2.5 py-1 border border-emerald-200 dark:border-emerald-800">
+              <span className="text-slate-400">Penyebut:</span>
+              <strong className="text-slate-800 dark:text-slate-200">{config.denominatorLabel}</strong>
+            </span>
+          )}
+          {canAccessDetail && config.linkTo && (
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={onGoToDetail}
+              className="gap-1 rounded-lg border-emerald-600 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500 dark:text-emerald-300 font-bold px-2.5 py-1 text-[11px]"
+            >
+              <span>Telusuri Sumber</span>
+              <ArrowRight className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+RenderKpiFormulaBanner.propTypes = {
+  config: PropTypes.object,
+  canAccessDetail: PropTypes.bool,
+  onGoToDetail: PropTypes.func.isRequired,
+}
+
 // Sub-component: Statistics Summary Cards + Sparkline Badges
 function RenderStatsOverview({ type, items, stats, loading }) {
   if (loading) {
@@ -601,6 +737,42 @@ function RenderStatsOverview({ type, items, stats, loading }) {
       { label: 'Siswa Didampingi', val: new Set(items.map((i) => i.student_id)).size, trend: 'Siswa', color: 'text-blue-600' },
       { label: 'Prioritas Tinggi', val: items.filter((i) => ['tinggi', 'high', 'urgent'].includes(String(i.priority || '').toLowerCase())).length, trend: 'Prioritas', color: 'text-rose-600' },
       { label: 'Tindak Lanjut', val: items.filter((i) => Boolean(i.follow_up)).length, trend: 'Tindak Lanjut', color: 'text-amber-600' },
+    ],
+    kehadiran_guru: [
+      { label: 'Sesi Hadir', val: stats?.hadir ?? items.filter((g) => g.status === 'aktif').length, trend: 'Hadir', color: 'text-emerald-600' },
+      { label: 'Total Sesi', val: stats?.total ?? items.length, trend: 'Sesi', color: 'text-blue-600' },
+      { label: 'Izin / Sakit', val: stats?.izin ?? 0, trend: 'Izin', color: 'text-amber-600' },
+      { label: 'Belum Presensi', val: stats?.alpha ?? 0, trend: 'Belum', color: 'text-rose-600' },
+    ],
+    kehadiran_siswa: [
+      { label: 'Siswa Hadir', val: stats?.hadir ?? items.filter((s) => s.is_active).length, trend: 'Hadir', color: 'text-emerald-600' },
+      { label: 'Total Siswa', val: stats?.total ?? items.length, trend: 'Populasi', color: 'text-blue-600' },
+      { label: 'Izin / Sakit', val: stats?.izin ?? 0, trend: 'Izin', color: 'text-amber-600' },
+      { label: 'Tanpa Keterangan', val: stats?.alpha ?? 0, trend: 'Alpha', color: 'text-rose-600' },
+    ],
+    monitoring_ibadah: [
+      { label: 'Jurnal Terverifikasi', val: stats?.completed ?? items.length, trend: 'Selesai', color: 'text-emerald-600' },
+      { label: 'Target Jurnal', val: stats?.total ?? items.length, trend: 'Target', color: 'text-blue-600' },
+      { label: 'Santri Terdata', val: items.length, trend: 'Santri', color: 'text-indigo-600' },
+      { label: 'Kepatuhan', val: stats?.total ? `${Math.round(((stats.completed || 0) / stats.total) * 100)}%` : '100%', trend: 'Rasio', color: 'text-purple-600' },
+    ],
+    input_nilai: [
+      { label: 'Catatan Tuntas', val: stats?.passed ?? items.length, trend: 'Tuntas', color: 'text-emerald-600' },
+      { label: 'Total Leger', val: stats?.total ?? items.length, trend: 'Catatan', color: 'text-blue-600' },
+      { label: 'Perlu Remedial', val: stats?.remedial ?? 0, trend: 'Remedial', color: 'text-rose-600' },
+      { label: 'Target KKM', val: '75.0', trend: 'Standar', color: 'text-amber-600' },
+    ],
+    input_tahfiz: [
+      { label: 'Setoran Masuk', val: stats?.submitted ?? items.length, trend: 'Ziyadah', color: 'text-emerald-600' },
+      { label: 'Santri Terdaftar', val: stats?.total ?? items.length, trend: 'Santri', color: 'text-blue-600' },
+      { label: 'Belum Setor', val: Math.max(0, (stats?.total || items.length) - (stats?.submitted || items.length)), trend: 'Belum', color: 'text-amber-600' },
+      { label: 'Status Penilaian', val: 'Aktif', trend: 'Harian', color: 'text-indigo-600' },
+    ],
+    input_mutabaah: [
+      { label: 'Jurnal Terisi', val: stats?.completed ?? items.length, trend: 'Terisi', color: 'text-emerald-600' },
+      { label: 'Total Siswa', val: stats?.total ?? items.length, trend: 'Siswa', color: 'text-blue-600' },
+      { label: 'Belum Mengisi', val: Math.max(0, (stats?.total || items.length) - (stats?.completed || items.length)), trend: 'Belum', color: 'text-rose-600' },
+      { label: 'Validasi Ortu', val: 'Tervalidasi', trend: 'Status', color: 'text-indigo-600' },
     ],
   }
 
@@ -703,6 +875,7 @@ function RenderKpiTable({ type, items, onViewDetail }) {
       )
 
     case 'guru':
+    case 'kehadiran_guru':
       return (
         <table className="w-full text-xs text-left text-slate-700 dark:text-slate-200">
           <thead className="bg-slate-100/80 dark:bg-[#1b302c] text-slate-600 dark:text-slate-300 font-extrabold uppercase text-[10px] tracking-wider">
@@ -773,6 +946,10 @@ function RenderKpiTable({ type, items, onViewDetail }) {
       )
 
     case 'siswa':
+    case 'kehadiran_siswa':
+    case 'monitoring_ibadah':
+    case 'input_tahfiz':
+    case 'input_mutabaah':
       return (
         <table className="w-full text-xs text-left text-slate-700 dark:text-slate-200">
           <thead className="bg-slate-100/80 dark:bg-[#1b302c] text-slate-600 dark:text-slate-300 font-extrabold uppercase text-[10px] tracking-wider">
@@ -890,6 +1067,7 @@ function RenderKpiTable({ type, items, onViewDetail }) {
 
     case 'kelas':
     case 'rombel':
+    case 'input_nilai':
       return (
         <table className="w-full text-xs text-left text-slate-700 dark:text-slate-200">
           <thead className="bg-slate-100/80 dark:bg-[#1b302c] text-slate-600 dark:text-slate-300 font-extrabold uppercase text-[10px] tracking-wider">

@@ -12,7 +12,7 @@
  */
 
 import { api } from '../services/api'
-import { toast } from 'sonner'
+import { globalToast as toast } from '../components/app/ToastProvider'
 import {
   isBoardingStudent,
   getWeekDates,
@@ -273,7 +273,15 @@ if (typeof window !== 'undefined') {
 }
 
 export function resolveFoundationName(foundationParam) {
-  if (foundationParam && String(foundationParam).trim()) return String(foundationParam).trim()
+  if (foundationParam && typeof foundationParam === 'string' && foundationParam.trim() && foundationParam !== '[object Object]') {
+    return foundationParam.trim()
+  }
+  if (foundationParam && typeof foundationParam === 'object') {
+    const fromObj = foundationParam?.school_name || foundationParam?.institution_name || foundationParam?.nama_yayasan || foundationParam?.yayasan || foundationParam?.application_name
+    if (fromObj && String(fromObj).trim() && String(fromObj) !== '[object Object]') {
+      return String(fromObj).trim()
+    }
+  }
   try {
     const savedPengaturan = typeof localStorage !== 'undefined' ? JSON.parse(localStorage.getItem('pengaturan_dashboard') || '{}') : {}
     if (savedPengaturan?.school_name && String(savedPengaturan.school_name).trim()) {
@@ -303,7 +311,7 @@ export function resolveFoundationName(foundationParam) {
     }
   } catch (_) {}
 
-  return ''
+  return 'Yayasan Pendidikan Islam'
 }
 
 /**
@@ -622,6 +630,21 @@ export function generateOfficialPrintHeaderHtml({
  * Prints a clean datatable without opening a new tab or window.
  * Uses a hidden iframe within the current document context.
  * Adheres strictly to institutional A4 sizing (Portrait default, supports Landscape).
+ * @param {Object} options
+ * @param {string} options.title
+ * @param {string} [options.subtitle]
+ * @param {Array<any>} [options.headers]
+ * @param {Array<any>} [options.rows]
+ * @param {Array<any>} [options.columns]
+ * @param {Array<any>} [options.data]
+ * @param {any} [options.unit]
+ * @param {any} [options.unitParam]
+ * @param {any} [options.user]
+ * @param {any} [options.systemLogo]
+ * @param {any} [options.foundationName]
+ * @param {'portrait' | 'landscape'} [options.orientation]
+ * @param {string} [options.period]
+ * @param {any} [options.customFooter]
  */
 export function printCleanTable({
   title,
@@ -975,6 +998,21 @@ export function printCleanTable({
 /**
  * Export PDF Datatable Utility
  * Triggers PDF export / save dialog for datatable with official global print header.
+ * @param {Object} options
+ * @param {string} options.title
+ * @param {string} [options.subtitle]
+ * @param {string} [options.period]
+ * @param {Array<any>} [options.headers]
+ * @param {Array<any>} [options.rows]
+ * @param {Array<any>} [options.columns]
+ * @param {Array<any>} [options.data]
+ * @param {string} [options.filename]
+ * @param {any} [options.unit]
+ * @param {any} [options.unitParam]
+ * @param {any} [options.user]
+ * @param {'portrait' | 'landscape'} [options.orientation]
+ * @param {any} [options.systemLogo]
+ * @param {any} [options.foundationName]
  */
 export async function downloadPdfTable({
   title,
@@ -1390,6 +1428,19 @@ export function printOfficialMutabaahSheet({
 
 /**
  * Print Weekly Student Evaluation Report (Format Lembar Evaluasi Terpadu Pekanan)
+ * @param {Object} options
+ * @param {any} [options.student]
+ * @param {any} [options.period]
+ * @param {any} [options.tahfizh]
+ * @param {boolean} [options.showTahfizh]
+ * @param {Array<any>} [options.attendance]
+ * @param {Array<any>} [options.morningAttendance]
+ * @param {Array<any>} [options.prayerAttendance]
+ * @param {string} [options.teacherNotes]
+ * @param {any} [options.homeroomTeacher]
+ * @param {any} [options.guruWali]
+ * @param {string} [options.yayasanLogo]
+ * @param {string} [options.unitLogo]
  */
 export function printWeeklyStudentEvaluation({
   student = {},
@@ -2583,6 +2634,361 @@ export function printWeeklyMutabaahSheet(params = {}) {
   }
 
   iframe.onload = () => setTimeout(preparePrint, 150)
+  setTimeout(runPrint, 1500)
+}
+
+/**
+ * SIMSIT Official Matrix Schedule Print (A4 Landscape)
+ * Mendukung format Matriks Mingguan Resmi (Senin - Sabtu) sesuai standar Sekolah Islam Terpadu,
+ * pembedaan Full Day School vs Boarding School, serta Kop Surat Lembaga resmi.
+ * ATURAN: ZERO HARDCODE. Murni bersumber dari database nyata.
+ */
+export function printMatrixSchedule(matrixData) {
+  if (!matrixData || !matrixData.kop) {
+    toast?.error('Gagal memuat data matriks jadwal.')
+    return
+  }
+
+  const { kop, kelas, time_slots = [], matrix_rows = [] } = matrixData
+  const isBoarding = Boolean(kop.is_boarding)
+
+  const logoYayasan = resolvePrintAssetUrl(kop.logo_yayasan || '/assets/images/logo.png')
+  const logoUnit = resolvePrintAssetUrl(kop.logo_unit || '/assets/logos/sdit.svg')
+
+  const currentDateStr = new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date())
+
+  const rowsHtml = matrix_rows.map((row) => {
+    const no = row.no
+    const timeLabel = row.time?.label || `${row.time?.start || ''} - ${row.time?.end || ''}`
+    const days = row.days || {}
+
+    // Cek apakah seluruh hari adalah kegiatan non-kbm yang sama (misal istirahat / zikir jika ada di database)
+    const validDays = [1, 2, 3, 4, 5].map((d) => days[d]).filter(Boolean)
+    const isActivity = validDays.length > 0 && validDays.every((d) => d.activity_type === 'activity' && d.subject_name === validDays[0].subject_name)
+
+    if (isActivity) {
+      const actName = validDays[0].subject_name || validDays[0].activity_name || 'KEGIATAN'
+      return `
+        <tr class="activity-row">
+          <td class="text-center font-bold">${no}</td>
+          <td class="text-center font-bold text-red">${timeLabel}</td>
+          <td colspan="10" class="activity-cell font-bold text-center">${actName.toUpperCase()}</td>
+          <td class="text-center">${days[6]?.subject_name || '-'}</td>
+        </tr>
+      `
+    }
+
+    return `
+      <tr>
+        <td class="text-center">${no}</td>
+        <td class="text-center font-bold">${timeLabel}</td>
+        <!-- Senin -->
+        <td class="mapel-cell">${days[1]?.subject_name || '-'}</td>
+        <td class="guru-cell">${days[1]?.teacher_name || '-'}</td>
+        <!-- Selasa -->
+        <td class="mapel-cell">${days[2]?.subject_name || '-'}</td>
+        <td class="guru-cell">${days[2]?.teacher_name || '-'}</td>
+        <!-- Rabu -->
+        <td class="mapel-cell">${days[3]?.subject_name || '-'}</td>
+        <td class="guru-cell">${days[3]?.teacher_name || '-'}</td>
+        <!-- Kamis -->
+        <td class="mapel-cell">${days[4]?.subject_name || '-'}</td>
+        <td class="guru-cell">${days[4]?.teacher_name || '-'}</td>
+        <!-- Jumat -->
+        <td class="mapel-cell">${days[5]?.subject_name || '-'}</td>
+        <td class="guru-cell">${days[5]?.teacher_name || '-'}</td>
+        <!-- Sabtu -->
+        <td class="sabtu-cell text-center font-semibold">${days[6]?.subject_name || '-'}</td>
+      </tr>
+    `
+  }).join('')
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Jadwal Pelajaran - ${kelas?.nama_kelas || 'Resmi'}</title>
+      <style>
+        @page {
+          size: A4 landscape;
+          margin: 8mm 10mm;
+        }
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          font-family: 'Times New Roman', Times, serif, Arial, sans-serif;
+          color: #111827;
+          background: #fff;
+          font-size: 10.5px;
+          line-height: 1.25;
+        }
+        .container {
+          width: 100%;
+        }
+        /* KOP SURAT RESMI */
+        .kop-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 4px;
+        }
+        .kop-table td {
+          vertical-align: middle;
+          border: none;
+        }
+        .kop-logo {
+          width: 65px;
+          height: 65px;
+          object-fit: contain;
+        }
+        .kop-center {
+          text-align: center;
+          padding: 0 10px;
+        }
+        .kop-yayasan {
+          font-size: 14px;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+          color: #064E3B;
+          text-transform: uppercase;
+        }
+        .kop-unit {
+          font-size: 15px;
+          font-weight: 900;
+          color: #111827;
+          margin: 1px 0;
+          text-transform: uppercase;
+        }
+        .kop-info {
+          font-size: 9.5px;
+          color: #374151;
+        }
+        .kop-divider-thick {
+          border-top: 2.5px solid #000;
+          margin-top: 4px;
+        }
+        .kop-divider-thin {
+          border-top: 1px solid #000;
+          margin-top: 1.5px;
+          margin-bottom: 8px;
+        }
+
+        /* HEADER DOKUMEN */
+        .doc-title {
+          text-align: center;
+          font-size: 13px;
+          font-weight: 900;
+          text-transform: uppercase;
+          margin-bottom: 2px;
+          text-decoration: underline;
+        }
+        .doc-meta {
+          display: flex;
+          justify-content: space-between;
+          font-size: 10px;
+          font-weight: 700;
+          margin-bottom: 6px;
+        }
+
+        /* MATRIKS TABEL */
+        table.matrix-table {
+          width: 100%;
+          border-collapse: collapse;
+          border: 1.5px solid #1E3A8A;
+          font-size: 9px;
+        }
+        table.matrix-table th, table.matrix-table td {
+          border: 1px solid #1E3A8A;
+          padding: 3.5px 3px;
+          vertical-align: middle;
+        }
+        table.matrix-table th {
+          background-color: #E0E7FF;
+          color: #1E3A8A;
+          font-weight: 800;
+          text-align: center;
+        }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: 700; }
+        .text-red { color: #DC2626; }
+        .activity-row td {
+          background-color: #FEF08A !important;
+          color: #B91C1C;
+        }
+        .activity-cell {
+          letter-spacing: 0.5px;
+          font-size: 9.5px;
+        }
+        .mapel-cell {
+          font-weight: 700;
+          color: #111827;
+        }
+        .guru-cell {
+          color: #374151;
+          font-size: 8.5px;
+        }
+        .sabtu-cell {
+          background-color: #F8FAFC;
+          font-size: 8.5px;
+        }
+
+        /* SIGNATURE SECTION */
+        .sign-table {
+          width: 100%;
+          margin-top: 10px;
+          border-collapse: collapse;
+          font-size: 10px;
+        }
+        .sign-table td {
+          border: none;
+          vertical-align: top;
+        }
+        .sign-date {
+          text-align: right;
+          margin-bottom: 30px;
+        }
+        .sign-box {
+          height: 48px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <!-- KOP RESMI -->
+        <table class="kop-table">
+          <tr>
+            <td style="width: 70px; text-align: left;">
+              ${logoYayasan ? `<img src="${logoYayasan}" class="kop-logo" alt="Logo Yayasan" />` : ''}
+            </td>
+            <td class="kop-center">
+              <div class="kop-yayasan">${kop.yayasan_nama || 'YAYASAN DAR EL - IMAN'}</div>
+              <div class="kop-unit">${kop.unit_nama || 'UNIT PENDIDIKAN'}</div>
+              <div class="kop-info">
+                ${[kop.unit_alamat || kop.yayasan_alamat, kop.unit_telepon ? `Telp: ${kop.unit_telepon}` : '', kop.unit_email ? `Email: ${kop.unit_email}` : ''].filter(Boolean).join(' | ')}
+              </div>
+              <div class="kop-info" style="font-weight: 600; margin-top: 1px;">
+                ${[kop.npsn ? `NPSN: ${kop.npsn}` : '', kop.akreditasi ? `Akreditasi: ${kop.akreditasi}` : '', isBoarding ? 'Program: Boarding School (Pesantren)' : 'Program: Full Day School'].filter(Boolean).join(' • ')}
+              </div>
+            </td>
+            <td style="width: 70px; text-align: right;">
+              ${logoUnit ? `<img src="${logoUnit}" class="kop-logo" alt="Logo Unit" />` : ''}
+            </td>
+          </tr>
+        </table>
+
+        <div class="kop-divider-thick"></div>
+        <div class="kop-divider-thin"></div>
+
+        <!-- TITLE & META -->
+        <div class="doc-title">
+          JADWAL PELAJARAN DAN KEGIATAN HARIAN ${isBoarding ? 'SANTRI' : 'PESERTA DIDIK'}
+        </div>
+        <div class="doc-meta">
+          <div>
+            <span>KELAS / ROMBEL : </span><strong>${kelas?.nama_kelas || '-'}</strong>
+            <span style="margin-left: 12px;">WALI KELAS : </span><strong>${kelas?.wali_kelas || '-'}${kelas?.wali_kelas_niy ? ` (NIY ${kelas.wali_kelas_niy})` : ''}</strong>
+          </div>
+          <div>
+            <span>SEMESTER / T.A : </span><strong>${kelas?.semester || 'Ganjil'} ${kelas?.tahun_ajaran || '2026/2027'}</strong>
+            <span style="margin-left: 12px;">SISTEM : </span><strong>${isBoarding ? 'BOARDING' : 'FULL DAY'}</strong>
+          </div>
+        </div>
+
+        <!-- MATRIX TABLE -->
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th rowspan="2" style="width: 25px;">No.</th>
+              <th rowspan="2" style="width: 90px;">Waktu / Jam</th>
+              <th colspan="2">Senin</th>
+              <th colspan="2">Selasa</th>
+              <th colspan="2">Rabu</th>
+              <th colspan="2">Kamis</th>
+              <th colspan="2">Jum'at</th>
+              <th rowspan="2" style="width: 85px;">Sabtu<br/>(Ekstrakurikuler)</th>
+            </tr>
+            <tr>
+              <th style="width: 70px;">Pelajaran</th>
+              <th style="width: 55px;">Guru</th>
+              <th style="width: 70px;">Pelajaran</th>
+              <th style="width: 55px;">Guru</th>
+              <th style="width: 70px;">Pelajaran</th>
+              <th style="width: 55px;">Guru</th>
+              <th style="width: 70px;">Pelajaran</th>
+              <th style="width: 55px;">Guru</th>
+              <th style="width: 70px;">Pelajaran</th>
+              <th style="width: 55px;">Guru</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="13" class="text-center" style="padding: 15px;">Belum ada jadwal yang terdaftar untuk kelas ini di database.</td></tr>'}
+          </tbody>
+        </table>
+
+        <!-- SIGNATURES -->
+        <table class="sign-table">
+          <tr>
+            <td style="width: 50%; padding-left: 20px;">
+              <div>Wali Kelas,</div>
+              <div class="sign-box"></div>
+              <div><strong>${kelas?.wali_kelas || '_____________________'}</strong></div>
+              <div>${kelas?.wali_kelas_niy ? `NIY. ${kelas.wali_kelas_niy}` : 'NIY. -'}</div>
+            </td>
+            <td style="width: 50%; text-align: right; padding-right: 20px;">
+              <div class="sign-date">Padang, ${currentDateStr}</div>
+              <div>Mengetahui,</div>
+              <div><strong>Kepala ${kop.unit_nama || 'Sekolah'}</strong></div>
+              <div class="sign-box"></div>
+              <div><strong>${kop.kepala_sekolah || '_____________________'}</strong></div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </body>
+    </html>
+  `
+
+  const iframe = document.createElement('iframe')
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = '0'
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentWindow?.document || iframe.contentDocument
+  if (!doc) return
+
+  doc.open()
+  doc.write(html)
+  doc.close()
+
+  let printed = false
+  const runPrint = () => {
+    if (printed) return
+    printed = true
+    try {
+      if (iframe.contentWindow) {
+        iframe.contentWindow.focus()
+        iframe.contentWindow.print()
+      }
+    } catch (_) {}
+    setTimeout(() => {
+      try {
+        document.body.removeChild(iframe)
+      } catch (_) {}
+    }, 2000)
+  }
+
+  iframe.onload = () => setTimeout(runPrint, 200)
   setTimeout(runPrint, 1500)
 }
 

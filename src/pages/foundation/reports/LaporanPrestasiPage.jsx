@@ -743,14 +743,14 @@ export function LaporanPrestasiPage() {
                         </>
                       ) : (
                         <>
-                          <Badge color="emerald" size="sm" prefixIcon={GraduationCap}>
+                          <Badge color="emerald" size="sm" prefixIcon={<GraduationCap className="size-3.5" />}>
                             {card.class_name || 'Kelas Terdaftar'}
                           </Badge>
                           <p className="mt-1 text-[11px] font-semibold text-slate-400">{report?.unit_name || card.unit_name}</p>
                         </>
                       )}
                     </div>
-                    <Badge color="cyan" size="sm" prefixIcon={Trophy}>
+                    <Badge color="cyan" size="sm" prefixIcon={<Trophy className="size-3.5" />}>
                       Nilai: {card.nilai_prestasi}
                     </Badge>
                   </CardHeader>
@@ -1046,7 +1046,7 @@ export function LaporanPrestasiPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="py-3 px-4">
-                      <Badge color="emerald" size="sm" prefixIcon={CheckCircle2}>
+                      <Badge color="emerald" size="sm" prefixIcon={<CheckCircle2 className="size-3.5" />}>
                         {k.status_laporan}
                       </Badge>
                     </TableCell>

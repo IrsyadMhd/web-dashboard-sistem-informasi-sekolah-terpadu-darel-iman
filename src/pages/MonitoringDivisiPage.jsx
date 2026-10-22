@@ -34,11 +34,14 @@ import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppDataTable from '../components/app/AppDataTable'
 import ActionDropdown from '../components/app/ActionDropdown'
 import { MasterStatCard, MasterStatsGrid } from '../components/master-data'
+import { printCleanTable, resolveFoundationName } from '../utils/printHelper'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 
 import { useDaftarPemantauanDivisi, useAksiPemantauanDivisi } from '../hooks/useDashboardPemantauan'
 import PemantauanDivisiFormModal from '../components/pemantauan/PemantauanDivisiFormModal'
 import ImporDivisiModal from '../components/pemantauan/ImporDivisiModal'
 import { useAuthStore } from '../stores/authStore'
+import { getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { useUnitStore } from '../stores/unitStore'
 import { useQuery } from '@tanstack/react-query'
 import { educationUnitService } from '../services/educationUnitService'
@@ -142,6 +145,8 @@ export default function MonitoringDivisiPage() {
   // Auth & Role Context
   const user = useAuthStore((state) => state.user)
   const activeUnitFromStore = useUnitStore((state) => state.activeUnit)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
 
   const userRoles = useMemo(() => {
     if (!user) return []
@@ -150,28 +155,17 @@ export default function MonitoringDivisiPage() {
     return []
   }, [user])
 
+  const userLevel = useMemo(() => getUserRoleLevel(user), [user])
   const isSuperAdminOrYayasan = useMemo(() => {
     if (!user) return false
     if (user.is_superadmin) return true
-    const rolesLower = userRoles.map((r) => String(r).toLowerCase().replace(/[\s_-]+/g, ''))
-    return rolesLower.some((r) =>
-      r.includes('superadmin') ||
-      r.includes('admin') ||
-      r.includes('yayasan') ||
-      r.includes('pengurus')
-    )
-  }, [user, userRoles])
+    return userLevel <= ROLE_LEVELS.ADMIN || userLevel === ROLE_LEVELS.PIMPINAN_YAYASAN // Level 1, 2, 5
+  }, [user, userLevel])
 
   const isKepalaSekolahOrDivisiPendidikan = useMemo(() => {
     if (isSuperAdminOrYayasan) return false
-    const rolesLower = userRoles.map((r) => String(r).toLowerCase().replace(/[\s_-]+/g, ''))
-    return rolesLower.some((r) =>
-      r.includes('kepalasekolah') ||
-      r.includes('kepsek') ||
-      r.includes('divisipendidikan') ||
-      r.includes('kepaladivisi')
-    )
-  }, [isSuperAdminOrYayasan, userRoles])
+    return userLevel === ROLE_LEVELS.KEPALA_SEKOLAH || userLevel === ROLE_LEVELS.PIMPINAN_YAYASAN // Level 4, 5
+  }, [isSuperAdminOrYayasan, userLevel])
 
   // React Query Hooks
   const { data: unitsData } = useQuery({
@@ -335,7 +329,24 @@ export default function MonitoringDivisiPage() {
 
   // Print Datatable Handler
   const handlePrintDatatable = () => {
-    window.print()
+    if (!filteredItems || filteredItems.length === 0) return
+    const rows = filteredItems.map((item, idx) => [
+      idx + 1,
+      item.unit_pendidikan || '-',
+      item.nama_divisi || '-',
+      item.aspek_pemantauan || '-',
+      `${item.persentase_capaian || 0}%`,
+      item.status_pemantauan || '-',
+      item.tanggal_pemantauan || '-',
+      item.petugas_supervisi || '-',
+    ])
+    printCleanTable({
+      title: 'LAPORAN MONITORING & EVALUASI DIVISI',
+      subtitle: `Agregasi Kinerja ${foundationName} (Total: ${filteredItems.length} Data)`,
+      headers: ['No', 'Unit Pendidikan', 'Divisi', 'Aspek Pemantauan', 'Capaian', 'Status', 'Tanggal', 'Supervisor'],
+      rows,
+      orientation: 'landscape',
+    })
   }
 
   // Handle Import Success

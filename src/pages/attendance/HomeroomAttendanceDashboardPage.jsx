@@ -24,6 +24,7 @@ import { scheduleService } from '../../services/scheduleService'
 import { useAuthStore } from '../../stores/authStore'
 import { hasAnyRole } from '../../auth/portalResolver'
 import { generateOfficialPrintHeaderHtml } from '../../utils/printHelper'
+import { usePengaturanStore, resolveFoundationName } from '../../stores/pengaturanStore'
 import AppBreadcrumb from '../../components/app/AppBreadcrumb'
 import AppBadge from '../../components/app/AppBadge'
 import AppSkeleton from '../../components/app/AppSkeleton'
@@ -129,6 +130,8 @@ function getFollowUpStatusVariant(status) {
 export default function HomeroomAttendanceDashboardPage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState(null)
   const [pendingPermissions, setPendingPermissions] = useState([])
@@ -303,6 +306,7 @@ export default function HomeroomAttendanceDashboardPage() {
   const stats = useMemo(() => ({
     total_students: dashboardData?.stats?.total_students ?? dashboardData?.total_students ?? 0,
     attendance_rate: dashboardData?.stats?.attendance_rate ?? dashboardData?.attendance_rate ?? null,
+    attendance_count: dashboardData?.stats?.attendance_count ?? dashboardData?.attendance_count ?? null,
     present_today: dashboardData?.stats?.present_today ?? dashboardData?.present ?? 0,
     sick_today: dashboardData?.stats?.sick_today ?? dashboardData?.sick ?? 0,
     permission_today: dashboardData?.stats?.permission_today ?? dashboardData?.permission ?? 0,
@@ -566,7 +570,7 @@ export default function HomeroomAttendanceDashboardPage() {
           <td style="text-align: center;">${idx + 1}</td>
           <td>${log.tanggal || log.attendance_date || '-'}</td>
           <td>${log.jadwal?.subject?.name || log.subject_name || `Pertemuan ke-${log.pertemuan_ke || 1}`}</td>
-          <td style="text-align: center; text-transform: capitalize; font-weight: bold;">${log.status_hadir || 'hadir'}</td>
+          <td style="text-align: center; text-transform: capitalize; font-weight: bold;">${log.status_hadir || '-'}</td>
         </tr>
       `).join('')
     } else if (type === 'rombelRecap') {
@@ -1106,11 +1110,16 @@ export default function HomeroomAttendanceDashboardPage() {
           />
           <ModernKpiCard
             icon={Award}
-            title="% Kehadiran Bulan Ini"
-            value={stats.attendance_rate == null ? '-' : `${stats.attendance_rate}%`}
-            subtext="Tingkat Kehadiran Hari Ini"
+            title="% Kehadiran Hari Ini"
+            value={stats.attendance_rate == null ? '—' : `${stats.attendance_rate}%`}
+            subtext={
+              stats.attendance_count
+                ? `${stats.present_today} dari ${stats.attendance_count} siswa (${stats.attendance_rate}%)`
+                : (stats.total_students ? `${stats.present_today} dari ${stats.total_students} siswa rombel` : 'Belum ada data')
+            }
             tone="blue"
             tag="Presensi"
+            onClick={() => handleOpenRombelRecap()}
           />
           <ModernKpiCard
             icon={AlertCircle}
@@ -1330,7 +1339,7 @@ export default function HomeroomAttendanceDashboardPage() {
                           {item.student?.full_name || item.siswa_nama || 'Siswa'}
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          Tindakan: <span className="font-medium text-slate-700 dark:text-slate-300">{item.action_taken || 'Konseling/Panggilan'}</span>
+                          Tindakan: <span className="font-medium text-slate-700 dark:text-slate-300">{item.action_taken || '-'}</span>
                         </p>
                       </div>
                       <AppBadge variant="danger">Tindak Lanjut</AppBadge>
@@ -1503,7 +1512,7 @@ export default function HomeroomAttendanceDashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                    YAYASAN DAREL IMAN • SISTEM MANAJEMEN SEKOLAH TERPADU
+                    {foundationName.toUpperCase()} • SISTEM MANAJEMEN SEKOLAH TERPADU
                   </h1>
                   <h2 className="text-sm font-extrabold text-slate-900 mt-0.5">
                     LAPORAN DETAIL ROMBEL & DAFTAR SISWA {selectedClass?.nama_kelas}
@@ -1711,7 +1720,7 @@ export default function HomeroomAttendanceDashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                    YAYASAN DAREL IMAN • SISTEM MANAJEMEN SEKOLAH TERPADU
+                    {foundationName.toUpperCase()} • SISTEM MANAJEMEN SEKOLAH TERPADU
                   </h1>
                   <h2 className="text-sm font-extrabold text-slate-900 mt-0.5">
                     LAPORAN RIWAYAT PRESENSI SISWA
@@ -1827,7 +1836,7 @@ export default function HomeroomAttendanceDashboardPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                    YAYASAN DAREL IMAN • SISTEM MANAJEMEN SEKOLAH TERPADU
+                    {foundationName.toUpperCase()} • SISTEM MANAJEMEN SEKOLAH TERPADU
                   </h1>
                   <h2 className="text-sm font-extrabold text-slate-900 mt-0.5">
                     LAPORAN REKAPITULASI KEHADIRAN SISWA ROMBEL {selectedClass?.nama_kelas}

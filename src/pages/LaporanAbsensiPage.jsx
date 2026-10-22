@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useToast } from '../components/app/ToastProvider'
 import ActionDropdown from '../components/app/ActionDropdown'
 import {
   BookOpen,
@@ -271,13 +272,14 @@ const buildSimulatedAttendanceRows = () => []
 
 export default function LaporanAbsensiPage() {
   const [filters, setFilters] = useState({ unit_id: '', class_id: '', date_from: '', date_to: '', status: '', subject_id: '' })
+  const { toast } = useToast()
   const [draft, setDraft] = useState({ ...filters, period: 'semua' })
   const [report, setReport] = useState({ summary: {}, rows: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [page, setPage] = useState(1)
   const [selectedRow, setSelectedRow] = useState(null)
-  const [notice, setNotice] = useState('')
   const [unitList, setUnitList] = useState([])
   const [classList, setClassList] = useState([])
   const [studentList, setStudentList] = useState([])
@@ -864,7 +866,7 @@ export default function LaporanAbsensiPage() {
                   <Icon className="size-5" />
                 </div>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-extrabold shadow-2xs ${t.tag}`}>
-                  {percent.toFixed(1)}%
+                  {total > 0 ? `${percent.toFixed(1)}%` : '—'}
                 </span>
               </div>
 
@@ -878,7 +880,9 @@ export default function LaporanAbsensiPage() {
 
               {/* Click Affordance Footer */}
               <div className="flex items-center justify-between text-[10px] font-bold pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800/80">
-                <span className="text-slate-500 dark:text-slate-400">dari total data</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  {total > 0 ? `${formatAngka(value)} dari ${formatAngka(total)} data` : 'Belum ada data'}
+                </span>
                 <span className={`inline-flex items-center gap-0.5 font-bold group-hover:translate-x-0.5 transition-transform ${t.cta}`}>
                   <Eye className="h-3 w-3" /> Detail &rarr;
                 </span>

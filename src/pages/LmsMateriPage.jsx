@@ -1,4 +1,6 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useMemo, useCallback } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -35,6 +37,10 @@ import {
   FileCode,
   Calendar,
   ArrowUpDown,
+  Send,
+  MessageSquare,
+  History,
+  Check,
 } from 'lucide-react'
 import { lmsMateriService } from '../services/lmsMateriService'
 import useDebounce from '../hooks/useDebounce'
@@ -144,76 +150,14 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
 
 // ── 2. TOAST NOTIFICATION STACK HOOK ──
 function useNotifications() {
-  const [items, setItems] = useState([])
+  const toast = useToast()
   const push = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setItems((prev) => [...prev, { id, title, message, tone }])
-    window.setTimeout(() => setItems((prev) => prev.filter((n) => n.id !== id)), 5000)
+    toast(title, message, tone)
   }
-  const dismiss = (id) => setItems((prev) => prev.filter((n) => n.id !== id))
-  return { items, push, dismiss }
+  const dismiss = () => {}
+  return { items: [], push, dismiss }
 }
 
-function ToastStack({ items, onDismiss }) {
-  if (!items.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
-      {items.map((n) => {
-        const isError = n.tone === 'error' || n.tone === 'danger'
-        const isWarning = n.tone === 'warning'
-        return (
-          <motion.div
-            key={n.id}
-            initial={{ opacity: 0, y: 15, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`pointer-events-auto relative overflow-hidden rounded-2xl border bg-white p-4 shadow-xl dark:bg-slate-900 ${
-              isError
-                ? 'border-rose-300 dark:border-rose-800 shadow-rose-950/10'
-                : isWarning
-                ? 'border-amber-300 dark:border-amber-800 shadow-amber-950/10'
-                : 'border-emerald-300 dark:border-emerald-800 shadow-emerald-950/10'
-            }`}
-          >
-            <div
-              className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${
-                isError
-                  ? 'from-rose-500 via-rose-600 to-red-700'
-                  : isWarning
-                  ? 'from-amber-400 via-amber-500 to-orange-600'
-                  : 'from-emerald-500 via-teal-400 to-emerald-600'
-              }`}
-            />
-            <div className="flex items-start gap-3 mt-0.5">
-              <div
-                className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-xs ${
-                  isError
-                    ? 'bg-gradient-to-br from-rose-500 to-red-600'
-                    : isWarning
-                    ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                    : 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                }`}
-              >
-                {isError ? <XCircle className="size-4.5" /> : isWarning ? <AlertTriangle className="size-4.5" /> : <CheckCircle2 className="size-4.5" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">{n.title}</h4>
-                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{n.message}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          </motion.div>
-        )
-      })}
-    </div>
-  )
-}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -353,6 +297,450 @@ function HarmonizedBatchExportModal({
   )
 }
 
+// ── HARMONIZED SUPERVISI & CATATAN KOREKSI MODAL ──
+function HarmonizedSupervisiModal({
+  isOpen,
+  onClose,
+  item,
+  onSubmit,
+  isPending,
+}) {
+  const [statusSupervisi, setStatusSupervisi] = useState('disetujui')
+  const [catatanKoreksi, setCatatanKoreksi] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  // Sync state when item changes
+  React.useEffect(() => {
+    if (item) {
+      setStatusSupervisi(item.status_supervisi === 'perlu_revisi' ? 'perlu_revisi' : 'disetujui')
+      setCatatanKoreksi(item.catatan_koreksi || '')
+      setErrorMsg('')
+    }
+  }, [item])
+
+  // Fetch past logs
+  const { data: logsRes, isLoading: isLoadingLogs } = useQuery({
+    queryKey: ['lmsMateriSupervisiLogs', item?.id],
+    queryFn: () => lmsMateriService.getSupervisiLogs(item.id),
+    enabled: Boolean(isOpen && item?.id),
+  })
+
+  const logs = useMemo(() => logsRes?.data || [], [logsRes])
+
+  if (!isOpen || !item) return null
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (statusSupervisi === 'perlu_revisi' && !catatanKoreksi.trim()) {
+      setErrorMsg('Catatan arahan koreksi wajib diisi jika status perlu revisi.')
+      return
+    }
+    setErrorMsg('')
+    onSubmit({
+      id: item.id,
+      payload: {
+        status_supervisi: statusSupervisi,
+        catatan_koreksi: catatanKoreksi.trim(),
+      },
+    })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !isPending) onClose()
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 14 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="w-full max-w-2xl"
+      >
+        <div className="flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-emerald-300/80 bg-white shadow-2xl shadow-emerald-950/20 dark:border-emerald-800/60 dark:bg-[#182232]">
+          <div
+            className={`h-1.5 w-full shrink-0 bg-gradient-to-r ${
+              statusSupervisi === 'disetujui'
+                ? 'from-emerald-500 via-teal-400 to-emerald-600'
+                : 'from-rose-500 via-rose-600 to-amber-500'
+            }`}
+          />
+
+          {/* Modal Header */}
+          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+            <div className="flex items-center gap-3">
+              <div
+                className={`rounded-2xl text-white p-2.5 shadow-md shrink-0 border ${
+                  statusSupervisi === 'disetujui'
+                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/25 border-emerald-300/40'
+                    : 'bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/25 border-rose-300/40'
+                }`}
+              >
+                <ShieldCheck className="h-5 w-5 text-white" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Supervisi Materi Pembelajaran</span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                      statusSupervisi === 'disetujui'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400'
+                        : 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-400'
+                    }`}
+                  >
+                    <Sparkles className="size-3" /> Kepsek &amp; Divisi Pendidikan
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Tinjau kelayakan ajar materi dan berikan arahan atau catatan revisi untuk guru pengampu.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={onClose}
+              className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          {/* Modal Form Body */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+            {/* Target Materi Info Box */}
+            <div className="p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Target Materi Yang Ditelaah
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                  Tipe: {item.tipe} • #{item.urutan}
+                </span>
+              </div>
+              <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug">
+                {item.judul}
+              </h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                Modul Ajar: <strong>{item.modul_ajar?.judul_modul || '-'}</strong>
+                {item.subject?.nama_mapel ? ` • ${item.subject.nama_mapel}` : ''}
+              </p>
+            </div>
+
+            {/* Decision Status Selector */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                Keputusan Hasil Telaah:
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusSupervisi('disetujui')
+                    setErrorMsg('')
+                  }}
+                  className={`rounded-2xl border-2 p-3.5 text-left transition-all cursor-pointer ${
+                    statusSupervisi === 'disetujui'
+                      ? 'border-emerald-500 bg-emerald-50/70 shadow-sm dark:border-emerald-600 dark:bg-emerald-950/40'
+                      : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div
+                      className={`size-6 rounded-lg flex items-center justify-center text-white ${
+                        statusSupervisi === 'disetujui' ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+                      }`}
+                    >
+                      <Check className="size-3.5" strokeWidth={3} />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                      Disetujui &amp; Layak Ajar
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-snug pl-8">
+                    Materi memenuhi standar kurikulum dan otomatis berstatus publish untuk diakses siswa.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStatusSupervisi('perlu_revisi')}
+                  className={`rounded-2xl border-2 p-3.5 text-left transition-all cursor-pointer ${
+                    statusSupervisi === 'perlu_revisi'
+                      ? 'border-rose-500 bg-rose-50/70 shadow-sm dark:border-rose-600 dark:bg-rose-950/40'
+                      : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div
+                      className={`size-6 rounded-lg flex items-center justify-center text-white ${
+                        statusSupervisi === 'perlu_revisi' ? 'bg-rose-600' : 'bg-slate-300 dark:bg-slate-700'
+                      }`}
+                    >
+                      <AlertTriangle className="size-3.5" strokeWidth={2.5} />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                      Perlu Koreksi / Revisi
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-snug pl-8">
+                    Materi dikembalikan ke guru pengampu dengan catatan perbaikan sebelum dipublikasikan.
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Textarea Catatan Koreksi */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                <span>
+                  Catatan &amp; Arahan Supervisi{' '}
+                  {statusSupervisi === 'perlu_revisi' && <span className="text-rose-600">*</span>}
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  {statusSupervisi === 'perlu_revisi' ? 'Wajib diisi' : 'Opsional'}
+                </span>
+              </label>
+              <textarea
+                rows={4}
+                value={catatanKoreksi}
+                onChange={(e) => {
+                  setCatatanKoreksi(e.target.value)
+                  if (errorMsg) setErrorMsg('')
+                }}
+                placeholder={
+                  statusSupervisi === 'perlu_revisi'
+                    ? 'Tuliskan poin-poin koreksi secara jelas (misal: perjelas instruksi latihan, sesuaikan durasi video, atau tambahkan referensi buku)...'
+                    : 'Tuliskan catatan apresiasi atau catatan pengingat tambahan untuk guru (opsional)...'
+                }
+                className="w-full rounded-2xl border border-slate-200/90 bg-slate-50/60 p-3.5 text-xs text-slate-800 transition focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
+              />
+              {errorMsg && (
+                <p className="text-[11px] font-bold text-rose-600 flex items-center gap-1 mt-1">
+                  <AlertTriangle className="size-3" /> {errorMsg}
+                </p>
+              )}
+            </div>
+
+            {/* Riwayat Telaah / Supervisi Sebelumnya */}
+            <div className="pt-2">
+              <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-2">
+                <History className="size-3.5" /> Riwayat Supervisi Materi Ini ({logs.length})
+              </h5>
+              {isLoadingLogs ? (
+                <div className="p-3 text-center text-xs text-slate-400">Memuat riwayat supervisi...</div>
+              ) : logs.length === 0 ? (
+                <p className="text-xs text-slate-400 italic p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800">
+                  Belum ada riwayat supervisi sebelumnya untuk materi ini.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {logs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="p-3 rounded-xl border border-slate-200/80 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60 text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {log.supervisor?.name || 'Supervisor'} ({log.supervisor_role || 'Penelaah'})
+                        </span>
+                        <span className="text-slate-400 font-mono">
+                          {new Date(log.created_at).toLocaleString('id-ID', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            log.status_supervisi === 'disetujui'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+                          }`}
+                        >
+                          {log.status_supervisi === 'disetujui' ? 'Disetujui' : 'Perlu Revisi'}
+                        </span>
+                      </div>
+                      {log.catatan_koreksi && (
+                        <p className="text-slate-600 dark:text-slate-300 italic text-[11px] mt-1 pl-2 border-l-2 border-slate-300 dark:border-slate-700">
+                          "{log.catatan_koreksi}"
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 transition cursor-pointer disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className={`inline-flex items-center gap-2 rounded-2xl text-white px-5 py-2.5 text-xs font-extrabold shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 cursor-pointer border ${
+                  statusSupervisi === 'disetujui'
+                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 shadow-emerald-500/25 border-emerald-300/40'
+                    : 'bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 shadow-rose-500/25 border-rose-300/40'
+                }`}
+              >
+                {isPending ? <RefreshCw className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
+                <span>
+                  {isPending
+                    ? 'Menyimpan...'
+                    : statusSupervisi === 'disetujui'
+                    ? 'Setujui & Publikasikan'
+                    : 'Kirim Catatan Revisi'}
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── HARMONIZED AJUKAN TELAAH MODAL ──
+function HarmonizedAjukanTelaahModal({
+  isOpen,
+  onClose,
+  item,
+  onSubmit,
+  isPending,
+}) {
+  const [catatan, setCatatan] = useState('')
+
+  if (!isOpen || !item) return null
+
+  const handleAjukan = (e) => {
+    e.preventDefault()
+    onSubmit({
+      id: item.id,
+      catatan: catatan.trim(),
+    })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md animate-fadeIn"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !isPending) onClose()
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 14 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+        className="w-full max-w-lg"
+      >
+        <div className="flex max-h-[calc(100dvh-2.5rem)] flex-col overflow-hidden rounded-3xl border border-sky-300/80 bg-white shadow-2xl shadow-sky-950/20 dark:border-sky-800/60 dark:bg-[#182232]">
+          <div className="h-1.5 w-full bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 shrink-0" />
+
+          {/* Modal Header */}
+          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4.5 dark:border-slate-800 dark:bg-slate-950 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 text-white p-2.5 shadow-md shadow-sky-500/25 border border-sky-300/40 shrink-0">
+                <Send className="h-5 w-5 text-white" strokeWidth={2.2} />
+              </div>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Ajukan Telaah Materi</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-400">
+                    <Sparkles className="size-3" /> Supervisi Guru
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Kirim materi ini kepada Kepala Sekolah / Divisi Pendidikan untuk ditinjau.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={onClose}
+              className="size-9 flex items-center justify-center rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleAjukan} className="p-6 space-y-4 overflow-y-auto flex-1">
+            <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4 space-y-1.5 dark:border-sky-900/50 dark:bg-sky-950/20">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                Materi Yang Diajukan
+              </span>
+              <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug">
+                {item.judul}
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Modul Ajar: {item.modul_ajar?.judul_modul || '-'} • Tipe: {item.tipe}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Pesan / Catatan Tambahan Guru (Opsional)
+              </label>
+              <textarea
+                rows={3}
+                value={catatan}
+                onChange={(e) => setCatatan(e.target.value)}
+                placeholder="Tuliskan pesan khusus untuk Kepala Sekolah atau Penelaah (misal: materi telah disesuaikan dengan masukan rapat kurikulum)..."
+                className="w-full rounded-2xl border border-slate-200/90 bg-slate-50/60 p-3.5 text-xs text-slate-800 transition focus:border-sky-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 dark:bg-slate-900/50 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-0.5">
+                <Sparkles className="size-3.5 text-sky-600 dark:text-sky-400" />
+                Alur Supervisi
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Setelah diajukan, status materi akan berubah menjadi <strong>Menunggu Telaah</strong>. Kepala Sekolah atau Divisi Pendidikan akan memberikan catatan koreksi atau menyetujui materi untuk dipublikasikan.
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 transition cursor-pointer disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 text-white px-5 py-2.5 text-xs font-extrabold shadow-md shadow-sky-500/25 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 disabled:opacity-50 cursor-pointer border border-sky-300/40"
+              >
+                {isPending ? <RefreshCw className="size-4 animate-spin" /> : <Send className="size-4" />}
+                <span>{isPending ? 'Mengajukan...' : 'Ajukan Sekarang'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 // ── 3. KOMPONEN UTAMA HALAMAN MATERI PEMBELAJARAN ──
 export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
   const queryClient = useQueryClient()
@@ -374,14 +762,41 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
     )
   }, [userRoles, user?.role])
 
+  const isSupervisor = useMemo(() => {
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    const checkRole = (name) => rList.some((r) => r.includes(name)) || mainRole.includes(name)
+    return (
+      checkRole('kepala sekolah') ||
+      checkRole('kepala_sekolah') ||
+      checkRole('principal') ||
+      checkRole('divisi pendidikan') ||
+      checkRole('divisi_pendidikan') ||
+      checkRole('kabid') ||
+      checkRole('kurikulum') ||
+      checkRole('waka') ||
+      checkRole('yayasan') ||
+      checkRole('admin') ||
+      checkRole('super admin') ||
+      checkRole('tata usaha') ||
+      checkRole('operator')
+    )
+  }, [userRoles, user?.role])
+
+  const isTeacherOnly = useMemo(() => {
+    return isGuru && !isSupervisor
+  }, [isGuru, isSupervisor])
+
   // Filters & Pagination State
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 350)
   const [selectedModul, setSelectedModul] = useState('')
+  const [selectedMapel, setSelectedMapel] = useState('')
   const [modulSearch, setModulSearch] = useState('')
   const debouncedModulSearch = useDebounce(modulSearch, 350)
   const [selectedTipe, setSelectedTipe] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedStatusSupervisi, setSelectedStatusSupervisi] = useState('')
   const [denganSampah, setDenganSampah] = useState(false)
   const [sortDateOrder, setSortDateOrder] = useState('desc') // 'desc' | 'asc'
   const [page, setPage] = useState(1)
@@ -399,6 +814,13 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
   const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
+
+  // Supervisi & Telaah Modal State
+  const [supervisiModalOpen, setSupervisiModalOpen] = useState(false)
+  const [supervisiTarget, setSupervisiTarget] = useState(null)
+  const [ajukanModalOpen, setAjukanModalOpen] = useState(false)
+  const [ajukanTarget, setAjukanTarget] = useState(null)
+  const [ajukanCatatan, setAjukanCatatan] = useState('')
 
   // KPI Drill-down Modal State
   const [kpiModalOpen, setKpiModalOpen] = useState(false)
@@ -463,6 +885,27 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
     )
   }, [optionsRes])
 
+  const subjects = useMemo(() => {
+    const rawSubjects = optionsRes?.data?.subjects || []
+    const uniqueMap = new Map()
+
+    for (const s of rawSubjects) {
+      const cleanName = (s.nama_mapel || s.name || s.kode_mapel || '').trim()
+      if (!cleanName) continue
+      const lowerKey = cleanName.toLowerCase()
+      if (!uniqueMap.has(lowerKey)) {
+        uniqueMap.set(lowerKey, {
+          id: cleanName,
+          nama_mapel: cleanName,
+        })
+      }
+    }
+
+    return Array.from(uniqueMap.values()).sort((a, b) =>
+      a.nama_mapel.localeCompare(b.nama_mapel, 'id')
+    )
+  }, [optionsRes])
+
   // 2. React Query: Daftar Materi
   const {
     data: materiResponse,
@@ -475,8 +918,10 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
       perPage,
       debouncedSearch,
       selectedModul,
+      selectedMapel,
       selectedTipe,
       selectedStatus,
+      selectedStatusSupervisi,
       denganSampah,
       sortDateOrder,
     ],
@@ -485,8 +930,10 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
         page,
         search: debouncedSearch,
         modul_ajar_id: selectedModul,
+        mata_pelajaran_id: selectedMapel,
         tipe: selectedTipe,
         status: selectedStatus,
+        status_supervisi: selectedStatusSupervisi || undefined,
         dengan_sampah: denganSampah ? 1 : 0,
         per_page: perPage,
         order_by: 'created_at',
@@ -580,6 +1027,62 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
     },
     onError: () => {
       pushToast('Gagal Memulihkan', 'Gagal memulihkan materi pembelajaran.', 'error')
+    },
+  })
+
+  const ajukanTelaahMutation = useMutation({
+    mutationFn: ({ id, catatan }) => lmsMateriService.ajukanTelaah(id, catatan),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lmsMateriList'] })
+      setAjukanModalOpen(false)
+      setAjukanTarget(null)
+      setAjukanCatatan('')
+      if (previewModalOpen && previewItem) {
+        setPreviewItem((prev) => (prev ? { ...prev, status_supervisi: 'diajukan' } : null))
+      }
+      pushToast('Berhasil Diajukan', 'Materi telah diajukan ke Kepala Sekolah & Divisi Pendidikan untuk ditelaah.', 'success')
+    },
+    onError: (err) => {
+      const errRes = err.response?.data
+      const msg = errRes?.message || 'Gagal mengajukan materi untuk ditelaah.'
+      pushToast('Gagal Mengajukan', msg, 'error')
+    },
+  })
+
+  const supervisiMutation = useMutation({
+    mutationFn: ({ id, payload }) => lmsMateriService.supervisi(id, payload),
+    onSuccess: (res, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['lmsMateriList'] })
+      setSupervisiModalOpen(false)
+      setSupervisiTarget(null)
+      if (previewModalOpen && previewItem) {
+        setPreviewItem((prev) =>
+          prev
+            ? {
+                ...prev,
+                status_supervisi: vars.payload.status_supervisi,
+                catatan_koreksi: vars.payload.catatan_koreksi,
+                supervisor_role: user?.role || 'Supervisor',
+                tanggal_supervisi: new Date().toISOString(),
+              }
+            : null
+        )
+      }
+      const isApproved = vars.payload.status_supervisi === 'disetujui'
+      pushToast(
+        isApproved ? 'Materi Disetujui' : 'Catatan Koreksi Dikirim',
+        isApproved
+          ? 'Materi telah disetujui & layak ajar (dipublikasikan ke siswa).'
+          : 'Catatan koreksi telah disimpan & dikembalikan ke guru pengampu untuk revisi.',
+        isApproved ? 'success' : 'warning'
+      )
+    },
+    onError: (err) => {
+      const errRes = err.response?.data
+      const msg =
+        errRes?.message ||
+        (errRes?.errors ? Object.values(errRes.errors).flat().join(' ') : 'Gagal memproses supervisi materi.')
+      pushToast('Gagal Supervisi', msg, 'error')
     },
   })
 
@@ -839,13 +1342,24 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
     reader.readAsText(importFile)
   }
 
-  const hasActiveFilters = Boolean(search || selectedModul || selectedTipe || selectedStatus || denganSampah || sortDateOrder !== 'desc')
+  const hasActiveFilters = Boolean(
+    search ||
+      selectedModul ||
+      selectedMapel ||
+      selectedTipe ||
+      selectedStatus ||
+      selectedStatusSupervisi ||
+      denganSampah ||
+      sortDateOrder !== 'desc'
+  )
 
   const handleResetFilters = () => {
     setSearch('')
     setSelectedModul('')
+    setSelectedMapel('')
     setSelectedTipe('')
     setSelectedStatus('')
+    setSelectedStatusSupervisi('')
     setDenganSampah(false)
     setSortDateOrder('desc')
     setPage(1)
@@ -918,6 +1432,43 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
         Aktif
       </span>
     )
+  }
+
+  const getStatusSupervisiBadge = (statusSupervisi) => {
+    switch (statusSupervisi) {
+      case 'diajukan':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-700 shadow-2xs">
+            <Clock className="size-3 text-amber-600 dark:text-amber-400" />
+            Menunggu Telaah
+          </span>
+        )
+      case 'perlu_revisi':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-rose-50 text-rose-800 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-700 shadow-2xs">
+            <AlertTriangle className="size-3 text-rose-600 dark:text-rose-400" />
+            Perlu Revisi
+          </span>
+        )
+      case 'disetujui':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700 shadow-2xs">
+            <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
+            Disetujui
+          </span>
+        )
+      case 'draft':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+            Draf Guru
+          </span>
+        )
+    }
+  }
+
+  if (!embedded && isTeacherOnly) {
+    return <Navigate to="/portal-guru/workspace?tab=materi" replace />
   }
 
   return (
@@ -1155,6 +1706,25 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                 Filter Data:
               </span>
 
+              {/* Mapel Dropdown */}
+              {subjects.length > 0 && (
+                <select
+                  value={selectedMapel}
+                  onChange={(e) => {
+                    setSelectedMapel(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="">Semua Mapel ({subjects.length})</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nama_mapel}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               {/* Modul Search & Dropdown */}
               <select
                 value={selectedModul}
@@ -1203,6 +1773,22 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                 <option value="published">Published</option>
                 <option value="draft">Draft</option>
                 <option value="nonaktif">Nonaktif</option>
+              </select>
+
+              {/* Status Supervisi / Telaah Dropdown */}
+              <select
+                value={selectedStatusSupervisi}
+                onChange={(e) => {
+                  setSelectedStatusSupervisi(e.target.value)
+                  setPage(1)
+                }}
+                className="h-9 w-full sm:w-auto min-w-[145px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
+              >
+                <option value="">Semua Telaah</option>
+                <option value="diajukan">Menunggu Telaah</option>
+                <option value="perlu_revisi">Perlu Revisi</option>
+                <option value="disetujui">Disetujui Layak Ajar</option>
+                <option value="draft">Draf Guru</option>
               </select>
 
               {/* Data Sampah Dropdown */}
@@ -1357,6 +1943,16 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                               </p>
                             ) : null}
 
+                            {/* Alert Callout Catatan Revisi dari Supervisor */}
+                            {item.status_supervisi === 'perlu_revisi' && item.catatan_koreksi && (
+                              <div className="mt-2 flex items-start gap-1.5 p-2 rounded-xl bg-rose-50/90 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800/60 text-[11px] text-rose-800 dark:text-rose-200">
+                                <AlertTriangle className="size-3.5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+                                <span className="line-clamp-2">
+                                  <strong>Koreksi {item.supervisor_role || 'Supervisor'}:</strong> {item.catatan_koreksi}
+                                </span>
+                              </div>
+                            )}
+
                             {/* Mobile compact metadata row */}
                             <div className="sm:hidden mt-2 flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-100/80 dark:border-emerald-900/40">
                               <span className="inline-flex items-center justify-center size-5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
@@ -1367,6 +1963,7 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                               </span>
                               {getTipeBadge(item.tipe)}
                               {getStatusBadge(item.status, item.deleted_at)}
+                              {getStatusSupervisiBadge(item.status_supervisi)}
                             </div>
                           </div>
                         </td>
@@ -1388,9 +1985,12 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                           {getTipeBadge(item.tipe)}
                         </td>
 
-                        {/* Status */}
+                        {/* Status (Publish & Supervisi) */}
                         <td className="hidden sm:table-cell px-3.5 py-3.5 text-center">
-                          {getStatusBadge(item.status, item.deleted_at)}
+                          <div className="flex flex-col items-center gap-1.5">
+                            {getStatusBadge(item.status, item.deleted_at)}
+                            {getStatusSupervisiBadge(item.status_supervisi)}
+                          </div>
                         </td>
 
                         {/* Tanggal */}
@@ -1417,6 +2017,33 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                               onEdit={() => handleOpenEditModal(item)}
                               onDelete={() => setDeleteTarget(item)}
                               extraItems={[
+                                ...(isSupervisor
+                                  ? [
+                                      {
+                                        label: 'Supervisi & Catatan Koreksi',
+                                        icon: <ShieldCheck className="h-4 w-4 text-emerald-600" />,
+                                        onClick: () => {
+                                          setSupervisiTarget(item)
+                                          setSupervisiModalOpen(true)
+                                        },
+                                      },
+                                    ]
+                                  : []),
+                                ...(item.status_supervisi === 'draft' ||
+                                item.status_supervisi === 'perlu_revisi' ||
+                                !item.status_supervisi
+                                  ? [
+                                      {
+                                        label: 'Ajukan Telaah Supervisi',
+                                        icon: <Send className="h-4 w-4 text-blue-600" />,
+                                        onClick: () => {
+                                          setAjukanTarget(item)
+                                          setAjukanCatatan('')
+                                          setAjukanModalOpen(true)
+                                        },
+                                      },
+                                    ]
+                                  : []),
                                 {
                                   label: 'Cetak Detail Materi',
                                   icon: <Printer className="h-4 w-4 text-indigo-600" />,
@@ -2016,6 +2643,37 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
                     Opsi Materi:
                   </span>
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* Action Khusus Supervisor: Supervisi & Catatan Koreksi */}
+                    {isSupervisor && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSupervisiTarget(previewItem)
+                          setSupervisiModalOpen(true)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white text-xs font-bold hover:scale-[1.02] active:scale-95 transition shadow-sm border border-emerald-300/40 cursor-pointer"
+                      >
+                        <ShieldCheck className="size-3.5" /> Beri Supervisi / Koreksi
+                      </button>
+                    )}
+
+                    {/* Action Guru: Ajukan Telaah */}
+                    {(previewItem.status_supervisi === 'draft' ||
+                      previewItem.status_supervisi === 'perlu_revisi' ||
+                      !previewItem.status_supervisi) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAjukanTarget(previewItem)
+                          setAjukanCatatan('')
+                          setAjukanModalOpen(true)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 text-white text-xs font-bold hover:scale-[1.02] active:scale-95 transition shadow-sm border border-sky-300/40 cursor-pointer"
+                      >
+                        <Send className="size-3.5" /> Ajukan Telaah
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => handlePrintSingleMateri(previewItem)}
@@ -2057,6 +2715,85 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
 
                 {/* Preview Body Scrollable */}
                 <div className="p-6 space-y-4 overflow-y-auto text-xs text-slate-700 dark:text-slate-300">
+                  {/* Status Banner Supervisi: Perlu Revisi */}
+                  {previewItem.status_supervisi === 'perlu_revisi' && (
+                    <div className="p-4 rounded-2xl border-2 border-rose-300 dark:border-rose-800 bg-gradient-to-r from-rose-50 via-pink-50/50 to-rose-50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-rose-950/30">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-xl bg-rose-500 text-white shrink-0 shadow-sm">
+                          <AlertTriangle className="size-5" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-extrabold text-xs text-rose-900 dark:text-rose-200 uppercase tracking-wider flex items-center gap-1.5">
+                              Perlu Revisi dari {previewItem.supervisor_role || 'Kepala Sekolah / Divisi Pendidikan'}
+                            </h4>
+                            {previewItem.tanggal_supervisi && (
+                              <span className="text-[11px] font-semibold text-rose-700/80 dark:text-rose-300/80">
+                                {new Date(previewItem.tanggal_supervisi).toLocaleString('id-ID', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short',
+                                })}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs text-rose-900 dark:text-rose-100 font-medium leading-relaxed bg-white/70 dark:bg-slate-900/60 p-3 rounded-xl border border-rose-200 dark:border-rose-800/60 whitespace-pre-line">
+                            {previewItem.catatan_koreksi || 'Mohon perbaiki dan sesuaikan kembali materi ini.'}
+                          </p>
+                          {previewItem.supervisor?.name && (
+                            <p className="mt-2 text-[11px] font-bold text-rose-800 dark:text-rose-300">
+                              Penelaah: {previewItem.supervisor.name} ({previewItem.supervisor_role || 'Supervisor'})
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status Banner Supervisi: Disetujui */}
+                  {previewItem.status_supervisi === 'disetujui' && (
+                    <div className="p-3.5 rounded-2xl border border-emerald-300/80 bg-emerald-50/70 dark:bg-emerald-950/30 dark:border-emerald-800/70 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-xl bg-emerald-600 text-white shrink-0 shadow-xs">
+                          <CheckCircle2 className="size-4" />
+                        </div>
+                        <div>
+                          <p className="font-extrabold text-xs text-emerald-900 dark:text-emerald-200">
+                            Materi Telah Disetujui &amp; Layak Ajar
+                          </p>
+                          <p className="text-[11px] text-emerald-700/90 dark:text-emerald-400">
+                            Ditelaah oleh {previewItem.supervisor?.name || previewItem.supervisor_role || 'Kepala Sekolah / Divisi Pendidikan'}
+                            {previewItem.tanggal_supervisi ? ` pada ${new Date(previewItem.tanggal_supervisi).toLocaleDateString('id-ID', { dateStyle: 'medium' })}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-600 text-white shadow-2xs">
+                        Layak KBM
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Status Banner Supervisi: Menunggu Telaah */}
+                  {previewItem.status_supervisi === 'diajukan' && (
+                    <div className="p-3.5 rounded-2xl border border-amber-300/80 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-800/70 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-xl bg-amber-500 text-white shrink-0 shadow-xs">
+                          <Clock className="size-4" />
+                        </div>
+                        <div>
+                          <p className="font-extrabold text-xs text-amber-900 dark:text-amber-200">
+                            Sedang Menunggu Telaah
+                          </p>
+                          <p className="text-[11px] text-amber-700/90 dark:text-amber-400">
+                            Materi telah diajukan ke Kepala Sekolah &amp; Divisi Pendidikan untuk ditinjau.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white shadow-2xs">
+                        Antrean Review
+                      </span>
+                    </div>
+                  )}
+
                   {previewItem.ringkasan && (
                     <div className="p-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800/60">
                       <h4 className="font-bold text-[11px] uppercase tracking-wider text-[#0E5C44] dark:text-emerald-400 mb-1 flex items-center gap-1.5">
@@ -2348,8 +3085,30 @@ export default function LmsMateriPage({ embedded = false, hideBreadcrumb = false
           moduleTitle="Materi Pembelajaran"
         />
 
-        {/* Floating Semantic Toast Stack */}
-        <ToastStack items={toastList} onDismiss={dismissToast} />
+        {/* ── HARMONIZED SUPERVISI & CATATAN KOREKSI MODAL ── */}
+        <HarmonizedSupervisiModal
+          isOpen={supervisiModalOpen}
+          onClose={() => {
+            setSupervisiModalOpen(false)
+            setSupervisiTarget(null)
+          }}
+          item={supervisiTarget}
+          onSubmit={supervisiMutation.mutate}
+          isPending={supervisiMutation.isPending}
+        />
+
+        {/* ── HARMONIZED AJUKAN TELAAH MODAL ── */}
+        <HarmonizedAjukanTelaahModal
+          isOpen={ajukanModalOpen}
+          onClose={() => {
+            setAjukanModalOpen(false)
+            setAjukanTarget(null)
+          }}
+          item={ajukanTarget}
+          onSubmit={ajukanTelaahMutation.mutate}
+          isPending={ajukanTelaahMutation.isPending}
+        />
+
       </motion.div>
     </PageContainer>
   )

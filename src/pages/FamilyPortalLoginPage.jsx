@@ -62,7 +62,7 @@ export default function FamilyPortalLoginPage() {
     }
   }
 
-  const schoolName = settings?.school_name || 'YAYASAN DAR EL - IMAN'
+  const schoolName = settings?.school_name || 'Yayasan Pendidikan Islam'
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#F5F8F6] px-4 py-8 dark:bg-slate-950 sm:py-12">

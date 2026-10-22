@@ -5,34 +5,81 @@ import { cn } from '../../lib/utils'
 const ToastContext = createContext(null)
 
 const ICONS = {
-  success: { Icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' },
-  error: { Icon: XCircle, color: 'text-rose-600 dark:text-rose-400', bar: 'bg-rose-500' },
-  warning: { Icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' },
-  info: { Icon: Info, color: 'text-sky-600 dark:text-sky-400', bar: 'bg-sky-500' },
+  success: {
+    Icon: CheckCircle2,
+    gradient: 'from-emerald-500 via-teal-400 to-emerald-600',
+    iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30',
+    border: 'border-emerald-500/40 shadow-emerald-950/15 dark:border-emerald-600/50 dark:shadow-black/50',
+    badge: 'bg-emerald-50 text-[#0E5C44] border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80',
+    label: 'Sukses',
+  },
+  error: {
+    Icon: XCircle,
+    gradient: 'from-rose-500 via-rose-600 to-red-700',
+    iconBg: 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30',
+    border: 'border-rose-400/50 shadow-rose-950/15 dark:border-rose-600/50 dark:shadow-black/50',
+    badge: 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80',
+    label: 'Gagal',
+  },
+  warning: {
+    Icon: AlertTriangle,
+    gradient: 'from-amber-400 via-amber-500 to-orange-600',
+    iconBg: 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30',
+    border: 'border-amber-400/50 shadow-amber-950/15 dark:border-amber-600/50 dark:shadow-black/50',
+    badge: 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80',
+    label: 'Perhatian',
+  },
+  info: {
+    Icon: Info,
+    gradient: 'from-sky-400 via-blue-500 to-indigo-600',
+    iconBg: 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30',
+    border: 'border-sky-400/50 shadow-sky-950/15 dark:border-sky-600/50 dark:shadow-black/50',
+    badge: 'bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/80',
+    label: 'Info',
+  },
 }
 
 const ToastItem = ({ toast, onClose }) => {
-  const { Icon, color, bar } = ICONS[toast.type] || ICONS.info
+  const meta = ICONS[toast.type] || ICONS.info
+  const IconComp = meta.Icon
   return (
     <div
       role={toast.type === 'error' ? 'alert' : 'status'}
       aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
-      className="pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-[16px] border border-slate-200/80 bg-white p-4 shadow-lg shadow-slate-900/5 dark:border-slate-700 dark:bg-[#1B2433]"
+      className={cn(
+        'relative pointer-events-auto flex flex-col overflow-hidden rounded-2xl border-2 bg-white/95 dark:bg-[#182232]/95 backdrop-blur-md p-3.5 shadow-2xl transition-all duration-300 animate-[masterDropdownSlide_0.25s_ease-out]',
+        meta.border
+      )}
     >
-      <span className={cn('absolute inset-y-0 left-0 w-1', bar)} aria-hidden="true" />
-      <Icon className={cn('mt-0.5 h-5 w-5 shrink-0', color)} aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-slate-900 dark:text-white">{toast.title}</p>
-        {toast.description && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{toast.description}</p>}
+      <div className={cn('absolute top-0 left-0 right-0 h-1 bg-gradient-to-r', meta.gradient)} />
+      <div className="flex items-start gap-3 mt-0.5">
+        <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-sm', meta.iconBg)}>
+          <IconComp className="size-5" strokeWidth={2.3} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-tight">{toast.title}</h4>
+            <span className={cn('inline-flex items-center rounded-full px-2 py-0.2 text-[10px] font-bold border', meta.badge)}>
+              {meta.label}
+            </span>
+          </div>
+          {Boolean(toast.description) && (
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              {typeof toast.description === 'string'
+                ? toast.description
+                : (toast.description?.description || toast.description?.message || '')}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Tutup notifikasi"
+          className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+        >
+          <X className="size-4" strokeWidth={2.2} />
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Tutup notifikasi"
-        className="shrink-0 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
-      >
-        <X className="h-4 w-4" />
-      </button>
     </div>
   )
 }
@@ -58,7 +105,55 @@ export function ToastProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  const toast = useCallback(({ title, description, type = 'info', duration = 4000 }) => {
+  const sanitizeDesc = (val) => {
+    if (typeof val === 'string') return val
+    if (typeof val === 'number') return String(val)
+    if (typeof val === 'object' && val !== null) {
+      return typeof val.description === 'string' ? val.description : (typeof val.message === 'string' ? val.message : '')
+    }
+    return ''
+  }
+
+  const toast = useCallback((arg1, arg2, arg3) => {
+    let title = ''
+    let description = ''
+    let type = 'info'
+    let duration = 4000
+
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      title = arg1.title || arg1.message || 'Notifikasi'
+      description = sanitizeDesc(arg1.description || (arg1.title && arg1.message !== arg1.title ? arg1.message : ''))
+      type = arg1.type || arg1.tone || 'info'
+      duration = arg1.duration ?? (type === 'error' ? 6000 : 4000)
+    } else if (typeof arg1 === 'string') {
+      const knownTypes = ['success', 'error', 'warning', 'info', 'danger']
+      if (knownTypes.includes(arg1.toLowerCase()) && typeof arg2 === 'string') {
+        type = arg1.toLowerCase() === 'danger' ? 'error' : arg1.toLowerCase()
+        title = arg2
+        description = sanitizeDesc(arg3)
+      } else {
+        title = arg1
+        if (typeof arg2 === 'string') {
+          if (knownTypes.includes(arg2.toLowerCase())) {
+            type = arg2.toLowerCase() === 'danger' ? 'error' : arg2.toLowerCase()
+            description = sanitizeDesc(arg3)
+          } else {
+            description = sanitizeDesc(arg2)
+            if (typeof arg3 === 'string') {
+              type = arg3.toLowerCase() === 'danger' ? 'error' : arg3.toLowerCase()
+            }
+          }
+        } else if (typeof arg2 === 'object' && arg2 !== null) {
+          description = sanitizeDesc(arg2)
+          if (arg2.type || arg2.tone) type = arg2.type || arg2.tone
+        }
+      }
+    }
+
+    if (type === 'danger') type = 'error'
+    if (!['success', 'error', 'warning', 'info'].includes(type)) type = 'info'
+    if (type === 'error' && duration === 4000) duration = 6000
+
     const id = ++idRef.current
     setToasts((prev) => [...prev, { id, title, description, type }])
     if (duration > 0) {
@@ -67,14 +162,39 @@ export function ToastProvider({ children }) {
     return id
   }, [dismiss])
 
-  const api = useMemo(() => ({
-    toast,
-    success: (title, description) => toast({ title, description, type: 'success' }),
-    error: (title, description) => toast({ title, description, type: 'error', duration: 6000 }),
-    warning: (title, description) => toast({ title, description, type: 'warning' }),
-    info: (title, description) => toast({ title, description, type: 'info' }),
-    dismiss,
-  }), [toast, dismiss])
+  const push = useCallback((arg1, arg2, arg3) => {
+    return toast(arg1, arg2, arg3)
+  }, [toast])
+
+  React.useEffect(() => {
+    externalToast = toast
+    const handler = (e) => {
+      if (e?.detail) {
+        toast(e.detail.arg1, e.detail.arg2, e.detail.arg3)
+      }
+    }
+    window.addEventListener('app-toast', handler)
+    return () => {
+      externalToast = null
+      window.removeEventListener('app-toast', handler)
+    }
+  }, [toast])
+
+  const api = useMemo(() => {
+    const fn = (arg1, arg2, arg3) => toast(arg1, arg2, arg3)
+    fn.toast = toast
+    fn.push = push
+    fn.pushToast = push
+    fn.show = push
+    fn.showToast = push
+    fn.success = (title, description) => toast({ title, description: sanitizeDesc(description), type: 'success' })
+    fn.error = (title, description) => toast({ title, description: sanitizeDesc(description), type: 'error', duration: 6000 })
+    fn.warning = (title, description) => toast({ title, description: sanitizeDesc(description), type: 'warning' })
+    fn.info = (title, description) => toast({ title, description: sanitizeDesc(description), type: 'info' })
+    fn.loading = (title, description) => toast({ title, description: sanitizeDesc(description), type: 'info' })
+    fn.dismiss = dismiss
+    return fn
+  }, [toast, push, dismiss])
 
   return (
     <ToastContext.Provider value={api}>
@@ -87,6 +207,34 @@ export function ToastProvider({ children }) {
     </ToastContext.Provider>
   )
 }
+
+let externalToast = null
+
+export function showToast(arg1, arg2, arg3) {
+  if (externalToast) {
+    return externalToast(arg1, arg2, arg3)
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('app-toast', { detail: { arg1, arg2, arg3 } }))
+  }
+}
+
+export const globalToast = Object.assign(
+  (arg1, arg2, arg3) => showToast(arg1, arg2, arg3),
+  {
+    success: (title, description) => showToast({ title, description, type: 'success' }),
+    error: (title, description) => showToast({ title, description, type: 'error', duration: 6000 }),
+    warning: (title, description) => showToast({ title, description, type: 'warning' }),
+    info: (title, description) => showToast({ title, description, type: 'info' }),
+    loading: (title, description) => {
+      const descStr = typeof description === 'string' ? description : (typeof description === 'object' && description !== null ? (description.description || description.message || '') : '')
+      return showToast({ title, description: descStr, type: 'info' })
+    },
+    dismiss: (id) => {
+      if (externalToast?.dismiss) externalToast.dismiss(id)
+    },
+  }
+)
 
 export function useToast() {
   const ctx = useContext(ToastContext)

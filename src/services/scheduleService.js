@@ -29,4 +29,13 @@ export const scheduleService = {
     const { data } = await api.post('/schedules/check-conflict', payload)
     return data
   },
+  getAvailability: async (params = {}) => {
+    const { data } = await api.get('/schedules/availability', { params })
+    return data?.data || {}
+  },
+  getMatrix: async (params = {}) => {
+    const { data } = await api.get('/schedules/matrix', { params })
+    return data?.data || {}
+  },
 }
+

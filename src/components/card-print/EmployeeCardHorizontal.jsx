@@ -2,11 +2,13 @@ import React, { useState, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { getCardLogoUrl } from '../../utils/cardLogoHelper'
 import { resolveAvatarUrl } from '../ui/PersonAvatar'
+import { resolveFoundationName } from '../../utils/printHelper'
+import { usePengaturanStore } from '../../stores/pengaturanStore'
 
 export default function EmployeeCardHorizontal({
   employee,
   template = 'green',
-  pengaturan = {},
+  pengaturan: propPengaturan = {},
   formatDate,
   qrPayload,
   isPrint = false,
@@ -16,8 +18,8 @@ export default function EmployeeCardHorizontal({
   photoShape = 'rounded',
   showPattern = true,
   showWave = true,
-  headerMotto = 'Berilmu, Berakhlak, Beramal',
-  footerMotto = 'Generasi Beriman, Berilmu,\nBerakhlak Mulia',
+  headerMotto,
+  footerMotto,
   onElementMove,
 }) {
   const [activeDragKey, setActiveDragKey] = useState(null)
@@ -25,11 +27,27 @@ export default function EmployeeCardHorizontal({
 
   if (!employee) return null
 
+  const storePengaturan = usePengaturanStore((state) => state.pengaturan)
+  const pengaturan =
+    propPengaturan && Object.keys(propPengaturan).length > 0
+      ? propPengaturan
+      : (storePengaturan || {})
+
+  const schoolName =
+    resolveFoundationName(
+      pengaturan?.school_name ||
+      pengaturan?.institution_name ||
+      pengaturan?.nama_yayasan ||
+      pengaturan?.yayasan
+    ) ||
+    pengaturan?.school_name ||
+    'Yayasan Pendidikan Islam'
+  const appName = pengaturan?.application_name || 'ISLAMIC SCHOOL'
   const logoUrl = getCardLogoUrl(pengaturan, employee)
+  const activeHeaderMotto = headerMotto || pengaturan?.motto || 'Berilmu, Berakhlak, Beramal'
+  const activeFooterMotto = footerMotto || pengaturan?.card_footer_motto || 'Generasi Beriman, Berilmu,\nBerakhlak Mulia'
   const namaLengkap = `${employee.gelar_depan ? `${employee.gelar_depan} ` : ''}${employee.nama_lengkap || ''}${employee.gelar_belakang ? `, ${employee.gelar_belakang}` : ''}`
   const initials = (employee.nama_lengkap || 'PE').substring(0, 2).toUpperCase()
-  const schoolName = pengaturan.school_name || 'YAYASAN DAR EL-IMAN'
-  const appName = pengaturan.application_name || 'ISLAMIC SCHOOL'
   const formattedBirthDate = formatDate ? formatDate(employee.tanggal_lahir) : (employee.tanggal_lahir || '—')
 
   const handleStartDrag = (key, clientX, clientY) => {
@@ -125,7 +143,7 @@ export default function EmployeeCardHorizontal({
         </span>
         <strong>{schoolName}</strong>
         <small>{appName}</small>
-        <em>{headerMotto || 'Berilmu, Berakhlak, Beramal'}</em>
+        <em>{activeHeaderMotto}</em>
       </header>
 
       <span
@@ -273,7 +291,7 @@ export default function EmployeeCardHorizontal({
         }}
       >
         <b>
-          {(footerMotto || 'Generasi Beriman, Berilmu,\nBerakhlak Mulia').split('\n').map((line, idx) => (
+          {(activeFooterMotto || 'Generasi Beriman, Berilmu,\nBerakhlak Mulia').split('\n').map((line, idx) => (
             <span key={idx}>
               {idx > 0 && <br />}
               {line}
@@ -283,7 +301,7 @@ export default function EmployeeCardHorizontal({
         <span>
           TAHUN AJARAN
           <br />
-          2025/2026
+          {employee?.academic_year || employee?.tahun_ajaran || pengaturan?.tahun_ajaran_aktif || '2026/2027'}
         </span>
       </footer>
     </article>

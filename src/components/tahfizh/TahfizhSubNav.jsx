@@ -7,6 +7,7 @@ import {
   BarChart2,
   UserCheck,
   Activity,
+  Target,
 } from 'lucide-react'
 
 import { useAuthStore } from '../../stores/authStore'
@@ -65,6 +66,13 @@ export function TahfizhSubNav() {
         label: 'Monitor Non-Ponpes',
         icon: Activity,
         classes: 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 text-white border border-amber-300/40',
+      },
+      {
+        id: '/dashboard/tahfizh/pengaturan-target',
+        path: '/dashboard/tahfizh/pengaturan-target',
+        label: 'Pengaturan Target KPI',
+        icon: Target,
+        classes: 'bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 text-white border border-emerald-300/40',
       },
     ] : []),
   ]

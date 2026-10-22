@@ -37,8 +37,9 @@ import {
   FileSpreadsheet,
 } from 'lucide-react'
 import InputLaporanBulananModal from '../components/pemantauan/InputLaporanBulananModal'
-import { printWeeklyStudentEvaluation } from '../utils/printHelper'
+import { printWeeklyStudentEvaluation, resolveFoundationName } from '../utils/printHelper'
 import { useAuthStore } from '../stores/authStore'
+import { usePengaturanStore } from '../stores/pengaturanStore'
 import { familyPortalService } from '../services/familyPortalService'
 import {
   Avatar,
@@ -307,6 +308,8 @@ function ModernSummaryCard({ icon: Icon, title, value, subtext, tag, tone = 'eme
 export default function KepalaSekolahDashboardPage() {
   const navigate = useNavigate()
   const currentAuthUser = useAuthStore((state) => state.user)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const defaultUserUnit = currentAuthUser?.unit_id || currentAuthUser?.education_unit_id || currentAuthUser?.employee?.unit_id || currentAuthUser?.metadata?.education_unit_id || currentAuthUser?.metadata?.unit_id || ''
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -352,11 +355,11 @@ export default function KepalaSekolahDashboardPage() {
         education_unit: eduUnit,
       },
       period: {
-        title: 'Senin, 10 Agustus 2026 s.d. Jumat, 14 Agustus 2026',
+        title: 'Pekan Berjalan',
         academicYear: schoolInfo?.tahun_ajaran || '2026/2027',
       },
       homeroomTeacher: {
-        name: 'Ustadzah Elsa Putri Utami',
+        name: sWali || 'Wali Kelas',
       },
       guruWali: {
         name: sWali,
@@ -688,7 +691,7 @@ export default function KepalaSekolahDashboardPage() {
             <div>
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 Profil Pengurus Yayasan
-                <AppBadge variant="purple" size="xs">Yayasan Dar el-Iman</AppBadge>
+                <AppBadge variant="purple" size="xs">{foundationName}</AppBadge>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Struktur pimpinan eksekutif yayasan: Ketua, Sekretaris, dan Bendahara
@@ -697,12 +700,18 @@ export default function KepalaSekolahDashboardPage() {
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-            Periode 2021 - 2026
+            {data?.pengurus_periode || 'Periode Aktif'}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {pengurusYayasanList.map((officer) => {
+        {pengurusYayasanList.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-emerald-300/60 dark:border-emerald-700/60 p-8 text-center bg-emerald-50/20 dark:bg-emerald-950/20">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Data pengurus yayasan belum dikonfigurasi.</p>
+            <p className="text-xs text-slate-400 mt-1">Struktur pimpinan yayasan dapat diatur melalui menu Pengaturan Yayasan.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {pengurusYayasanList.map((officer) => {
             const photo = officer.avatar_url || officer.photo || officer.foto
             const name = officer.nama || officer.nama_lengkap || officer.name
             const jabatan = officer.jabatan || officer.title || 'Pengurus'
@@ -832,11 +841,11 @@ export default function KepalaSekolahDashboardPage() {
                   <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-2.5 dark:border-slate-800 dark:bg-slate-900/50 space-y-1.5 text-[11px]">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-bold">Lembaga:</span>
-                      <span className="font-extrabold text-slate-800 dark:text-slate-200">Yayasan Dar el-Iman</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-200">{foundationName}</span>
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-800">
                       <span className="text-slate-400 font-bold">Masa Khidmat:</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">Periode 2021 - 2026</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{data?.pengurus_periode || officer.periode || 'Periode Aktif'}</span>
                     </div>
                   </div>
 
@@ -855,7 +864,8 @@ export default function KepalaSekolahDashboardPage() {
             )
           })}
         </div>
-      </section>
+      )}
+    </section>
 
       {/* 2-Column Grid: Pegawai & Guru Online Real-Time + Log Keaktifan Feed */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -1683,7 +1693,16 @@ export default function KepalaSekolahDashboardPage() {
                 </span>
               </div>
               <span className="text-[11px] font-semibold text-slate-400">
-                Rata-rata: {Math.round(attendanceTrendChartData.reduce((acc, curr) => acc + (curr.rate || 0), 0) / (attendanceTrendChartData.length || 1))}% kehadiran
+                {(() => {
+                  const validDays = attendanceTrendChartData.filter((c) => c.rate !== null && c.rate !== undefined && ((c.total || 0) > 0 || (c.hadir || 0) > 0))
+                  if (validDays.length === 0) return 'Rata-rata: — (Belum ada data pekan ini)'
+                  const totalHadir = validDays.reduce((acc, curr) => acc + (curr.hadir || 0), 0)
+                  const totalPop = validDays.reduce((acc, curr) => acc + (curr.total || 0), 0)
+                  const avg = totalPop > 0
+                    ? Math.round((totalHadir / totalPop) * 100)
+                    : Math.round(validDays.reduce((acc, curr) => acc + Number(curr.rate), 0) / validDays.length)
+                  return totalPop > 0 ? `Rata-rata: ${avg}% (${totalHadir} dari ${totalPop} siswa)` : `Rata-rata: ${avg}% kehadiran`
+                })()}
               </span>
             </div>
 

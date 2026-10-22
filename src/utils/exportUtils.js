@@ -1,4 +1,4 @@
-import { toast } from 'sonner'
+import { globalToast as toast } from '../components/app/ToastProvider'
 import { Swal } from '../components/tailgrids/compat/swal-tailgrids'
 import { api } from '../services/api'
 
@@ -94,7 +94,22 @@ export async function downloadFileFromApi(
     return { success: true, filename }
   } catch (error) {
     console.error('Export error:', error)
-    const errorMsg = error.response?.data?.message || 'Terjadi kesalahan saat memproses data ekspor.'
+    let errorMsg = 'Terjadi kesalahan saat memproses data ekspor.'
+
+    if (error.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text()
+        const parsed = JSON.parse(text)
+        if (parsed?.message) errorMsg = parsed.message
+      } catch {
+        // Blob is not valid JSON
+      }
+    } else if (error.response?.data?.message) {
+      errorMsg = error.response.data.message
+    } else if (error.message) {
+      errorMsg = error.message
+    }
+
     toast.error('Gagal Mengunduh Berkas', {
       id: toastId,
       description: errorMsg,

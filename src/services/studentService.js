@@ -74,4 +74,9 @@ export const studentService = {
     const { data } = await api.get('/students/import-template')
     return data
   },
+
+  generateVaBsi: async (params = {}) => {
+    const { data } = await api.post('/students/generate-va-bsi', params)
+    return data
+  },
 }

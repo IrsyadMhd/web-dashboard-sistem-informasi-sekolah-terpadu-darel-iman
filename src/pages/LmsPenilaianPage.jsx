@@ -1,5 +1,8 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuthStore } from '../stores/authStore'
 import {
   Award,
   BookOpen,
@@ -75,76 +78,14 @@ import {
 
 // ── TOAST NOTIFICATION STACK HOOK ──
 function useNotifications() {
-  const [items, setItems] = useState([])
+  const toast = useToast()
   const push = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setItems((prev) => [...prev, { id, title, message, tone }])
-    window.setTimeout(() => setItems((prev) => prev.filter((n) => n.id !== id)), 5000)
+    toast(title, message, tone)
   }
-  const dismiss = (id) => setItems((prev) => prev.filter((n) => n.id !== id))
-  return { items, push, dismiss }
+  const dismiss = () => {}
+  return { items: [], push, dismiss }
 }
 
-function ToastStack({ items, onDismiss }) {
-  if (!items.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
-      {items.map((n) => {
-        const isError = n.tone === 'error' || n.tone === 'danger'
-        const isWarning = n.tone === 'warning'
-        return (
-          <motion.div
-            key={n.id}
-            initial={{ opacity: 0, y: 15, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`pointer-events-auto relative overflow-hidden rounded-2xl border bg-white p-4 shadow-xl dark:bg-slate-900 ${
-              isError
-                ? 'border-rose-300 dark:border-rose-800 shadow-rose-950/10'
-                : isWarning
-                ? 'border-amber-300 dark:border-amber-800 shadow-amber-950/10'
-                : 'border-emerald-300 dark:border-emerald-800 shadow-emerald-950/10'
-            }`}
-          >
-            <div
-              className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${
-                isError
-                  ? 'from-rose-500 via-rose-600 to-red-700'
-                  : isWarning
-                  ? 'from-amber-400 via-amber-500 to-orange-600'
-                  : 'from-emerald-500 via-teal-400 to-emerald-600'
-              }`}
-            />
-            <div className="flex items-start gap-3 mt-0.5">
-              <div
-                className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-xs ${
-                  isError
-                    ? 'bg-gradient-to-br from-rose-500 to-red-600'
-                    : isWarning
-                    ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                    : 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                }`}
-              >
-                {isError ? <XCircle className="size-4.5" /> : isWarning ? <AlertTriangle className="size-4.5" /> : <CheckCircle2 className="size-4.5" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">{n.title}</h4>
-                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{n.message}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          </motion.div>
-        )
-      })}
-    </div>
-  )
-}
 
 // ── HARMONIZED BATCH EXPORT MODAL ──
 function HarmonizedBatchExportModal({
@@ -470,6 +411,44 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, ctaText = 'Rinc
 }
 
 export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false, tabNav = null }) {
+  // User Auth & Teacher Scoping
+  const user = useAuthStore((state) => state.user)
+  const userRoles = useMemo(() => {
+    if (!user?.roles) return []
+    return user.roles.map((r) => (typeof r === 'string' ? r : r.name || r.role_name || ''))
+  }, [user])
+
+  const isSupervisor = useMemo(() => {
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    const checkRole = (name) => rList.some((r) => r.includes(name)) || mainRole.includes(name)
+    return (
+      checkRole('kepala sekolah') ||
+      checkRole('kepala_sekolah') ||
+      checkRole('principal') ||
+      checkRole('divisi pendidikan') ||
+      checkRole('divisi_pendidikan') ||
+      checkRole('kabid') ||
+      checkRole('kurikulum') ||
+      checkRole('waka') ||
+      checkRole('yayasan') ||
+      checkRole('admin') ||
+      checkRole('super admin') ||
+      checkRole('tata usaha') ||
+      checkRole('operator')
+    )
+  }, [userRoles, user?.role])
+
+  const isTeacherOnly = useMemo(() => {
+    if (isSupervisor) return false
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    return (
+      rList.some((r) => r.includes('guru') || r.includes('wali_kelas') || r.includes('wali kelas')) ||
+      mainRole.includes('guru')
+    )
+  }, [isSupervisor, userRoles, user?.role])
+
   const [dataList, setDataList] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({ currentPage: 1, lastPage: 1, total: 0 })
@@ -722,10 +701,10 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
     subject_id: '',
     semester_id: '',
     kelas_id: '',
-    score_assignment: 80,
-    score_quiz: 85,
-    score_midterm: 85,
-    score_final: 90,
+    score_assignment: 0,
+    score_quiz: 0,
+    score_midterm: 0,
+    score_final: 0,
     bobot_tugas: 20,
     bobot_uh: 25,
     bobot_uts: 25,
@@ -1097,8 +1076,8 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
   const trendChartData = useMemo(() => [
     { name: 'Tugas LMS', nilai: Number(stats.rata_assignment || 0), fill: '#059669' },
     { name: 'CBT UH', nilai: Number(stats.rata_cbt || 0), fill: '#2563eb' },
-    { name: 'CBT UTS', nilai: Number(stats.rata_cbt ? stats.rata_cbt * 0.95 : 0).toFixed(1), fill: '#7c3aed' },
-    { name: 'CBT UAS', nilai: Number(stats.rata_cbt ? stats.rata_cbt * 1.02 : 0).toFixed(1), fill: '#d97706' },
+    { name: 'CBT UTS', nilai: Number(stats.rata_midterm != null ? stats.rata_midterm : stats.rata_cbt || 0).toFixed(1), fill: '#7c3aed' },
+    { name: 'CBT UAS', nilai: Number(stats.rata_final != null ? stats.rata_final : stats.rata_cbt || 0).toFixed(1), fill: '#d97706' },
     { name: 'Rata Akhir', nilai: Number(stats.rata_nilai_akhir || 0), fill: '#059669' },
   ], [stats])
 
@@ -1133,6 +1112,10 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
       semester_id: '',
       is_passed: '',
     })
+  }
+
+  if (!embedded && isTeacherOnly) {
+    return <Navigate to="/portal-guru/workspace?tab=penilaian" replace />
   }
 
   return (
@@ -2877,9 +2860,6 @@ export default function LmsPenilaianPage({ embedded = false, hideBreadcrumb = fa
         item={deleteTarget}
         isSubmitting={isDeleting}
       />
-
-      {/* ── Toast Notification Stack ── */}
-      <ToastStack items={toastList} onDismiss={dismissToast} />
     </PageContainer>
   )
 }

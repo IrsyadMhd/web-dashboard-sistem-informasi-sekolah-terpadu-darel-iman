@@ -13,22 +13,21 @@ import {
 import { cn } from '../../lib/utils'
 
 export default function TahunAjaranDetailModal({ isOpen, onClose, data }) {
-  if (!isOpen || !data) return null
-
-  const isActive = Boolean(data.is_active)
-  const isDeleted = Boolean(data.deleted_at)
+  const isActive = Boolean(data?.is_active)
+  const isDeleted = Boolean(data?.deleted_at)
 
   return (
     <AnimatePresence>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="detail-tahun-ajaran-title"
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) onClose()
-        }}
-      >
+      {isOpen && Boolean(data) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="detail-tahun-ajaran-title"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) onClose()
+          }}
+        >
         <motion.div
           initial={{ opacity: 0, scale: 0.94, y: 14 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -79,7 +78,7 @@ export default function TahunAjaranDetailModal({ isOpen, onClose, data }) {
                       Nama Tahun Ajaran
                     </span>
                     <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
-                      {data.name}
+                      {data?.name || '—'}
                     </h2>
                   </div>
 
@@ -169,6 +168,7 @@ export default function TahunAjaranDetailModal({ isOpen, onClose, data }) {
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   )
 }

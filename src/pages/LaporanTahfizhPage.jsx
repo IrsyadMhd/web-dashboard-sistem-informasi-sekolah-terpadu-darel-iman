@@ -215,13 +215,14 @@ export default function LaporanTahfizhPage() {
     return rawData.map((item) => {
       const surahNum = item.hafalan_surah_number ?? item.surah_number ?? item.metadata?.surah_number ?? null
       const surahName = item.hafalan_surah_name || item.surah_name || item.metadata?.surah_name || (surahNum ? `Surah ke-${surahNum}` : '-')
-      const type =
+      const rawType =
         item.setoran_type ||
         item.metadata?.type ||
         item.type ||
         item.jenis_setoran ||
         item.category ||
         (surahNum ? 'Ziyadah' : (Number(item.murajaah_lembar || 0) > 0 || item.murajaah_text ? 'Murajaah' : 'Setoran'))
+      const type = String(rawType || '').toLowerCase() === 'murojaah' ? 'Murajaah' : (rawType || 'Ziyadah')
       const studentName = item.student?.full_name || item.student?.nama || item.student?.nama_lengkap || item.student_name || 'Santri'
       const studentNis = item.student?.nis || item.student?.nisn || item.nis || '-'
       const className = item.school_class?.nama_kelas || item.schoolClass?.nama_kelas || item.student?.kelas?.nama_kelas || item.class_name || '-'
@@ -231,6 +232,16 @@ export default function LaporanTahfizhPage() {
         item.metadata?.kelancaran ||
         item.kelancaran ||
         (item.status ? (item.status === 'lancar' ? 'Lancar' : item.status === 'sangat_lancar' ? 'Sangat Lancar' : item.status === 'belum_lancar' ? 'Belum Lancar' : item.status) : '-')
+      const tajwid =
+        item.tajwid_label ||
+        item.metadata?.tajwid ||
+        item.tajwid ||
+        '-'
+      const makhraj =
+        item.makhraj_label ||
+        item.metadata?.makhraj ||
+        item.makhraj ||
+        '-'
       const dateStr = item.record_date || item.created_at?.slice(0, 10) || '-'
       const ayahStart = item.hafalan_ayah_start ?? item.ayah_start ?? item.metadata?.ayat_start ?? null
       const ayahEnd = item.hafalan_ayah_end ?? item.ayah_end ?? item.metadata?.ayat_end ?? null
@@ -244,6 +255,8 @@ export default function LaporanTahfizhPage() {
         class_name: className,
         teacher_name: teacherName,
         kelancaran,
+        tajwid,
+        makhraj,
         date: dateStr,
         ayah_start: ayahStart,
         ayah_end: ayahEnd,
@@ -508,20 +521,20 @@ export default function LaporanTahfizhPage() {
         unitName: row.unit_name || 'Sekolah Islam Terpadu',
       },
       period: {
-        title: startDate && endDate ? `${startDate} s.d. ${endDate}` : 'Senin, 10 Agustus 2026 s.d. Jumat, 14 Agustus 2026',
+        title: startDate && endDate ? `${startDate} s.d. ${endDate}` : 'Pekan Berjalan',
         academicYear: '2026/2027',
       },
       tahfizh: {
         lastSurah: surahStr,
-        lastDepositDate: row.date || 'Jumat, 14 Agustus 2026',
-        totalLines: row.hafalan_baris || 34,
+        lastDepositDate: row.date || '-',
+        totalLines: Number(row.hafalan_baris || 0),
         targetLines: 15,
         status: (Number(row.hafalan_baris) || 0) >= 15 ? 'Mutqin (Melampaui Target)' : 'Tuntas',
       },
       homeroomTeacher: {
-        name: row.teacher_name || 'Ustadzah Elsa Putri Utami',
+        name: row.teacher_name || 'Ustadz / Ustadzah Pembimbing',
       },
-      teacherNotes: row.notes_teacher || row.notes || 'Alhamdulillah capaian hafalan dan murajaah Al-Qur\'an ananda berjalan optimal dan memenuhi target pekanan. Tingkatkan terus kedisiplinan dan hafalan ananda.',
+      teacherNotes: row.notes_teacher || row.notes || '-',
     })
   }
 
@@ -629,8 +642,8 @@ export default function LaporanTahfizhPage() {
           icon={BookMarked}
           label="Setoran Ziyadah"
           value={metrics.ziyadahCount}
-          subtext="Hafalan ayat baru"
-          tag={`${metrics.totalCount > 0 ? ((metrics.ziyadahCount / metrics.totalCount) * 100).toFixed(1) : '0.0'}%`}
+          subtext={metrics.totalCount > 0 ? `${metrics.ziyadahCount} dari ${metrics.totalCount} setoran` : 'Belum ada setoran'}
+          tag={metrics.totalCount > 0 ? `${((metrics.ziyadahCount / metrics.totalCount) * 100).toFixed(1)}%` : '—'}
           tone="emerald"
           onClick={() => openCardModal('Ziyadah', 'Setoran Ziyadah', 'emerald')}
         />
@@ -638,8 +651,8 @@ export default function LaporanTahfizhPage() {
           icon={CheckCircle2}
           label="Setoran Murajaah"
           value={metrics.murajaahCount}
-          subtext="Pengulangan hafalan"
-          tag={`${metrics.totalCount > 0 ? ((metrics.murajaahCount / metrics.totalCount) * 100).toFixed(1) : '0.0'}%`}
+          subtext={metrics.totalCount > 0 ? `${metrics.murajaahCount} dari ${metrics.totalCount} setoran` : 'Belum ada setoran'}
+          tag={metrics.totalCount > 0 ? `${((metrics.murajaahCount / metrics.totalCount) * 100).toFixed(1)}%` : '—'}
           tone="violet"
           onClick={() => openCardModal('Murajaah', 'Setoran Murajaah', 'violet')}
         />
@@ -647,8 +660,8 @@ export default function LaporanTahfizhPage() {
           icon={Sparkles}
           label="Tasmi' (Ujian Duduk)"
           value={metrics.tasmiCount}
-          subtext="Ujian sekali duduk"
-          tag={`${metrics.totalCount > 0 ? ((metrics.tasmiCount / metrics.totalCount) * 100).toFixed(1) : '0.0'}%`}
+          subtext={metrics.totalCount > 0 ? `${metrics.tasmiCount} dari ${metrics.totalCount} setoran` : 'Belum ada setoran'}
+          tag={metrics.totalCount > 0 ? `${((metrics.tasmiCount / metrics.totalCount) * 100).toFixed(1)}%` : '—'}
           tone="sky"
           onClick={() => openCardModal('Tasmi', "Tasmi' (Ujian Duduk)", 'sky')}
         />
@@ -656,8 +669,8 @@ export default function LaporanTahfizhPage() {
           icon={GraduationCap}
           label="Ujian Capaian Juz"
           value={metrics.ujianCount}
-          subtext="Kelulusan per Juz"
-          tag={`${metrics.totalCount > 0 ? ((metrics.ujianCount / metrics.totalCount) * 100).toFixed(1) : '0.0'}%`}
+          subtext={metrics.totalCount > 0 ? `${metrics.ujianCount} dari ${metrics.totalCount} setoran` : 'Belum ada setoran'}
+          tag={metrics.totalCount > 0 ? `${((metrics.ujianCount / metrics.totalCount) * 100).toFixed(1)}%` : '—'}
           tone="rose"
           onClick={() => openCardModal('Ujian', 'Ujian Capaian Juz', 'rose')}
         />
@@ -1032,6 +1045,7 @@ export default function LaporanTahfizhPage() {
                     <th className="py-2.5 px-4">Jenis</th>
                     <th className="py-2.5 px-4">Hafalan</th>
                     <th className="py-2.5 px-4">Kelancaran</th>
+                    <th className="py-2.5 px-4">Makhraj</th>
                     <th className="py-2.5 px-4">Pengajar</th>
                   </tr>
                 </thead>
@@ -1069,6 +1083,9 @@ export default function LaporanTahfizhPage() {
                           <td className="py-3 px-4 font-medium text-slate-600">
                             {row.kelancaran}
                           </td>
+                          <td className="py-3 px-4 font-medium text-teal-700 dark:text-teal-400">
+                            {row.makhraj || '-'}
+                          </td>
                           <td className="py-3 px-4 text-slate-500 font-medium">
                             {row.teacher_name}
                           </td>
@@ -1077,7 +1094,7 @@ export default function LaporanTahfizhPage() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="7" className="py-8 text-center text-slate-400 font-medium">
+                      <td colSpan="8" className="py-8 text-center text-slate-400 font-medium">
                         {cardModal.searchQuery ? 'Tidak ada data setoran yang cocok dengan pencarian.' : 'Belum ada data pada kategori ini.'}
                       </td>
                     </tr>

@@ -54,12 +54,14 @@ import {
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppPageHeader from '../components/app/AppPageHeader'
+import AppTabs from '../components/app/AppTabs'
 import ActionDropdown from '../components/app/ActionDropdown'
 import AppSkeleton from '../components/app/AppSkeleton'
 import AppEmptyState from '../components/app/AppEmptyState'
 import AppErrorState from '../components/app/AppErrorState'
 import TahfizhSubNav from '../components/tahfizh/TahfizhSubNav'
 import { MasterEmptyState, SquircleActionButton } from '../components/master-data'
+import { printCleanTable } from '../utils/printHelper'
 
 import { educationUnitService } from '../services/educationUnitService'
 import { studentService } from '../services/studentService'
@@ -181,10 +183,6 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
   const isStudent = isStudentRole(roles)
   const isSuperAdmin = roles.some((r) => /super admin|superadmin|super_admin/i.test(typeof r === 'string' ? r : r?.name || ''))
 
-  if ((isParent || isStudent) && !isSuperAdmin) {
-    return <Navigate to="/dashboard" replace />
-  }
-
   const isDivisi = roles.some((r) => String(r).toLowerCase().includes('divisi') || String(r).toLowerCase().includes('yayasan') || String(r).toLowerCase().includes('admin'))
   const isKepalaSekolah = roles.some((r) => String(r).toLowerCase().includes('kepala'))
   const isGuru = roles.some((r) => String(r).toLowerCase().includes('guru') || String(r).toLowerCase().includes('wali'))
@@ -247,7 +245,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           juz_completed: Number(tahfizhMeta.juz_completed || tahfizhMeta.juz || 0),
           total_baris: Number(tahfizhMeta.total_baris || tahfizhMeta.baris || 0),
           target_juz: Number(tahfizhMeta.target_juz || 0),
-          kelancaran: tahfizhMeta.kelancaran || 'Lancar',
+          kelancaran: tahfizhMeta.kelancaran || 'Belum dinilai',
           last_setoran: tahfizhMeta.last_setoran || '-',
         },
         ibadah: {
@@ -315,10 +313,26 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
 
   const handlePrintStudentReport = (siswa) => {
     setSelectedStudent(siswa)
-    setIsDetailOpen(true)
-    setTimeout(() => {
-      window.print()
-    }, 500)
+    if (!siswa) return
+    const rows = [
+      ['Tahfizh: Capaian Hafalan', siswa.tahfizh?.juz_completed ? `Juz ${siswa.tahfizh.juz_completed}` : 'Belum tercapai', siswa.tahfizh?.target_juz ? `Target: Juz ${siswa.tahfizh.target_juz}` : 'Target belum diatur'],
+      ['Tahfizh: Surah & Ayat Terakhir', siswa.tahfizh?.current_surah && siswa.tahfizh.current_surah !== '-' ? `${siswa.tahfizh.current_surah}, Ayat ${siswa.tahfizh?.current_ayat || '-'}` : 'Belum ada setoran', `${siswa.tahfizh?.total_baris || 0} Baris`],
+      ['Tahfizh: Kualitas Kelancaran', siswa.tahfizh?.kelancaran || 'Belum dinilai', siswa.tahfizh?.last_setoran && siswa.tahfizh.last_setoran !== '-' ? `Setoran Terakhir: ${siswa.tahfizh.last_setoran}` : 'Belum ada riwayat setoran'],
+      ['Ibadah: Sholat 5 Waktu', `${siswa.ibadah?.sholat_5_waktu || 0}%`, 'Wajib Berjamaah'],
+      ['Ibadah: Sholat Dhuha', `${siswa.ibadah?.sholat_dhuha || 0}%`, 'Sunnah Harian'],
+      ['Ibadah: Sholat Tahajud', `${siswa.ibadah?.tahajud || 0}%`, 'Qiyamul Lail'],
+      ['Ibadah: Tilawah Mandiri', siswa.ibadah?.tilawah_harian && siswa.ibadah.tilawah_harian !== '-' ? siswa.ibadah.tilawah_harian : 'Belum ada catatan', 'One Day One Juz'],
+      ['Ibadah: Dzikir Pagi / Petang', `${siswa.ibadah?.dzikir_pagi_petang || 0}%`, 'Al-Ma\'tsurat'],
+      ['Ibadah: Infaq / Shadaqah', `${siswa.ibadah?.infaq || 0}%`, 'Kedermawanan'],
+      ['Catatan Pembimbing', siswa.teacher_notes || 'Belum ada catatan evaluasi dari pembimbing.', 'Wali Kelas / Ustadz Pembimbing'],
+    ]
+    printCleanTable({
+      title: 'RAPOR MONITORING TAHFIZH & MUTABA\'AH IBADAH',
+      subtitle: `Siswa: ${siswa.student_name} | NIS: ${siswa.nis || '-'} | Unit: ${siswa.unit_name || '-'} (${siswa.class_name || '-'})`,
+      headers: ['Aspek Evaluasi', 'Capaian Aktual', 'Keterangan'],
+      rows,
+      orientation: 'portrait',
+    })
   }
 
   const handleDownloadKpiReport = () => {
@@ -373,17 +387,27 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
   // Dynamic KPI Stats calculated from baseStudents (No hardcoded data)
   const kpiStats = useMemo(() => {
     const list = baseStudents || []
-    const totalCount = list.length || 1
+    const totalStudents = list.length
     const totalBaris = list.reduce((acc, st) => acc + (st.tahfizh?.total_baris || 0), 0)
-    const avgJuz = (list.reduce((acc, st) => acc + (st.tahfizh?.juz_completed || 0), 0) / totalCount).toFixed(1)
-    const avgSholat = Math.round(list.reduce((acc, st) => acc + (st.ibadah?.sholat_5_waktu || 0), 0) / totalCount)
-    const avgSunnah = Math.round(list.reduce((acc, st) => acc + (st.ibadah?.sholat_dhuha || 0), 0) / totalCount)
-    const verifiedTeacherCount = list.filter(st => st.verification_status === 'verified_teacher').length
-    const verifiedPercent = ((verifiedTeacherCount / totalCount) * 100).toFixed(1)
+    const avgJuz = totalStudents > 0 ? (list.reduce((acc, st) => acc + (st.tahfizh?.juz_completed || 0), 0) / totalStudents).toFixed(1) : '—'
+    const avgSholat = totalStudents > 0 ? Math.round(list.reduce((acc, st) => acc + (st.ibadah?.sholat_5_waktu || 0), 0) / totalStudents) : null
+    const avgSunnah = totalStudents > 0 ? Math.round(list.reduce((acc, st) => acc + (st.ibadah?.sholat_dhuha || 0), 0) / totalStudents) : null
+    const avgDhuha = avgSunnah
+    const avgTahajud = totalStudents > 0 ? Math.round(list.reduce((acc, st) => acc + (st.ibadah?.tahajud || 0), 0) / totalStudents) : null
+    const avgDzikir = totalStudents > 0 ? Math.round(list.reduce((acc, st) => acc + (st.ibadah?.dzikir_pagi_petang || 0), 0) / totalStudents) : null
+    const avgPuasa = totalStudents > 0 ? Math.round(list.reduce((acc, st) => acc + (st.ibadah?.puasa_sunnah || 0), 0) / totalStudents) : null
+    const avgInfaq = totalStudents > 0 ? Math.round(list.reduce((acc, st) => acc + (st.ibadah?.infaq || 0), 0) / totalStudents) : null
+    const tilawahActiveCount = list.filter((st) => st.ibadah?.tilawah_harian && st.ibadah.tilawah_harian !== '-').length
+    const avgTilawah = totalStudents > 0 ? Math.round((tilawahActiveCount / totalStudents) * 100) : null
+
+    const verifiedTeacherCount = list.filter((st) => st.verification_status === 'verified_teacher').length
+    const verifiedPercent = totalStudents > 0 ? ((verifiedTeacherCount / totalStudents) * 100).toFixed(1) : null
+    const verifiedParentCount = list.filter((st) => Boolean(st.parent_verified)).length
+    const parentVerifiedPercent = totalStudents > 0 ? ((verifiedParentCount / totalStudents) * 100).toFixed(1) : null
 
     // Class breakdown for Tahfizh
     const classMap = new Map()
-    list.forEach(st => {
+    list.forEach((st) => {
       const cName = st.class_name || 'Umum'
       if (!classMap.has(cName)) {
         classMap.set(cName, { count: 0, totalBaris: 0, juzSum: 0 })
@@ -398,7 +422,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
       className: cName,
       totalBaris: val.totalBaris,
       avgJuz: (val.juzSum / (val.count || 1)).toFixed(1),
-      percent: Math.min(100, Math.round((val.totalBaris / Math.max(1, totalBaris)) * 100))
+      percent: Math.min(100, Math.round((val.totalBaris / Math.max(1, totalBaris)) * 100)),
     }))
 
     return {
@@ -406,10 +430,19 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
       avgJuz,
       avgSholat,
       avgSunnah,
+      avgDhuha,
+      avgTahajud,
+      avgDzikir,
+      avgPuasa,
+      avgInfaq,
+      avgTilawah,
       verifiedTeacherCount,
       verifiedPercent,
+      verifiedParentCount,
+      parentVerifiedPercent,
+      unverifiedCount: totalStudents - verifiedTeacherCount,
       classBreakdown,
-      totalStudents: list.length
+      totalStudents,
     }
   }, [baseStudents])
 
@@ -582,6 +615,10 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
     setTimeout(() => setAlertFeedback(null), 4000)
   }
 
+  if ((isParent || isStudent) && !isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return (
     <PageContainer>
       <div className="space-y-6 pb-12">
@@ -669,7 +706,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           <ModernKpiCard
             icon={CheckCircle2}
             label="Kedisiplinan Sholat 5 Waktu"
-            value={`${kpiStats.avgSholat}%`}
+            value={kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}
             subtext="Pelaksanaan Jamaah & Tepat Waktu"
             tag="Sangat Baik"
             tone="sky"
@@ -678,7 +715,7 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           <ModernKpiCard
             icon={Sparkles}
             label="Amalan Sunnah & Tilawah"
-            value={`${kpiStats.avgSunnah}%`}
+            value={kpiStats.avgSunnah != null ? `${kpiStats.avgSunnah}%` : '—'}
             subtext="Dhuha, Tahajud, Tilawah, Dzikir"
             tag="+5.4% Mgg Ini"
             tone="violet"
@@ -687,8 +724,8 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           <ModernKpiCard
             icon={UserCheck}
             label="Status Verifikasi Log"
-            value={`${kpiStats.verifiedPercent}%`}
-            subtext={`Log Terverifikasi (${kpiStats.verifiedTeacherCount}/${kpiStats.totalStudents} Siswa)`}
+            value={kpiStats.verifiedPercent != null ? `${kpiStats.verifiedPercent}%` : '—'}
+            subtext={kpiStats.totalStudents > 0 ? `Log Terverifikasi (${kpiStats.verifiedTeacherCount}/${kpiStats.totalStudents} Siswa)` : 'Belum ada log siswa'}
             tag="Aktif"
             tone="amber"
             onClick={() => handleOpenKpiDetail('verifikasi')}
@@ -957,51 +994,16 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
           <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
           {/* Baris 1: Navigation Tabs & Vivid Gradient Squircle Action Buttons (§H.5) */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 dark:border-emerald-800/60 -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 p-4 sm:p-5 mb-4">
-            {/* Tabs (Daftar Monitoring Siswa, Grafik & Analisis Capaian, Verifikasi Log Guru) */}
-            <div className="flex items-center gap-1.5 rounded-2xl bg-slate-100 p-1.5 dark:bg-slate-800 shrink-0 overflow-x-auto" role="tablist" aria-label="Mode monitoring">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === 'rekap'}
-                onClick={() => setActiveTab('rekap')}
-                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  activeTab === 'rekap'
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>Daftar Monitoring Siswa</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === 'chart'}
-                onClick={() => setActiveTab('chart')}
-                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  activeTab === 'chart'
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
-                }`}
-              >
-                <TrendingUp className="w-4 h-4" />
-                <span>Grafik & Analisis Capaian</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === 'verification'}
-                onClick={() => setActiveTab('verification')}
-                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
-                  activeTab === 'verification'
-                    ? 'bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white border border-emerald-300/40 shadow-md shadow-emerald-600/25'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
-                }`}
-              >
-                <UserCheck className="w-4 h-4" />
-                <span>Verifikasi Log Guru</span>
-              </button>
-            </div>
+            <AppTabs
+              tabs={[
+                { id: 'rekap', label: 'Daftar Monitoring Siswa', icon: Layers },
+                { id: 'chart', label: 'Grafik & Analisis Capaian', icon: TrendingUp },
+                { id: 'verification', label: 'Verifikasi Log Guru', icon: UserCheck },
+              ]}
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              ariaLabel="Mode monitoring"
+            />
 
             {/* Action Buttons Icon-Only Squircle (§H.5) */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start xl:self-auto flex-wrap">
@@ -1272,7 +1274,9 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                             <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                               <span>Total: {siswa.tahfizh.total_baris} baris</span>
                               <span>•</span>
-                              <span className="text-emerald-700 font-medium">{siswa.tahfizh.kelancaran}</span>
+                              <span className={siswa.tahfizh.kelancaran === 'Belum dinilai' ? 'text-slate-400 italic font-normal' : 'text-emerald-700 font-medium'}>
+                                {siswa.tahfizh.kelancaran}
+                              </span>
                             </div>
                           </div>
                         </TableCell>
@@ -1729,7 +1733,12 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-700">
                   <div><span className="text-slate-500">Surah Terakhir:</span> <p className="font-semibold">{selectedStudent.tahfizh.current_surah}</p></div>
                   <div><span className="text-slate-500">Ayat:</span> <p className="font-semibold">{selectedStudent.tahfizh.current_ayat}</p></div>
-                  <div><span className="text-slate-500">Kelancaran:</span> <p className="font-semibold text-emerald-700">{selectedStudent.tahfizh.kelancaran}</p></div>
+                  <div>
+                    <span className="text-slate-500">Kelancaran:</span>{' '}
+                    <p className={selectedStudent.tahfizh.kelancaran === 'Belum dinilai' ? 'italic text-slate-400 font-normal' : 'font-semibold text-emerald-700'}>
+                      {selectedStudent.tahfizh.kelancaran}
+                    </p>
+                  </div>
                   <div><span className="text-slate-500">Total Hafalan:</span> <p className="font-semibold">{selectedStudent.tahfizh.total_baris} Baris</p></div>
                   <div><span className="text-slate-500">Target Unit:</span> <p className="font-semibold">Juz {selectedStudent.tahfizh.target_juz}</p></div>
                   <div><span className="text-slate-500">Setoran Terakhir:</span> <p className="font-semibold">{selectedStudent.tahfizh.last_setoran}</p></div>
@@ -1916,15 +1925,15 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-sky-700 block">Total Kehadiran Sholat</span>
-                      <span className="text-lg font-extrabold text-sky-900">{kpiStats.avgSholat}%</span>
+                      <span className="text-lg font-extrabold text-sky-900">{kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}</span>
                     </div>
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-emerald-700 block">Pelaksanaan Berjamaah</span>
-                      <span className="text-lg font-extrabold text-emerald-900">{Math.min(100, Math.round(kpiStats.avgSholat * 0.98))}%</span>
+                      <span className="text-lg font-extrabold text-emerald-900">{kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}</span>
                     </div>
                     <div className="rounded-xl border border-purple-100 bg-purple-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-purple-700 block">Tepat Waktu</span>
-                      <span className="text-lg font-extrabold text-purple-900">{Math.min(100, Math.round(kpiStats.avgSholat * 1.02))}%</span>
+                      <span className="text-lg font-extrabold text-purple-900">{kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}</span>
                     </div>
                   </div>
 
@@ -1933,23 +1942,23 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-700">Subuh Berjamaah</span>
-                        <span className="font-bold text-sky-700">{Math.min(100, Math.round(kpiStats.avgSholat * 0.95))}%</span>
+                        <span className="font-bold text-sky-700">{kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}</span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-700">Dzuhur di Sekolah</span>
-                        <span className="font-bold text-emerald-700">{Math.min(100, Math.round(kpiStats.avgSholat * 1.04))}%</span>
+                        <span className="font-bold text-emerald-700">{kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}</span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-700">Ashar Berjamaah</span>
-                        <span className="font-bold text-purple-700">{Math.min(100, Math.round(kpiStats.avgSholat * 1.01))}%</span>
+                        <span className="font-bold text-purple-700">{kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}</span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-700">Maghrib Tepat Waktu</span>
-                        <span className="font-bold text-amber-700">{Math.min(100, Math.round(kpiStats.avgSholat * 0.97))}%</span>
+                        <span className="font-bold text-amber-700">{kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}</span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-700">Isya Berjamaah</span>
-                        <span className="font-bold text-slate-800">{Math.min(100, Math.round(kpiStats.avgSholat * 0.99))}%</span>
+                        <span className="font-bold text-slate-800">{kpiStats.avgSholat != null ? `${kpiStats.avgSholat}%` : '—'}</span>
                       </div>
                     </div>
                   </div>
@@ -1975,15 +1984,15 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div className="rounded-xl border border-violet-100 bg-violet-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-violet-700 block">Rata-rata Kelengkapan</span>
-                      <span className="text-lg font-extrabold text-violet-900">{kpiStats.avgSunnah}%</span>
+                      <span className="text-lg font-extrabold text-violet-900">{kpiStats.avgSunnah != null ? `${kpiStats.avgSunnah}%` : '—'}</span>
                     </div>
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-emerald-700 block">Sholat Dhuha</span>
-                      <span className="text-lg font-extrabold text-emerald-900">{Math.min(100, Math.round(kpiStats.avgSunnah * 1.03))}%</span>
+                      <span className="text-lg font-extrabold text-emerald-900">{kpiStats.avgDhuha != null ? `${kpiStats.avgDhuha}%` : '—'}</span>
                     </div>
                     <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-amber-700 block">Sholat Tahajud</span>
-                      <span className="text-lg font-extrabold text-amber-900">{Math.round(kpiStats.avgSunnah * 0.55)}%</span>
+                      <span className="text-lg font-extrabold text-amber-900">{kpiStats.avgTahajud != null ? `${kpiStats.avgTahajud}%` : '—'}</span>
                     </div>
                   </div>
 
@@ -1992,19 +2001,19 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                     <div className="grid grid-cols-2 gap-2.5">
                       <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
                         <span className="text-[11px] text-slate-500 block">Tilawah Harian</span>
-                        <span className="font-bold text-slate-800">{Math.min(100, Math.round(kpiStats.avgSunnah * 1.05))}% Siswa</span>
+                        <span className="font-bold text-slate-800">{kpiStats.avgTilawah != null ? `${kpiStats.avgTilawah}% Siswa` : '—'}</span>
                       </div>
                       <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
                         <span className="text-[11px] text-slate-500 block">Dzikir Pagi & Petang</span>
-                        <span className="font-bold text-slate-800">{Math.min(100, Math.round(kpiStats.avgSunnah * 0.94))}% Rutin</span>
+                        <span className="font-bold text-slate-800">{kpiStats.avgDzikir != null ? `${kpiStats.avgDzikir}% Rutin` : '—'}</span>
                       </div>
                       <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
                         <span className="text-[11px] text-slate-500 block">Puasa Sunnah Senin-Kamis</span>
-                        <span className="font-bold text-slate-800">{Math.round(kpiStats.avgSunnah * 0.72)}% Siswa</span>
+                        <span className="font-bold text-slate-800">{kpiStats.avgPuasa != null ? `${kpiStats.avgPuasa}% Siswa` : '—'}</span>
                       </div>
                       <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
                         <span className="text-[11px] text-slate-500 block">Infaq Harian Subuh</span>
-                        <span className="font-bold text-slate-800">{Math.min(100, Math.round(kpiStats.avgSunnah * 0.96))}% Partisipasi</span>
+                        <span className="font-bold text-slate-800">{kpiStats.avgInfaq != null ? `${kpiStats.avgInfaq}% Partisipasi` : '—'}</span>
                       </div>
                     </div>
                   </div>
@@ -2034,15 +2043,15 @@ export default function MonitoringTahfizhIbadahNonPesantrenPage() {
                     </div>
                     <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-emerald-700 block">Verifikasi Guru</span>
-                      <span className="text-lg font-extrabold text-emerald-900">{kpiStats.verifiedTeacherCount} Siswa ({kpiStats.verifiedPercent}%)</span>
+                      <span className="text-lg font-extrabold text-emerald-900">{kpiStats.verifiedTeacherCount} Siswa ({kpiStats.verifiedPercent != null ? `${kpiStats.verifiedPercent}%` : '—'})</span>
                     </div>
                     <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-sky-700 block">Verifikasi Ortu</span>
-                      <span className="text-lg font-extrabold text-sky-900">{Math.round(kpiStats.totalStudents * 0.9)} Siswa</span>
+                      <span className="text-lg font-extrabold text-sky-900">{kpiStats.verifiedParentCount} Siswa ({kpiStats.parentVerifiedPercent != null ? `${kpiStats.parentVerifiedPercent}%` : '—'})</span>
                     </div>
                     <div className="rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-center">
                       <span className="text-[11px] font-medium text-amber-700 block">Belum Diverifikasi</span>
-                      <span className="text-lg font-extrabold text-amber-900">{kpiStats.totalStudents - kpiStats.verifiedTeacherCount} Siswa</span>
+                      <span className="text-lg font-extrabold text-amber-900">{kpiStats.unverifiedCount} Siswa</span>
                     </div>
                   </div>
 

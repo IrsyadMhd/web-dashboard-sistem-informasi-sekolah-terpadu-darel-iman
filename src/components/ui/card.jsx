@@ -1,61 +1,54 @@
 import * as React from 'react'
 import PropTypes from 'prop-types'
-import {
-  Card as TailGridsCard,
-  CardHeader as TailGridsCardHeader,
-  CardTitle as TailGridsCardTitle,
-  CardDescription as TailGridsCardDescription,
-  CardAction as TailGridsCardAction,
-  CardContent as TailGridsCardContent,
-  CardFooter as TailGridsCardFooter,
-} from '../tailgrids/core/card'
+import { Card as HeroCard } from '@heroui/react'
+import { cn } from '../../lib/utils'
 
 export const Card = React.forwardRef(({ className, children, ...props }, ref) => (
-  <TailGridsCard ref={ref} className={className} {...props}>
+  <HeroCard ref={ref} className={cn('rounded-[18px] border border-slate-200/80 bg-white shadow-xs dark:border-slate-800 dark:bg-[#1B2433]', className)} {...props}>
     {children}
-  </TailGridsCard>
+  </HeroCard>
 ))
 Card.displayName = 'Card'
 
 export const CardHeader = React.forwardRef(({ className, children, ...props }, ref) => (
-  <TailGridsCardHeader ref={ref} className={className} {...props}>
+  <HeroCard.Header ref={ref} className={cn('flex flex-row items-center justify-between gap-3 p-4 md:p-5', className)} {...props}>
     {children}
-  </TailGridsCardHeader>
+  </HeroCard.Header>
 ))
 CardHeader.displayName = 'CardHeader'
 
 export const CardTitle = React.forwardRef(({ className, children, ...props }, ref) => (
-  <TailGridsCardTitle ref={ref} className={className} {...props}>
+  <HeroCard.Title ref={ref} className={cn('text-base font-extrabold text-slate-900 dark:text-white', className)} {...props}>
     {children}
-  </TailGridsCardTitle>
+  </HeroCard.Title>
 ))
 CardTitle.displayName = 'CardTitle'
 
 export const CardDescription = React.forwardRef(({ className, children, ...props }, ref) => (
-  <TailGridsCardDescription ref={ref} className={className} {...props}>
+  <HeroCard.Description ref={ref} className={cn('text-xs text-slate-500 dark:text-slate-400 mt-0.5', className)} {...props}>
     {children}
-  </TailGridsCardDescription>
+  </HeroCard.Description>
 ))
 CardDescription.displayName = 'CardDescription'
 
 export const CardAction = React.forwardRef(({ className, children, ...props }, ref) => (
-  <TailGridsCardAction ref={ref} className={className} {...props}>
+  <div ref={ref} className={cn('flex items-center gap-2', className)} {...props}>
     {children}
-  </TailGridsCardAction>
+  </div>
 ))
 CardAction.displayName = 'CardAction'
 
 export const CardContent = React.forwardRef(({ className, children, ...props }, ref) => (
-  <TailGridsCardContent ref={ref} className={className} {...props}>
+  <HeroCard.Content ref={ref} className={cn('p-4 md:p-5 text-sm text-slate-700 dark:text-slate-200', className)} {...props}>
     {children}
-  </TailGridsCardContent>
+  </HeroCard.Content>
 ))
 CardContent.displayName = 'CardContent'
 
 export const CardFooter = React.forwardRef(({ className, children, ...props }, ref) => (
-  <TailGridsCardFooter ref={ref} className={className} {...props}>
+  <HeroCard.Footer ref={ref} className={cn('flex items-center justify-between border-t border-slate-100 p-4 dark:border-slate-800/80', className)} {...props}>
     {children}
-  </TailGridsCardFooter>
+  </HeroCard.Footer>
 ))
 CardFooter.displayName = 'CardFooter'
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import {
   CalendarCheck,
   CheckCircle2,
@@ -12,20 +12,16 @@ import {
   Trash2,
   RefreshCw,
   X,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   BookOpen,
-  User,
-  Calendar,
   Save,
-  Check,
   Users,
   Eye,
-  CheckSquare,
   Award,
 } from 'lucide-react'
 import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import AppTabs from '../components/app/AppTabs'
 import { lmsPresensiService } from '../services/lmsPresensiService'
 
 export default function LmsPresensiPage() {
@@ -473,30 +469,15 @@ export default function LmsPresensiPage() {
               Pencatatan dan pemantauan kehadiran siswa terintegrasi secara langsung dengan Jadwal Pelajaran.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('list')}
-              className={`px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 shadow-sm flex items-center gap-2 ${
-                activeTab === 'list'
-                  ? 'bg-white text-[#0E5C44]'
-                  : 'bg-white/20 hover:bg-white/30 text-white backdrop-blur-md'
-              }`}
-            >
-              <CalendarCheck className="w-4 h-4" />
-              Rekap Log Presensi
-            </button>
-            <button
-              onClick={() => setActiveTab('bulk')}
-              className={`px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 shadow-sm flex items-center gap-2 ${
-                activeTab === 'bulk'
-                  ? 'bg-white text-[#0E5C44]'
-                  : 'bg-white/20 hover:bg-white/30 text-white backdrop-blur-md'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              Input Per Jadwal
-            </button>
-          </div>
+          <AppTabs
+            tabs={[
+              { id: 'list', label: 'Rekap Log Presensi', icon: CalendarCheck },
+              { id: 'bulk', label: 'Input Per Jadwal', icon: Users },
+            ]}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            ariaLabel="Navigasi Presensi Pembelajaran"
+          />
         </div>
 
         {/* Decorative Circle Elements */}

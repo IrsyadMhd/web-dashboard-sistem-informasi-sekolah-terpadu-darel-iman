@@ -287,7 +287,11 @@ export default function MateriMediaEmbed({
     <div className={`space-y-4 ${className}`}>
       {/* Tab Navigation if multiple media available */}
       {availableTabs.length > 1 && (
-        <div className="flex items-center gap-2 overflow-x-auto rounded-2xl border border-slate-200/80 bg-slate-50/80 p-1.5 dark:border-slate-800 dark:bg-slate-900/60">
+        <div
+          role="tablist"
+          aria-label="Format media materi pembelajaran"
+          className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 overflow-x-auto no-scrollbar max-w-full shadow-2xs"
+        >
           {availableTabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -295,11 +299,13 @@ export default function MateriMediaEmbed({
               <button
                 key={tab.id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
                   isActive
-                    ? 'bg-[#0E5C44] text-white shadow-md'
-                    : 'text-slate-600 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-400/40 scale-[1.01]'
+                    : 'border border-transparent text-slate-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-white/80 dark:hover:bg-slate-700/60 font-bold'
                 }`}
               >
                 <Icon className="size-4" />

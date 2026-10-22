@@ -15,12 +15,14 @@ import {
 import { FaGraduationCap, FaQrcode } from 'react-icons/fa'
 import PersonAvatar from '../ui/PersonAvatar'
 import { getCardLogoUrl } from '../../utils/cardLogoHelper'
+import { resolveFoundationName } from '../../utils/printHelper'
+import { usePengaturanStore } from '../../stores/pengaturanStore'
 
 export default function StudentCardVertical({
   data,
   config = {},
   theme = {},
-  pengaturan = {},
+  pengaturan: propPengaturan = {},
   qrToken = '',
   formatDate,
   isPrint = false,
@@ -28,8 +30,8 @@ export default function StudentCardVertical({
   photoShape = 'rounded',
   showPattern = true,
   showWave = true,
-  headerMotto = 'Berilmu, Berakhlak, Beramal',
-  footerMotto = 'Sekolah Unggulan\nBerbasis Al-Qur\'an',
+  headerMotto,
+  footerMotto,
 }) {
   const instanceId = useId().replace(/:/g, '')
   const headerGradId = `headerGradV_${instanceId}`
@@ -48,9 +50,25 @@ export default function StudentCardVertical({
     showUnit = true,
   } = config
 
-  const sekolah = pengaturan?.school_name || pengaturan?.namaSekolah || 'YAYASAN DAR EL-IMAN'
+  const storePengaturan = usePengaturanStore((state) => state.pengaturan)
+  const pengaturan =
+    propPengaturan && Object.keys(propPengaturan).length > 0
+      ? propPengaturan
+      : (storePengaturan || {})
+
+  const sekolah =
+    resolveFoundationName(
+      pengaturan?.school_name ||
+      pengaturan?.institution_name ||
+      pengaturan?.nama_yayasan ||
+      pengaturan?.yayasan
+    ) ||
+    pengaturan?.school_name ||
+    'Yayasan Pendidikan Islam'
   const logo = getCardLogoUrl(pengaturan, data)
   const brandTitle = sekolah.replace(/^YAYASAN\s*/i, '').replace(/\s*-\s*/g, '-').trim()
+  const activeHeaderMotto = headerMotto || pengaturan?.motto || 'Berilmu, Berakhlak, Beramal'
+  const activeFooterMotto = footerMotto || pengaturan?.card_footer_motto || 'Sekolah Unggulan\nBerbasis Al-Qur\'an'
 
   const primaryColor = theme.primary || '#004D32'
   const darkColor = theme.dark || '#003822'
@@ -70,7 +88,7 @@ export default function StudentCardVertical({
 
   const cardClass = `w-[340px] min-w-[340px] max-w-[340px] h-[539px] min-h-[539px] max-h-[539px] ${isPrint ? '' : frameClass} ${isPrint ? '' : 'shadow-2xl'}`
 
-  const footerMottoLines = (footerMotto || 'Sekolah Unggulan\nBerbasis Al-Qur\'an').split('\n')
+  const footerMottoLines = (activeFooterMotto || 'Sekolah Unggulan\nBerbasis Al-Qur\'an').split('\n')
 
   const kelasDisplay = typeof data?.kelas === 'object' && data?.kelas !== null
     ? (data.kelas.nama_kelas || data.kelas.name || '-')
@@ -168,7 +186,7 @@ export default function StudentCardVertical({
           </div>
           <div className="absolute top-[28px] right-4 text-right z-20">
             <p className="text-[8.5px] font-bold italic text-emerald-100/90">
-              {headerMotto || 'Berilmu, Berakhlak, Beramal'}
+              {activeHeaderMotto}
             </p>
             <div className="flex justify-end mt-0.5">
               <Sparkles className="h-3 w-3" style={{ color: accentColor }} />
@@ -195,77 +213,103 @@ export default function StudentCardVertical({
       )}
 
       {/* Student Name & Unit Pill Badge */}
-      <div className={`absolute left-4 right-4 z-10 flex flex-col items-center text-center ${showPhoto ? 'top-[212px]' : 'top-[155px]'}`}>
-        <Sparkles className="h-3.5 w-3.5 mb-0.5" style={{ color: accentColor }} />
-        <h2 className="text-[17px] font-black uppercase tracking-tight truncate leading-tight my-0.5 w-full" style={{ color: primaryColor }}>
+      <div className={`absolute left-3 right-3 z-10 flex flex-col items-center text-center ${showPhoto ? 'top-[206px]' : 'top-[155px]'}`}>
+        <Sparkles className="h-3 w-3 mb-0.5 shrink-0" style={{ color: accentColor }} />
+        <h2
+          className={`font-black uppercase tracking-tight line-clamp-2 break-words my-0.5 w-full ${
+            (data.nama || '').trim().length > 32
+              ? 'text-[12px] leading-[1.2]'
+              : (data.nama || '').trim().length > 24
+              ? 'text-[13.5px] leading-[1.15]'
+              : (data.nama || '').trim().length > 18
+              ? 'text-[15px] leading-[1.15]'
+              : 'text-[16.5px] leading-tight'
+          }`}
+          style={{ color: primaryColor }}
+          title={data.nama}
+        >
           {data.nama}
         </h2>
         {showUnit && (
-          <div className="relative w-fit max-w-[96%] h-[22px] px-3.5 flex items-center justify-center">
+          <div className="relative w-fit max-w-[96%] min-h-[22px] px-3.5 py-0.5 flex items-center justify-center">
             <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none" preserveAspectRatio="none" viewBox="0 0 160 22">
               <rect x="0.75" y="0.75" width="158.5" height="20.5" rx="10.25" fill={primaryColor} stroke={accentColor} strokeWidth="1.5" />
             </svg>
-            <span className="relative z-10 text-white text-[7.5px] font-black uppercase tracking-wider truncate">
-              {data.unit || 'DAR EL-IMAN - PADANG'}
+            <span
+              className={`relative z-10 text-white font-black uppercase tracking-wider text-center max-w-[150px] line-clamp-1 break-words ${
+                (data.unit || sekolah || '').length > 24
+                  ? 'text-[6.8px] leading-tight'
+                  : 'text-[7.5px]'
+              }`}
+              title={data.unit || sekolah}
+            >
+              {data.unit || sekolah}
             </span>
           </div>
         )}
       </div>
 
       {/* Student Metadata Table (Perfect Grid Alignment) */}
-      <div className={`absolute left-5 right-5 z-10 space-y-1 text-slate-800 ${showPhoto ? 'top-[276px]' : 'top-[218px]'}`}>
+      <div className={`absolute left-5 right-5 z-10 space-y-1 text-slate-800 ${showPhoto ? 'top-[274px]' : 'top-[218px]'}`}>
         {showNis && (
-          <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
-            <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
-              <IdCard className="h-3 w-3" strokeWidth={2.2} />
+          <div className="grid grid-cols-[18px_72px_6px_1fr] items-center text-[9px]">
+            <span className="w-4 h-4 rounded bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+              <IdCard className="h-2.5 w-2.5" strokeWidth={2.2} />
             </span>
-            <span className="font-extrabold text-slate-700 text-[9.5px] text-left">NIS</span>
+            <span className="font-extrabold text-slate-700 text-[9px] text-left">NIS</span>
             <span className="font-bold text-slate-400 text-center">:</span>
-            <span className="font-black text-slate-900 text-[10px] truncate text-left">{data.nis}</span>
+            <span className="font-black text-slate-900 text-[10px] tracking-wide truncate text-left">{data.nis}</span>
           </div>
         )}
 
         {showNisn && (
-          <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
-            <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
-              <ShieldCheck className="h-3 w-3" strokeWidth={2.2} />
+          <div className="grid grid-cols-[18px_72px_6px_1fr] items-center text-[9px]">
+            <span className="w-4 h-4 rounded bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+              <ShieldCheck className="h-2.5 w-2.5" strokeWidth={2.2} />
             </span>
-            <span className="font-extrabold text-slate-700 text-[9.5px] text-left">NISN</span>
+            <span className="font-extrabold text-slate-700 text-[9px] text-left">NISN</span>
             <span className="font-bold text-slate-400 text-center">:</span>
-            <span className="font-black text-slate-900 text-[10px] truncate text-left">{data.nisn}</span>
+            <span className="font-black text-slate-900 text-[10px] tracking-wide truncate text-left">{data.nisn}</span>
           </div>
         )}
 
         {showClass && (
-          <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
-            <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
-              <UserRound className="h-3 w-3" strokeWidth={2.2} />
+          <div className="grid grid-cols-[18px_72px_6px_1fr] items-center text-[9px]">
+            <span className="w-4 h-4 rounded bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+              <UserRound className="h-2.5 w-2.5" strokeWidth={2.2} />
             </span>
-            <span className="font-extrabold text-slate-700 text-[9.5px] text-left">Kelas</span>
+            <span className="font-extrabold text-slate-700 text-[9px] text-left">Kelas</span>
             <span className="font-bold text-slate-400 text-center">:</span>
-            <span className="font-black text-slate-900 text-[10px] truncate text-left">
+            <span
+              className={`font-black text-slate-900 text-left line-clamp-1 break-words ${
+                (kelasDisplay.length + (showRombel && rombelDisplay && rombelDisplay !== '-' ? rombelDisplay.length : 0)) > 26
+                  ? 'text-[8.5px] leading-tight'
+                  : 'text-[9.5px]'
+              }`}
+              title={`${kelasDisplay}${showRombel && rombelDisplay && rombelDisplay !== '-' ? ` / ${rombelDisplay}` : ''}`}
+            >
               {kelasDisplay}
               {showRombel && rombelDisplay && rombelDisplay !== '-' ? ` / ${rombelDisplay}` : ''}
             </span>
           </div>
         )}
 
-        <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
-          <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
-            <CalendarDays className="h-3 w-3" strokeWidth={2.2} />
+        <div className="grid grid-cols-[18px_72px_6px_1fr] items-center text-[9px]">
+          <span className="w-4 h-4 rounded bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+            <CalendarDays className="h-2.5 w-2.5" strokeWidth={2.2} />
           </span>
-          <span className="font-extrabold text-slate-700 text-[9.5px] text-left">Tanggal Lahir</span>
+          <span className="font-extrabold text-slate-700 text-[9px] text-left">Tanggal Lahir</span>
           <span className="font-bold text-slate-400 text-center">:</span>
-          <span className="font-black text-slate-900 text-[10px] truncate text-left">{formattedDateVal}</span>
+          <span className="font-black text-slate-900 text-[9.5px] truncate text-left">{formattedDateVal}</span>
         </div>
 
-        <div className="grid grid-cols-[20px_84px_10px_1fr] items-center text-[9.5px]">
-          <span className="w-4.5 h-4.5 rounded-md bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
-            <Droplets className="h-3 w-3" strokeWidth={2.2} />
+        <div className="grid grid-cols-[18px_72px_6px_1fr] items-center text-[9px]">
+          <span className="w-4 h-4 rounded bg-emerald-50 flex items-center justify-center shrink-0" style={{ color: primaryColor }}>
+            <Droplets className="h-2.5 w-2.5" strokeWidth={2.2} />
           </span>
-          <span className="font-extrabold text-slate-700 text-[9.5px] text-left">Gol. Darah</span>
+          <span className="font-extrabold text-slate-700 text-[9px] text-left">Gol. Darah</span>
           <span className="font-bold text-slate-400 text-center">:</span>
-          <span className="font-black text-slate-900 text-[10px] truncate text-left">{data.golonganDarah || '-'}</span>
+          <span className="font-black text-slate-900 text-[9.5px] truncate text-left">{data.golonganDarah || '-'}</span>
         </div>
       </div>
 
@@ -309,7 +353,7 @@ export default function StudentCardVertical({
           {/* Right: Website URL */}
           <div className="flex items-center justify-end gap-1.5 pl-2.5 text-right min-w-0">
             <Globe className="h-3.5 w-3.5 shrink-0" style={{ color: accentColor }} />
-            <span className="text-[8.5px] font-bold text-emerald-50 whitespace-nowrap">www.dareliman.sch.id</span>
+            <span className="text-[8.5px] font-bold text-emerald-50 whitespace-nowrap">{pengaturan?.website || 'www.sekolah.sch.id'}</span>
           </div>
         </div>
       </footer>

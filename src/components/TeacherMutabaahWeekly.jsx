@@ -566,253 +566,431 @@ export default function TeacherMutabaahWeekly({
     })
   }
 
+  // ── RENDER MODERN HERO HEADER BANNER ──────────────────────────────────────────
+  const renderHeroHeader = () => (
+    <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+      <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-pink-500/25 via-rose-400/20 to-transparent blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-emerald-500/20 via-teal-400/20 to-transparent blur-3xl" />
+
+      <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 via-rose-600 to-rose-700 text-white shadow-xl shadow-rose-600/30 border border-rose-300/40">
+            <Heart className="size-6 sm:size-7 text-white fill-white/20" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-600 via-pink-600 to-rose-700 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-rose-600/30">
+                <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                Jurnal Mutaba'ah Yaumiyyah
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 px-3 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                Tahun Ajaran {pengaturan?.tahun_ajaran || '2026/2027'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/90 dark:bg-teal-950/80 px-3 py-1 text-xs font-bold text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60">
+                Semester {pengaturan?.semester || 'Ganjil'}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border ${
+                  isBoarding
+                    ? 'bg-indigo-100/90 text-indigo-800 border-indigo-200/80 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-800/60'
+                    : 'bg-emerald-100/90 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800/60'
+                }`}
+              >
+                {isBoarding ? 'Boarding 24 Jam' : 'Fullday School'}
+              </span>
+            </div>
+            <h2 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              Jurnal Mutaba'ah &amp; Pembinaan Karakter
+            </h2>
+            <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+              Supervisi pembinaan amalan ibadah harian santri &amp; siswa — Pemantauan sholat fardhu berjamaah, dhuha, tahajjud, tilawah Al-Qur'an, dzikir pagi-petang, serta adab islami terintegrasi sekolah &amp; rumah.
+            </p>
+          </div>
+        </div>
+
+        {/* Summary Metric Badges */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:min-w-[420px]">
+          <div className="rounded-2xl border border-emerald-500/25 bg-white/80 dark:bg-slate-800/80 px-3 py-2 text-center backdrop-blur-md shadow-xs">
+            <strong className="block text-lg sm:text-xl font-black text-emerald-700 dark:text-emerald-400">
+              {totalStudents}
+            </strong>
+            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Total Siswa</span>
+          </div>
+          <div className="rounded-2xl border border-teal-500/25 bg-white/80 dark:bg-slate-800/80 px-3 py-2 text-center backdrop-blur-md shadow-xs">
+            <strong className="block text-lg sm:text-xl font-black text-teal-700 dark:text-teal-400">
+              {completedStudentsCount}
+            </strong>
+            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Lengkap (100%)</span>
+          </div>
+          <div className="rounded-2xl border border-amber-500/25 bg-white/80 dark:bg-slate-800/80 px-3 py-2 text-center backdrop-blur-md shadow-xs">
+            <strong className="block text-lg sm:text-xl font-black text-amber-700 dark:text-amber-400">
+              {partialStudentsCount}
+            </strong>
+            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Sebagian</span>
+          </div>
+          <div className="rounded-2xl border border-rose-500/25 bg-white/80 dark:bg-slate-800/80 px-3 py-2 text-center backdrop-blur-md shadow-xs">
+            <strong className="block text-lg sm:text-xl font-black text-rose-700 dark:text-rose-400">
+              {emptyStudentsCount}
+            </strong>
+            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Belum Diisi</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   if (!loading && !assignments.length) {
     return (
-      <div className="rounded-[22px] border-2 border-dashed border-emerald-300 dark:border-emerald-800 bg-white dark:bg-[#1B2433] p-10 text-center shadow-xs">
-        <Heart className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-        <h3 className="mt-3 text-base font-extrabold text-slate-900 dark:text-white">
-          Belum Ada Penugasan Pembimbing Mutaba'ah
-        </h3>
-        <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
-          Ustadz / Ustadzah belum ditugaskan sebagai pembimbing Mutaba'ah pada rombel atau kelompok halaqah yang aktif saat ini.
-        </p>
+      <div className="space-y-5">
+        {renderHeroHeader()}
+        <div className="rounded-[22px] border-2 border-dashed border-emerald-300 dark:border-emerald-800 bg-white dark:bg-[#1B2433] p-10 text-center shadow-xs">
+          <Heart className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
+          <h3 className="mt-3 text-base font-extrabold text-slate-900 dark:text-white">
+            Belum Ada Penugasan Pembimbing Mutaba'ah
+          </h3>
+          <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+            Ustadz / Ustadzah belum ditugaskan sebagai pembimbing Mutaba'ah pada rombel atau kelompok halaqah yang aktif saat ini.
+          </p>
+        </div>
       </div>
     )
   }
 
   if (!loading && assignmentId && !template) {
     return (
-      <div className="rounded-[22px] border-2 border-dashed border-amber-300 dark:border-amber-800 bg-white dark:bg-[#1B2433] p-10 text-center shadow-xs">
-        <AlertCircle className="mx-auto h-12 w-12 text-amber-400" />
-        <h3 className="mt-3 text-base font-extrabold text-slate-900 dark:text-white">
-          Template Mutaba'ah Belum Tersedia
-        </h3>
-        <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
-          Unit atau rombel ini belum memiliki template penilaian Mutaba'ah aktif untuk minggu yang dipilih.
-        </p>
+      <div className="space-y-5">
+        {renderHeroHeader()}
+        <div className="rounded-[22px] border-2 border-dashed border-amber-300 dark:border-amber-800 bg-white dark:bg-[#1B2433] p-10 text-center shadow-xs">
+          <AlertCircle className="mx-auto h-12 w-12 text-amber-400" />
+          <h3 className="mt-3 text-base font-extrabold text-slate-900 dark:text-white">
+            Template Mutaba'ah Belum Tersedia
+          </h3>
+          <p className="mx-auto mt-1 max-w-md text-xs text-slate-500 dark:text-slate-400">
+            Unit atau rombel ini belum memiliki template penilaian Mutaba'ah aktif untuk minggu yang dipilih.
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-700/60 dark:bg-[#1B2433]">
-      {/* ── 1. TOP HEADER & NAVIGATION BAR ────────────────────────────────────── */}
-      <div className="border-b border-emerald-200/80 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 dark:border-emerald-800/60">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-xs">
-                <Heart className="size-4.5" />
-              </div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                Mutaba'ah Yaumiyyah Siswa
-              </h2>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
-                  isBoarding
-                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                }`}
-              >
-                {isBoarding ? 'Boarding 24 Jam' : 'Fullday School'}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {isBoarding
-                ? 'Pembinaan agenda ibadah & kemandirian santri selama 24 jam di asrama/mahad.'
-                : 'Pencatatan ibadah siswa terpadu. Pengisian harian difokuskan pada Hari Ini dan hari-hari sebelumnya yang telah berjalan.'}
-            </p>
-          </div>
+    <div className="space-y-5">
+      {renderHeroHeader()}
 
-          {/* Week Navigator & Scope Selector */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Scope Selector if multiple assignments */}
-            {assignments.length > 1 && (
-              <div className="flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/90 dark:border-emerald-800 px-2.5 py-1.5 shadow-xs">
-                <Users className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <select
-                  value={assignmentId}
-                  onChange={(e) => setAssignmentId(e.target.value)}
-                  className="bg-transparent text-xs font-bold text-slate-800 dark:text-white outline-none cursor-pointer pr-1"
+      {/* ── DATATABLE OUTER CONTAINER ─────────────────────────────────── */}
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+        {/* ── 1. TOP HEADER & NAVIGATION BAR ────────────────────────────────────── */}
+        <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 dark:border-emerald-800/60">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-600/30 border border-emerald-300/40">
+                <Users className="size-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
+                    Daftar Siswa &amp; Evaluasi Mingguan
+                  </h3>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold ${
+                      isBoarding
+                        ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                    }`}
+                  >
+                    {isBoarding ? 'Boarding 24 Jam' : 'Fullday School'}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {currentAssignment?.unit_name || 'Sekolah Islam Terpadu'} · {currentAssignment?.kelas_name || currentAssignment?.rombel_name || 'Rombel'} · Pekan: <strong className="text-slate-700 dark:text-slate-300">{days[0].label} – {days[6].label}</strong>
+                </p>
+              </div>
+            </div>
+
+            {/* Week Navigator & Scope Selector */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Scope Selector if multiple assignments */}
+              {assignments.length > 1 && (
+                <div className="flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/90 dark:border-emerald-800 px-2.5 py-1.5 shadow-xs">
+                  <Users className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <select
+                    value={assignmentId}
+                    onChange={(e) => setAssignmentId(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-800 dark:text-white outline-none cursor-pointer pr-1"
+                  >
+                    {assignments.map((item) => (
+                      <option key={item.id} value={item.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
+                        {item.unit_name} · {item.kelas_name || item.rombel_name || item.mentoring_group || item.type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Week navigation */}
+              <div className="flex items-center gap-1 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/90 dark:border-emerald-800 p-1 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => shiftWeek(-1)}
+                  className="rounded-lg p-1.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
+                  title="Pekan Sebelumnya"
                 >
-                  {assignments.map((item) => (
-                    <option key={item.id} value={item.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                      {item.unit_name} · {item.kelas_name || item.rombel_name || item.mentoring_group || item.type}
-                    </option>
-                  ))}
-                </select>
+                  <ChevronLeft className="size-4" />
+                </button>
+                <div className="px-2 text-center text-xs font-extrabold text-slate-800 dark:text-white min-w-[155px]">
+                  <CalendarDays className="mr-1.5 inline size-3.5 text-emerald-600 dark:text-emerald-400" />
+                  {days[0].label} – {days[6].label}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => shiftWeek(1)}
+                  className="rounded-lg p-1.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
+                  title="Pekan Berikutnya"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={resetToCurrentWeek}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition ml-1 cursor-pointer"
+                  title="Kembali ke Pekan Ini"
+                >
+                  <RotateCcw className="size-3.5" />
+                </button>
               </div>
-            )}
-
-            {/* Week navigation */}
-            <div className="flex items-center gap-1 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/90 dark:border-emerald-800 p-1 shadow-xs">
-              <button
-                type="button"
-                onClick={() => shiftWeek(-1)}
-                className="rounded-lg p-1.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
-                title="Pekan Sebelumnya"
-              >
-                <ChevronLeft className="size-4" />
-              </button>
-              <div className="px-2 text-center text-xs font-extrabold text-slate-800 dark:text-white min-w-[155px]">
-                <CalendarDays className="mr-1.5 inline size-3.5 text-emerald-600 dark:text-emerald-400" />
-                {days[0].label} – {days[6].label}
-              </div>
-              <button
-                type="button"
-                onClick={() => shiftWeek(1)}
-                className="rounded-lg p-1.5 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 transition cursor-pointer"
-                title="Pekan Berikutnya"
-              >
-                <ChevronRight className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={resetToCurrentWeek}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 transition ml-1 cursor-pointer"
-                title="Kembali ke Pekan Ini"
-              >
-                <RotateCcw className="size-3.5" />
-              </button>
             </div>
           </div>
         </div>
-      </div>
 
-      {error && (
-        <div className="mx-5 mt-4 flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
-          <AlertCircle className="size-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* ── 2. DAFTAR SISWA UTAMA (STUDENT DIRECTORY) ─────────────────────────── */}
-      <div className="p-5">
-        {/* Quick Summary KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/50 dark:bg-emerald-950/20 p-3.5 shadow-xs">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Total Siswa Rombel</span>
-            <p className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{totalStudents}</p>
-            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
-              {currentAssignment?.kelas_name || 'Rombel Aktif'}
-            </span>
-          </div>
-          <div className="rounded-2xl border border-teal-200/80 bg-teal-50/50 dark:bg-teal-950/20 p-3.5 shadow-xs">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Lengkap Terisi</span>
-            <p className="mt-1 text-2xl font-black text-teal-700 dark:text-teal-400">{completedStudentsCount}</p>
-            <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">100% Agenda Terekam</span>
-          </div>
-          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 shadow-xs">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Terisi Sebagian</span>
-            <p className="mt-1 text-2xl font-black text-amber-700 dark:text-amber-400">{partialStudentsCount}</p>
-            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Dalam Proses Pengisian</span>
-          </div>
-          <div className="rounded-2xl border border-rose-200/80 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 shadow-xs">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Belum Diisi</span>
-            <p className="mt-1 text-2xl font-black text-rose-700 dark:text-rose-400">{emptyStudentsCount}</p>
-            <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">Perlu Perhatian</span>
-          </div>
-        </div>
-
-        {/* Program Notice Box */}
-        {!isBoarding ? (
-          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs text-emerald-900 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-200">
-            <School className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
-            <div>
-              <strong className="font-extrabold text-emerald-950 dark:text-emerald-100">
-                Mode Fullday School — Pengisian Harian & Pemisahan Tanggung Jawab:
-              </strong>
-              <p className="mt-0.5 leading-relaxed text-emerald-800/90 dark:text-emerald-300">
-                Klik tombol <strong>"Isi Jurnal"</strong> pada siswa untuk membuka modal pengisian interaktif. Pengisian mengikuti <strong>Hari Ini</strong> dan <strong>Hari-Hari Sebelumnya</strong> yang sudah berjalan. Hari-hari yang belum tiba dikunci secara otomatis. Agenda rumah dipantau & diverifikasi oleh orang tua siswa.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 text-xs text-indigo-900 dark:border-indigo-800/80 dark:bg-indigo-950/40 dark:text-indigo-200">
-            <ShieldCheck className="size-5 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-            <div>
-              <strong className="font-extrabold text-indigo-950 dark:text-indigo-100">
-                Mode Boarding / Pesantren — Pembinaan Terpadu 24 Jam:
-              </strong>
-              <p className="mt-0.5 leading-relaxed text-indigo-800/90 dark:text-indigo-300">
-                Supervisi ibadah santri 24 jam dibuka untuk hari ini dan hari-hari sebelumnya dalam pekan aktif melalui modal pengisian interaktif.
-              </p>
-            </div>
+        {error && (
+          <div className="mx-5 mt-4 flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
-        {/* Toolbar Search & Status Filter */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchStudent}
-              onChange={(e) => setSearchStudent(e.target.value)}
-              placeholder="Cari nama atau NIS siswa..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 pl-10 pr-4 py-2.5 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-            />
-            {searchStudent && (
-              <button
-                type="button"
-                onClick={() => setSearchStudent('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
+        {/* ── 2. DAFTAR SISWA UTAMA (STUDENT DIRECTORY) ─────────────────────────── */}
+        <div className="p-5">
+          {/* Quick Summary Interactive Modern KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-5">
+            {/* Card 1: Total Siswa (Emerald) */}
+            <div
+              onClick={() => setStatusFilter('all')}
+              className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
+                statusFilter === 'all'
+                  ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-teal-500/20 border-2 border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/20'
+                  : 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 border-2 border-emerald-500/25 hover:border-emerald-500/60 shadow-sm shadow-emerald-500/5 hover:shadow-md hover:shadow-emerald-500/15 hover:-translate-y-0.5'
+              }`}
+            >
+              <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-emerald-400/20 blur-2xl group-hover:scale-125 transition-transform" />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Total Siswa Rombel</span>
+                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-md shadow-emerald-600/30">
+                  <Users className="size-4.5 text-white" />
+                </div>
+              </div>
+              <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                {totalStudents}
+              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-emerald-100/90 dark:bg-emerald-950/80 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
+                  {currentAssignment?.kelas_name || 'Rombel Aktif'}
+                </span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Semua Data</span>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Filter:</span>
-            <div className="flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setStatusFilter('all')}
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                  statusFilter === 'all'
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                Semua ({students.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('completed')}
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                  statusFilter === 'completed'
-                    ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                Lengkap ({completedStudentsCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('partial')}
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                  statusFilter === 'partial'
-                    ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                Sebagian ({partialStudentsCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('empty')}
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                  statusFilter === 'empty'
-                    ? 'bg-white dark:bg-slate-700 text-rose-700 dark:text-rose-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                Belum ({emptyStudentsCount})
-              </button>
+            {/* Card 2: Lengkap Terisi (Teal) */}
+            <div
+              onClick={() => setStatusFilter('completed')}
+              className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
+                statusFilter === 'completed'
+                  ? 'bg-gradient-to-br from-teal-500/20 via-teal-500/10 to-cyan-500/20 border-2 border-teal-500 ring-2 ring-teal-500/30 shadow-lg shadow-teal-500/20'
+                  : 'bg-gradient-to-br from-teal-500/10 via-teal-500/5 to-cyan-500/10 border-2 border-teal-500/25 hover:border-teal-500/60 shadow-sm shadow-teal-500/5 hover:shadow-md hover:shadow-teal-500/15 hover:-translate-y-0.5'
+              }`}
+            >
+              <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-teal-400/20 blur-2xl group-hover:scale-125 transition-transform" />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Lengkap Terisi</span>
+                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-700 text-white shadow-md shadow-teal-600/30">
+                  <CheckCircle2 className="size-4.5 text-white" />
+                </div>
+              </div>
+              <p className="mt-2 text-2xl sm:text-3xl font-black text-teal-700 dark:text-teal-400">
+                {completedStudentsCount}
+              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-teal-100/90 dark:bg-teal-950/80 px-2 py-0.5 text-[10px] font-bold text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60">
+                  100% Agenda Terekam
+                </span>
+                <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400">
+                  {totalStudents > 0 ? `${Math.round((completedStudentsCount / totalStudents) * 100)}%` : '0%'}
+                </span>
+              </div>
+            </div>
+
+            {/* Card 3: Terisi Sebagian (Amber) */}
+            <div
+              onClick={() => setStatusFilter('partial')}
+              className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
+                statusFilter === 'partial'
+                  ? 'bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-orange-500/20 border-2 border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/20'
+                  : 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 border-2 border-amber-500/25 hover:border-amber-500/60 shadow-sm shadow-amber-500/5 hover:shadow-md hover:shadow-amber-500/15 hover:-translate-y-0.5'
+              }`}
+            >
+              <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-amber-400/20 blur-2xl group-hover:scale-125 transition-transform" />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Terisi Sebagian</span>
+                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-amber-600/30">
+                  <Clock className="size-4.5 text-white" />
+                </div>
+              </div>
+              <p className="mt-2 text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-400">
+                {partialStudentsCount}
+              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-amber-100/90 dark:bg-amber-950/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60">
+                  Dalam Proses
+                </span>
+                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                  {totalStudents > 0 ? `${Math.round((partialStudentsCount / totalStudents) * 100)}%` : '0%'}
+                </span>
+              </div>
+            </div>
+
+            {/* Card 4: Belum Diisi (Rose) */}
+            <div
+              onClick={() => setStatusFilter('empty')}
+              className={`group relative overflow-hidden rounded-[20px] p-4 text-left transition-all duration-300 cursor-pointer ${
+                statusFilter === 'empty'
+                  ? 'bg-gradient-to-br from-rose-500/20 via-rose-500/10 to-pink-500/20 border-2 border-rose-500 ring-2 ring-rose-500/30 shadow-lg shadow-rose-500/20'
+                  : 'bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-pink-500/10 border-2 border-rose-500/25 hover:border-rose-500/60 shadow-sm shadow-rose-500/5 hover:shadow-md hover:shadow-rose-500/15 hover:-translate-y-0.5'
+              }`}
+            >
+              <div className="pointer-events-none absolute -right-6 -bottom-6 size-24 rounded-full bg-rose-400/20 blur-2xl group-hover:scale-125 transition-transform" />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Belum Diisi</span>
+                <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-md shadow-rose-600/30">
+                  <AlertCircle className="size-4.5 text-white" />
+                </div>
+              </div>
+              <p className="mt-2 text-2xl sm:text-3xl font-black text-rose-700 dark:text-rose-400">
+                {emptyStudentsCount}
+              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="inline-flex items-center rounded-full bg-rose-100/90 dark:bg-rose-950/80 px-2 py-0.5 text-[10px] font-bold text-rose-800 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/60">
+                  Perlu Perhatian
+                </span>
+                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                  {totalStudents > 0 ? `${Math.round((emptyStudentsCount / totalStudents) * 100)}%` : '0%'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Program Notice Box */}
+          {!isBoarding ? (
+            <div className="mb-5 flex items-start gap-3 rounded-2xl border-2 border-emerald-500/25 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 text-xs text-emerald-950 dark:border-emerald-800/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-transparent dark:text-emerald-200 shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+                <School className="size-4.5" />
+              </div>
+              <div>
+                <strong className="font-extrabold text-emerald-950 dark:text-emerald-100 text-xs sm:text-sm block">
+                  Mode Fullday School — Pengisian Harian &amp; Pemisahan Tanggung Jawab
+                </strong>
+                <p className="mt-0.5 leading-relaxed text-emerald-800/90 dark:text-emerald-300">
+                  Klik tombol <strong className="text-emerald-900 dark:text-white">"Isi Jurnal"</strong> pada siswa untuk membuka modal pengisian interaktif. Pengisian mengikuti <strong className="text-emerald-900 dark:text-white">Hari Ini</strong> dan <strong className="text-emerald-900 dark:text-white">Hari-Hari Sebelumnya</strong> yang sudah berjalan. Hari-hari yang belum tiba dikunci secara otomatis. Agenda rumah dipantau &amp; diverifikasi oleh orang tua siswa.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-5 flex items-start gap-3 rounded-2xl border-2 border-indigo-500/25 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent p-4 text-xs text-indigo-950 dark:border-indigo-800/60 dark:from-indigo-950/40 dark:via-purple-950/20 dark:to-transparent dark:text-indigo-200 shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
+                <ShieldCheck className="size-4.5" />
+              </div>
+              <div>
+                <strong className="font-extrabold text-indigo-950 dark:text-indigo-100 text-xs sm:text-sm block">
+                  Mode Boarding / Pesantren — Pembinaan Terpadu 24 Jam
+                </strong>
+                <p className="mt-0.5 leading-relaxed text-indigo-800/90 dark:text-indigo-300">
+                  Supervisi ibadah santri 24 jam dibuka untuk hari ini dan hari-hari sebelumnya dalam pekan aktif melalui modal pengisian interaktif.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Toolbar Search & Status Filter */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 rounded-2xl border border-emerald-500/15 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-950/40 p-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-emerald-600 dark:text-emerald-400" />
+              <input
+                type="text"
+                value={searchStudent}
+                onChange={(e) => setSearchStudent(e.target.value)}
+                placeholder="Cari nama atau NIS siswa..."
+                className="h-10 w-full rounded-xl border border-emerald-200/90 dark:border-emerald-800 bg-white dark:bg-slate-900 pl-10 pr-9 text-xs font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              />
+              {searchStudent && (
+                <button
+                  type="button"
+                  onClick={() => setSearchStudent('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Filter Status:</span>
+              <div className="flex items-center rounded-xl bg-white dark:bg-slate-900 p-1 border border-emerald-200/80 dark:border-emerald-800/80 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('all')}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    statusFilter === 'all'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  Semua ({students.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('completed')}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    statusFilter === 'completed'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400'
+                  }`}
+                >
+                  Lengkap ({completedStudentsCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('partial')}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    statusFilter === 'partial'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400'
+                  }`}
+                >
+                  Sebagian ({partialStudentsCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('empty')}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    statusFilter === 'empty'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400'
+                  }`}
+                >
+                  Belum ({emptyStudentsCount})
+                </button>
+              </div>
+            </div>
+          </div>
 
         {/* Student Datatable */}
         <div className="overflow-x-auto rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs">
@@ -1665,5 +1843,6 @@ export default function TeacherMutabaahWeekly({
         </div>
       )}
     </section>
-  )
+  </div>
+)
 }

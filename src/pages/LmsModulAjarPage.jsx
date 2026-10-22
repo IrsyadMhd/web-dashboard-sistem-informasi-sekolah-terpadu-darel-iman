@@ -1,6 +1,9 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useMemo } from 'react'
+import { Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuthStore } from '../stores/authStore'
 import {
   BookOpen,
   Search,
@@ -40,6 +43,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react'
 import { lmsModulAjarService } from '../services/lmsModulAjarService'
+import { codeGeneratorService } from '../services/codeGeneratorService'
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ActionDropdown from '../components/app/ActionDropdown'
@@ -145,78 +149,30 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
 
 // ── 2. TOAST NOTIFICATION STACK HOOK ──
 function useNotifications() {
-  const [items, setItems] = useState([])
+  const toast = useToast()
   const push = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setItems((prev) => [...prev, { id, title, message, tone }])
-    window.setTimeout(() => setItems((prev) => prev.filter((n) => n.id !== id)), 5000)
+    toast(title, message, tone)
   }
-  const dismiss = (id) => setItems((prev) => prev.filter((n) => n.id !== id))
-  return { items, push, dismiss }
+  const dismiss = () => {}
+  return { items: [], push, dismiss }
 }
 
-function ToastStack({ items, onDismiss }) {
-  if (!items.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
-      {items.map((n) => {
-        const isError = n.tone === 'error' || n.tone === 'danger'
-        const isWarning = n.tone === 'warning'
-        return (
-          <motion.div
-            key={n.id}
-            initial={{ opacity: 0, y: 15, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`pointer-events-auto relative overflow-hidden rounded-2xl border bg-white p-4 shadow-xl dark:bg-slate-900 ${
-              isError
-                ? 'border-rose-300 dark:border-rose-800 shadow-rose-950/10'
-                : isWarning
-                ? 'border-amber-300 dark:border-amber-800 shadow-amber-950/10'
-                : 'border-emerald-300 dark:border-emerald-800 shadow-emerald-950/10'
-            }`}
-          >
-            <div
-              className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${
-                isError
-                  ? 'from-rose-500 via-rose-600 to-red-700'
-                  : isWarning
-                  ? 'from-amber-400 via-amber-500 to-orange-600'
-                  : 'from-emerald-500 via-teal-400 to-emerald-600'
-              }`}
-            />
-            <div className="flex items-start gap-3 mt-0.5">
-              <div
-                className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-xs ${
-                  isError
-                    ? 'bg-gradient-to-br from-rose-500 to-red-600'
-                    : isWarning
-                    ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                    : 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                }`}
-              >
-                {isError ? <XCircle className="size-4.5" /> : isWarning ? <AlertTriangle className="size-4.5" /> : <CheckCircle2 className="size-4.5" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">{n.title}</h4>
-                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{n.message}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          </motion.div>
-        )
-      })}
-    </div>
-  )
+
+const JENJANG_FASE_OPTIONS = [
+  { value: 'Fase Fondasi', label: 'PAUD / TK / TAUD (Fase Fondasi)', shortLabel: 'PAUD/TK' },
+  { value: 'Fase A', label: 'SD Kelas 1 – 2 (Fase A)', shortLabel: 'SD Kls 1-2' },
+  { value: 'Fase B', label: 'SD Kelas 3 – 4 (Fase B)', shortLabel: 'SD Kls 3-4' },
+  { value: 'Fase C', label: 'SD Kelas 5 – 6 (Fase C)', shortLabel: 'SD Kls 5-6' },
+  { value: 'Fase D', label: 'SMP / MTs (Fase D)', shortLabel: 'SMP' },
+  { value: 'Fase E', label: 'SMA Kelas 10 (Fase E)', shortLabel: 'SMA Kls 10' },
+  { value: 'Fase F', label: 'SMA Kelas 11 – 12 (Fase F)', shortLabel: 'SMA Kls 11-12' },
+]
+
+const getJenjangShortLabel = (fase) => {
+  const match = JENJANG_FASE_OPTIONS.find((item) => item.value === fase)
+  return match ? `${match.shortLabel}` : (fase || '-')
 }
 
-const FASE_LIST = ['Fase A', 'Fase B', 'Fase C', 'Fase D', 'Fase E', 'Fase F']
 const STATUS_LIST = ['Draft', 'Review', 'Publish', 'Arsip']
 
 const containerVariants = {
@@ -366,6 +322,44 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
   const queryClient = useQueryClient()
   const { items: toastList, push: pushToast, dismiss: dismissToast } = useNotifications()
 
+  // User Auth & Teacher Scoping
+  const user = useAuthStore((state) => state.user)
+  const userRoles = useMemo(() => {
+    if (!user?.roles) return []
+    return user.roles.map((r) => (typeof r === 'string' ? r : r.name || r.role_name || ''))
+  }, [user])
+
+  const isSupervisor = useMemo(() => {
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    const checkRole = (name) => rList.some((r) => r.includes(name)) || mainRole.includes(name)
+    return (
+      checkRole('kepala sekolah') ||
+      checkRole('kepala_sekolah') ||
+      checkRole('principal') ||
+      checkRole('divisi pendidikan') ||
+      checkRole('divisi_pendidikan') ||
+      checkRole('kabid') ||
+      checkRole('kurikulum') ||
+      checkRole('waka') ||
+      checkRole('yayasan') ||
+      checkRole('admin') ||
+      checkRole('super admin') ||
+      checkRole('tata usaha') ||
+      checkRole('operator')
+    )
+  }, [userRoles, user?.role])
+
+  const isTeacherOnly = useMemo(() => {
+    if (isSupervisor) return false
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    return (
+      rList.some((r) => r.includes('guru') || r.includes('wali_kelas') || r.includes('wali kelas')) ||
+      mainRole.includes('guru')
+    )
+  }, [isSupervisor, userRoles, user?.role])
+
   // State Filter & Pencarian dengan Debounce
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 350)
@@ -411,7 +405,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     rombel_id: '',
     cp_id: '',
     tp_id: '',
-    kode_modul: 'MA-' + Math.floor(100 + Math.random() * 900),
+    kode_modul: '',
     judul_modul: '',
     fase: 'Fase D',
     semester: 'Ganjil',
@@ -446,6 +440,70 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
     queryFn: () => lmsModulAjarService.getOptions(),
   })
   const options = optionsData?.data || {}
+
+  // Filter daftar mapel berdasarkan unit yang dipilih atau grouping nama unik jika "Semua Unit"
+  const filteredSubjectOptions = useMemo(() => {
+    const rawSubjects = options.subjects || []
+    const activeUnitId = selectedUnitFilter || (options.education_units?.length === 1 ? options.education_units[0].id : '')
+
+    // KASUS 1: Jika UNIT SPESIFIK DIPILIH (misal: TAUD SaQu Dar el-Iman)
+    if (activeUnitId) {
+      const unitMapelList = rawSubjects.filter(
+        (s) => s.unit_pendidikan_id === activeUnitId || s.unit_pendidikan?.id === activeUnitId
+      )
+
+      // Sortir A-Z menurut nama mapel
+      const sortedList = unitMapelList.slice().sort((a, b) => {
+        const nameA = (a.nama_mapel || a.name || a.kode_mapel || '').trim().toLowerCase()
+        const nameB = (b.nama_mapel || b.name || b.kode_mapel || '').trim().toLowerCase()
+        return nameA.localeCompare(nameB, 'id')
+      })
+
+      return sortedList.map((s) => ({
+        value: s.id,
+        label: s.nama_mapel || s.name || s.kode_mapel || s.code,
+      }))
+    }
+
+    // KASUS 2: Jika "SEMUA UNIT" (Global View)
+    // Rapikan: Jangan tampilkan keseluruhan yang double/duplikat!
+    // Satukan menurut Nama Mata Pelajaran Unik dan urutkan A-Z.
+    const uniqueMapelMap = new Map()
+    for (const s of rawSubjects) {
+      const cleanName = (s.nama_mapel || s.name || '').trim()
+      if (!cleanName) continue
+      const lowerKey = cleanName.toLowerCase()
+      if (!uniqueMapelMap.has(lowerKey)) {
+        uniqueMapelMap.set(lowerKey, {
+          value: cleanName,
+          label: cleanName,
+        })
+      }
+    }
+
+    return Array.from(uniqueMapelMap.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, 'id')
+    )
+  }, [options.subjects, selectedUnitFilter, options.education_units])
+
+  // Opsi mapel untuk Form Modal Tambah/Edit (hanya mapel dari unit yang dipilih di form)
+  const formAvailableSubjects = useMemo(() => {
+    const rawSubjects = options.subjects || []
+    const selectedUnit = formData.unit_pendidikan_id || (options.education_units?.length === 1 ? options.education_units[0].id : '')
+
+    let list = rawSubjects
+    if (selectedUnit) {
+      list = rawSubjects.filter(
+        (s) => s.unit_pendidikan_id === selectedUnit || s.unit_pendidikan?.id === selectedUnit
+      )
+    }
+
+    return list.slice().sort((a, b) => {
+      const nameA = (a.nama_mapel || a.name || '').trim().toLowerCase()
+      const nameB = (b.nama_mapel || b.name || '').trim().toLowerCase()
+      return nameA.localeCompare(nameB, 'id')
+    })
+  }, [options.subjects, formData.unit_pendidikan_id, options.education_units])
 
   const { data: modulsData, isLoading, refetch } = useQuery({
     queryKey: ['lmsModuls', debouncedSearch, selectedUnitFilter, selectedMapelFilter, selectedFaseFilter, selectedStatusFilter, denganSampahFilter, page, perPage, sortDateOrder],
@@ -565,6 +623,14 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
       cp_id: options.capaian_pembelajaran?.[0]?.id || '',
       tp_id: options.tujuan_pembelajaran?.[0]?.id || '',
     })
+    codeGeneratorService.preview('modul_code', {
+      unit_id: defaultUnitId || null,
+      academic_year_id: options.academic_years?.[0]?.id || null,
+    }).then((res) => {
+      if (res?.preview_code) {
+        setFormData((prev) => ({ ...prev, kode_modul: res.preview_code }))
+      }
+    }).catch(() => {})
     setFormStep(1)
     setIsFormModalOpen(true)
   }
@@ -955,6 +1021,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
   const totalPages = meta.lastPage || meta.last_page || 1
   const totalItems = meta.total ?? moduls.length
 
+  if (!embedded && isTeacherOnly) {
+    return <Navigate to="/portal-guru/workspace?tab=materi" replace />
+  }
+
   return (
     <PageContainer maxW="7xl">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6 pb-12">
@@ -1194,6 +1264,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                   value={selectedUnitFilter}
                   onChange={(e) => {
                     setSelectedUnitFilter(e.target.value)
+                    setSelectedMapelFilter('')
                     setPage(1)
                   }}
                   className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
@@ -1214,7 +1285,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
               )}
 
               {/* Mapel Dropdown */}
-              {options.subjects && options.subjects.length > 0 && (
+              {filteredSubjectOptions && filteredSubjectOptions.length > 0 && (
                 <select
                   value={selectedMapelFilter}
                   onChange={(e) => {
@@ -1223,16 +1294,16 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                   }}
                   className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
                 >
-                  <option value="">Semua Mapel</option>
-                  {options.subjects.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nama_mapel || s.name || s.kode_mapel || s.code}
+                  <option value="">Semua Mapel ({filteredSubjectOptions.length})</option>
+                  {filteredSubjectOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>
               )}
 
-              {/* Fase Dropdown */}
+              {/* Jenjang Dropdown */}
               <select
                 value={selectedFaseFilter}
                 onChange={(e) => {
@@ -1241,10 +1312,10 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                 }}
                 className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-slate-200/90 bg-white px-3 text-xs font-semibold text-slate-800 transition-all hover:border-slate-300 focus:border-[#0E5C44] focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/15 dark:border-slate-700 dark:bg-[#111827] dark:text-slate-100 cursor-pointer"
               >
-                <option value="">Semua Fase</option>
-                {FASE_LIST.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
+                <option value="">Semua Jenjang</option>
+                {JENJANG_FASE_OPTIONS.map((j) => (
+                  <option key={j.value} value={j.value}>
+                    {j.label}
                   </option>
                 ))}
               </select>
@@ -1452,7 +1523,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                             {item.kelas?.nama_kelas || item.school_class?.name || '-'}
                           </div>
                           <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-                            {item.fase || 'Fase D'}
+                            {getJenjangShortLabel(item.fase)}
                           </span>
                         </td>
 
@@ -1766,15 +1837,15 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
 
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Fase Pembelajaran
+                            Jenjang Pendidikan (Fase)
                           </label>
                           <select
                             value={formData.fase}
                             onChange={(e) => setFormData({ ...formData, fase: e.target.value })}
                             className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
                           >
-                            {FASE_LIST.map((f) => (
-                              <option key={f} value={f}>{f}</option>
+                            {JENJANG_FASE_OPTIONS.map((j) => (
+                              <option key={j.value} value={j.value}>{j.label}</option>
                             ))}
                           </select>
                         </div>
@@ -1785,7 +1856,14 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                           </label>
                           <select
                             value={formData.unit_pendidikan_id || (options.education_units?.length === 1 ? options.education_units[0].id : '')}
-                            onChange={(e) => setFormData({ ...formData, unit_pendidikan_id: e.target.value })}
+                            onChange={(e) => {
+                              const newUnit = e.target.value
+                              setFormData((prev) => ({
+                                ...prev,
+                                unit_pendidikan_id: newUnit,
+                                mata_pelajaran_id: '',
+                              }))
+                            }}
                             disabled={options.education_units?.length === 1}
                             className={`w-full rounded-xl border border-slate-200/90 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:text-slate-100 ${
                               options.education_units?.length === 1
@@ -1817,7 +1895,7 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
                             className="w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:border-[#0E5C44] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#0E5C44]/12 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 cursor-pointer"
                           >
                             <option value="">-- Pilih Mata Pelajaran --</option>
-                            {options.subjects?.map((s) => (
+                            {formAvailableSubjects.map((s) => (
                               <option key={s.id} value={s.id}>
                                 {s.nama_mapel || s.name || s.kode_mapel || s.code}
                               </option>
@@ -2744,8 +2822,6 @@ export default function LmsModulAjarPage({ embedded = false, hideBreadcrumb = fa
           moduleTitle="Modul Ajar"
         />
 
-        {/* Floating Semantic Toast Stack */}
-        <ToastStack items={toastList} onDismiss={dismissToast} />
       </motion.div>
     </PageContainer>
   )

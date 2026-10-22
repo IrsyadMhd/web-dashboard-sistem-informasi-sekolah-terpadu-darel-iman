@@ -1,3 +1,4 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -35,10 +36,12 @@ import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import { useDebounce } from '../hooks/useDebounce'
 import { Pagination } from '../components/tailgrids/core/pagination'
+import { printCleanTable } from '../utils/printHelper'
 import {
   SquircleActionButton,
   MasterDataPage,
 } from '../components/master-data'
+import AppTabs from '../components/app/AppTabs'
 
 const MODERN_CARD_TONES = {
   emerald: {
@@ -67,12 +70,13 @@ const MODERN_CARD_TONES = {
   },
 }
 
-function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', tag = 'METRIK' }) {
+function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', tag = 'METRIK', onClick }) {
   const t = MODERN_CARD_TONES[tone] || MODERN_CARD_TONES.emerald
   return (
     <motion.div
       whileHover={{ y: -3, transition: { duration: 0.2 } }}
-      className={`group relative overflow-hidden rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-300 hover:shadow-lg dark:border-slate-800/80 dark:bg-[#1B2433] ${t.border}`}
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-300 hover:shadow-lg dark:border-slate-800/80 dark:bg-[#1B2433] ${t.border} ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className={`pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full blur-2xl transition-all duration-500 ${t.glow}`} />
       <div className="relative z-10 flex items-start justify-between gap-3">
@@ -97,10 +101,12 @@ function ModernKpiCard({ title, value, subtext, icon: Icon, tone = 'emerald', ta
             <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{subtext}</p>
           )}
         </div>
-        <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
-          <span>Detail</span>
-          <ChevronRight className="size-3" />
-        </div>
+        {onClick && (
+          <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span>Detail</span>
+            <ChevronRight className="size-3" />
+          </div>
+        )}
       </div>
     </motion.div>
   )
@@ -176,13 +182,10 @@ export default function PoinPenilaianDoaPage() {
   const activeUnit = useUnitStore((state) => state.activeUnit)
 
   // Toast notifications state
-  const [toasts, setToasts] = useState([])
+  const toast = useToast()
   const pushToast = (type, title, message = '') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, type, title, message }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4000)
+    const tone = type === 'error' || type === 'danger' ? 'error' : type === 'warning' ? 'warning' : 'success'
+    toast(message ? `${title}: ${message}` : title, tone)
   }
 
   // Roles permission check
@@ -435,7 +438,22 @@ export default function PoinPenilaianDoaPage() {
   }, [debouncedSearch])
 
   const handlePrint = () => {
-    window.print()
+    if (!filteredRows || filteredRows.length === 0) return
+    const rows = filteredRows.map((r, idx) => [
+      r.no || r.order_number || idx + 1,
+      r.nama || r.name || '-',
+      r.score ?? r.nilai ?? '-',
+      r.max_score ?? 100,
+      r.status || (Number(r.score) >= Number(r.passing_score || 75) ? 'Tuntas' : 'Perlu Bimbingan'),
+    ])
+    const studentTitle = selectedStudentObj ? `Siswa: ${selectedStudentObj.name} (${selectedClassObj?.name || '-'})` : 'Target Capaian Pembelajaran Doa'
+    printCleanTable({
+      title: 'LEMBAR PENILAIAN CAPAIAN DOA & DZIKIR',
+      subtitle: studentTitle,
+      headers: ['No', 'Materi Doa & Dzikir', 'Nilai', 'Skor Maks', 'Status'],
+      rows,
+      orientation: 'portrait',
+    })
   }
 
   const selectedStudentObj = students.find((s) => s.id === selectedStudentId)
@@ -470,14 +488,14 @@ export default function PoinPenilaianDoaPage() {
                   Kurikulum Doa Harian
                 </span>
                 <span className="inline-flex items-center rounded-full bg-emerald-100/90 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-                  62 Target Doa
+                  {loadingItems ? 'Memuat Target...' : items.length > 0 ? `${items.length} Target Doa` : 'Target Doa Harian'}
                 </span>
               </div>
               <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 Poin Penilaian Doa Harian
               </h1>
               <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">
-                Dokumen resmi kurikulum evaluasi hafalan 62 doa harian, paraf guru penguji, dan kalkulasi predikat A–D.
+                Dokumen resmi kurikulum evaluasi hafalan target doa harian, paraf guru penguji, dan kalkulasi predikat A–D.
               </p>
             </div>
           </div>
@@ -485,73 +503,107 @@ export default function PoinPenilaianDoaPage() {
           {/* Action Buttons: Tab Switcher */}
           <div className="flex items-center gap-2 shrink-0 self-start sm:self-center flex-wrap">
             {canManageSettings && (
-              <div className="flex rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-emerald-200/70 dark:border-emerald-800/60 p-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('scoring')}
-                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'scoring'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25'
-                      : 'text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300'
-                  }`}
-                >
-                  <PenTool className="size-3.5" />
-                  Lembar Penilaian
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('settings')}
-                  className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'settings'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25'
-                      : 'text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300'
-                  }`}
-                >
-                  <Settings className="size-3.5" />
-                  Pengaturan Grade
-                </button>
-              </div>
+              <AppTabs
+                tabs={[
+                  { id: 'scoring', label: 'Lembar Penilaian', icon: PenTool },
+                  { id: 'settings', label: 'Pengaturan Grade', icon: Settings },
+                ]}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                ariaLabel="Mode lembar doa"
+              />
             )}
           </div>
         </div>
       </div>
 
-      <MasterDataPage className="education-unit-page doa-points-page space-y-6" hideBreadcrumb>
+      <MasterDataPage className="doa-points-page space-y-6" hideBreadcrumb>
         {/* Modern KPI Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
-          <ModernKpiCard
-            title="Target Kurikulum Doa"
-            value={`${items.length || 62} Doa`}
-            subtext="Hafalan harian terstruktur"
-            icon={BookOpen}
-            tone="emerald"
-            tag="KURIKULUM"
-          />
-          <ModernKpiCard
-            title="Rata-rata Skor Siswa"
-            value={studentSheet?.summary?.average_score !== undefined ? `${studentSheet.summary.average_score}` : '75.0'}
-            subtext={studentSheet?.summary?.grade_label ? `Grade ${studentSheet.summary.grade} (${studentSheet.summary.grade_label})` : 'Standar KKM 75'}
-            icon={GraduationCap}
-            tone="blue"
-            tag="CAPAIAN NILAI"
-          />
-          <ModernKpiCard
-            title="Doa Tuntas (Lulus KKM)"
-            value={`${studentSheet?.summary?.passed_items ?? 0} / ${studentSheet?.summary?.total_items ?? items.length ?? 62}`}
-            subtext={`${Math.round(((studentSheet?.summary?.passed_items ?? 0) / (studentSheet?.summary?.total_items || items.length || 1)) * 100)}% Target Tercapai`}
-            icon={CheckCircle2}
-            tone="purple"
-            tag="PREDIKAT"
-          />
-          <ModernKpiCard
-            title="Siswa Terpilih"
-            value={selectedStudentObj?.nama_lengkap || selectedStudentObj?.name || 'Pilih Siswa'}
-            subtext={selectedClassObj?.nama_kelas ? `Kelas: ${selectedClassObj.nama_kelas}` : 'Pilih dari filter kelas'}
-            icon={Users}
-            tone="amber"
-            tag="IDENTITAS"
-          />
-        </div>
+        {(() => {
+          const totalTargetDoa = items.length
+          const totalSheetItems = studentSheet?.summary?.total_items ?? totalTargetDoa
+          const passedCount = studentSheet?.summary?.passed_items ?? 0
+          const testedCount = studentSheet?.summary?.tested_items ?? 0
+          const avgScore = studentSheet?.summary?.average_score
+          const hasTestedScore = Boolean(testedCount > 0 && avgScore !== undefined && avgScore !== null)
+          const pctLulus = totalSheetItems > 0 ? Math.round((passedCount / totalSheetItems) * 100) : 0
+          const pctTested = testedCount > 0 ? Math.round((passedCount / testedCount) * 100) : 0
+
+          const validScores = items.map((i) => Number(i.passing_score)).filter((n) => !isNaN(n) && n > 0)
+          const kkmMin = validScores.length > 0 ? Math.min(...validScores) : null
+          const kkmMax = validScores.length > 0 ? Math.max(...validScores) : null
+          const isKkmUniform = kkmMin !== null && kkmMin === kkmMax
+          const kkmLabel = validScores.length === 0
+            ? 'Pilih siswa untuk melihat nilai'
+            : isKkmUniform
+            ? `KKM Acuan: ${kkmMin.toFixed(1)}`
+            : `KKM Bervariasi: ${kkmMin.toFixed(1)} - ${kkmMax.toFixed(1)}`
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
+              <ModernKpiCard
+                title="Target Kurikulum Doa"
+                value={loadingItems ? 'Memuat...' : `${totalTargetDoa} Doa`}
+                subtext={totalTargetDoa > 0 ? 'Hafalan harian terstruktur' : 'Belum ada target doa'}
+                icon={BookOpen}
+                tone="emerald"
+                tag="KURIKULUM"
+              />
+              <ModernKpiCard
+                title="Rata-rata Skor Siswa"
+                value={
+                  loadingSheet
+                    ? '...'
+                    : !selectedStudentId
+                    ? '—'
+                    : hasTestedScore
+                    ? `${avgScore}`
+                    : 'Belum Dinilai'
+                }
+                subtext={
+                  hasTestedScore && studentSheet?.summary?.grade_label
+                    ? `Grade ${studentSheet.summary.grade} (${studentSheet.summary.grade_label})`
+                    : !selectedStudentId
+                    ? kkmLabel
+                    : 'Belum ada butir doa yang dinilai'
+                }
+                icon={GraduationCap}
+                tone="blue"
+                tag="CAPAIAN NILAI"
+              />
+              <ModernKpiCard
+                title="Doa Tuntas (Lulus KKM)"
+                value={
+                  loadingSheet
+                    ? '...'
+                    : !selectedStudentId
+                    ? '—'
+                    : `${passedCount} / ${totalSheetItems} Doa`
+                }
+                subtext={
+                  !selectedStudentId
+                    ? 'Pilih siswa untuk melihat capaian'
+                    : totalSheetItems === 0
+                    ? 'Belum ada master target doa'
+                    : testedCount === 0
+                    ? '0% Target Tercapai (Belum ada doa diuji)'
+                    : `${pctLulus}% Kurikulum (${passedCount}/${totalSheetItems}) • Lulus Uji: ${pctTested}% (${passedCount}/${testedCount})`
+                }
+                icon={CheckCircle2}
+                tone="purple"
+                tag="PREDIKAT"
+              />
+              <ModernKpiCard
+                title="Siswa Terpilih"
+                value={selectedStudentObj?.nama_lengkap || selectedStudentObj?.name || 'Pilih Siswa'}
+                subtext={selectedClassObj?.nama_kelas ? `Kelas: ${selectedClassObj.nama_kelas}` : 'Pilih dari filter kelas'}
+                icon={Users}
+                tone="amber"
+                tag="IDENTITAS"
+              />
+            </div>
+          )
+        })()}
 
         {/* MODE 1: LEMBAR PENILAIAN SISWA */}
         {activeTab === 'scoring' && (
@@ -731,7 +783,12 @@ export default function PoinPenilaianDoaPage() {
                             {row.no || row.order_number || (currentPage - 1) * perPage + idx + 1}
                           </td>
                           <td className="py-3 px-4">
-                            <span className="font-bold text-slate-900 dark:text-slate-100">{row.nama || row.name}</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold text-slate-900 dark:text-slate-100">{row.nama || row.name}</span>
+                              <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                KKM: {row.passing_score ?? row.kkm ?? 75}
+                              </span>
+                            </div>
                           </td>
                           <td className="hidden sm:table-cell py-3 px-4">
                             {row.grup || row.group ? (
@@ -891,11 +948,11 @@ export default function PoinPenilaianDoaPage() {
               </div>
             </div>
 
-            {/* Tabel Master 62 Doa */}
+            {/* Tabel Master Doa */}
             <div className="rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433] overflow-hidden">
               <div className="p-4 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
-                  2. Daftar 62 Doa Harian & Bobot Poin Maksimum
+                  {editableItems.length > 0 ? `2. Daftar ${editableItems.length} Doa Harian & Bobot Poin Maksimum` : '2. Daftar Doa Harian & Bobot Poin Maksimum'}
                 </h4>
               </div>
               <div className="overflow-x-auto">
@@ -1005,58 +1062,7 @@ export default function PoinPenilaianDoaPage() {
           isSubmitting={savingSheet}
         />
 
-        {/* Toast Notification Stack */}
-        <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full print:hidden">
-          <AnimatePresence>
-            {toasts.map((toast) => (
-              <motion.div
-                key={toast.id}
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-                  toast.type === 'error'
-                    ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                    : toast.type === 'warning'
-                    ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
-                    : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-                }`}
-              >
-                <div
-                  className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                    toast.type === 'error'
-                      ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                      : toast.type === 'warning'
-                      ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                      : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-                  }`}
-                >
-                  {toast.type === 'error' ? (
-                    <AlertTriangle className="size-4.5" />
-                  ) : toast.type === 'warning' ? (
-                    <AlertTriangle className="size-4.5" />
-                  ) : (
-                    <Check className="size-4.5" />
-                  )}
-                </div>
-                <div className="flex-1 pt-0.5">
-                  <p className="text-xs font-bold leading-tight">{toast.title}</p>
-                  {toast.message && (
-                    <p className="mt-0.5 text-[11px] opacity-80 leading-normal">{toast.message}</p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+
       </MasterDataPage>
     </PageContainer>
   )

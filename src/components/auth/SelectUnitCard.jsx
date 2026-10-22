@@ -6,6 +6,8 @@ import { Badge } from '@/components/tailgrids/core/badge'
 import { Alert, AlertContent, AlertDescription, AlertIndicator } from '@/components/tailgrids/core/alert'
 import { Card } from '@/components/tailgrids/core/card'
 import { educationUnitService } from '../../services/educationUnitService'
+import { usePengaturanStore } from '../../stores/pengaturanStore'
+import { resolveFoundationName } from '../../utils/printHelper'
 
 export default function SelectUnitCard({ onNavigate, disabled = false }) {
   const [selectedUnit, setSelectedUnit] = useState('')
@@ -13,6 +15,8 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
   const [units, setUnits] = useState([])
   const [loading, setLoading] = useState(true)
   const [savedUnitName, setSavedUnitName] = useState(null)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
 
   useEffect(() => {
     educationUnitService
@@ -24,7 +28,7 @@ export default function SelectUnitCard({ onNavigate, disabled = false }) {
             id: String(item.id || item.code || item.name),
             name: item.name || item.nama_unit || item.code,
             fullName: item.full_name || item.nama_panjang || item.name || 'Unit Pendidikan',
-            subtext: item.level ? `Jenjang: ${item.level}` : 'Yayasan Dar El-Iman',
+            subtext: item.level ? `Jenjang: ${item.level}` : foundationName,
             icon: item.name?.toLowerCase().includes('tk')
               ? FaSchool
               : item.name?.toLowerCase().includes('sd')

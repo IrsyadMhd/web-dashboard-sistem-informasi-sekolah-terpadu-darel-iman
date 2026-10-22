@@ -1,7 +1,39 @@
 import { create } from 'zustand'
 import { siteSettingService } from '../services/siteSettingService'
+import defaultLabels from '../config/defaultLabels.json'
 
 const STORAGE_KEY = 'pengaturan_dashboard'
+
+export { defaultLabels }
+
+export function mergeLabels(defaults, custom) {
+  if (!custom || typeof custom !== 'object' || Array.isArray(custom)) {
+    return defaults
+  }
+  const result = { ...defaults }
+  for (const [key, value] of Object.entries(custom)) {
+    if (value && typeof value === 'object' && !Array.isArray(value) && result[key] && typeof result[key] === 'object') {
+      result[key] = mergeLabels(result[key], value)
+    } else if (value !== undefined && value !== null && value !== '') {
+      result[key] = value
+    }
+  }
+  return result
+}
+
+export function getNestedLabel(obj, path, fallback = '') {
+  if (!obj || !path) return fallback
+  const keys = path.split('.')
+  let current = obj
+  for (const key of keys) {
+    if (current && typeof current === 'object' && key in current) {
+      current = current[key]
+    } else {
+      return fallback
+    }
+  }
+  return current !== undefined && current !== null && current !== '' ? current : fallback
+}
 
 export const INITIAL_FAQS = [
   {
@@ -145,7 +177,7 @@ export const INITIAL_MANUALS = [
     version: 'v1.8 (Terbaru 2026)',
     size: '2.1 MB',
     format: 'PDF',
-    target: 'Wali Murid & Santri Yayasan Darel Iman',
+    target: 'Wali Murid & Seluruh Siswa/Santri',
     desc: 'Panduan pemantauan kehadiran anak, pengajuan izin online, grafik mutabaah, dan nilai rapor digital.',
     url: '#',
   },
@@ -160,8 +192,19 @@ export const defaultPengaturan = {
   footer_text: 'Jl. Pendidikan No. 1, Kota Padang',
   address: '',
   phone: '',
+  website: '',
+  email: '',
   sk_pendirian: '',
   motto: '',
+  bank_name: '',
+  bank_account_number: '',
+  bank_account_name: '',
+  bsi_va_prefix: '9023',
+  bsi_va_format: '{PREFIX}{NIS}',
+  card_rules_student: '',
+  card_rules_employee: '',
+  card_footer_motto: '',
+  mapbox_token: '',
   header_style: 'light',
   header_sticky: true,
   sidebar_style: 'light',
@@ -174,6 +217,7 @@ export const defaultPengaturan = {
   header_color: '#FFFFFF',
   custom_faqs: INITIAL_FAQS,
   custom_manuals: INITIAL_MANUALS,
+  custom_labels: defaultLabels,
   breadcrumb_divider: 'chevron', // 'chevron' | 'slash' | 'dot'
   breadcrumb_show_home: true,
 }
@@ -186,6 +230,7 @@ function readCached() {
       ...saved,
       custom_faqs: saved.custom_faqs || INITIAL_FAQS,
       custom_manuals: saved.custom_manuals || INITIAL_MANUALS,
+      custom_labels: mergeLabels(defaultLabels, saved.custom_labels),
     }
   } catch {
     return defaultPengaturan
@@ -208,8 +253,16 @@ export const usePengaturanStore = create((set, get) => ({
       const pengaturan = {
         ...defaultPengaturan,
         ...fetched,
-        custom_faqs: fetched.custom_faqs || get().pengaturan.custom_faqs || INITIAL_FAQS,
-        custom_manuals: fetched.custom_manuals || get().pengaturan.custom_manuals || INITIAL_MANUALS,
+        custom_faqs: Array.isArray(fetched.custom_faqs)
+          ? fetched.custom_faqs
+          : (get().pengaturan.custom_faqs ?? INITIAL_FAQS),
+        custom_manuals: Array.isArray(fetched.custom_manuals)
+          ? fetched.custom_manuals
+          : (get().pengaturan.custom_manuals ?? INITIAL_MANUALS),
+        custom_labels: mergeLabels(
+          defaultLabels,
+          fetched.custom_labels || get().pengaturan.custom_labels
+        ),
       }
       cache(pengaturan)
       set({ pengaturan, initialized: true })
@@ -223,19 +276,43 @@ export const usePengaturanStore = create((set, get) => ({
     set({ pengaturan: { ...get().pengaturan, ...payload } })
   },
   async simpanPengaturan(payload, files) {
-    let savedBackend = {}
     try {
-      savedBackend = await siteSettingService.update(payload, files)
+      const savedBackend = await siteSettingService.update(payload, files)
+      const pengaturan = {
+        ...get().pengaturan,
+        ...payload,
+        ...savedBackend,
+        custom_labels: mergeLabels(
+          defaultLabels,
+          savedBackend.custom_labels || payload.custom_labels || get().pengaturan.custom_labels
+        ),
+      }
+      cache(pengaturan)
+      set({ pengaturan, pendingSync: false, lastSyncError: null })
+      return pengaturan
     } catch (e) {
-      console.warn('Backend update skipped, saving to store local cache:', e)
+      console.error('[PengaturanStore] Gagal menyimpan pengaturan ke backend:', e)
+      set({ pendingSync: true, lastSyncError: e?.response?.data?.message || e?.message || 'Gagal menyimpan ke server' })
+      throw e
     }
-    const pengaturan = {
-      ...get().pengaturan,
-      ...payload,
-      ...savedBackend,
-    }
-    cache(pengaturan)
-    set({ pengaturan })
-    return pengaturan
   },
 }))
+
+export function useLabel(path, fallback = '') {
+  const customLabels = usePengaturanStore((state) => state.pengaturan?.custom_labels)
+  return getNestedLabel(customLabels, path, fallback)
+}
+
+export function useTerminology() {
+  const customLabels = usePengaturanStore((state) => state.pengaturan?.custom_labels)
+  return customLabels?.terminology || defaultLabels.terminology
+}
+
+export function getLabel(path, fallback = '') {
+  const currentSettings = usePengaturanStore.getState().pengaturan
+  return getNestedLabel(currentSettings?.custom_labels, path, fallback)
+}
+
+export { resolveFoundationName } from '../utils/printHelper'
+
+

@@ -137,21 +137,13 @@ import KpiDetailDrawer from '../../components/KpiDetailDrawer'
 
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/authStore'
+import { getUserRoleLevel, ROLE_LEVELS } from '../../auth/portalResolver'
 
 export function FoundationDashboardPage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
-  const roles = useMemo(() => (Array.isArray(user?.roles) ? user.roles : []), [user?.roles])
-  const isKepalaSekolah = useMemo(
-    () =>
-      roles.some(
-        (role) =>
-          ['Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek'].includes(String(role).trim()) ||
-          String(role).toLowerCase().replace(/[\s_-]+/g, '') === 'kepalasekolah' ||
-          String(role).toLowerCase().replace(/[\s_-]+/g, '') === 'kepsek'
-      ),
-    [roles]
-  )
+  const userLevel = useMemo(() => getUserRoleLevel(user), [user])
+  const isKepalaSekolah = userLevel === ROLE_LEVELS.KEPALA_SEKOLAH // Level 4
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
@@ -722,33 +714,43 @@ export function FoundationDashboardPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           <SummaryCard
             title="Kehadiran Guru"
-            value={`${monitoringAkademik.kehadiran_guru ?? 100}%`}
+            value={monitoringAkademik.kehadiran_guru != null ? `${monitoringAkademik.kehadiran_guru}%` : '—'}
+            description={monitoringAkademik.teacher_sessions_total > 0 ? `${monitoringAkademik.teacher_sessions_present} dari ${monitoringAkademik.teacher_sessions_total} sesi` : 'Belum ada sesi'}
             icon={UserCheck}
             colorScheme="emerald"
+            onClick={() => setActiveModal('kehadiran_guru')}
           />
           <SummaryCard
             title="Kehadiran Siswa"
-            value={`${monitoringAkademik.kehadiran_siswa ?? 100}%`}
+            value={monitoringAkademik.kehadiran_siswa != null ? `${monitoringAkademik.kehadiran_siswa}%` : '—'}
+            description={monitoringAkademik.total_siswa_aktif > 0 ? `${formatNumber(Math.max(0, (monitoringAkademik.total_siswa_aktif || 0) - (monitoringAkademik.tidak_hadir_hari_ini || 0)))} dari ${formatNumber(monitoringAkademik.total_siswa_aktif)} siswa` : 'Belum ada data'}
             icon={Users}
             colorScheme="blue"
+            onClick={() => setActiveModal('kehadiran_siswa')}
           />
           <SummaryCard
             title="Input Nilai"
-            value={`${monitoringAkademik.input_nilai ?? 100}%`}
+            value={monitoringAkademik.input_nilai != null ? `${monitoringAkademik.input_nilai}%` : '—'}
+            description={monitoringAkademik.total_grades > 0 ? `${formatNumber(monitoringAkademik.total_grades)} entri terdata` : 'Belum ada entri'}
             icon={CheckCircle2}
             colorScheme="violet"
+            onClick={() => setActiveModal('input_nilai')}
           />
           <SummaryCard
             title="Input Tahfizh"
-            value={`${monitoringAkademik.input_tahfiz ?? 100}%`}
+            value={monitoringAkademik.input_tahfiz != null ? `${monitoringAkademik.input_tahfiz}%` : '—'}
+            description={monitoringAkademik.today_tahfizh_logs > 0 ? `${formatNumber(monitoringAkademik.today_tahfizh_logs)} setoran hari ini` : 'Belum ada setoran'}
             icon={Award}
             colorScheme="amber"
+            onClick={() => setActiveModal('input_tahfiz')}
           />
           <SummaryCard
             title="Input Mutaba'ah"
-            value={`${monitoringAkademik.input_mutabaah ?? 100}%`}
+            value={monitoringAkademik.input_mutabaah != null ? `${monitoringAkademik.input_mutabaah}%` : '—'}
+            description={monitoringAkademik.today_mutabaah_headers > 0 ? `${formatNumber(monitoringAkademik.today_mutabaah_headers)} jurnal hari ini` : 'Belum ada jurnal'}
             icon={HeartHandshake}
             colorScheme="indigo"
+            onClick={() => setActiveModal('input_mutabaah')}
           />
           <SummaryCard
             title="Terlambat Hari Ini"
@@ -844,15 +846,24 @@ export function FoundationDashboardPage() {
 
             <div className="space-y-3 pt-1">
               {[
-                { label: 'Shalat Wajib & Sunnah', value: monitoringIbadah.shalat },
-                { label: 'Tilawah Al-Qur\'an', value: monitoringIbadah.tilawah },
-                { label: 'Muraja\'ah Hafalan', value: monitoringIbadah.murajaah },
-                { label: 'Mutaba\'ah Terverifikasi', value: monitoringIbadah.mutabaah },
+                { label: 'Shalat Wajib & Sunnah', value: monitoringIbadah.shalat, detail: monitoringIbadah.shalat_detail },
+                { label: 'Tilawah Al-Qur\'an', value: monitoringIbadah.tilawah, detail: monitoringIbadah.tilawah_detail },
+                { label: 'Muraja\'ah Hafalan', value: monitoringIbadah.murajaah, detail: monitoringIbadah.murajaah_detail },
+                { label: 'Mutaba\'ah Terverifikasi', value: monitoringIbadah.mutabaah, detail: monitoringIbadah.mutabaah_detail },
               ].map((item) => (
-                <div key={item.label} className="space-y-1">
+                <div
+                  key={item.label}
+                  onClick={() => setActiveModal('monitoring_ibadah')}
+                  className="space-y-1 p-1.5 -mx-1.5 rounded-xl transition-all duration-150 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                  role="button"
+                  tabIndex={0}
+                  title="Klik untuk melihat rincian data sumber monitoring ibadah"
+                >
                   <div className="flex items-center justify-between text-xs font-bold">
                     <span className="text-slate-700 dark:text-slate-300">{item.label}</span>
-                    <span className="text-[#0E5C44] dark:text-[#3FBF75] font-black">{item.value ?? 0}%</span>
+                    <span className="text-[#0E5C44] dark:text-[#3FBF75] font-black">
+                      {item.value != null ? `${item.value}%` : '—'}
+                    </span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                     <div
@@ -860,6 +871,15 @@ export function FoundationDashboardPage() {
                       style={{ width: `${Math.min(100, Math.max(0, Number(item.value) || 0))}%` }}
                     />
                   </div>
+                  {item.detail?.total > 0 ? (
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium text-right">
+                      {item.detail.completed} dari {item.detail.total} entri tercatat
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium text-right">
+                      Belum ada data periode ini
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

@@ -49,6 +49,7 @@ import {
 import { useAuthStore } from '../../stores/authStore'
 import { academicCalendarService } from '../../services/academicCalendarService'
 import { printCleanTable } from '../../utils/printHelper'
+import { usePengaturanStore, resolveFoundationName } from '../../stores/pengaturanStore'
 
 // Category Configuration & Presets (PPDB, Daftar Ulang, Ujian, Terima Rapor, KBM, Libur, Custom)
 export const PRESET_CATEGORIES = {
@@ -216,12 +217,13 @@ export const AUDIENCE_OPTIONS = [
 export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = null }) {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
 
-  // Role permissions
-  const canManage = useMemo(() => {
-    if (lockedUnit) return false;
-    if (!user) return false;
-    const roleStr = [
+  // Role permissions & Scoping
+  const roleStr = useMemo(() => {
+    if (!user) return ''
+    return [
       user?.role,
       user?.role?.name,
       user?.role_name,
@@ -230,22 +232,59 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
+  }, [user])
 
+  const isFullAccessUser = useMemo(() => {
+    if (!user) return false
     return (
+      user?.is_superadmin === true ||
+      (typeof user?.role_level === 'number' && user.role_level <= 2) ||
       roleStr.includes('superadmin') ||
       roleStr.includes('super_admin') ||
+      roleStr.includes('super admin') ||
       roleStr.includes('admin') ||
       roleStr.includes('yayasan') ||
-      roleStr.includes('pengurus') ||
+      roleStr.includes('pengurus')
+    )
+  }, [user, roleStr])
+
+  const isParentOrStudent = useMemo(() => {
+    return (
+      roleStr.includes('orang tua') ||
+      roleStr.includes('orang_tua') ||
+      roleStr.includes('orang-tua') ||
+      roleStr.includes('orangtua') ||
+      roleStr.includes('parent') ||
+      roleStr.includes('wali') ||
+      roleStr.includes('siswa') ||
+      roleStr.includes('student') ||
+      roleStr.includes('alumni') ||
+      roleStr.includes('santri')
+    )
+  }, [roleStr])
+
+  const canManage = useMemo(() => {
+    if (!user) return false
+    if (isFullAccessUser) return true
+    if (isParentOrStudent) return false
+    if (lockedUnit) return false
+
+    const words = roleStr.split(/[\s,_-]+/)
+    const isStaffOrTeacher =
       roleStr.includes('kepala_sekolah') ||
       roleStr.includes('kepala sekolah') ||
       roleStr.includes('kepsek') ||
       roleStr.includes('tata_usaha') ||
       roleStr.includes('tata usaha') ||
-      roleStr.includes('tatausaha') ||
-      roleStr.includes('tu')
-    )
-  }, [user, lockedUnit])
+      words.includes('tu') ||
+      roleStr.includes('operator') ||
+      roleStr.includes('divisi') ||
+      roleStr.includes('kurikulum') ||
+      roleStr.includes('kesiswaan') ||
+      roleStr.includes('guru') ||
+      roleStr.includes('musyrif')
+    return isStaffOrTeacher
+  }, [user, isFullAccessUser, isParentOrStudent, lockedUnit, roleStr])
 
   const userUnit = useMemo(() => {
     if (!user) return ''
@@ -262,32 +301,10 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
     return String(unitVal).trim()
   }, [user])
 
-  const isFullAccessUser = useMemo(() => {
-    if (lockedUnit) return false;
-    if (!user) return false;
-    const roleStr = [
-      user?.role,
-      user?.role?.name,
-      user?.role_name,
-      ...(Array.isArray(user?.roles) ? user.roles.map((r) => (typeof r === 'string' ? r : r?.name)) : [])
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-
-    return (
-      roleStr.includes('superadmin') ||
-      roleStr.includes('super_admin') ||
-      roleStr.includes('admin') ||
-      roleStr.includes('yayasan') ||
-      roleStr.includes('pengurus')
-    )
-  }, [user, lockedUnit])
-
   // View States
   const [activeTab, setActiveTab] = useState('view') // 'view' | 'manage'
   const [mainViewMode, setMainViewMode] = useState('minggu') // 'hari' | 'minggu' | 'bulan' | 'agenda'
-  const [currentMonthDate, setCurrentMonthDate] = useState(new Date(2025, 4, 29)) // Default Mei 2025 matching image
+  const [currentMonthDate, setCurrentMonthDate] = useState(new Date()) // Dynamic current date
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [selectedUnitFilter, setSelectedUnitFilter] = useState('Semua Unit')
   const [searchQuery, setSearchQuery] = useState('')
@@ -318,29 +335,40 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
 
   // Dynamic Education Units
   const [unitOptions, setUnitOptions] = useState([
-    { value: 'Semua Unit', label: 'Semua Unit (Yayasan Dar El-Iman)' },
+    { value: 'Semua Unit', label: `Semua Unit (${foundationName})` },
     { value: 'TK', label: 'TK / PAUD IT' },
     { value: 'SD', label: 'SD IT' },
     { value: 'SMP', label: 'SMP IT' },
     { value: 'SMA', label: 'SMA IT' }
   ])
 
-  useEffect(() => {
-    if (isOpen && !isFullAccessUser && userUnit) {
-      const matched = unitOptions.find((u) => {
-        const val = String(u.value).toLowerCase()
-        const lbl = String(u.label || '').toLowerCase()
-        const target = userUnit.toLowerCase()
-        return val === target || target.includes(val) || val.includes(target) || lbl.includes(target)
-      })
+  const resolvedTargetUnit = useMemo(() => {
+    if (lockedUnit) return lockedUnit
+    if (userUnit) return userUnit
+    const savedChildUnit = typeof window !== 'undefined' ? localStorage.getItem('portal_active_child_unit') : null
+    if (savedChildUnit) return savedChildUnit
+    return ''
+  }, [lockedUnit, userUnit, isOpen])
 
-      if (matched) {
-        setSelectedUnitFilter(matched.value)
-      } else {
-        setSelectedUnitFilter(userUnit)
+  useEffect(() => {
+    if (isOpen && !isFullAccessUser) {
+      const target = resolvedTargetUnit || userUnit
+      if (target) {
+        const matched = unitOptions.find((u) => {
+          const val = String(u.value).toLowerCase()
+          const lbl = String(u.label || '').toLowerCase()
+          const t = target.toLowerCase()
+          return val === t || t.includes(val) || val.includes(t) || lbl.includes(t)
+        })
+
+        if (matched) {
+          setSelectedUnitFilter(matched.value)
+        } else {
+          setSelectedUnitFilter(target)
+        }
       }
     }
-  }, [isOpen, isFullAccessUser, userUnit, unitOptions])
+  }, [isOpen, isFullAccessUser, resolvedTargetUnit, userUnit, unitOptions])
 
   // Date Range Selection State
   const [rangeStart, setRangeStart] = useState(null)
@@ -411,36 +439,49 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
   }, [rangeStart, rangeEnd, clickStep, hoverDate])
 
   const activeTargetUnit = useMemo(() => {
-    if (lockedUnit) return lockedUnit;
-    if (isFullAccessUser) return selectedUnitFilter;
-    return userUnit || selectedUnitFilter;
-  }, [lockedUnit, isFullAccessUser, selectedUnitFilter, userUnit])
+    if (isFullAccessUser) return selectedUnitFilter
+    return resolvedTargetUnit || selectedUnitFilter || 'Semua Unit'
+  }, [isFullAccessUser, selectedUnitFilter, resolvedTargetUnit])
 
   const isUnitMatch = useCallback(
     (evtUnit, targetUnit) => {
-      if (lockedUnit) {
-        if (!evtUnit) return false;
-        const eu = String(evtUnit).toLowerCase().trim();
-        const lu = String(lockedUnit).toLowerCase().trim();
-        if (eu === lu || eu.includes(lu) || lu.includes(eu)) return true;
-        if (lu.includes('sd') && eu.includes('sd')) return true;
-        if (lu.includes('smp') && eu.includes('smp')) return true;
-        if ((lu.includes('sma') || lu.includes('pesantren')) && (eu.includes('sma') || eu.includes('pesantren'))) return true;
-        if ((lu.includes('tk') || lu.includes('paud')) && (eu.includes('tk') || eu.includes('paud'))) return true;
-        return false;
+      // 1. Agenda umum berlabel "Semua Unit" / "Semua Unit Terpadu" / "Seluruh Yayasan" / "all"
+      // WAJIB selalu tampil untuk seluruh civitas / seluruh role di setiap unit!
+      if (
+        !evtUnit ||
+        evtUnit === 'Semua Unit' ||
+        evtUnit === 'all' ||
+        evtUnit === 'Semua Civitas' ||
+        String(evtUnit).toLowerCase().includes('semua unit') ||
+        String(evtUnit).toLowerCase().includes('seluruh yayasan') ||
+        String(evtUnit).toLowerCase().includes('semua civitas')
+      ) {
+        return true
       }
-      if (!targetUnit || targetUnit === 'Semua Unit') return true;
-      if (!evtUnit || evtUnit === 'Semua Unit') return true;
-      const eu = String(evtUnit).toLowerCase().trim();
-      const tu = String(targetUnit).toLowerCase().trim();
-      if (eu === tu || eu.includes(tu) || tu.includes(eu)) return true;
-      if (tu.includes('sd') && eu.includes('sd')) return true;
-      if (tu.includes('smp') && eu.includes('smp')) return true;
-      if ((tu.includes('sma') || tu.includes('pesantren')) && (eu.includes('sma') || eu.includes('pesantren'))) return true;
-      if ((tu.includes('tk') || tu.includes('paud')) && (eu.includes('tk') || eu.includes('paud'))) return true;
-      return false;
+
+      // 2. Jika user adalah Superadmin / Admin / Pengurus Yayasan dan sedang memilih "Semua Unit"
+      if (isFullAccessUser && (!targetUnit || targetUnit === 'Semua Unit')) {
+        return true
+      }
+
+      // 3. Jika targetUnit tidak ditentukan atau "Semua Unit", izinkan tampil
+      if (!targetUnit || targetUnit === 'Semua Unit') {
+        return true
+      }
+
+      // 4. Pencocokan unit spesifik (misal: agenda khusus SMAIT hanya untuk civitas SMAIT)
+      const eu = String(evtUnit).toLowerCase().trim()
+      const tu = String(targetUnit).toLowerCase().trim()
+
+      if (eu === tu || eu.includes(tu) || tu.includes(eu)) return true
+      if (tu.includes('sd') && eu.includes('sd')) return true
+      if (tu.includes('smp') && eu.includes('smp')) return true
+      if ((tu.includes('sma') || tu.includes('pesantren') || tu.includes('ponpes')) && (eu.includes('sma') || eu.includes('pesantren') || eu.includes('ponpes'))) return true
+      if ((tu.includes('tk') || tu.includes('paud')) && (eu.includes('tk') || eu.includes('paud'))) return true
+
+      return false
     },
-    [lockedUnit]
+    [isFullAccessUser]
   )
 
   const resetForm = (overrideStart = null, overrideEnd = null, overrideUnit = null) => {
@@ -743,10 +784,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
       const start = evt.startDate
       const end = evt.endDate || evt.startDate
       const matchesDate = dateStr >= start && dateStr <= end
-      const matchesUnit =
-        activeTargetUnit === 'Semua Unit' ||
-        evt.unit === 'Semua Unit' ||
-        evt.unit === activeTargetUnit
+      const matchesUnit = isUnitMatch(evt.unit, activeTargetUnit)
       const matchesCategoryEnabled = enabledCategories[evt.category] !== false
       const matchesSearch = searchQuery
         ? evt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -769,7 +807,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
         return matchesCat && matchesUnit && matchesCategoryEnabled && matchesSearch
       })
       .sort((a, b) => (a.startDate > b.startDate ? 1 : -1))
-  }, [events, categoryFilter, activeTargetUnit, enabledCategories, searchQuery])
+  }, [events, categoryFilter, activeTargetUnit, enabledCategories, searchQuery, isUnitMatch])
 
   const eventsOnSelectedRange = useMemo(() => {
     if (!effectiveRange.start) return []
@@ -780,13 +818,10 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
         (start >= effectiveRange.start && start <= effectiveRange.end) ||
         (end >= effectiveRange.start && end <= effectiveRange.end) ||
         (start <= effectiveRange.start && end >= effectiveRange.end)
-      const matchesUnit =
-        activeTargetUnit === 'Semua Unit' ||
-        evt.unit === 'Semua Unit' ||
-        evt.unit === activeTargetUnit
+      const matchesUnit = isUnitMatch(evt.unit, activeTargetUnit)
       return matchesRange && matchesUnit
     })
-  }, [effectiveRange, events, activeTargetUnit])
+  }, [effectiveRange, events, activeTargetUnit, isUnitMatch])
 
   const eventsForPrint = useMemo(() => {
     if (effectiveRange.start) {
@@ -807,8 +842,101 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
     return PRESET_CATEGORIES[evt.category]?.label || 'Agenda'
   }
 
+  const formatEventDetailDate = useCallback((dateStr) => {
+    if (!dateStr) return '-'
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return dateStr
+      return new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }).format(d)
+    } catch {
+      return dateStr
+    }
+  }, [])
+
+  const weekDays = useMemo(() => {
+    const curr = new Date(currentMonthDate)
+    const day = curr.getDay() // 0 = Min, 1 = Sen ...
+    const diffToMon = day === 0 ? -6 : 1 - day // distance to Monday
+    const monday = new Date(curr)
+    monday.setDate(curr.getDate() + diffToMon)
+
+    const dayLabels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday)
+      d.setDate(monday.getDate() + i)
+      const dStr = d.toISOString().split('T')[0]
+      const isToday = dStr === todayDateStr
+      return {
+        day: dayLabels[i],
+        date: `${d.getDate()}/${d.getMonth() + 1}`,
+        fullDateStr: dStr,
+        dateObj: d,
+        isToday,
+      }
+    })
+  }, [currentMonthDate, todayDateStr])
+
+  const dateRangeDisplay = useMemo(() => {
+    if (mainViewMode === 'minggu') {
+      if (!weekDays || weekDays.length === 0) return { title: '', badge: '' }
+      const start = weekDays[0].dateObj
+      const end = weekDays[6].dateObj
+      const startStr = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(start)
+      const endStr = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(end)
+
+      const target = new Date(currentMonthDate.valueOf())
+      const dayNr = (currentMonthDate.getDay() + 6) % 7
+      target.setDate(target.getDate() - dayNr + 3)
+      const firstThursday = target.valueOf()
+      target.setMonth(0, 1)
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + (((4 - target.getDay()) + 7) % 7))
+      }
+      const weekNumber = 1 + Math.ceil((firstThursday - target) / 604800000)
+
+      return {
+        title: `${startStr} – ${endStr}`,
+        badge: `Minggu ke-${weekNumber > 0 ? weekNumber : 1}`
+      }
+    }
+    if (mainViewMode === 'bulan' || mainViewMode === 'agenda') {
+      return {
+        title: `${monthNames[month]} ${year}`,
+        badge: `Tahun ${year}`
+      }
+    }
+    // Hari
+    const dayFmt = new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(currentMonthDate)
+    return {
+      title: dayFmt,
+      badge: currentMonthDate.toISOString().split('T')[0] === todayDateStr ? 'Hari Ini' : ''
+    }
+  }, [mainViewMode, weekDays, currentMonthDate, month, year, monthNames, todayDateStr])
+
+  const currentTimeTop = useMemo(() => {
+    const now = new Date()
+    const hours = now.getHours() + now.getMinutes() / 60
+    if (hours < 6 || hours > 18) return null
+    return (hours - 6) * 48 + 4
+  }, [])
+
   const navigateMonth = (step) => {
-    setCurrentMonthDate(new Date(year, month + step, 1))
+    if (mainViewMode === 'minggu') {
+      const nextDate = new Date(currentMonthDate)
+      nextDate.setDate(nextDate.getDate() + step * 7)
+      setCurrentMonthDate(nextDate)
+    } else if (mainViewMode === 'hari') {
+      const nextDate = new Date(currentMonthDate)
+      nextDate.setDate(nextDate.getDate() + step)
+      setCurrentMonthDate(nextDate)
+    } else {
+      setCurrentMonthDate(new Date(year, month + step, 1))
+    }
   }
 
   // Derive upcoming events dynamically from real events state
@@ -866,7 +994,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                   Kalender Akademik
                 </h2>
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Yayasan Dar El-Iman
+                  {foundationName}
                 </span>
               </div>
             </div>
@@ -903,72 +1031,49 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
             {/* MAIN DATE RANGE DISPLAY */}
             <div className="flex items-center gap-2">
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                26 Mei – 1 Jun 2025
+                {dateRangeDisplay.title}
               </h3>
-              <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                Minggu ke-22
-              </span>
+              {dateRangeDisplay.badge && (
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                  {dateRangeDisplay.badge}
+                </span>
+              )}
             </div>
           </div>
 
           {/* CENTER SECTION: SEGMENTED VIEW SWITCHER (HARI, MINGGU, BULAN, AGENDA) */}
-          <div className="flex items-center rounded-2xl bg-slate-100 p-1 dark:bg-slate-800/90 shadow-inner">
-            <button
-              type="button"
-              onClick={() => {
-                setMainViewMode('hari')
-                setActiveTab('view')
-              }}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
-                mainViewMode === 'hari' && activeTab === 'view'
-                  ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-blue-400'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              Hari
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMainViewMode('minggu')
-                setActiveTab('view')
-              }}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
-                mainViewMode === 'minggu' && activeTab === 'view'
-                  ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-blue-400'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              Minggu
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMainViewMode('bulan')
-                setActiveTab('view')
-              }}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
-                mainViewMode === 'bulan' && activeTab === 'view'
-                  ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-blue-400'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              Bulan
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMainViewMode('agenda')
-                setActiveTab('view')
-              }}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
-                mainViewMode === 'agenda' && activeTab === 'view'
-                  ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-900 dark:text-blue-400'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              Agenda
-            </button>
+          <div
+            role="tablist"
+            aria-label="Tampilan kalender akademik"
+            className="inline-flex items-center rounded-2xl bg-slate-100/90 p-1 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 shadow-2xs overflow-x-auto no-scrollbar"
+          >
+            {[
+              { id: 'hari', label: 'Hari' },
+              { id: 'minggu', label: 'Minggu' },
+              { id: 'bulan', label: 'Bulan' },
+              { id: 'agenda', label: 'Agenda' },
+            ].map((mode) => {
+              const isSelected = mainViewMode === mode.id && activeTab === 'view'
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    setMainViewMode(mode.id)
+                    setActiveTab('view')
+                  }}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-400/40 scale-[1.01]'
+                      : 'border border-transparent text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300 hover:bg-white/80 dark:hover:bg-slate-700/60 font-bold'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              )
+            })}
           </div>
 
           {/* RIGHT SECTION: ACTIONS (CETAK, KELOLA, REFRESH, CLOSE) */}
@@ -1359,9 +1464,9 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
 
                   {/* Mini Grid Days */}
                   <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold">
-                    {daysGrid.slice(0, 35).map((item, idx) => {
+                    {daysGrid.map((item, idx) => {
                       const isOutside = item.monthOffset !== 0
-                      const isToday = item.day === 29 && month === 4 // Mei 29
+                      const isToday = item.dateStr === todayDateStr && !isOutside
                       return (
                         <button
                           key={idx}
@@ -1441,30 +1546,27 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                   <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                        Kalender Lain
+                        Satuan Pendidikan
                       </h4>
-                      <Plus className="h-3.5 w-3.5 text-slate-400 cursor-pointer" />
                     </div>
                     <div className="space-y-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      {[
-                        { label: 'Wali Kelas 7A', color: 'bg-teal-500' },
-                        { label: 'Laboratorium IPA', color: 'bg-pink-500' },
-                        { label: 'Perpustakaan', color: 'bg-amber-600' },
-                        { label: 'Ruang BK', color: 'bg-rose-800' }
-                      ].map((u) => (
-                        <label key={u.label} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80">
-                          <input
-                            type="checkbox"
-                            checked={enabledUnits[u.label] !== false}
-                            onChange={(e) =>
-                              setEnabledUnits((prev) => ({ ...prev, [u.label]: e.target.checked }))
-                            }
-                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className={`h-2.5 w-2.5 rounded-full ${u.color}`} />
-                          <span>{u.label}</span>
-                        </label>
-                      ))}
+                      {unitOptions.map((u, uIdx) => {
+                        const paletteColors = ['bg-emerald-500', 'bg-teal-500', 'bg-sky-500', 'bg-indigo-500', 'bg-purple-500', 'bg-amber-500']
+                        const dotColor = paletteColors[uIdx % paletteColors.length]
+                        return (
+                          <label key={u.value} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80">
+                            <input
+                              type="radio"
+                              name="calendar_modal_unit_filter"
+                              checked={selectedUnitFilter === u.value}
+                              onChange={() => setSelectedUnitFilter(u.value)}
+                              className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />
+                            <span className="truncate">{u.label}</span>
+                          </label>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
@@ -1639,15 +1741,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                     {/* WEEK DAYS HEADER ROW */}
                     <div className="grid grid-cols-8 text-center text-xs font-black border-b border-slate-200/80 pb-3 dark:border-slate-800">
                       <div className="text-slate-400 text-[10px] self-center">GMT+7</div>
-                      {[
-                        { day: 'Sen', date: '26/5' },
-                        { day: 'Sel', date: '27/5' },
-                        { day: 'Rab', date: '28/5' },
-                        { day: 'Kam', date: '29', isToday: true },
-                        { day: 'Jum', date: '30/5' },
-                        { day: 'Sab', date: '31/5' },
-                        { day: 'Min', date: '1/6' }
-                      ].map((col, idx) => (
+                      {weekDays.map((col, idx) => (
                         <div key={idx} className="flex flex-col items-center gap-1">
                           <div className="flex items-center gap-1">
                             <span className={`text-[11px] font-extrabold ${col.isToday ? 'text-blue-600 dark:text-blue-400 font-black' : 'text-slate-500 dark:text-slate-400'}`}>
@@ -1675,10 +1769,15 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                     {/* TIMETABLE SCHEDULE GRID (06.00 TO 17.00) */}
                     <div className="relative min-w-[700px]">
                       {/* RED CURRENT TIME INDICATOR BAR */}
-                      <div className="absolute top-[185px] left-0 right-0 z-20 flex items-center pointer-events-none">
-                        <div className="h-3 w-3 rounded-full bg-rose-500 shadow-md -ml-1.5" />
-                        <div className="h-0.5 w-full bg-rose-500" />
-                      </div>
+                      {currentTimeTop !== null && weekDays.some((w) => w.isToday) && (
+                        <div
+                          style={{ top: `${currentTimeTop}px` }}
+                          className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                        >
+                          <div className="h-3 w-3 rounded-full bg-rose-500 shadow-md -ml-1.5" />
+                          <div className="h-0.5 w-full bg-rose-500" />
+                        </div>
+                      )}
 
                       {[
                         '06.00', '07.00', '08.00', '09.00', '10.00',
@@ -1691,13 +1790,18 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                           <div className="text-[11px] font-bold text-slate-400 pt-1">
                             {timeStr}
                           </div>
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
-                          <div className="border-l border-blue-200 bg-blue-50/30 dark:border-blue-900 dark:bg-blue-950/20 min-h-[48px] p-0.5 relative" />
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative" />
-                          <div className="border-l border-slate-100 dark:border-slate-800/60 min-h-[48px] p-0.5 relative bg-rose-50/40 dark:bg-rose-950/20" />
+                          {weekDays.map((col, cIdx) => (
+                            <div
+                              key={cIdx}
+                              className={`border-l min-h-[48px] p-0.5 relative ${
+                                col.isToday
+                                  ? 'border-blue-200 bg-blue-50/30 dark:border-blue-900 dark:bg-blue-950/20'
+                                  : cIdx === 6
+                                  ? 'border-slate-100 dark:border-slate-800/60 bg-rose-50/40 dark:bg-rose-950/20'
+                                  : 'border-slate-100 dark:border-slate-800/60'
+                              }`}
+                            />
+                          ))}
                         </div>
                       ))}
                     </div>
@@ -1779,13 +1883,14 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                     <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
                       <Clock className="h-4 w-4 text-blue-600 shrink-0" />
                       <span>
-                        {currentDetailEvent.startDate === '2025-05-29'
-                          ? 'Kamis, 29 Mei 2025'
-                          : currentDetailEvent.startDate}
+                        {formatEventDetailDate(currentDetailEvent.startDate)}
+                        {currentDetailEvent.endDate && currentDetailEvent.endDate !== currentDetailEvent.startDate
+                          ? ` – ${formatEventDetailDate(currentDetailEvent.endDate)}`
+                          : ''}
                       </span>
                     </div>
                     <p className="pl-6 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                      {currentDetailEvent.timeSlot || '08.00 – 10.00 (GMT+7)'} · Setiap Kamis
+                      {currentDetailEvent.timeSlot || 'Sepanjang Hari'} · {getCategoryLabel(currentDetailEvent)}
                     </p>
                   </div>
 
@@ -1831,7 +1936,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                     )}
                   </div>
 
-                  {/* DETAIL TABS (DETAIL, PESERTA, LAMPIRAN) */}
+                  {/* DETAIL TABS (DETAIL, SASARAN, LAMPIRAN) */}
                   <div className="flex border-b border-slate-200 dark:border-slate-800 text-xs font-black">
                     <button
                       type="button"
@@ -1853,7 +1958,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                           : 'border-transparent text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      Peserta ({currentDetailEvent.pesertaCount || 28})
+                      Sasaran
                     </button>
                     <button
                       type="button"
@@ -1864,7 +1969,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                           : 'border-transparent text-slate-500 hover:text-slate-800'
                       }`}
                     >
-                      Lampiran ({currentDetailEvent.lampiranCount || 2})
+                      Lampiran
                     </button>
                   </div>
 
@@ -1876,10 +1981,10 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                         <MapPin className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
                         <div>
                           <p className="font-extrabold text-slate-900 dark:text-white">
-                            {currentDetailEvent.location || 'Ruang 203'}
+                            {currentDetailEvent.location || 'Seluruh Kampus'}
                           </p>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {currentDetailEvent.unit || 'Lantai 2, Gedung Utama'}
+                            {currentDetailEvent.unit || currentDetailEvent.targetUnit || 'Semua Unit Pendidikan'}
                           </p>
                         </div>
                       </div>
@@ -1889,11 +1994,14 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                         <FileText className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
                         <div>
                           <p className="font-extrabold text-slate-900 dark:text-white">
-                            {currentDetailEvent.notes || 'Materi: Teks Narasi'}
+                            {currentDetailEvent.notes || currentDetailEvent.description || 'Agenda Kalender Akademik'}
                           </p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Bab 4 – Menulis Cerita Inspiratif
-                          </p>
+                          {(currentDetailEvent.academicYear || currentDetailEvent.semester) && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {currentDetailEvent.academicYear ? `TA ${currentDetailEvent.academicYear}` : ''}
+                              {currentDetailEvent.semester ? ` · Semester ${currentDetailEvent.semester}` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -1916,7 +2024,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                             Pengingat
                           </p>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            15 menit sebelum · {currentDetailEvent.audience || 'Semua Civitas'}
+                            {currentDetailEvent.reminder || 'Sesuai Jadwal'} · {currentDetailEvent.audience || 'Semua Civitas'}
                           </p>
                         </div>
                       </div>
@@ -1929,7 +2037,7 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                             Dibuat oleh
                           </p>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {currentDetailEvent.creator || 'Ahmad Fauzi, S.Pd. · 28 Mei 2025'}
+                            {currentDetailEvent.creator || currentDetailEvent.author || user?.name || 'Administrator Akademik'}
                           </p>
                         </div>
                       </div>
@@ -1951,42 +2059,49 @@ export default function AcademicCalendarModal({ isOpen, onClose, lockedUnit = nu
                       </div>
                     </div>
                   ) : activeDetailTab === 'peserta' ? (
-                    /* PESERTA LIST TAB */
-                    <div className="space-y-2 text-xs">
+                    /* SASARAN & AUDIENCE TAB */
+                    <div className="space-y-3 text-xs">
                       <p className="font-bold text-slate-700 dark:text-slate-300">
-                        Daftar Peserta Terdaftar (28 Siswa)
+                        Sasaran & Partisipan Agenda
                       </p>
-                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                        {['Ahmad Fauzi', 'Aisyah Putri', 'Budi Santoso', 'Dewi Lestari', 'Fahri Ramadhan'].map((nama, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-900">
-                            <span className="font-extrabold text-slate-800 dark:text-slate-200">{nama}</span>
-                            <span className="text-[10px] font-bold text-emerald-600">Hadir</span>
-                          </div>
-                        ))}
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-500 dark:text-slate-400">Target Audiens:</span>
+                          <span className="font-extrabold text-blue-600 dark:text-blue-400">{currentDetailEvent.audience || 'Seluruh Civitas'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-500 dark:text-slate-400">Unit Terkait:</span>
+                          <span className="font-extrabold text-slate-800 dark:text-slate-200">{currentDetailEvent.unit || currentDetailEvent.targetUnit || 'Semua Unit'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-500 dark:text-slate-400">Status Agenda:</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            {currentDetailEvent.status || 'Aktif'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ) : (
                     /* LAMPIRAN TAB */
-                    <div className="space-y-2 text-xs">
+                    <div className="space-y-3 text-xs">
                       <p className="font-bold text-slate-700 dark:text-slate-300">
-                        Berkas & Modul Lampiran (2 File)
+                        Berkas & Lampiran
                       </p>
-                      <div className="space-y-2">
+                      {currentDetailEvent.attachment || currentDetailEvent.documentUrl ? (
                         <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
                           <div className="flex items-center gap-2">
                             <Paperclip className="h-4 w-4 text-blue-600" />
-                            <span className="font-bold text-slate-800 dark:text-slate-200">Modul_Teks_Narasi.pdf</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">
+                              {currentDetailEvent.attachment || 'Dokumen_Kalender_Akademik.pdf'}
+                            </span>
                           </div>
-                          <span className="text-[10px] text-slate-400">1.2 MB</span>
+                          <span className="text-[10px] text-slate-400">Tersedia</span>
                         </div>
-                        <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                          <div className="flex items-center gap-2">
-                            <Paperclip className="h-4 w-4 text-blue-600" />
-                            <span className="font-bold text-slate-800 dark:text-slate-200">Lembar_Kerja_Siswa.docx</span>
-                          </div>
-                          <span className="text-[10px] text-slate-400">450 KB</span>
+                      ) : (
+                        <div className="py-6 text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
+                          Tidak ada berkas lampiran untuk agenda ini
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>

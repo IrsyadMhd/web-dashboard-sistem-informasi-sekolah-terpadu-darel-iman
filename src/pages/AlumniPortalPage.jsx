@@ -28,8 +28,11 @@ import {
 } from '../components/app'
 
 import { alumniPortalService } from '../services/alumniPortalService'
+import { usePengaturanStore, resolveFoundationName } from '../stores/pengaturanStore'
 
 export default function AlumniPortalPage() {
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isNotFound, setIsNotFound] = useState(false)
@@ -59,7 +62,7 @@ export default function AlumniPortalPage() {
           address: prof.address || '',
           phone: prof.phone || '',
           email: prof.email || '',
-          status_lanjutan: prof.status_lanjutan || 'Kuliah',
+          status_lanjutan: prof.status_lanjutan || '',
           perguruan_tinggi: prof.perguruan_tinggi || '',
           pekerjaan: prof.pekerjaan || '',
           instansi: prof.instansi || '',
@@ -124,7 +127,7 @@ export default function AlumniPortalPage() {
           icon={GraduationCap}
           eyebrow="Portal Alumni & Tracer Study"
           title="Portal Alumni"
-          description="Pusat komunikasi dan penelusuran lulusan siswa Yayasan Dar el-Iman."
+          description={`Pusat komunikasi dan penelusuran lulusan siswa ${foundationName}.`}
         />
         <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-xs dark:border-slate-800 dark:bg-[#1B2433]">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
@@ -189,14 +192,14 @@ export default function AlumniPortalPage() {
         />
         <KpiCard
           title="Status Profil Kontak"
-          value={kpis.status_profil || 'Terverifikasi'}
+          value={kpis.status_profil || (profile.phone || profile.email ? 'Terverifikasi' : 'Belum Lengkap')}
           icon={UserCheck}
           tone="green"
           subtitle="Status penelusuran alumni"
         />
         <KpiCard
           title="Aktivitas Saat Ini"
-          value={kpis.status_lanjutan || profile.status_lanjutan || 'Kuliah'}
+          value={kpis.status_lanjutan || profile.status_lanjutan || '-'}
           icon={Briefcase}
           tone="violet"
           subtitle="Status studi / karir alumni"
@@ -239,7 +242,7 @@ export default function AlumniPortalPage() {
                 <span className="text-slate-400 dark:text-slate-500 block mb-1 font-medium">Status Kelulusan</span>
                 <span className="inline-flex items-center gap-1 font-bold text-emerald-700 dark:text-[#3FBF75] text-sm">
                   <CheckCircle2 className="w-4 h-4" />
-                  {profile.status_kelulusan || 'Lulus'}
+                  {profile.status_kelulusan || '-'}
                 </span>
               </div>
             </div>
@@ -312,6 +315,8 @@ export default function AlumniPortalPage() {
                 >
                   <option value="Kuliah">Kuliah (Perguruan Tinggi)</option>
                   <option value="Bekerja">Bekerja</option>
+                  <option value="Pesantren">Pesantren / Ma'had Aly</option>
+                  <option value="Sekolah Lanjutan">Sekolah Lanjutan (SMA/SMK/MA)</option>
                   <option value="Wirausaha">Wirausaha / Bisnis</option>
                   <option value="Lainnya">Lainnya</option>
                 </select>

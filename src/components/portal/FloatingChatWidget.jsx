@@ -14,12 +14,13 @@ import {
 import { useAuthStore } from '../../stores/authStore'
 import { familyPortalService } from '../../services/familyPortalService'
 import ChatGuruWorkspace from './ChatGuruWorkspace'
-import { hasAnyRole, isParentRole, isStudentRole } from '../../auth/portalResolver'
+import { hasAnyRole, isParentRole, isStudentRole, getUserRoleLevel, ROLE_LEVELS } from '../../auth/portalResolver'
 
 export default function FloatingChatWidget() {
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || []
   const permissions = user?.permissions || []
+  const userLevel = getUserRoleLevel(user)
 
   const roleNames = useMemo(() => {
     return Array.isArray(roles)
@@ -35,17 +36,20 @@ export default function FloatingChatWidget() {
   }, [user, roleNames])
 
   const isSuperAdmin =
+    userLevel === ROLE_LEVELS.SUPER_ADMIN ||
     Boolean(user?.is_superadmin) ||
     roleNames.some((r) => ['Super Admin', 'super_admin', 'Superadmin'].includes(r)) ||
     roleStr.includes('super_admin') ||
     roleStr.includes('superadmin')
 
   const isTeacher =
+    userLevel === ROLE_LEVELS.GURU ||
     roleNames.some((r) => ['Guru', 'Wali Kelas', 'Guru Pengajar', 'guru'].includes(r)) ||
     roleStr.includes('guru') ||
     roleStr.includes('walas')
 
   const canEmployeeChat =
+    userLevel <= ROLE_LEVELS.MUSYRIF || // Level 1 s/d 7 (Staf Internal)
     isSuperAdmin ||
     roleStr.includes('super') ||
     roleStr.includes('admin') ||
@@ -61,8 +65,8 @@ export default function FloatingChatWidget() {
     permissions.includes('chat.manage')
 
   const isStaffOrTeacher = isSuperAdmin || canEmployeeChat || isTeacher
-  const isParent = isParentRole(roles) || roleStr.includes('orang') || roleStr.includes('parent')
-  const isPureStudent = (isStudentRole(roles) || roleStr.includes('siswa') || roleStr.includes('student')) && !isStaffOrTeacher && !isParent
+  const isParent = userLevel === ROLE_LEVELS.ORANG_TUA || isParentRole(roles) || roleStr.includes('orang') || roleStr.includes('parent')
+  const isPureStudent = (userLevel === ROLE_LEVELS.SISWA || isStudentRole(roles) || roleStr.includes('siswa') || roleStr.includes('student')) && !isStaffOrTeacher && !isParent
 
   const isEmployee = canEmployeeChat && !isPureStudent
   const shouldRender = Boolean(user) && !isPureStudent && (isParent || isTeacher || isEmployee || isSuperAdmin)

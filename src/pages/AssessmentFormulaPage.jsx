@@ -652,7 +652,7 @@ export default function AssessmentFormulaPage({
                   <th className="py-3.5 px-4 font-black text-right">AKSI</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-[#1B2433]">
+              <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 bg-white dark:bg-[#1B2433]">
                 {filteredItems.map((item) => {
                   const typeMeta = TYPE_CONFIG[item.type] || TYPE_CONFIG.academic
                   const statusMeta = STATUS_CONFIG[item.status] || STATUS_CONFIG.draft

@@ -7,16 +7,21 @@ import {
   Clock,
   Printer,
   Calendar,
-  Building2,
   FileText,
   Search,
   ExternalLink,
   ShieldCheck,
   Receipt,
+  Copy,
+  Check,
+  Sparkles,
 } from 'lucide-react'
 import { Card } from '../tailgrids/core/card'
 import { Badge } from '../tailgrids/core/badge'
 import { Button } from '../tailgrids/core/button'
+import AppTabs from '../app/AppTabs'
+import { printCleanTable, resolveFoundationName } from '../../utils/printHelper'
+import { usePengaturanStore } from '../../stores/pengaturanStore'
 
 const formatRupiah = (val) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
@@ -36,6 +41,22 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [activeReceipt, setActiveReceipt] = useState(null)
+  const [copiedVa, setCopiedVa] = useState(false)
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
+
+  const studentMeta = student?.metadata || {}
+  const studentName = student?.nama_lengkap || student?.full_name || student?.name || 'Ananda'
+  const studentNis = student?.nis || studentMeta.nis || ''
+  const bsiPrefix = pengaturan?.bsi_va_prefix || '9023'
+  const studentVa = studentMeta.no_va || studentMeta.nis_pembayaran || student?.no_va || (studentNis ? `${bsiPrefix}${String(studentNis).replace(/\D/g, '')}` : '')
+
+  const handleCopyVa = () => {
+    if (!studentVa) return
+    navigator.clipboard.writeText(studentVa)
+    setCopiedVa(true)
+    setTimeout(() => setCopiedVa(false), 2000)
+  }
 
   const safeBills = useMemo(() => (Array.isArray(bills) ? bills : []), [bills])
 
@@ -84,9 +105,37 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
 
   const printReceipt = (bill, payment) => {
     setActiveReceipt({ bill, payment })
-    setTimeout(() => {
-      window.print()
-    }, 300)
+    const activePayment = payment || {}
+    const studentName = bill?.student?.nama_lengkap || bill?.student?.full_name || bill?.student?.name || '-'
+    const unitName = bill?.student?.unit?.nama_unit || bill?.student?.unit?.name || resolveFoundationName()
+    printCleanTable({
+      title: 'BUKTI PEMBAYARAN & KUITANSI RESMI (SPP)',
+      subtitle: `No. Kuitansi: ${activePayment.invoice_number || 'INV-OFFICIAL'} | Tanggal: ${activePayment.paid_at ? new Date(activePayment.paid_at).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' })}`,
+      headers: ['Uraian Tagihan', 'Nama Siswa', 'NIS', 'Kelas', 'Metode Pembayaran', 'Jumlah Diterima', 'Status'],
+      rows: [[
+        bill?.title || 'Pembayaran Tagihan SPP',
+        studentName,
+        bill?.student?.nis || '-',
+        bill?.student?.kelas?.nama_kelas || bill?.student?.class_name || '-',
+        activePayment.payment_method || 'Tunai / Transfer',
+        formatRupiah(activePayment.paid_amount || bill?.amount || 0),
+        'LUNAS - TERVERIFIKASI KASIR',
+      ]],
+      unit: unitName,
+      orientation: 'portrait',
+      customFooter: `
+        <div style="display:flex; justify-content:space-between; margin-top:35px; font-size:9pt; text-align:center;">
+          <div>
+            <p style="margin:0 0 45px 0;">Penyetor / Orang Tua Siswa</p>
+            <p style="margin:0; font-weight:bold;">(${studentName !== '-' ? studentName : 'Orang Tua / Wali Santri'})</p>
+          </div>
+          <div>
+            <p style="margin:0 0 45px 0;">Kasir / Bagian Keuangan</p>
+            <p style="margin:0; font-weight:bold;">(${activePayment.metadata?.cashier_name || 'Petugas Keuangan'})</p>
+          </div>
+        </div>
+      `,
+    })
   }
 
   return (
@@ -139,53 +188,75 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
         </Card>
       </div>
 
-      {/* 2. REKENING INFORMASI RESMI */}
-      <Card className="rounded-[20px] border border-emerald-500/30 bg-emerald-50/50 p-4 dark:border-emerald-700/40 dark:bg-emerald-950/20">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0E5C44] text-white">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white">Rekening Resmi Pembayaran Pendidikan</h4>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                Bank Syariah Indonesia (BSI) — No. Rekening: <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">777-1234-567</span> a.n. Yayasan Dar El-Iman Padang
-              </p>
+      {/* 2. INFORMASI PEMBAYARAN RESMI & VIRTUAL ACCOUNT BSI ANANDA */}
+      <div className="grid grid-cols-1 gap-4">
+        {/* Virtual Account BSI Khusus Ananda */}
+        <Card className="rounded-[22px] border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white p-4.5 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
+                    Bank Syariah Indonesia (BSI)
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 dark:text-teal-300">
+                    <Sparkles className="h-3 w-3" />
+                    VA Otomatis
+                  </span>
+                </div>
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-1">
+                  Virtual Account Ananda: {studentName}
+                </h4>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="rounded-xl border border-emerald-300 bg-white px-3 py-1.5 font-mono text-sm sm:text-base font-extrabold text-emerald-800 shadow-inner dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
+                    {studentVa || 'Belum Dibuat'}
+                  </div>
+                  {studentVa && (
+                    <button
+                      type="button"
+                      onClick={handleCopyVa}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold transition shadow-sm active:scale-95"
+                    >
+                      {copiedVa ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-200" />
+                          <span>Tersalin!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          <span>Salin VA</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <p className="mt-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Dapat dibayarkan melalui <b>BSI Mobile</b>, <b>ATM BSI</b>, atau <b>Transfer Antar Bank</b> (Pilih Bank BSI / Kode Bank <b>451</b>). Tagihan langsung terverifikasi otomatis.
+                </p>
+              </div>
             </div>
           </div>
-          <div className="text-xs text-slate-500">
-            Konfirmasi kasir otomatis setelah pembayaran tercatat oleh Tata Usaha.
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* 3. TOOLBAR & FILTER */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {[
+        <AppTabs
+          tabs={[
             { id: 'all', label: 'Semua Tagihan' },
             { id: 'unpaid', label: 'Belum Lunas' },
             { id: 'paid', label: 'Lunas' },
             { id: 'overdue', label: 'Jatuh Tempo' },
-          ].map(({ id, label }) => {
-            const active = filter === id
-            return (
-              <Button
-                key={id}
-                type="button"
-                size="xs"
-                variant={active ? 'primary' : 'ghost'}
-                appearance={active ? 'fill' : 'outline'}
-                onClick={() => setFilter(id)}
-                className={`cursor-pointer font-bold ${
-                  active ? '!bg-[#0E5C44] !text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300'
-                }`}
-              >
-                {label}
-              </Button>
-            )
-          })}
-        </div>
+          ]}
+          activeTab={filter}
+          onChange={setFilter}
+          ariaLabel="Filter status tagihan"
+          size="sm"
+        />
 
         <div className="relative min-w-[240px]">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -303,7 +374,7 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
         <div className="hidden print:block print:fixed print:inset-0 print:bg-white print:p-8">
           <div className="max-w-xl mx-auto border-2 border-slate-800 p-6 rounded-lg text-slate-900">
             <div className="text-center border-b-2 border-slate-800 pb-4">
-              <h2 className="text-lg font-black uppercase tracking-wider">Yayasan Dar El-Iman Padang</h2>
+              <h2 className="text-lg font-black uppercase tracking-wider">{foundationName}</h2>
               <p className="text-xs">Sistem Manajemen Sekolah Terpadu — Bukti Pelunasan Resmi (Kuitansi)</p>
             </div>
             <div className="mt-4 text-xs space-y-1">

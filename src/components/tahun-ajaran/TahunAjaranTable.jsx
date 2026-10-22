@@ -35,14 +35,17 @@ export default function TahunAjaranTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 bg-white dark:bg-[#1B2433]">
-          {data.map((item, index) => {
+          {(data || []).map((item, index) => {
+            if (!item) return null
             const deleted = Boolean(item.deleted_at)
             const isActive = Boolean(item.is_active)
 
             return (
               <tr
-                key={item.id}
-                className={`transition-colors duration-150 ${
+                key={item.id || index}
+                onClick={onDetail && !deleted ? () => onDetail(item) : undefined}
+                title={onDetail && !deleted ? 'Klik baris untuk melihat detail tahun ajaran' : undefined}
+                className={`transition-colors duration-150 ${onDetail && !deleted ? 'cursor-pointer' : ''} ${
                   deleted
                     ? 'bg-rose-50/40 hover:bg-rose-50/60 dark:bg-rose-950/15 dark:hover:bg-rose-950/25'
                     : isActive
@@ -135,7 +138,7 @@ export default function TahunAjaranTable({
                 </td>
 
                 {/* Kolom Aksi */}
-                <td className="px-3.5 py-3.5 text-center">
+                <td className="px-3.5 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                   <ActionDropdown
                     onView={!deleted ? () => onDetail?.(item) : undefined}
                     onEdit={!deleted ? () => onEdit?.(item) : undefined}

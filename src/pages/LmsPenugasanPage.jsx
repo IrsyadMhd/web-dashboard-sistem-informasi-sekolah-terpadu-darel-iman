@@ -1,6 +1,9 @@
+import { useToast } from '../components/app/ToastProvider'
 import React, { useState, useEffect, useMemo } from 'react'
+import { Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import PersonAvatar from '../components/ui/PersonAvatar'
+import InAppEmbedViewerModal from '../components/portal/InAppEmbedViewerModal'
 import {
   ClipboardList,
   BookOpen,
@@ -37,6 +40,11 @@ import {
   Download,
   FileSpreadsheet,
   RotateCcw,
+  ExternalLink,
+  Mic,
+  Video,
+  Layers,
+  Bookmark,
 } from 'lucide-react'
 import { lmsPenugasanService } from '../services/lmsPenugasanService'
 import { subjectService } from '../services/subjectService'
@@ -162,76 +170,14 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
 
 // ── 2. TOAST NOTIFICATION STACK HOOK ──
 function useNotifications() {
-  const [items, setItems] = useState([])
+  const toast = useToast()
   const push = (title, message, tone = 'success') => {
-    const id = `${Date.now()}-${Math.random()}`
-    setItems((prev) => [...prev, { id, title, message, tone }])
-    window.setTimeout(() => setItems((prev) => prev.filter((n) => n.id !== id)), 5000)
+    toast(title, message, tone)
   }
-  const dismiss = (id) => setItems((prev) => prev.filter((n) => n.id !== id))
-  return { items, push, dismiss }
+  const dismiss = () => {}
+  return { items: [], push, dismiss }
 }
 
-function ToastStack({ items, onDismiss }) {
-  if (!items.length) return null
-  return (
-    <div className="fixed bottom-6 right-4 z-[200] flex flex-col gap-2.5 sm:right-6 max-w-sm w-full pointer-events-none" aria-live="polite">
-      {items.map((n) => {
-        const isError = n.tone === 'error' || n.tone === 'danger'
-        const isWarning = n.tone === 'warning'
-        return (
-          <motion.div
-            key={n.id}
-            initial={{ opacity: 0, y: 15, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`pointer-events-auto relative overflow-hidden rounded-2xl border bg-white p-4 shadow-xl dark:bg-slate-900 ${
-              isError
-                ? 'border-rose-300 dark:border-rose-800 shadow-rose-950/10'
-                : isWarning
-                ? 'border-amber-300 dark:border-amber-800 shadow-amber-950/10'
-                : 'border-emerald-300 dark:border-emerald-800 shadow-emerald-950/10'
-            }`}
-          >
-            <div
-              className={`h-1 w-full absolute top-0 left-0 bg-gradient-to-r ${
-                isError
-                  ? 'from-rose-500 via-rose-600 to-red-700'
-                  : isWarning
-                  ? 'from-amber-400 via-amber-500 to-orange-600'
-                  : 'from-emerald-500 via-teal-400 to-emerald-600'
-              }`}
-            />
-            <div className="flex items-start gap-3 mt-0.5">
-              <div
-                className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow-xs ${
-                  isError
-                    ? 'bg-gradient-to-br from-rose-500 to-red-600'
-                    : isWarning
-                    ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-                    : 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                }`}
-              >
-                {isError ? <XCircle className="size-4.5" /> : isWarning ? <AlertTriangle className="size-4.5" /> : <CheckCircle2 className="size-4.5" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">{n.title}</h4>
-                <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{n.message}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onDismiss(n.id)}
-                className="shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          </motion.div>
-        )
-      })}
-    </div>
-  )
-}
 
 // ── 3. HARMONIZED BATCH EXPORT MODAL ──
 function HarmonizedBatchExportModal({
@@ -383,6 +329,50 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
   const user = useAuthStore((state) => state.user)
   const activeUnit = useUnitStore((state) => state.activeUnit)
 
+  const userRoles = useMemo(() => {
+    if (!user?.roles) return []
+    return user.roles.map((r) => (typeof r === 'string' ? r : r.name || r.role_name || ''))
+  }, [user])
+
+  const isSupervisor = useMemo(() => {
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    const checkRole = (name) => rList.some((r) => r.includes(name)) || mainRole.includes(name)
+    return (
+      checkRole('super admin') ||
+      checkRole('superadmin') ||
+      checkRole('admin') ||
+      checkRole('operator') ||
+      checkRole('tata usaha') ||
+      checkRole('tata_usaha') ||
+      checkRole('tu') ||
+      checkRole('kepala sekolah') ||
+      checkRole('kepala_sekolah') ||
+      checkRole('kepsek') ||
+      checkRole('principal') ||
+      checkRole('waka') ||
+      checkRole('kurikulum') ||
+      checkRole('divisi pendidikan') ||
+      checkRole('divisi_pendidikan') ||
+      checkRole('kabid') ||
+      checkRole('yayasan')
+    )
+  }, [userRoles, user?.role])
+
+  const isTeacherOnly = useMemo(() => {
+    if (isSupervisor) return false
+    const rList = userRoles.map((r) => r.toLowerCase())
+    const mainRole = String(user?.role || '').toLowerCase()
+    return (
+      rList.some((r) => r.includes('guru') || r.includes('wali_kelas') || r.includes('wali kelas') || r.includes('musyrif') || r.includes('pembimbing')) ||
+      mainRole.includes('guru')
+    )
+  }, [isSupervisor, userRoles, user?.role])
+
+  const currentTeacherId = useMemo(() => {
+    return user?.employee?.id || user?.employee_id || user?.teacher?.id || user?.teacher_id || user?.id || null
+  }, [user])
+
   const userUnitId = useMemo(() => {
     const candidateIds = [
       user?.unit_id,
@@ -412,10 +402,16 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       { value: 'kelompok', label: 'Kelompok' },
     ],
     jenis: [
-      { value: 'tugas', label: 'Tugas Mandiri / PR' },
-      { value: 'proyek', label: 'Proyek / Portofolio' },
-      { value: 'quiz', label: 'Kuis Formatif' },
-      { value: 'latihan', label: 'Latihan Soal' },
+      { value: 'tertulis', label: 'Tertulis (Teks / Foto)', cara: 'Teks / foto', penilaian: 'Manual' },
+      { value: 'quiz', label: 'Kuis Formatif (Jawaban di Aplikasi)', cara: 'Jawaban di aplikasi', penilaian: 'Otomatis / manual' },
+      { value: 'esai', label: 'Esai (Teks Panjang)', cara: 'Teks panjang', penilaian: 'Manual' },
+      { value: 'dokumen', label: 'Unggah Dokumen (PDF / DOCX)', cara: 'PDF / DOCX', penilaian: 'Manual' },
+      { value: 'praktik', label: 'Praktik (Foto / Video)', cara: 'Foto / video', penilaian: 'Manual' },
+      { value: 'tahfizh', label: 'Tahfizh (Setoran Langsung / Audio / Video)', cara: 'Setoran langsung / audio / video', penilaian: 'Rubrik guru' },
+      { value: 'literasi', label: 'Literasi (Teks / Audio)', cara: 'Teks / audio', penilaian: 'Manual' },
+      { value: 'proyek', label: 'Proyek Kelompok (File / Laporan / Presentasi)', cara: 'File / laporan / presentasi', penilaian: 'Manual / rubrik' },
+      { value: 'tugas', label: 'Tugas Mandiri / PR (Umum)', cara: 'Umum', penilaian: 'Manual' },
+      { value: 'latihan', label: 'Latihan Soal (Umum)', cara: 'Umum', penilaian: 'Manual' },
     ],
     status: [
       { value: 'dipublikasikan', label: 'Dipublikasikan' },
@@ -442,6 +438,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
   const [selectedTipe, setSelectedTipe] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedKelas, setSelectedKelas] = useState('')
+  const [selectedGuru, setSelectedGuru] = useState('')
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState({
     current_page: 1,
@@ -522,7 +519,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
     deskripsi: '',
     instruksi: '',
     tipe: 'individu',
-    jenis_tugas: 'tugas',
+    jenis_tugas: 'tertulis',
     nilai_maksimal: 100,
     bobot_persen: 10,
     tanggal_mulai: '',
@@ -530,6 +527,17 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
     izin_kumpul_terlambat: true,
     status: 'dipublikasikan',
     lampiran: '',
+    link_lampiran: '',
+    metadata: {
+      surah: '',
+      ayat_awal: '',
+      ayat_akhir: '',
+      metode_setoran: 'langsung',
+      min_words: 150,
+      max_group_members: 4,
+      rubrik: { kelancaran: 40, tajwid: 40, adab: 20 },
+      soal_kuis: [],
+    },
     modul_ajar_id: '',
     mata_pelajaran_id: '',
     kelas_id: '',
@@ -537,6 +545,24 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
     semester_id: '',
     tahun_ajaran_id: '',
   })
+
+  // In-App Embed Viewer Modal State (Never leave dashboard/app)
+  const [embedViewer, setEmbedViewer] = useState({
+    isOpen: false,
+    url: '',
+    title: '',
+    subtitle: '',
+  })
+
+  const handleOpenEmbed = (url, title = 'Lampiran Tugas', subtitle = 'Pratinjau Dalam Aplikasi') => {
+    if (!url) return
+    setEmbedViewer({
+      isOpen: true,
+      url,
+      title,
+      subtitle,
+    })
+  }
 
   // Hover & Row Detail Modal State
   const [rowDetailItem, setRowDetailItem] = useState(null)
@@ -556,11 +582,11 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
   useEffect(() => {
     fetchOptions()
     fetchStats()
-  }, [userUnitId, activeUnit])
+  }, [userUnitId, activeUnit, isTeacherOnly, currentTeacherId, selectedGuru])
 
   useEffect(() => {
     fetchPenugasan()
-  }, [page, debouncedSearch, selectedModulAjar, selectedTipe, selectedStatus, selectedKelas, userUnitId, activeUnit])
+  }, [page, debouncedSearch, selectedModulAjar, selectedTipe, selectedStatus, selectedKelas, selectedGuru, userUnitId, activeUnit, isTeacherOnly, currentTeacherId])
 
   const fetchOptions = async () => {
     try {
@@ -610,6 +636,11 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       const params = {}
       if (userUnitId) params.unit_pendidikan_id = userUnitId
       if (activeUnit) params.jenjang = activeUnit
+      if (isTeacherOnly && currentTeacherId) {
+        params.guru_id = currentTeacherId
+      } else if (selectedGuru) {
+        params.guru_id = selectedGuru
+      }
       const res = await lmsPenugasanService.getStats(params)
       if (res.success && res.data) {
         setStats(res.data)
@@ -634,6 +665,11 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       }
       if (userUnitId) params.unit_pendidikan_id = userUnitId
       if (activeUnit) params.jenjang = activeUnit
+      if (isTeacherOnly && currentTeacherId) {
+        params.guru_id = currentTeacherId
+      } else if (selectedGuru) {
+        params.guru_id = selectedGuru
+      }
 
       const res = await lmsPenugasanService.getDaftar(params)
       const resObj = res?.data || res
@@ -641,7 +677,28 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       let filteredList = list.filter((item) => {
         if (!item) return false
         const itemUnitId = item.unit_pendidikan_id || item.unit_id || item.mata_pelajaran?.unit_pendidikan_id
-        if (userUnitId && itemUnitId) return String(itemUnitId) === String(userUnitId)
+        if (userUnitId && itemUnitId && String(itemUnitId) !== String(userUnitId)) {
+          return false
+        }
+        if (isTeacherOnly) {
+          const ownerIds = [
+            user?.id,
+            user?.employee?.id,
+            user?.employee_id,
+            user?.teacher?.id,
+            user?.teacher_id,
+          ].filter(Boolean).map(String)
+          const itemGuruId = String(item.guru_id || item.teacher_id || item.guru?.id || '')
+          const itemCreatedBy = String(item.created_by || '')
+          if (!ownerIds.includes(itemGuruId) && !ownerIds.includes(itemCreatedBy)) {
+            return false
+          }
+        } else if (selectedGuru) {
+          const itemGuruId = String(item.guru_id || item.teacher_id || item.guru?.id || '')
+          if (itemGuruId !== String(selectedGuru)) {
+            return false
+          }
+        }
         return true
       })
       setDataPenugasan(filteredList)
@@ -666,7 +723,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       deskripsi: '',
       instruksi: '',
       tipe: 'individu',
-      jenis_tugas: 'tugas',
+      jenis_tugas: 'tertulis',
       nilai_maksimal: 100,
       bobot_persen: 10,
       tanggal_mulai: new Date().toISOString().slice(0, 16),
@@ -674,10 +731,21 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       izin_kumpul_terlambat: true,
       status: 'dipublikasikan',
       lampiran: '',
+      link_lampiran: '',
+      metadata: {
+        surah: '',
+        ayat_awal: '',
+        ayat_akhir: '',
+        metode_setoran: 'langsung',
+        min_words: 150,
+        max_group_members: 4,
+        rubrik: { kelancaran: 40, tajwid: 40, adab: 20 },
+        soal_kuis: [],
+      },
       modul_ajar_id: options.modul_ajar[0]?.value || '',
       mata_pelajaran_id: options.subjects[0]?.value || '',
       kelas_id: options.kelas[0]?.value || '',
-      guru_id: options.guru[0]?.value || '',
+      guru_id: (isTeacherOnly && currentTeacherId) ? currentTeacherId : (options.guru[0]?.value || ''),
       semester_id: options.semesters[0]?.value || '',
       tahun_ajaran_id: options.tahun_ajaran[0]?.value || '',
     })
@@ -686,12 +754,18 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
 
   const handleOpenEditModal = (item) => {
     setEditId(item.id)
+    let meta = {}
+    try {
+      meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata || '{}') : (item.metadata || {})
+    } catch {
+      meta = {}
+    }
     setFormData({
       judul: item.judul || item.judul_tugas || '',
       deskripsi: item.deskripsi || '',
       instruksi: item.instruksi || '',
       tipe: item.tipe || item.tipe_tugas || 'individu',
-      jenis_tugas: item.jenis_tugas || 'tugas',
+      jenis_tugas: item.jenis_tugas || 'tertulis',
       nilai_maksimal: item.nilai_maksimal ?? 100,
       bobot_persen: item.bobot_persen ?? 10,
       tanggal_mulai: item.tanggal_mulai ? item.tanggal_mulai.replace(' ', 'T').slice(0, 16) : '',
@@ -699,10 +773,21 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
       izin_kumpul_terlambat: Boolean(item.izin_kumpul_terlambat),
       status: item.status || (item.is_published ? 'dipublikasikan' : 'draft'),
       lampiran: item.lampiran || item.file_lampiran || '',
+      link_lampiran: item.link_lampiran || meta?.link_lampiran || '',
+      metadata: {
+        surah: meta?.surah || '',
+        ayat_awal: meta?.ayat_awal || '',
+        ayat_akhir: meta?.ayat_akhir || '',
+        metode_setoran: meta?.metode_setoran || 'langsung',
+        min_words: meta?.min_words || 150,
+        max_group_members: meta?.max_group_members || 4,
+        rubrik: meta?.rubrik || { kelancaran: 40, tajwid: 40, adab: 20 },
+        soal_kuis: meta?.soal_kuis || [],
+      },
       modul_ajar_id: item.modul_ajar_id || '',
       mata_pelajaran_id: item.mata_pelajaran_id || '',
       kelas_id: item.kelas_id || '',
-      guru_id: item.guru_id || '',
+      guru_id: item.guru_id || ((isTeacherOnly && currentTeacherId) ? currentTeacherId : ''),
       semester_id: item.semester_id || '',
       tahun_ajaran_id: item.tahun_ajaran_id || '',
     })
@@ -733,12 +818,16 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
     setErrorMsg('')
 
     try {
+      const payload = { ...formData }
+      if (isTeacherOnly && currentTeacherId) {
+        payload.guru_id = currentTeacherId
+      }
       if (editId) {
-        await lmsPenugasanService.update(editId, formData)
-        pushToast('Penugasan Diperbarui', `Penugasan "${formData.judul}" berhasil diperbarui.`, 'success')
+        await lmsPenugasanService.update(editId, payload)
+        pushToast('Penugasan Diperbarui', `Penugasan "${payload.judul}" berhasil diperbarui.`, 'success')
       } else {
-        await lmsPenugasanService.create(formData)
-        pushToast('Penugasan Ditambahkan', `Penugasan baru "${formData.judul}" berhasil ditambahkan.`, 'success')
+        await lmsPenugasanService.create(payload)
+        pushToast('Penugasan Ditambahkan', `Penugasan baru "${payload.judul}" berhasil ditambahkan.`, 'success')
       }
       setConfirmSaveModal({ isOpen: false, mode: 'create' })
       setIsModalOpen(false)
@@ -852,7 +941,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
   }
 
   const pageContent = (
-    <div className="education-unit-page lms-penugasan-page space-y-6">
+    <div className="lms-penugasan-page space-y-6">
       <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
       {/* ── MODERN VIVID EMERALD HERO HEADER CARD ── */}
       {!embedded && !hidePageHeader && (
@@ -1136,6 +1225,25 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                 ))}
               </select>
 
+              {!isTeacherOnly && (
+                <select
+                  aria-label="Filter Guru"
+                  value={selectedGuru}
+                  onChange={(e) => {
+                    setSelectedGuru(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-9 w-full sm:w-auto min-w-[140px] rounded-xl border border-emerald-300/80 bg-white/95 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 shadow-2xs outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 dark:border-emerald-800 dark:bg-[#111827] dark:text-slate-200 cursor-pointer"
+                >
+                  <option value="">Semua Guru</option>
+                  {(options.guru || []).map((g) => (
+                    <option key={g.value || g.id} value={g.value || g.id}>
+                      {g.label || g.nama || g.nama_lengkap}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               <select
                 aria-label="Filter Kelas"
                 value={selectedKelas}
@@ -1187,7 +1295,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                 ))}
               </select>
 
-              {(searchInput || selectedModulAjar || selectedKelas || selectedTipe || selectedStatus) && (
+              {(searchInput || selectedModulAjar || selectedKelas || selectedTipe || selectedStatus || selectedGuru) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -1196,6 +1304,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                     setSelectedKelas('')
                     setSelectedTipe('')
                     setSelectedStatus('')
+                    setSelectedGuru('')
                     setPage(1)
                   }}
                   className="col-span-2 sm:col-span-1 sm:ml-auto h-9 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-bold hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-950/60 transition flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1505,28 +1614,37 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
         </div>
       </motion.div>
 
-      {/* CREATE / EDIT MODAL */}
+      {/* CREATE / EDIT MODAL - HERO UI STYLE */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-[#1B2433] rounded-[18px] border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-[26px] border-2 border-emerald-500/30 bg-white/95 dark:bg-slate-900/95 shadow-2xl shadow-emerald-950/30 flex flex-col max-h-[92vh] backdrop-blur-md">
+            {/* Top Accent Gradient Bar */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-[#0E5C44] dark:text-emerald-400">
+            <div className="px-6 py-4 border-b border-emerald-100/80 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 border border-emerald-300/40">
                   <ClipboardList size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white">
-                    {editId ? 'Edit Penugasan' : 'Buat Penugasan Baru'}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Isi detail tugas yang terhubung dengan Modul Ajar
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black tracking-tight text-slate-800 dark:text-white">
+                      {editId ? 'Edit Penugasan & Asesmen' : 'Buat Penugasan Baru'}
+                    </h3>
+                    <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60">
+                      Hero UI Form
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Konfigurasi parameter tugas terpadu dengan 8 tipe pengerjaan dan lampiran in-app
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -1536,28 +1654,28 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
             <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
               {/* Judul Penugasan */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Judul Penugasan <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Judul Penugasan <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Penugasan 1: Analisis Hukum Newton..."
+                  placeholder="Contoh: Penugasan 1: Analisis Hukum Newton / Setoran Surah Al-Mulk..."
                   value={formData.judul}
                   onChange={(e) => setFormData({ ...formData, judul: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               {/* Modul Ajar Relasi */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Tautkan ke Modul Ajar (1 : N)
                 </label>
                 <select
                   value={formData.modul_ajar_id}
                   onChange={(e) => setFormData({ ...formData, modul_ajar_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">-- Opsional: Pilih Modul Ajar --</option>
                   {(options.modul_ajar || []).map((m) => (
@@ -1571,13 +1689,13 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
               {/* Grid 2 Kolom: Kelas & Guru */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Target Kelas / Rombel
                   </label>
                   <select
                     value={formData.kelas_id}
                     onChange={(e) => setFormData({ ...formData, kelas_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">-- Pilih Kelas --</option>
                     {(options.kelas || []).map((k) => (
@@ -1589,13 +1707,21 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Guru Pengampu
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Guru Pengampu
+                    </label>
+                    {isTeacherOnly && (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/60 dark:border-emerald-800/60">
+                        Akun Guru Anda
+                      </span>
+                    )}
+                  </div>
                   <select
                     value={formData.guru_id}
+                    disabled={isTeacherOnly}
                     onChange={(e) => setFormData({ ...formData, guru_id: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-80 disabled:cursor-not-allowed"
                   >
                     <option value="">-- Pilih Guru --</option>
                     {(options.guru || []).map((g) => (
@@ -1610,13 +1736,13 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
               {/* Grid 2 Kolom: Tipe & Jenis */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Tipe Pengerjaan
                   </label>
                   <select
                     value={formData.tipe}
                     onChange={(e) => setFormData({ ...formData, tipe: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     {options.tipe.map((t) => (
                       <option key={t.value} value={t.value}>
@@ -1627,27 +1753,211 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Jenis Tugas
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Jenis Tugas (8 Ragam Asesmen)
                   </label>
                   <select
                     value={formData.jenis_tugas}
                     onChange={(e) => setFormData({ ...formData, jenis_tugas: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 bg-emerald-50/70 dark:bg-slate-900 border-2 border-emerald-400 dark:border-emerald-600 rounded-xl text-sm font-bold text-emerald-950 dark:text-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     {options.jenis.map((j) => (
                       <option key={j.value} value={j.value}>
-                        {j.label}
+                        {j.label} [{j.penilaian || 'Manual'}]
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
 
+              {/* ── DYNAMIC HERO UI CONFIG CARD SESUAI JENIS TUGAS ── */}
+              {formData.jenis_tugas === 'tahfizh' && (
+                <div className="p-4 rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">
+                      <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
+                      Konfigurasi Khusus Tugas Tahfizh &amp; Rubrik Guru
+                    </span>
+                    <span className="text-[11px] font-bold bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 px-2.5 py-0.5 rounded-full">
+                      Setoran Langsung / Audio / Video
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Nama Surah</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Al-Mulk / An-Naba"
+                        value={formData.metadata?.surah || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            metadata: { ...formData.metadata, surah: e.target.value },
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Ayat Awal</label>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="1"
+                        value={formData.metadata?.ayat_awal || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            metadata: { ...formData.metadata, ayat_awal: e.target.value },
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Ayat Akhir</label>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="30"
+                        value={formData.metadata?.ayat_akhir || ''}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            metadata: { ...formData.metadata, ayat_akhir: e.target.value },
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-emerald-200/80 dark:border-slate-800 text-xs text-emerald-950 dark:text-emerald-200">
+                    <p className="font-semibold text-[11px]">Rubrik Standar Penilaian Guru:</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <span className="px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800">
+                        Kelancaran: 40 Poin
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800">
+                        Tajwid &amp; Tartil: 40 Poin
+                      </span>
+                      <span className="px-2.5 py-1 rounded-lg bg-white/80 dark:bg-slate-800 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800">
+                        Adab &amp; Makhraj: 20 Poin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.jenis_tugas === 'esai' && (
+                <div className="p-4 rounded-2xl border-2 border-indigo-400/80 bg-gradient-to-r from-indigo-50/60 via-purple-50/40 to-indigo-50/60 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-indigo-950/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-wider">
+                      <FileText size={14} className="text-indigo-600 dark:text-indigo-400" />
+                      Konfigurasi Esai (Teks Panjang)
+                    </span>
+                    <span className="text-[11px] font-bold bg-indigo-200 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full">
+                      Live Word Counter Siswa
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Minimal Target Kata
+                      </label>
+                      <input
+                        type="number"
+                        min="50"
+                        step="10"
+                        placeholder="Contoh: 150"
+                        value={formData.metadata?.min_words || 150}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            metadata: { ...formData.metadata, min_words: parseInt(e.target.value) || 150 },
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-indigo-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="flex items-center text-xs text-slate-600 dark:text-slate-400">
+                      Siswa akan melihat indikator jumlah kata saat mengetik teks esai secara real-time.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.jenis_tugas === 'proyek' && (
+                <div className="p-4 rounded-2xl border-2 border-teal-400/80 bg-gradient-to-r from-teal-50/60 via-cyan-50/40 to-teal-50/60 dark:from-teal-950/40 dark:via-cyan-950/30 dark:to-teal-950/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-teal-900 dark:text-teal-300 uppercase tracking-wider">
+                      <Users size={14} className="text-teal-600 dark:text-teal-400" />
+                      Konfigurasi Proyek Kelompok / Portofolio
+                    </span>
+                    <span className="text-[11px] font-bold bg-teal-200 dark:bg-teal-900 text-teal-900 dark:text-teal-200 px-2.5 py-0.5 rounded-full">
+                      Laporan &amp; Presentasi
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Maksimal Anggota per Kelompok
+                      </label>
+                      <input
+                        type="number"
+                        min="2"
+                        max="15"
+                        placeholder="Contoh: 4"
+                        value={formData.metadata?.max_group_members || 4}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            metadata: { ...formData.metadata, max_group_members: parseInt(e.target.value) || 4 },
+                          })
+                        }
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-teal-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                    </div>
+                    <div className="flex items-center text-xs text-slate-600 dark:text-slate-400">
+                      Perwakilan kelompok dapat mengunggah file laporan atau link presentasi Canva / Google Slides.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.jenis_tugas === 'dokumen' && (
+                <div className="p-3.5 rounded-2xl border border-amber-300/80 bg-amber-50/60 dark:bg-amber-950/30 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                  <Paperclip size={16} className="text-amber-600 shrink-0" />
+                  <span>Siswa akan diminta mengunggah dokumen digital dalam format <strong>PDF, DOCX, XLSX, atau PPTX</strong> (Maksimal 25 MB).</span>
+                </div>
+              )}
+
+              {formData.jenis_tugas === 'praktik' && (
+                <div className="p-3.5 rounded-2xl border border-rose-300/80 bg-rose-50/60 dark:bg-rose-950/30 text-xs text-rose-900 dark:text-rose-200 flex items-center gap-2">
+                  <Video size={16} className="text-rose-600 shrink-0" />
+                  <span>Siswa akan melampirkan dokumentasi foto atau video demonstrasi praktik (bisa via unggah file atau link YouTube / Google Drive).</span>
+                </div>
+              )}
+
+              {formData.jenis_tugas === 'literasi' && (
+                <div className="p-3.5 rounded-2xl border border-cyan-300/80 bg-cyan-50/60 dark:bg-cyan-950/30 text-xs text-cyan-900 dark:text-cyan-200 flex items-center gap-2">
+                  <BookOpen size={16} className="text-cyan-600 shrink-0" />
+                  <span>Siswa dapat menyetorkan ringkasan bacaan kitab / buku dalam bentuk catatan teks atau rekaman suara (audio).</span>
+                </div>
+              )}
+
+              {formData.jenis_tugas === 'quiz' && (
+                <div className="p-3.5 rounded-2xl border border-purple-300/80 bg-purple-50/60 dark:bg-purple-950/30 text-xs text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                  <Award size={16} className="text-purple-600 shrink-0" />
+                  <span>Asesmen kuis dikerjakan langsung oleh siswa di portal aplikasi dan dinilai secara otomatis / manual terhubung dengan bank soal CBT.</span>
+                </div>
+              )}
+
               {/* Grid 2 Kolom: Nilai Maksimal & Bobot */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Nilai Maksimal
                   </label>
                   <input
@@ -1656,12 +1966,12 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                     max="1000"
                     value={formData.nilai_maksimal}
                     onChange={(e) => setFormData({ ...formData, nilai_maksimal: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Bobot Nilai (%)
                   </label>
                   <input
@@ -1670,7 +1980,7 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                     max="100"
                     value={formData.bobot_persen}
                     onChange={(e) => setFormData({ ...formData, bobot_persen: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
@@ -1678,33 +1988,33 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
               {/* Grid 2 Kolom: Tanggal Mulai & Tanggal Selesai (Deadline) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Tanggal Mulai
                   </label>
                   <input
                     type="datetime-local"
                     value={formData.tanggal_mulai}
                     onChange={(e) => setFormData({ ...formData, tanggal_mulai: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Tanggal Selesai (Deadline)
                   </label>
                   <input
                     type="datetime-local"
                     value={formData.tanggal_selesai}
                     onChange={(e) => setFormData({ ...formData, tanggal_selesai: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
 
               {/* Deskripsi & Instruksi */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Deskripsi Tugas
                 </label>
                 <textarea
@@ -1712,12 +2022,12 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                   placeholder="Ringkasan atau gambaran umum penugasan..."
                   value={formData.deskripsi}
                   onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Instruksi Pengerjaan
                 </label>
                 <textarea
@@ -1725,33 +2035,66 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                   placeholder="Langkah-langkah pengerjaan, format berkas yang diminta, dsb..."
                   value={formData.instruksi}
                   onChange={(e) => setFormData({ ...formData, instruksi: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
-              {/* File Lampiran / URL */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  File Lampiran / Link (Opsional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="URL berkas lampiran (e.g. https://...)"
-                  value={formData.lampiran}
-                  onChange={(e) => setFormData({ ...formData, lampiran: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-                />
+              {/* File Lampiran & Tautan Link */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    File Lampiran Berkas Guru (Path / URL)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="URL berkas lampiran (e.g. /storage/...)"
+                    value={formData.lampiran}
+                    onChange={(e) => setFormData({ ...formData, lampiran: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Tautan Eksternal / Video (Drive / YouTube)
+                    </label>
+                    {Boolean(formData.link_lampiran || formData.lampiran) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleOpenEmbed(
+                            formData.link_lampiran || formData.lampiran,
+                            formData.judul || 'Lampiran Tugas Guru',
+                            'Pratinjau Dalam Aplikasi'
+                          )
+                        }
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
+                      >
+                        <Eye size={12} />
+                        Uji In-App
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://drive.google.com/... atau YouTube"
+                    value={formData.link_lampiran}
+                    onChange={(e) => setFormData({ ...formData, link_lampiran: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
 
               {/* Status Publikasi */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Status Publikasi
                 </label>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-emerald-200/80 dark:border-slate-700 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="dipublikasikan">Dipublikasikan (Dapat diakses Siswa)</option>
                   <option value="draft">Draft (Simpan Sementara)</option>
@@ -1759,18 +2102,18 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+              <div className="pt-4 border-t border-emerald-100/80 dark:border-slate-800 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={formLoading}
-                  className="px-5 py-2.5 rounded-xl bg-[#0E5C44] hover:bg-[#1E8E5A] text-white text-xs font-semibold transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black shadow-md shadow-emerald-600/30 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {formLoading && <RefreshCw size={14} className="animate-spin" />}
                   <span>{editId ? 'Simpan Perubahan' : 'Buat Penugasan'}</span>
@@ -1781,30 +2124,39 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
         </div>
       )}
 
-      {/* DETAIL & GRADING DRAWER / MODAL */}
+      {/* DETAIL & GRADING DRAWER / MODAL - HERO UI STYLE */}
       {isDetailOpen && selectedPenugasan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-[#1B2433] rounded-[18px] border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden rounded-[26px] border-2 border-emerald-500/30 bg-white/95 dark:bg-slate-900/95 shadow-2xl shadow-emerald-950/30 backdrop-blur-md">
+            {/* Top Accent Gradient Bar */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600" />
+
             {/* Detail Header */}
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-800/60">
+            <div className="px-6 py-4 border-b border-emerald-100/80 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#0E5C44] text-white flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-600/30">
                   <ClipboardList size={22} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white line-clamp-1">
-                    {selectedPenugasan.judul || selectedPenugasan.judul_tugas}
-                  </h3>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                    <span>Modul Ajar: {selectedPenugasan.modul_ajar?.judul || 'Tidak ditautkan'}</span>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-slate-800 dark:text-white line-clamp-1">
+                      {selectedPenugasan.judul || selectedPenugasan.judul_tugas}
+                    </h3>
+                    <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700/60">
+                      {selectedPenugasan.jenis_tugas || 'Tugas'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    <span>Modul: {selectedPenugasan.modul_ajar?.judul || 'Tidak ditautkan'}</span>
                     <span>•</span>
                     <span>Deadline: {selectedPenugasan.deadline || selectedPenugasan.tanggal_selesai || '-'}</span>
                   </div>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsDetailOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -1813,8 +2165,8 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
             {/* Content Area */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {/* Deskripsi & Instruksi Card */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Deskripsi & Instruksi Pengerjaan</h4>
+              <div className="bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl p-4 border border-emerald-200/60 dark:border-slate-800 space-y-2">
+                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400">Deskripsi &amp; Instruksi Pengerjaan</h4>
                 <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">
                   {selectedPenugasan.deskripsi || 'Tidak ada deskripsi.'}
                 </p>
@@ -1824,17 +2176,42 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
                     <p className="mt-1 whitespace-pre-line">{selectedPenugasan.instruksi}</p>
                   </div>
                 )}
-                {selectedPenugasan.lampiran && (
-                  <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs text-[#0E5C44]">
-                    <Paperclip size={14} />
-                    <a
-                      href={selectedPenugasan.lampiran}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="hover:underline font-semibold"
-                    >
-                      Buka File Lampiran Guru
-                    </a>
+
+                {/* Teacher Attachments In-App Openers */}
+                {(selectedPenugasan.lampiran || selectedPenugasan.link_lampiran) && (
+                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-2 text-xs">
+                    {selectedPenugasan.lampiran && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleOpenEmbed(
+                            selectedPenugasan.lampiran,
+                            selectedPenugasan.judul,
+                            'File Berkas Lampiran Guru'
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-200 font-bold border border-emerald-300/80 dark:border-emerald-700 transition cursor-pointer"
+                      >
+                        <Paperclip size={13} />
+                        <span>Buka File Lampiran Guru (In-App)</span>
+                      </button>
+                    )}
+                    {selectedPenugasan.link_lampiran && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleOpenEmbed(
+                            selectedPenugasan.link_lampiran,
+                            selectedPenugasan.judul,
+                            'Tautan Materi / Video Referensi Guru'
+                          )
+                        }
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-100 hover:bg-blue-200 dark:bg-blue-950/80 dark:hover:bg-blue-900 text-blue-900 dark:text-blue-200 font-bold border border-blue-300/80 dark:border-blue-700 transition cursor-pointer"
+                      >
+                        <Globe size={13} />
+                        <span>Buka Tautan Materi Guru (In-App)</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -1842,163 +2219,264 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
               {/* Submissions List Header */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-base font-bold text-slate-800 dark:text-white">Pengumpulan Tugas Siswa</h4>
-                  <p className="text-xs text-slate-500">Daftar siswa yang telah mengumpulkan jawaban beserta form input nilai</p>
+                  <h4 className="text-base font-black text-slate-800 dark:text-white">Pengumpulan Tugas Siswa</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Daftar siswa yang telah mengumpulkan jawaban beserta evaluasi nilai</p>
                 </div>
-                <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 px-3 py-1 rounded-full font-bold">
+                <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 px-3.5 py-1 rounded-full font-black border border-emerald-300/60 dark:border-emerald-700/60">
                   {selectedPenugasan.pengumpulan?.length || 0} Pengumpulan
                 </span>
               </div>
 
               {/* Submissions Table / Cards */}
               {!selectedPenugasan.pengumpulan || selectedPenugasan.pengumpulan.length === 0 ? (
-                <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                  <UserCheck className="mx-auto text-slate-400 mb-2" size={32} />
-                  <p className="text-xs text-slate-500">Belum ada siswa yang mengumpulkan tugas ini.</p>
+                <div className="p-8 text-center bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl border-2 border-dashed border-emerald-300/40 dark:border-slate-800">
+                  <UserCheck className="mx-auto text-emerald-500/60 mb-2" size={32} />
+                  <p className="text-xs font-semibold text-slate-500">Belum ada siswa yang mengumpulkan tugas ini.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {selectedPenugasan.pengumpulan.map((sub) => (
-                    <div
-                      key={sub.id}
-                      className="bg-white dark:bg-[#1B2433] rounded-xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div className="flex items-center gap-3">
-                          <PersonAvatar
-                            src={sub.siswa?.foto || sub.siswa?.photo_url || sub.siswa?.avatar_url}
-                            name={sub.siswa?.nama || 'Siswa'}
-                            size="sm"
-                          />
-                          <div>
-                            <h5 className="text-sm font-bold text-slate-800 dark:text-white">
-                              {sub.siswa?.nama || 'Siswa'}
-                            </h5>
-                            <span className="text-[11px] text-slate-400">
-                              NISN: {sub.siswa?.nisn || '-'} • Waktu Kumpul: {sub.waktu_kumpul || '-'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {sub.nilai_guru !== null ? (
-                            <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 font-bold px-3 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                              <Award size={14} />
-                              Nilai: {sub.nilai_guru} / {selectedPenugasan.nilai_maksimal || 100}
-                            </span>
-                          ) : (
-                            <span className="bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 font-semibold px-3 py-1 rounded-lg text-xs border border-amber-200 dark:border-amber-800">
-                              Belum Dinilai
-                            </span>
-                          )}
-
-                          <button
-                            onClick={() => handleStartGrading(sub)}
-                            className="px-3 py-1 rounded-lg bg-[#0E5C44] text-white hover:bg-[#1E8E5A] text-xs font-semibold transition-colors"
-                          >
-                            {sub.nilai_guru !== null ? 'Edit Nilai' : 'Beri Nilai'}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Jawaban Siswa */}
-                      {sub.jawaban_teks && (
-                        <div className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg">
-                          <strong className="text-slate-900 dark:text-white block mb-1">Jawaban Teks:</strong>
-                          <p className="whitespace-pre-line">{sub.jawaban_teks}</p>
-                        </div>
-                      )}
-
-                      {/* Link / File Jawaban */}
-                      {(sub.file_path || sub.url_link) && (
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          {sub.file_path && (
-                            <a
-                              href={sub.file_path}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[#0E5C44] hover:underline font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-md"
-                            >
-                              <Paperclip size={12} />
-                              <span>Berkas Siswa</span>
-                            </a>
-                          )}
-                          {sub.url_link && (
-                            <a
-                              href={sub.url_link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-blue-600 hover:underline font-semibold bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-md"
-                            >
-                              <Globe size={12} />
-                              <span>Tautan Jawaban</span>
-                            </a>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Catatan Guru */}
-                      {sub.catatan_guru && (
-                        <div className="text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-900">
-                          <strong>Catatan Guru:</strong> {sub.catatan_guru}
-                        </div>
-                      )}
-
-                      {/* Inline Form Input Nilai jika tombol Beri Nilai diklik */}
-                      {gradingStudentId === sub.siswa_id && (
-                        <form onSubmit={handleSaveGrade} className="mt-3 p-4 bg-emerald-50/80 dark:bg-slate-900 rounded-xl border border-emerald-200 dark:border-slate-700 space-y-3">
-                          <h6 className="text-xs font-bold text-[#0E5C44] dark:text-emerald-400">Form Input Nilai Guru</h6>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {selectedPenugasan.pengumpulan.map((sub) => {
+                    const subMeta = typeof sub.metadata === 'string' ? JSON.parse(sub.metadata || '{}') : (sub.metadata || {})
+                    return (
+                      <div
+                        key={sub.id}
+                        className="bg-white dark:bg-[#1B2433] rounded-2xl p-4 border border-emerald-200/80 dark:border-slate-800 shadow-sm space-y-3"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                          <div className="flex items-center gap-3">
+                            <PersonAvatar
+                              src={sub.siswa?.foto || sub.siswa?.photo_url || sub.siswa?.avatar_url}
+                              name={sub.siswa?.nama || 'Siswa'}
+                              size="sm"
+                            />
                             <div>
-                              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Nilai (0 - {selectedPenugasan.nilai_maksimal || 100})
-                              </label>
-                              <input
-                                type="number"
-                                step="0.1"
-                                required
-                                min="0"
-                                max={selectedPenugasan.nilai_maksimal || 100}
-                                value={gradingForm.nilai_guru}
-                                onChange={(e) => setGradingForm({ ...gradingForm, nilai_guru: e.target.value })}
-                                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-                              />
-                            </div>
-                            <div className="sm:col-span-2">
-                              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                                Catatan / Umpan Balik Guru
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Apresiasi atau evaluasi..."
-                                value={gradingForm.catatan_guru}
-                                onChange={(e) => setGradingForm({ ...gradingForm, catatan_guru: e.target.value })}
-                                className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#0E5C44]"
-                              />
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h5 className="text-sm font-bold text-slate-800 dark:text-white">
+                                  {sub.siswa?.nama || 'Siswa'}
+                                </h5>
+                                {subMeta?.tahfizh_mode && (
+                                  <span className="text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                                    Metode: {subMeta.tahfizh_mode}
+                                  </span>
+                                )}
+                                {subMeta?.group_members && (
+                                  <span className="text-[10px] font-bold bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
+                                    Anggota: {subMeta.group_members}
+                                  </span>
+                                )}
+                                {subMeta?.word_count && (
+                                  <span className="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
+                                    {subMeta.word_count} Kata
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-slate-400">
+                                NISN: {sub.siswa?.nisn || '-'} • Waktu Kumpul: {sub.waktu_kumpul || '-'}
+                              </span>
                             </div>
                           </div>
 
-                          <div className="flex justify-end gap-2 pt-1">
+                          <div className="flex items-center gap-2">
+                            {sub.nilai_guru !== null ? (
+                              <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 font-bold px-3 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                                <Award size={14} />
+                                Nilai: {sub.nilai_guru} / {selectedPenugasan.nilai_maksimal || 100}
+                              </span>
+                            ) : (
+                              <span className="bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 font-semibold px-3 py-1 rounded-lg text-xs border border-amber-200 dark:border-amber-800">
+                                Belum Dinilai
+                              </span>
+                            )}
+
                             <button
                               type="button"
-                              onClick={() => setGradingStudentId(null)}
-                              className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              onClick={() => handleStartGrading(sub)}
+                              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
                             >
-                              Batal
-                            </button>
-                            <button
-                              type="submit"
-                              disabled={gradingLoading}
-                              className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors active:scale-95 disabled:opacity-50"
-                            >
-                              {gradingLoading && <RefreshCw size={12} className="animate-spin" />}
-                              <span>Simpan Nilai</span>
+                              {sub.nilai_guru !== null ? 'Edit Nilai' : 'Beri Nilai'}
                             </button>
                           </div>
-                        </form>
-                      )}
-                    </div>
-                  ))}
+                        </div>
+
+                        {/* Jawaban Siswa */}
+                        {sub.jawaban_teks && (
+                          <div className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                            <strong className="text-slate-900 dark:text-white block mb-1">Jawaban Teks Siswa:</strong>
+                            <p className="whitespace-pre-line leading-relaxed">{sub.jawaban_teks}</p>
+                          </div>
+                        )}
+
+                        {/* Link / File Jawaban - In-App Embed Buttons (NO target="_blank") */}
+                        {(sub.file_path || sub.url_link) && (
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            {sub.file_path && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleOpenEmbed(
+                                    sub.file_path,
+                                    `Berkas Siswa: ${sub.siswa?.nama || 'Siswa'}`,
+                                    'Pratinjau Berkas Dokumen Jawaban'
+                                  )
+                                }
+                                className="inline-flex items-center gap-1.5 text-emerald-800 dark:text-emerald-200 font-bold bg-emerald-100/80 hover:bg-emerald-200 dark:bg-emerald-950/70 dark:hover:bg-emerald-900 px-3 py-1.5 rounded-xl border border-emerald-300/80 dark:border-emerald-700/80 transition cursor-pointer"
+                              >
+                                <Paperclip size={13} />
+                                <span>Buka Berkas Siswa (In-App)</span>
+                              </button>
+                            )}
+                            {sub.url_link && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleOpenEmbed(
+                                    sub.url_link,
+                                    `Tautan Siswa: ${sub.siswa?.nama || 'Siswa'}`,
+                                    'Pratinjau Tautan Eksternal Siswa'
+                                  )
+                                }
+                                className="inline-flex items-center gap-1.5 text-blue-800 dark:text-blue-200 font-bold bg-blue-100/80 hover:bg-blue-200 dark:bg-blue-950/70 dark:hover:bg-blue-900 px-3 py-1.5 rounded-xl border border-blue-300/80 dark:border-blue-700/80 transition cursor-pointer"
+                              >
+                                <Globe size={13} />
+                                <span>Buka Tautan Jawaban (In-App)</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Catatan Guru */}
+                        {sub.catatan_guru && (
+                          <div className="text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/30 p-2.5 rounded-xl border border-emerald-200/60 dark:border-emerald-900">
+                            <strong>Catatan Guru:</strong> {sub.catatan_guru}
+                          </div>
+                        )}
+
+                        {/* Inline Form Input Nilai jika tombol Beri Nilai diklik */}
+                        {gradingStudentId === sub.siswa_id && (
+                          <form onSubmit={handleSaveGrade} className="mt-3 p-4 bg-emerald-50/80 dark:bg-slate-900 rounded-2xl border-2 border-emerald-300/80 dark:border-slate-700 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h6 className="text-xs font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-wide">
+                                Form Evaluasi &amp; Nilai Guru
+                              </h6>
+                              {selectedPenugasan.jenis_tugas === 'tahfizh' && (
+                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-200/80 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
+                                  Tersedia Rubrik Tahfizh
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Optional Rubrik Tahfizh Quick Helper */}
+                            {selectedPenugasan.jenis_tugas === 'tahfizh' && (
+                              <div className="p-3 bg-white/90 dark:bg-slate-800/80 rounded-xl border border-emerald-200 dark:border-emerald-800/60 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                                <div>
+                                  <span className="block text-[10px] font-bold text-slate-500">1. Kelancaran (0 - 40)</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="40"
+                                    placeholder="40"
+                                    defaultValue="40"
+                                    id="rubrik_kelancaran"
+                                    className="w-full mt-1 px-2.5 py-1 text-xs border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                                    onChange={() => {
+                                      const k = parseFloat(document.getElementById('rubrik_kelancaran')?.value || 0)
+                                      const t = parseFloat(document.getElementById('rubrik_tajwid')?.value || 0)
+                                      const a = parseFloat(document.getElementById('rubrik_adab')?.value || 0)
+                                      setGradingForm((prev) => ({ ...prev, nilai_guru: Math.min(100, k + t + a) }))
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <span className="block text-[10px] font-bold text-slate-500">2. Tajwid (0 - 40)</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="40"
+                                    placeholder="40"
+                                    defaultValue="40"
+                                    id="rubrik_tajwid"
+                                    className="w-full mt-1 px-2.5 py-1 text-xs border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                                    onChange={() => {
+                                      const k = parseFloat(document.getElementById('rubrik_kelancaran')?.value || 0)
+                                      const t = parseFloat(document.getElementById('rubrik_tajwid')?.value || 0)
+                                      const a = parseFloat(document.getElementById('rubrik_adab')?.value || 0)
+                                      setGradingForm((prev) => ({ ...prev, nilai_guru: Math.min(100, k + t + a) }))
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <span className="block text-[10px] font-bold text-slate-500">3. Adab/Makhraj (0 - 20)</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="20"
+                                    placeholder="20"
+                                    defaultValue="20"
+                                    id="rubrik_adab"
+                                    className="w-full mt-1 px-2.5 py-1 text-xs border rounded-lg bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                                    onChange={() => {
+                                      const k = parseFloat(document.getElementById('rubrik_kelancaran')?.value || 0)
+                                      const t = parseFloat(document.getElementById('rubrik_tajwid')?.value || 0)
+                                      const a = parseFloat(document.getElementById('rubrik_adab')?.value || 0)
+                                      setGradingForm((prev) => ({ ...prev, nilai_guru: Math.min(100, k + t + a) }))
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                  Nilai Total (0 - {selectedPenugasan.nilai_maksimal || 100})
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  required
+                                  min="0"
+                                  max={selectedPenugasan.nilai_maksimal || 100}
+                                  value={gradingForm.nilai_guru}
+                                  onChange={(e) => setGradingForm({ ...gradingForm, nilai_guru: e.target.value })}
+                                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border-2 border-emerald-400 dark:border-slate-700 rounded-xl text-sm font-black text-emerald-950 dark:text-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                              </div>
+                              <div className="sm:col-span-2">
+                                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                  Catatan / Umpan Balik Guru
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Apresiasi atau evaluasi untuk siswa..."
+                                  value={gradingForm.catatan_guru}
+                                  onChange={(e) => setGradingForm({ ...gradingForm, catatan_guru: e.target.value })}
+                                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setGradingStudentId(null)}
+                                className="px-3.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                              <button
+                                type="submit"
+                                disabled={gradingLoading}
+                                className="px-5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer disabled:opacity-50"
+                              >
+                                {gradingLoading && <RefreshCw size={12} className="animate-spin" />}
+                                <span>Simpan Nilai</span>
+                              </button>
+                            </div>
+                          </form>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -2459,11 +2937,22 @@ export default function LmsPenugasanPage({ embedded = false, hideBreadcrumb = fa
         templateFields={['judul', 'deskripsi', 'tipe', 'jenis_tugas', 'deadline', 'status']}
       />
 
-      {/* ── TOAST NOTIFICATION STACK ── */}
-      <ToastStack items={toastList} onDismiss={dismissToast} />
+      {/* IN-APP EMBED VIEWER MODAL (HERO UI STYLE) */}
+      <InAppEmbedViewerModal
+        isOpen={embedViewer.isOpen}
+        url={embedViewer.url}
+        title={embedViewer.title}
+        subtitle={embedViewer.subtitle}
+        onClose={() => setEmbedViewer({ isOpen: false, url: '', title: '', subtitle: '' })}
+      />
+
       </motion.div>
     </div>
   )
+
+  if (!embedded && isTeacherOnly) {
+    return <Navigate to="/portal-guru/workspace?tab=penugasan" replace />
+  }
 
   return (
     <PageContainer maxW="7xl">

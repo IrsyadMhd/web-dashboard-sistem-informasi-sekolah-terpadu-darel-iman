@@ -193,11 +193,11 @@ export function FoundationStudentsPage() {
         education_unit: finalUnitObj,
       },
       period: {
-        title: 'Senin, 10 Agustus 2026 s.d. Jumat, 14 Agustus 2026',
+        title: 'Pekan Berjalan',
         academicYear: '2026/2027',
       },
       homeroomTeacher: {
-        name: st.kelas?.wali_kelas_nama || 'Ustadzah Pembina',
+        name: st.kelas?.wali_kelas_nama || 'Wali Kelas',
       },
       guruWali: {
         name: 'Guru Wali',

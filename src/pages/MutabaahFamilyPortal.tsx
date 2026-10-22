@@ -22,6 +22,7 @@ import {
   PrintOptionModal,
 } from '../components/master-data'
 import { useAuthStore } from '../stores/authStore'
+import { hasRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { downloadPdfTable, printCleanTable } from '../utils/printHelper'
 import './MutabaahFamilyPortal.css'
 
@@ -128,9 +129,7 @@ export default function MutabaahFamilyPortal({ mode }: { mode: Mode }) {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const roles = user?.roles || []
-  const isStaff = roles.some((r: any) =>
-    typeof r === 'string' && /admin|kepala sekolah|guru|musyrif|tata usaha|\btu\b/i.test(r)
-  ) || roles.includes('Super Admin')
+  const isStaff = hasRoleLevel(user, ROLE_LEVELS.MUSYRIF) // Level 1 s/d 7 (Staf Internal Sekolah)
 
   const [date, setDate] = useState(today)
   const [studentId, setStudentId] = useState('')

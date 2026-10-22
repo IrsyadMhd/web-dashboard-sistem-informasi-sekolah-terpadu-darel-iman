@@ -66,6 +66,7 @@ import KpiQuickViewModal from '../components/KpiQuickViewModal'
 import ModalErrorBoundary from '../components/common/ModalErrorBoundary'
 
 import { useAuthStore } from '../stores/authStore'
+import { getUserRoleLevel } from '../auth/portalResolver'
 import { superAdminDashboardService } from '../services/superAdminDashboardService'
 
 // ── 1. DEFINISI ANIMASI (MODULE LEVEL) ──
@@ -440,13 +441,7 @@ export default function SuperAdminDashboardPage() {
 
   // Welcome role display name
   const welcomeRoleName = useMemo(() => {
-    const roles = Array.isArray(currentUser?.roles)
-      ? currentUser.roles.map((r) => (typeof r === 'string' ? r : r?.name || ''))
-      : []
-    if (roles.some((r) => /super/i.test(r))) {
-      return 'Super Admin'
-    }
-    return 'Admin Sistem'
+    return getUserRoleLevel(currentUser) === 1 ? 'Super Admin' : 'Admin Sistem'
   }, [currentUser])
 
   if (isLoading && !data) return <SkeletonDashboard />

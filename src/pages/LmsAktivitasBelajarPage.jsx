@@ -443,7 +443,7 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
       {!(embedded || hideBreadcrumb) && (
         <AppBreadcrumb items={[{ label: 'LMS & Akademik', href: '/dashboard' }, { label: 'Aktivitas Belajar' }]} />
       )}
-      <div className="education-unit-page lms-aktivitas-page space-y-6">
+      <div className="lms-aktivitas-page space-y-6">
         <motion.div initial="hidden" animate="visible" variants={containerVariants} className="space-y-6">
         <PrintOptionModal
           isOpen={isPrintModalOpen}
@@ -698,8 +698,8 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
 
       {/* DATA TABLE CONTAINER */}
       <motion.div variants={itemVariants}>
-      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]" aria-labelledby="aktivitas-table-title">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/40 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]" aria-labelledby="aktivitas-table-title">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 sm:px-6 md:px-8 dark:border-emerald-800/60 dark:bg-gradient-to-r dark:from-emerald-950/50 dark:via-teal-950/30 dark:to-transparent">
           <div>
             <h2 id="aktivitas-table-title" className="text-base font-extrabold text-slate-900 dark:text-white">Data Aktivitas Belajar</h2>
             <p className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">Daftar alur skenario kegiatan kelas terpadu per modul ajar.</p>
@@ -721,7 +721,7 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
                 <th className="w-[12%] bg-transparent px-3 py-3.5 text-center font-extrabold text-[11px] uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40 text-sm">
               {loading ? (
                 <tr>
                   <td colSpan="8" className="py-12 text-center text-slate-400">
@@ -811,25 +811,25 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
 
         {/* Pagination Footer */}
         {pagination.last_page > 1 && (
-          <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-4">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Menampilkan {dataAktivitas.length} dari {pagination.total} data aktivitas
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-medium"
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-xs font-semibold px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <span className="text-xs font-semibold px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
                 Halaman {pagination.current_page} / {pagination.last_page}
               </span>
               <button
                 disabled={page >= pagination.last_page}
                 onClick={() => setPage((p) => Math.min(p + 1, pagination.last_page))}
-                className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-800 text-xs font-medium"
+                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-medium"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -932,22 +932,22 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
       {/* Modal Form Tambah / Edit */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#1B2433] rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-5">
+          <div className="bg-white dark:bg-[#1B2433] rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-5">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#0E5C44] dark:text-emerald-400 flex items-center justify-center">
                   <Activity className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                     {editId ? 'Edit Aktivitas Belajar' : 'Tambah Aktivitas Belajar'}
                   </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Isi kelengkapan data alur skenario pembelajaran</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Isi kelengkapan data alur skenario pembelajaran</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -956,14 +956,14 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Modul Ajar Dropdown */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Modul Ajar <span className="text-rose-500">*</span>
                 </label>
                 <select
                   required
                   value={formData.modul_ajar_id}
                   onChange={(e) => setFormData({ ...formData, modul_ajar_id: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#111827] text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
                 >
                   <option value="" disabled>
                     -- Pilih Modul Ajar --
@@ -978,7 +978,7 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
 
               {/* Nama Aktivitas */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Nama Aktivitas Belajar <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -987,21 +987,21 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
                   placeholder="Contoh: Eksplorasi Konsep & Studi Kasus Kelompok"
                   value={formData.nama_aktivitas}
                   onChange={(e) => setFormData({ ...formData, nama_aktivitas: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#111827] text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
                 />
               </div>
 
               {/* Jenis Aktivitas & Status Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     Jenis Kegiatan <span className="text-rose-500">*</span>
                   </label>
                   <select
                     required
                     value={formData.jenis_aktivitas}
                     onChange={(e) => setFormData({ ...formData, jenis_aktivitas: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#111827] text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
                   >
                     {optionsJenis.map((j) => (
                       <option key={j} value={j}>
@@ -1012,14 +1012,14 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     Status Aktivitas <span className="text-rose-500">*</span>
                   </label>
                   <select
                     required
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#111827] text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
                   >
                     <option value="aktif">Aktif</option>
                     <option value="draft">Draft</option>
@@ -1031,7 +1031,7 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
               {/* Waktu & Urutan Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     Alokasi Waktu (Menit) <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
@@ -1042,14 +1042,14 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
                       required
                       value={formData.waktu}
                       onChange={(e) => setFormData({ ...formData, waktu: parseInt(e.target.value) || 1 })}
-                      className="w-full pl-3.5 pr-12 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
+                      className="w-full pl-3.5 pr-12 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#111827] text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
                     />
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-gray-400">menit</span>
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">menit</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                     Nomor Urut <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1058,14 +1058,14 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
                     required
                     value={formData.urutan}
                     onChange={(e) => setFormData({ ...formData, urutan: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#111827] text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
                   />
                 </div>
               </div>
 
               {/* Instruksi Textarea */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                   Instruksi / Langkah Kegiatan
                 </label>
                 <textarea
@@ -1073,16 +1073,16 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
                   placeholder="Tuliskan petunjuk teknis atau instruksi detail bagi guru/siswa dalam aktivitas ini..."
                   value={formData.instruksi}
                   onChange={(e) => setFormData({ ...formData, instruksi: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111827] text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#111827] text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0E5C44]/20 focus:border-[#0E5C44]"
                 ></textarea>
               </div>
 
               {/* Submit Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   Batal
                 </button>
@@ -1102,13 +1102,13 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
       {/* Modal Detail View */}
       {isDetailOpen && selectedDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-[#1B2433] rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800 mb-4">
+          <div className="bg-white dark:bg-[#1B2433] rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
               <div className="flex items-center gap-2">
                 <Activity className="w-5 h-5 text-[#0E5C44]" />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Detail Aktivitas Belajar</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Detail Aktivitas Belajar</h3>
               </div>
-              <button onClick={() => setIsDetailOpen(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600">
+              <button onClick={() => setIsDetailOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1118,33 +1118,33 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getJenisBadgeColor(selectedDetail.jenis_aktivitas)}`}>
                   {selectedDetail.jenis_aktivitas}
                 </span>
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white mt-2">{selectedDetail.nama_aktivitas}</h4>
+                <h4 className="text-xl font-bold text-slate-900 dark:text-white mt-2">{selectedDetail.nama_aktivitas}</h4>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-gray-50 dark:bg-[#111827] text-xs">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-[#111827] text-xs">
                 <div>
-                  <span className="text-gray-400 block">Modul Ajar:</span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                  <span className="text-slate-400 block">Modul Ajar:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {selectedDetail.modul_ajar?.judul_modul || '-'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-400 block">Alokasi Waktu:</span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">{selectedDetail.waktu} menit</span>
+                  <span className="text-slate-400 block">Alokasi Waktu:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedDetail.waktu} menit</span>
                 </div>
                 <div>
-                  <span className="text-gray-400 block">Nomor Urutan:</span>
-                  <span className="font-semibold text-gray-800 dark:text-gray-200">Urutan ke-{selectedDetail.urutan}</span>
+                  <span className="text-slate-400 block">Nomor Urutan:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">Urutan ke-{selectedDetail.urutan}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400 block">Status:</span>
+                  <span className="text-slate-400 block">Status:</span>
                   <span className="font-semibold capitalize text-emerald-600 dark:text-emerald-400">{selectedDetail.status}</span>
                 </div>
               </div>
 
               <div>
-                <h5 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">Instruksi Kegiatan:</h5>
-                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-[#111827] border border-gray-100 dark:border-gray-800 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">
+                <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Instruksi Kegiatan:</h5>
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#111827] border border-slate-100 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
                   {selectedDetail.instruksi || 'Tidak ada instruksi khusus.'}
                 </div>
               </div>
@@ -1152,7 +1152,7 @@ export default function LmsAktivitasBelajarPage({ embedded = false, hideBreadcru
               <div className="flex justify-end pt-3">
                 <button
                   onClick={() => setIsDetailOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium text-sm hover:bg-gray-200"
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-sm hover:bg-slate-200 dark:hover:bg-slate-700"
                 >
                   Tutup
                 </button>

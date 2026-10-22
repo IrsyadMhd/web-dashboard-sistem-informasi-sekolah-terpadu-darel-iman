@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Swal from '@/components/tailgrids/compat/swal-tailgrids'
+import AppTabs from '../components/app/AppTabs'
 import {
   ShieldCheck,
   Home,
@@ -436,52 +437,31 @@ export default function WorshipAssessmentSettingPage() {
       </div>
 
       {/* TABS SWITCHER */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2 dark:border-slate-800">
-        <button
-          onClick={() => setActiveTab('rules')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition ${
-            activeTab === 'rules'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-900/20'
-              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
-          }`}
-        >
-          <ListChecks className="h-4 w-4" />
-          <span>1. Tanggung Jawab Pencatatan (Sekolah vs Rumah)</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${activeTab === 'rules' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
-            {data.rules?.length || 0}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('programs')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition ${
-            activeTab === 'programs'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-900/20'
-              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
-          }`}
-        >
-          <Building2 className="h-4 w-4" />
-          <span>2. Program Operasional Unit (Full Day vs Pesantren)</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${activeTab === 'programs' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
-            {data.programs?.length || 0}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('periods')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition ${
-            activeTab === 'periods'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-900/20'
-              : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
-          }`}
-        >
-          <Moon className="h-4 w-4" />
-          <span>3. Periode Penilaian (Reguler & Ramadan)</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${activeTab === 'periods' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
-            {data.periods?.length || 0}
-          </span>
-        </button>
-      </div>
+      <AppTabs
+        tabs={[
+          {
+            id: 'rules',
+            label: '1. Tanggung Jawab Pencatatan (Sekolah vs Rumah)',
+            icon: ListChecks,
+            badge: data.rules?.length || 0,
+          },
+          {
+            id: 'programs',
+            label: '2. Program Operasional Unit (Full Day vs Pesantren)',
+            icon: Building2,
+            badge: data.programs?.length || 0,
+          },
+          {
+            id: 'periods',
+            label: '3. Periode Penilaian (Reguler & Ramadan)',
+            icon: Moon,
+            badge: data.periods?.length || 0,
+          },
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="Pengaturan penilaian ibadah"
+      />
 
       {/* TAB 1: ATURAN TANGGUNG JAWAB INPUT */}
       {activeTab === 'rules' && (
@@ -560,17 +540,17 @@ export default function WorshipAssessmentSettingPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:border-emerald-900/60 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Aktivitas / Amalan Ibadah</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Program Sekolah</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Pencatat (Tanggung Jawab)</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Lokasi Pelaksanaan</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Konteks / Periode</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Perlu Validasi Guru</th>
-                    <th className="px-4 py-3 text-right font-black text-slate-800 dark:text-slate-200">Aksi</th>
+                  <tr className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:border-emerald-900/60 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-extrabold uppercase tracking-wider text-[11px]">
+                    <th className="px-4 py-3">Aktivitas / Amalan Ibadah</th>
+                    <th className="px-4 py-3">Program Sekolah</th>
+                    <th className="px-4 py-3">Pencatat (Tanggung Jawab)</th>
+                    <th className="px-4 py-3">Lokasi Pelaksanaan</th>
+                    <th className="px-4 py-3">Konteks / Periode</th>
+                    <th className="px-4 py-3">Perlu Validasi Guru</th>
+                    <th className="px-4 py-3 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {filteredRules.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-slate-400">
@@ -686,17 +666,17 @@ export default function WorshipAssessmentSettingPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:border-emerald-900/60 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Unit Pendidikan</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Cakupan Kelas</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Jenis Program</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Hari Aktif Sekolah</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Keterangan Jam</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Status</th>
-                    <th className="px-4 py-3 text-right font-black text-slate-800 dark:text-slate-200">Aksi</th>
+                  <tr className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:border-emerald-900/60 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-extrabold uppercase tracking-wider text-[11px]">
+                    <th className="px-4 py-3">Unit Pendidikan</th>
+                    <th className="px-4 py-3">Cakupan Kelas</th>
+                    <th className="px-4 py-3">Jenis Program</th>
+                    <th className="px-4 py-3">Hari Aktif Sekolah</th>
+                    <th className="px-4 py-3">Keterangan Jam</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {(data.programs || []).length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-slate-400">
@@ -810,17 +790,17 @@ export default function WorshipAssessmentSettingPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:border-emerald-900/60 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Nama Periode</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Jenis Periode</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Cakupan Unit</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Rentang Tanggal</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Template Terhubung</th>
-                    <th className="px-4 py-3 font-black text-slate-800 dark:text-slate-200">Prioritas</th>
-                    <th className="px-4 py-3 text-right font-black text-slate-800 dark:text-slate-200">Aksi</th>
+                  <tr className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 dark:border-emerald-900/60 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 text-emerald-950 dark:text-emerald-200 font-extrabold uppercase tracking-wider text-[11px]">
+                    <th className="px-4 py-3">Nama Periode</th>
+                    <th className="px-4 py-3">Jenis Periode</th>
+                    <th className="px-4 py-3">Cakupan Unit</th>
+                    <th className="px-4 py-3">Rentang Tanggal</th>
+                    <th className="px-4 py-3">Template Terhubung</th>
+                    <th className="px-4 py-3">Prioritas</th>
+                    <th className="px-4 py-3 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
                   {(data.periods || []).length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-slate-400">

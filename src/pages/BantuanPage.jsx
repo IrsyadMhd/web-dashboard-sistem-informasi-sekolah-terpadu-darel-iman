@@ -33,6 +33,7 @@ import {
   Award,
 } from 'lucide-react'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import { resolveFoundationName } from '../utils/printHelper'
 import AppModal from '../components/app/AppModal'
 import { useToast } from '../components/app/ToastProvider'
 import { usePengaturanStore, INITIAL_FAQS, INITIAL_MANUALS } from '../stores/pengaturanStore'
@@ -96,6 +97,7 @@ export default function BantuanPage() {
 
   // Get Custom FAQs & Manuals from Pengaturan Store
   const settings = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(settings)
   const activeFaqs = useMemo(() => {
     return settings.custom_faqs || INITIAL_FAQS
   }, [settings.custom_faqs])
@@ -180,7 +182,7 @@ export default function BantuanPage() {
     setTimeout(() => {
       setIsSubmittingTicket(false)
       setIsTicketModalOpen(false)
-      toast.success('Tiket Bantuan Anda berhasil dikirim! Tim Helpdesk IT Darel Iman akan menghubungi Anda via WhatsApp/Email.')
+      toast.success(`Tiket Bantuan Anda berhasil dikirim! Tim Helpdesk IT ${foundationName} akan menghubungi Anda via WhatsApp/Email.`)
       setTicketForm({
         name: '',
         email: '',
@@ -221,7 +223,7 @@ export default function BantuanPage() {
                   <Sparkles className="h-3.5 w-3.5" /> SIMSIT Support Hub
                 </span>
                 <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                  {settings.school_name || 'Yayasan Darel Iman'}
+                  {settings.school_name || foundationName}
                 </span>
               </div>
 
@@ -230,7 +232,7 @@ export default function BantuanPage() {
               </h1>
 
               <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-                Dokumentasi terpadu, petunjuk penggunaan modul sekolah, solusi permasalahan umum, serta layanan pengajuan tiket support tim IT Sekolah Darel Iman.
+                Dokumentasi terpadu, petunjuk penggunaan modul sekolah, solusi permasalahan umum, serta layanan pengajuan tiket support tim IT {foundationName}.
               </p>
             </div>
 
@@ -599,7 +601,7 @@ export default function BantuanPage() {
                 Masih Mengalami Kendala Operasional SIMSIT?
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
-                Tim Support & Helpdesk IT Yayasan Darel Iman siap membantu kendala teknis, pengurusan akun, perbaikan data master, dan konsultasi modul sekolah.
+                Tim Support & Helpdesk IT {foundationName} siap membantu kendala teknis, pengurusan akun, perbaikan data master, dan konsultasi modul sekolah.
               </p>
 
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-2">
@@ -609,7 +611,7 @@ export default function BantuanPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-emerald-400" />
-                  <span>ti.support@dareliman.or.id</span>
+                  <span>{settings.email || (settings.website ? `support@${settings.website.replace(/^https?:\/\//, '')}` : '-')}</span>
                 </div>
               </div>
             </div>
@@ -646,7 +648,7 @@ export default function BantuanPage() {
         >
           <form onSubmit={handleTicketSubmit} className="space-y-4 pt-1">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Sampaikan kendala teknis atau pertanyaan Anda. Tim IT Darel Iman akan merespons melalui WhatsApp atau email yang terdaftar.
+              Sampaikan kendala teknis atau pertanyaan Anda. Tim IT {foundationName} akan merespons melalui WhatsApp atau email yang terdaftar.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

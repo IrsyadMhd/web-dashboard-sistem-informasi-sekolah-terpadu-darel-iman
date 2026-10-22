@@ -1,12 +1,30 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { CheckCheck, Bell } from 'lucide-react'
+import {
+  CheckCheck,
+  Bell,
+  Megaphone,
+  Sparkles,
+  Plus,
+  Trash2,
+  Calendar,
+  ShieldCheck,
+  Clock,
+  AlertCircle,
+  Inbox,
+  Send,
+} from 'lucide-react'
+import { motion } from 'framer-motion'
 import {
   useAksiPengumumanSekolah,
   useDaftarPengumumanSekolah,
 } from '../hooks/useDashboardPemantauan'
 import { reportService } from '../services/reportService'
+import PageContainer from '../components/app/PageContainer'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import ConfirmDialog from '../components/app/ConfirmDialog'
+import AppBadge from '../components/app/AppBadge'
+import { Button } from '../components/tailgrids/core/button'
 
 export default function NotificationsPage() {
   const { data: daftarPengumuman } = useDaftarPengumumanSekolah({ per_page: 20 })
@@ -31,7 +49,9 @@ export default function NotificationsPage() {
     }
   }, [])
 
-  useEffect(() => { loadNotifications() }, [loadNotifications])
+  useEffect(() => {
+    loadNotifications()
+  }, [loadNotifications])
 
   const handleMarkRead = async (id) => {
     await reportService.markNotificationRead(id)
@@ -87,121 +107,387 @@ export default function NotificationsPage() {
     setDeleteTarget(null)
   }
 
+  const unreadCount = useMemo(() => {
+    return notifications.filter((n) => !n.is_read).length
+  }, [notifications])
+
+  const announcementsList = useMemo(() => {
+    return daftarPengumuman?.data || []
+  }, [daftarPengumuman])
+
   return (
-    <div className="content-grid">
-      {/* Seksi Notifikasi Sistem Pengguna */}
-      <section className="panel wide">
-        <div className="panel-title-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3><Bell size={20} style={{ display: 'inline', marginRight: 8 }} /> Notifikasi Sistem & Pemberitahuan</h3>
-          <button type="button" className="topbar-action" onClick={handleMarkAllRead}>
-            <CheckCheck size={16} /> Tandai Semua Dibaca
-          </button>
-        </div>
-        <p className="modul-lead">Pemberitahuan aktivitas, presensi, dan sistem untuk akun Anda.</p>
+    <PageContainer>
+      <div className="space-y-6 pb-12">
+        {/* Breadcrumb */}
+        <AppBreadcrumb
+          items={[
+            { label: 'Dashboard', href: '/dashboard' },
+            { label: 'Notifikasi & Pengumuman' },
+          ]}
+        />
 
-        <div className="laporan-list" style={{ marginTop: 16 }}>
-          {loadingNotif ? (
-            <p>Memuat notifikasi...</p>
-          ) : notifications.length > 0 ? (
-            notifications.map((n) => (
-              <div key={n.id} className="laporan-item" style={{ background: n.is_read ? '#f8fafc' : '#eff6ff' }}>
-                <div>
-                  <strong>{n.title}</strong>
-                  <p>{n.message}</p>
-                  <small>{new Date(n.created_at).toLocaleString('id-ID')}</small>
+        {/* Modern Hero Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-gradient-to-br from-emerald-500/30 via-teal-400/20 to-transparent blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-gradient-to-tr from-teal-500/20 via-emerald-400/20 to-transparent blur-3xl" />
+
+            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-xl shadow-emerald-600/40 border border-emerald-300/40 dark:from-emerald-400 dark:via-emerald-500 dark:to-teal-600">
+                  <Bell className="size-6 sm:size-7 text-white" />
                 </div>
-                {!n.is_read && (
-                  <button type="button" className="aksi kecil" onClick={() => handleMarkRead(n.id)}>
-                    Tandai Dibaca
-                  </button>
-                )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-1 text-xs font-extrabold text-white shadow-md shadow-emerald-600/30">
+                      <Sparkles className="size-3 text-amber-300 animate-pulse" />
+                      Pusat Informasi & Notifikasi
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-rose-100 px-3 py-0.5 text-xs font-bold text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/60">
+                        {unreadCount} Pesan Baru
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    Notifikasi Sistem & Pengumuman Sekolah
+                  </h1>
+                  <p className="mt-0.5 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Pantau riwayat pemberitahuan otomatis akun Anda dan kelola distribusi pengumuman resmi ke seluruh pengguna.
+                  </p>
+                </div>
               </div>
-            ))
-          ) : (
-            <p className="subtle-text">Belum ada notifikasi baru untuk akun Anda.</p>
-          )}
-        </div>
-      </section>
 
-      {/* Seksi Pengumuman Sekolah */}
-      <section className="panel modul-crud-page wide" style={{ marginTop: 24 }}>
-        <h3>Manajemen Pengumuman Sekolah</h3>
-        <p className="modul-lead">Kelola publikasi pengumuman sekolah yang akan tampil di dashboard pengguna.</p>
-
-        <form className="form-grid" onSubmit={formPengumuman.handleSubmit(submitPengumuman)}>
-          <input type="text" placeholder="Judul pengumuman" {...formPengumuman.register('judul_pengumuman', { required: true })} />
-          <input type="text" placeholder="Isi ringkas" {...formPengumuman.register('isi_pengumuman', { required: true })} />
-          <input type="text" placeholder="Target peran" {...formPengumuman.register('target_peran')} />
-          <input type="date" {...formPengumuman.register('mulai_tampil', { required: true })} />
-          <input type="date" {...formPengumuman.register('selesai_tampil')} />
-          <input type="number" min="1" max="10" placeholder="Prioritas" {...formPengumuman.register('prioritas')} />
-          <select {...formPengumuman.register('status_aktif')}>
-            <option value={true}>Aktif</option>
-            <option value={false}>Nonaktif</option>
-          </select>
-          <div className="form-actions">
-            <button type="submit" className="aksi simpan">Simpan Pengumuman</button>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleMarkAllRead}
+                  disabled={loadingNotif || unreadCount === 0}
+                  className="rounded-xl font-bold"
+                >
+                  <CheckCheck className="size-4 mr-1.5" />
+                  Tandai Semua Dibaca
+                </Button>
+              </div>
+            </div>
           </div>
-        </form>
+        </motion.div>
 
-        <div className="table-wrap modul-table-wrap" style={{ marginTop: 16 }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Judul</th>
-                <th>Mulai</th>
-                <th>Selesai</th>
-                <th>Prioritas</th>
-                <th>Status</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(daftarPengumuman?.data || []).map((row) => (
-                <tr key={row.id}>
-                  <td>{row.judul_pengumuman}</td>
-                  <td>{row.mulai_tampil}</td>
-                  <td>{row.selesai_tampil || '-'}</td>
-                  <td>{row.prioritas}</td>
-                  <td>{row.status_aktif ? 'aktif' : 'nonaktif'}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="aksi kecil danger"
-                      onClick={() => setDeleteTarget(row)}
-                    >
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* KPI Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-2xl border border-emerald-200/80 bg-white p-4.5 shadow-sm dark:border-emerald-800/60 dark:bg-[#1B2433]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Notifikasi</p>
+                <h3 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{notifications.length}</h3>
+              </div>
+              <div className="flex size-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40">
+                <Inbox className="size-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200/80 bg-white p-4.5 shadow-sm dark:border-amber-800/60 dark:bg-[#1B2433]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Belum Dibaca</p>
+                <h3 className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-400">{unreadCount}</h3>
+              </div>
+              <div className="flex size-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40">
+                <Bell className="size-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-sky-200/80 bg-white p-4.5 shadow-sm dark:border-sky-800/60 dark:bg-[#1B2433]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Pengumuman Aktif</p>
+                <h3 className="mt-1 text-2xl font-black text-sky-600 dark:text-sky-400">{announcementsList.length}</h3>
+              </div>
+              <div className="flex size-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/40">
+                <Megaphone className="size-5" />
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
 
-      {/* Konfirmasi Simpan Pengumuman */}
-      <ConfirmDialog
-        isOpen={showSaveConfirm}
-        onClose={() => setShowSaveConfirm(false)}
-        onConfirm={handleConfirmSavePengumuman}
-        isLoading={aksiPengumuman.tambah.isPending}
-        action="create"
-        title="Konfirmasi Simpan Pengumuman"
-        message={`Apakah Anda yakin ingin mempublikasikan pengumuman "${pendingPengumuman?.judul_pengumuman}"?`}
-      />
+        {/* Section 1: Notifikasi Pengguna */}
+        <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 dark:border-emerald-800/60 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
+                <Bell className="size-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-slate-900 dark:text-white">Pemberitahuan Sistem Akun</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Log notifikasi transaksi, presensi, dan aktivitas sistem terbaru</p>
+              </div>
+            </div>
+          </div>
 
-      {/* Konfirmasi Hapus Pengumuman */}
-      <ConfirmDialog
-        isOpen={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleConfirmDeletePengumuman}
-        isLoading={aksiPengumuman.hapus.isPending}
-        action="delete"
-        title="Konfirmasi Hapus Pengumuman"
-        message={`Apakah Anda yakin ingin menghapus pengumuman "${deleteTarget?.judul_pengumuman}"?`}
-      />
-    </div>
+          <div className="p-5">
+            {loadingNotif ? (
+              <div className="flex items-center justify-center py-10 text-slate-500 dark:text-slate-400 text-xs font-medium">
+                <Clock className="size-4 animate-spin mr-2 text-emerald-600" /> Memuat notifikasi...
+              </div>
+            ) : notifications.length > 0 ? (
+              <div className="space-y-3">
+                {notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border transition-all ${
+                      n.is_read
+                        ? 'border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300'
+                        : 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/80 dark:bg-emerald-950/30 text-slate-900 dark:text-white shadow-xs'
+                    }`}
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {!n.is_read && (
+                          <span className="size-2 rounded-full bg-emerald-500 shrink-0 animate-ping" />
+                        )}
+                        <h4 className="text-xs font-black tracking-tight">{n.title}</h4>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{n.message}</p>
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 font-semibold pt-1">
+                        <Clock className="size-3" />
+                        <span>{new Date(n.created_at).toLocaleString('id-ID')}</span>
+                      </div>
+                    </div>
+                    {!n.is_read && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => handleMarkRead(n.id)}
+                        className="shrink-0 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg font-bold self-start sm:self-auto"
+                      >
+                        <CheckCheck className="size-3.5 mr-1" />
+                        Tandai Dibaca
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10 text-slate-400 dark:text-slate-500">
+                <Inbox className="size-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                <p className="text-xs font-semibold">Belum ada notifikasi baru untuk akun Anda.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Section 2: Form Tambah Pengumuman */}
+        <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 dark:border-emerald-800/60 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-teal-600 text-white shadow-sm">
+                <Megaphone className="size-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-slate-900 dark:text-white">Publikasi Pengumuman Sekolah</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Buat maklumat atau informasi penting untuk disiarkan ke dashboard pengguna</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5">
+            <form onSubmit={formPengumuman.handleSubmit(submitPengumuman)} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Judul Pengumuman</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Jadwal Libur Awal Ramadhan 1448 H"
+                    {...formPengumuman.register('judul_pengumuman', { required: true })}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Target Peran Pengguna</label>
+                  <select
+                    {...formPengumuman.register('target_peran')}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="Semua">Semua Pengguna</option>
+                    <option value="Guru">Semua Guru & Musyrif</option>
+                    <option value="Orang Tua">Orang Tua / Wali Murid</option>
+                    <option value="Siswa">Siswa / Santri</option>
+                    <option value="Staf">Staf & Karyawan</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Isi Pengumuman Ringkas</label>
+                <textarea
+                  rows={3}
+                  placeholder="Tuliskan isi pengumuman atau instruksi penting secara jelas..."
+                  {...formPengumuman.register('isi_pengumuman', { required: true })}
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Mulai Tampil</label>
+                  <input
+                    type="date"
+                    {...formPengumuman.register('mulai_tampil', { required: true })}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Selesai Tampil</label>
+                  <input
+                    type="date"
+                    {...formPengumuman.register('selesai_tampil')}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Prioritas (1-10)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    {...formPengumuman.register('prioritas')}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Status</label>
+                  <select
+                    {...formPengumuman.register('status_aktif')}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value={true}>Aktif</option>
+                    <option value={false}>Nonaktif</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button variant="primary" size="sm" type="submit" className="rounded-xl font-bold">
+                  <Send className="size-4 mr-1.5" />
+                  Simpan & Publikasikan Pengumuman
+                </Button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        {/* Section 3: Datatable Pengumuman Aktif */}
+        <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
+          <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent px-5 py-4 dark:border-emerald-800/60 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-sky-600 text-white shadow-sm">
+                <Megaphone className="size-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-slate-900 dark:text-white">Daftar Pengumuman Terbit</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total {announcementsList.length} pengumuman terdaftar di sistem</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <tr>
+                  <th className="px-4 py-3.5 font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">Judul Pengumuman</th>
+                  <th className="px-4 py-3.5 font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">Target & Prioritas</th>
+                  <th className="px-4 py-3.5 font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">Periode Tayang</th>
+                  <th className="px-4 py-3.5 font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">Status</th>
+                  <th className="px-4 py-3.5 font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px] text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+                {announcementsList.length > 0 ? (
+                  announcementsList.map((row) => (
+                    <tr key={row.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors">
+                      <td className="px-4 py-3.5">
+                        <div className="font-bold text-slate-900 dark:text-white">{row.judul_pengumuman}</div>
+                        {row.isi_pengumuman && (
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">{row.isi_pengumuman}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                            {Array.isArray(row.target_peran) ? row.target_peran.join(', ') : (row.target_peran || 'Semua')}
+                          </span>
+                          <span className="rounded-md bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/40">
+                            P{row.prioritas}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-600 dark:text-slate-300 text-[11px]">
+                        <div>{row.mulai_tampil}</div>
+                        <div className="text-[10px] text-slate-400">s/d {row.selesai_tampil || 'Permanen'}</div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <AppBadge status={row.status_aktif ? 'aktif' : 'nonaktif'}>
+                          {row.status_aktif ? 'Aktif' : 'Nonaktif'}
+                        </AppBadge>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <Button
+                          variant="danger"
+                          size="xs"
+                          onClick={() => setDeleteTarget(row)}
+                          className="rounded-lg font-bold"
+                        >
+                          <Trash2 className="size-3.5 mr-1" />
+                          Hapus
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-slate-400 dark:text-slate-500">
+                      Belum ada pengumuman sekolah yang dibuat.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Konfirmasi Simpan Pengumuman */}
+        <ConfirmDialog
+          isOpen={showSaveConfirm}
+          onClose={() => setShowSaveConfirm(false)}
+          onConfirm={handleConfirmSavePengumuman}
+          isLoading={aksiPengumuman.tambah.isPending}
+          action="create"
+          title="Konfirmasi Simpan Pengumuman"
+          message={`Apakah Anda yakin ingin mempublikasikan pengumuman "${pendingPengumuman?.judul_pengumuman}"?`}
+        />
+
+        {/* Konfirmasi Hapus Pengumuman */}
+        <ConfirmDialog
+          isOpen={Boolean(deleteTarget)}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDeletePengumuman}
+          isLoading={aksiPengumuman.hapus.isPending}
+          action="delete"
+          title="Konfirmasi Hapus Pengumuman"
+          message={`Apakah Anda yakin ingin menghapus pengumuman "${deleteTarget?.judul_pengumuman}"?`}
+        />
+      </div>
+    </PageContainer>
   )
 }
-

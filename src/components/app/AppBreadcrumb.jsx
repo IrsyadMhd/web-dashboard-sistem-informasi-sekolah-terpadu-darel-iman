@@ -1,5 +1,5 @@
 import React from 'react'
-import { Breadcrumbs } from '../tailgrids/core/breadcrumbs'
+import { Breadcrumbs } from '../ui/breadcrumbs'
 
 /**
  * AppBreadcrumb - Canonical Breadcrumb Navigation Component for SIMSIT.

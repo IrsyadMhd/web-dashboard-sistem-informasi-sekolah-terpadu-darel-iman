@@ -17,10 +17,13 @@ import { ReportEmptyState } from '../../../components/reports/ReportEmptyState'
 import { ReportErrorState } from '../../../components/reports/ReportErrorState'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/tailgrids/core/card'
 import { Breadcrumbs } from '@/components/tailgrids/core/breadcrumbs'
+import { printCleanTable } from '../../../utils/printHelper'
+import { usePengaturanStore } from '../../../stores/pengaturanStore'
 
 const COLORS = ['#0E5C44', '#1E8E5A', '#3FBF75', '#0284C7', '#6366F1', '#EC4899', '#F59E0B']
 
 export function LaporanKelulusanPage() {
+  const sitePengaturan = usePengaturanStore((state) => state.pengaturan)
   const [filters, setFilters] = useState({ period: 'year', page: 1, per_page: 15, search: '' })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -80,6 +83,54 @@ export function LaporanKelulusanPage() {
     setIsExportOpen(false)
     const url = reportService.exportFoundationReport('kelulusan', { ...filters, format, orientation })
     window.open(url, '_blank')
+  }
+
+  const handlePrintReport = () => {
+    if (!reportData) return
+    const headers = [
+      'No',
+      'Unit Pendidikan',
+      'Peserta Kelulusan',
+      'Total Lulus',
+      'Tidak Lulus',
+      'Belum Ditetapkan',
+      'Persentase Kelulusan',
+    ]
+
+    const rows = (reportData.unit_recaps || []).map((r, idx) => [
+      idx + 1,
+      r.unit_name || '-',
+      (r.peserta ?? 0).toLocaleString('id-ID'),
+      (r.lulus ?? 0).toLocaleString('id-ID'),
+      (r.tidak_lulus ?? 0).toLocaleString('id-ID'),
+      (r.belum_ditetapkan ?? 0).toLocaleString('id-ID'),
+      `${r.persentase_kelulusan ?? 0}%`,
+    ])
+
+    if (reportData.unit_recaps_total) {
+      const tot = reportData.unit_recaps_total
+      rows.push([
+        '—',
+        'TOTAL KESELURUHAN',
+        (tot.peserta ?? 0).toLocaleString('id-ID'),
+        (tot.lulus ?? 0).toLocaleString('id-ID'),
+        (tot.tidak_lulus ?? 0).toLocaleString('id-ID'),
+        (tot.belum_ditetapkan ?? 0).toLocaleString('id-ID'),
+        `${tot.persentase_kelulusan ?? 0}%`,
+      ])
+    }
+
+    const orgName = (sitePengaturan?.school_name || sitePengaturan?.application_name || '').trim()
+    printCleanTable({
+      title: 'LAPORAN REKAPITULASI KELULUSAN SISWA',
+      subtitle: reportData.report?.title || orgName || 'Laporan Rekapitulasi Kelulusan Siswa',
+      period: reportData.report?.period?.label || filters.period || 'Tahun Ajaran Aktif',
+      headers,
+      rows,
+      orientation: 'landscape',
+      foundationName: orgName,
+      systemLogo: sitePengaturan?.logo_url,
+    })
   }
 
   if (loading && !reportData) return <ReportSkeleton />
@@ -159,7 +210,7 @@ export function LaporanKelulusanPage() {
         onReset={handleResetFilter}
         onRefresh={fetchReport}
         onOpenPreview={() => setIsPreviewOpen(true)}
-        onPrint={() => window.print()}
+        onPrint={handlePrintReport}
         onExportPdf={handleExportPdf}
         onExportExcel={handleExportExcel}
         loading={loading}
@@ -241,7 +292,7 @@ export function LaporanKelulusanPage() {
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         reportData={reportData}
-        onPrint={() => window.print()}
+        onPrint={handlePrintReport}
         onExportPdf={() => setIsExportOpen(true)}
       />
 

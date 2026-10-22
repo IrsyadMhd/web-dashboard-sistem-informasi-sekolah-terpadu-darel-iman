@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { useToast } from '../components/app/ToastProvider'
 
 import PageContainer from '../components/app/PageContainer'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
@@ -120,6 +120,7 @@ function ModernKpiCard({ icon: Icon, label, subtext, value, tag, tone = 'emerald
 }
 
 export default function DeleteApprovalPage() {
+  const toast = useToast()
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('pending')

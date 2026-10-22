@@ -3,12 +3,12 @@
 import { cn } from "@/utils/cn";
 import { cva, VariantProps } from "class-variance-authority";
 import {
-  Button as AriaButton,
-  type ButtonProps as AriaButtonProps
-} from "react-aria-components";
+  Button as HeroButton,
+} from "@heroui/react";
+import type { ButtonProps as AriaButtonProps } from "react-aria-components";
 
 export const buttonStyles = cva(
-  "flex items-center justify-center gap-3 rounded-lg font-medium transition focus:ring-3 disabled:pointer-events-none [&>svg]:text-current outline-none",
+  "flex items-center justify-center gap-2.5 rounded-xl font-semibold transition-all duration-200 active:scale-95 focus:ring-3 disabled:pointer-events-none [&>svg]:text-current outline-none cursor-pointer",
   {
     variants: {
       variant: {
@@ -75,7 +75,7 @@ export const buttonStyles = cva(
       },
       {
         variant: "ghost",
-        className: "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white focus:ring-2 focus:ring-emerald-500/20"
+        className: "!bg-transparent text-slate-600 dark:text-slate-300 hover:!bg-slate-100 dark:hover:!bg-slate-800 hover:text-slate-900 dark:hover:text-white focus:ring-2 focus:ring-emerald-500/20 shadow-none"
       },
       {
         iconOnly: true,
@@ -135,6 +135,7 @@ export interface ButtonProps
   readOnly?: boolean;
   prefixIcon?: React.ReactNode;
   suffixIcon?: React.ReactNode;
+  isIconOnly?: boolean;
 }
 
 export function Button({
@@ -158,7 +159,8 @@ export function Button({
   }
 
   return (
-    <AriaButton
+    <HeroButton
+      variant={variant === "ghost" ? "light" : appearance === "outline" ? "bordered" : "solid"}
       className={cn(
         buttonStyles({
           variant,
@@ -170,6 +172,7 @@ export function Button({
       )}
       isDisabled={disabled || pending}
       isPending={pending}
+      isIconOnly={iconOnly ?? undefined}
       onPress={handlePress}
       onClick={onClick}
       {...props}
@@ -183,7 +186,7 @@ export function Button({
       {!pending && prefixIcon && <span className="shrink-0 inline-flex items-center">{prefixIcon}</span>}
       {children}
       {!pending && suffixIcon && <span className="shrink-0 inline-flex items-center">{suffixIcon}</span>}
-    </AriaButton>
+    </HeroButton>
   );
 }
 

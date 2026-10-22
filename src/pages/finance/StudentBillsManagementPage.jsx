@@ -29,7 +29,8 @@ import { Card } from '../../components/tailgrids/core/card'
 import { Badge } from '../../components/tailgrids/core/badge'
 import { Button } from '../../components/tailgrids/core/button'
 import { Pagination } from '../../components/tailgrids/core/pagination'
-import { Avatar, AvatarFallback } from '../../components/tailgrids/core/avatar'
+import { printCleanTable, resolveFoundationName } from '../../utils/printHelper'
+import { usePengaturanStore } from '../../stores/pengaturanStore'
 
 const formatRupiah = (val) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(
@@ -122,6 +123,8 @@ function HarmonizedDeleteBillModal({ isOpen, onClose, onConfirm, bill, isSubmitt
 
 export default function StudentBillsManagementPage() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, bill: null, isSubmitting: false, error: '' })
+  const pengaturan = usePengaturanStore((state) => state.pengaturan)
+  const foundationName = resolveFoundationName(pengaturan)
   const [bills, setBills] = useState([])
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 20 })
   const [stats, setStats] = useState({
@@ -384,9 +387,37 @@ export default function StudentBillsManagementPage() {
 
   const handlePrintReceipt = (bill, payment) => {
     setActiveReceipt({ bill, payment })
-    setTimeout(() => {
-      window.print()
-    }, 300)
+    const activePayment = payment || {}
+    const studentName = bill?.student?.nama_lengkap || bill?.student?.full_name || bill?.student?.name || '-'
+    const unitName = bill?.student?.unit?.nama_unit || bill?.student?.unit?.name || resolveFoundationName()
+    printCleanTable({
+      title: 'BUKTI PEMBAYARAN & KUITANSI RESMI (SPP)',
+      subtitle: `No. Kuitansi: ${activePayment.invoice_number || 'INV-OFFICIAL'} | Tanggal: ${formatDate(activePayment.paid_at || activePayment.created_at || new Date())}`,
+      headers: ['Uraian Tagihan', 'Nama Siswa', 'NIS', 'Kelas', 'Metode Pembayaran', 'Jumlah Diterima', 'Status'],
+      rows: [[
+        bill?.title || 'Pembayaran Tagihan SPP',
+        studentName,
+        bill?.student?.nis || '-',
+        bill?.student?.kelas?.nama_kelas || bill?.student?.class_name || '-',
+        activePayment.payment_method || 'Tunai / Transfer',
+        formatRupiah(activePayment.paid_amount || bill?.amount || 0),
+        'LUNAS - TERVERIFIKASI KASIR',
+      ]],
+      unit: unitName,
+      orientation: 'portrait',
+      customFooter: `
+        <div style="display:flex; justify-content:space-between; margin-top:35px; font-size:9pt; text-align:center;">
+          <div>
+            <p style="margin:0 0 45px 0;">Penyetor / Orang Tua Siswa</p>
+            <p style="margin:0; font-weight:bold;">(${studentName !== '-' ? studentName : 'Orang Tua / Wali Santri'})</p>
+          </div>
+          <div>
+            <p style="margin:0 0 45px 0;">Kasir / Bagian Keuangan</p>
+            <p style="margin:0; font-weight:bold;">(${activePayment.metadata?.cashier_name || 'Petugas Keuangan'})</p>
+          </div>
+        </div>
+      `,
+    })
   }
 
   return (
@@ -413,7 +444,7 @@ export default function StudentBillsManagementPage() {
                   MODUL KEUANGAN & TATA USAHA
                 </span>
                 <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                  Yayasan Dar El-Iman
+                  {foundationName}
                 </span>
               </div>
               <h1 className="mt-1 text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
@@ -455,71 +486,75 @@ export default function StudentBillsManagementPage() {
 
       {/* 3. MASTER STATS GRID (4 KPI CARDS) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        <div className="group relative overflow-hidden rounded-[18px] border-2 border-emerald-300/70 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white p-5 shadow-xs transition-all hover:border-emerald-400 hover:shadow-md dark:border-emerald-700/50 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-emerald-400/20 blur-2xl dark:bg-emerald-400/10" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Total Tagihan Diterbitkan</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Total Tagihan Diterbitkan</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm">
               <Layers className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">{formatRupiah(stats.total_nominal)}</h3>
-            <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <h3 className="text-xl sm:text-2xl font-black tabular-nums text-slate-900 dark:text-white">{formatRupiah(stats.total_nominal)}</h3>
+            <p className="mt-1 text-[11px] font-semibold text-emerald-700/80 dark:text-emerald-400/80">
               {stats.total_bills.toLocaleString('id-ID')} tagihan aktif
             </p>
           </div>
-        </Card>
+        </div>
 
-        <Card className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        <div className="group relative overflow-hidden rounded-[18px] border-2 border-blue-300/70 bg-gradient-to-br from-blue-50 via-sky-50/60 to-white p-5 shadow-xs transition-all hover:border-blue-400 hover:shadow-md dark:border-blue-700/50 dark:from-blue-950/40 dark:via-sky-950/20 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-blue-400/20 blur-2xl dark:bg-blue-400/10" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Total Nominal Terbayar</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+            <span className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">Total Nominal Terbayar</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm">
               <CheckCircle2 className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl font-black text-blue-600 dark:text-blue-400">{formatRupiah(stats.paid_nominal)}</h3>
-            <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              Tingkat Kolektibilitas: <span className="font-bold text-emerald-600">{stats.collection_rate}%</span>
+            <h3 className="text-xl sm:text-2xl font-black tabular-nums text-blue-600 dark:text-blue-400">{formatRupiah(stats.paid_nominal)}</h3>
+            <p className="mt-1 text-[11px] font-semibold text-blue-700/80 dark:text-blue-400/80">
+              Tingkat Kolektibilitas: <span className="font-bold text-emerald-600 dark:text-emerald-400">{stats.collection_rate}%</span>
             </p>
           </div>
-        </Card>
+        </div>
 
-        <Card className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        <div className="group relative overflow-hidden rounded-[18px] border-2 border-amber-300/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-white p-5 shadow-xs transition-all hover:border-amber-400 hover:shadow-md dark:border-amber-700/50 dark:from-amber-950/40 dark:via-orange-950/20 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl dark:bg-amber-400/10" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Total Nominal Tertunggak</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
+            <span className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Total Nominal Tertunggak</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm">
               <Clock className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl font-black text-amber-600 dark:text-amber-400">{formatRupiah(stats.unpaid_nominal)}</h3>
-            <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <h3 className="text-xl sm:text-2xl font-black tabular-nums text-amber-600 dark:text-amber-400">{formatRupiah(stats.unpaid_nominal)}</h3>
+            <p className="mt-1 text-[11px] font-semibold text-amber-700/80 dark:text-amber-400/80">
               Belum dilunasi orang tua siswa
             </p>
           </div>
-        </Card>
+        </div>
 
-        <Card className="rounded-[20px] border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+        <div className="group relative overflow-hidden rounded-[18px] border-2 border-rose-300/70 bg-gradient-to-br from-rose-50 via-pink-50/60 to-white p-5 shadow-xs transition-all hover:border-rose-400 hover:shadow-md dark:border-rose-700/50 dark:from-rose-950/40 dark:via-pink-950/20 dark:to-slate-900">
+          <div className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 rounded-full bg-rose-400/20 blur-2xl dark:bg-rose-400/10" />
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Jatuh Tempo / Lewat Batas</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
+            <span className="text-xs font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Jatuh Tempo / Lewat Batas</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-sm">
               <AlertCircle className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-3">
-            <h3 className="text-xl font-black text-rose-600 dark:text-rose-400">{stats.overdue_count} Siswa</h3>
-            <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <h3 className="text-xl sm:text-2xl font-black tabular-nums text-rose-600 dark:text-rose-400">{stats.overdue_count} Siswa</h3>
+            <p className="mt-1 text-[11px] font-semibold text-rose-700/80 dark:text-rose-400/80">
               Perlu tindak lanjut bendahara
             </p>
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* 4. EMERALD DATATABLE CONTAINER */}
-      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white shadow-md shadow-emerald-500/5 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 dark:border-emerald-700/80 bg-white shadow-md shadow-emerald-500/10 dark:bg-[#1B2433]">
         {/* Toolbar Header */}
-        <div className="border-b border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5">
+        <div className="border-b border-emerald-200/90 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 sm:p-5 dark:border-emerald-800/60 dark:from-emerald-950/50 dark:via-teal-950/30">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-black text-slate-900 dark:text-white">Daftar Tagihan Siswa</h2>
@@ -601,7 +636,7 @@ export default function StudentBillsManagementPage() {
         {/* Datatable Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 font-black uppercase tracking-wider text-slate-700 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-slate-300">
+            <thead className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 font-black uppercase tracking-wider text-emerald-950 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200">
               <tr>
                 <th className="px-4 py-3.5">Siswa</th>
                 <th className="px-4 py-3.5">Kelas & Unit</th>
@@ -613,7 +648,7 @@ export default function StudentBillsManagementPage() {
                 <th className="px-4 py-3.5 text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
               {bills.map((b) => {
                 const isPaid = String(b.status).toLowerCase() === 'paid'
                 const isOverdue = !isPaid && b.due_date && new Date(b.due_date) < new Date()
@@ -744,7 +779,7 @@ export default function StudentBillsManagementPage() {
         </div>
 
         {/* Footer Pagination */}
-        <div className="border-t border-emerald-500/20 bg-slate-50/50 p-4 dark:bg-slate-800/40">
+        <div className="border-t border-emerald-200/90 bg-emerald-50/30 p-4 dark:border-emerald-800/60 dark:bg-emerald-950/20">
           <Pagination
             currentPage={meta.current_page}
             totalPages={meta.last_page}
@@ -1067,7 +1102,7 @@ export default function StudentBillsManagementPage() {
         <div className="hidden print:block print:fixed print:inset-0 print:bg-white print:p-8">
           <div className="max-w-xl mx-auto border-2 border-slate-800 p-6 rounded-lg text-slate-900">
             <div className="text-center border-b-2 border-slate-800 pb-4">
-              <h2 className="text-lg font-black uppercase tracking-wider">Yayasan Dar El-Iman Padang</h2>
+              <h2 className="text-lg font-black uppercase tracking-wider">{foundationName}</h2>
               <p className="text-xs">Sistem Manajemen Sekolah Terpadu — Bukti Pelunasan Resmi (Kuitansi)</p>
             </div>
             <div className="mt-4 text-xs space-y-1">
@@ -1081,7 +1116,7 @@ export default function StudentBillsManagementPage() {
               </div>
               <div className="flex justify-between">
                 <span>Nama Siswa:</span>
-                <span className="font-bold">{activeReceipt.bill.student?.nama_lengkap || 'Siswa'}</span>
+                <span className="font-bold">{activeReceipt.bill.student?.nama_lengkap || activeReceipt.bill.student?.full_name || activeReceipt.bill.student?.name || '-'}</span>
               </div>
               <div className="flex justify-between">
                 <span>NIS:</span>

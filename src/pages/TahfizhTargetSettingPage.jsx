@@ -1,0 +1,850 @@
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Target,
+  Plus,
+  Search,
+  Filter,
+  Pencil,
+  Trash2,
+  Sparkles,
+  School,
+  Layers,
+  BookOpen,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  ArrowLeft,
+  X,
+  Award,
+  ChevronRight,
+  ShieldCheck,
+} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import AppBreadcrumb from '../components/app/AppBreadcrumb'
+import AppModal from '../components/app/AppModal'
+import { Badge } from '@/components/tailgrids/core/badge'
+import { Button } from '@/components/tailgrids/core/button'
+import { Pagination } from '@/components/tailgrids/core/pagination'
+import { tahfizhTargetService } from '../services/tahfizhTargetService'
+import useDebounce from '../hooks/useDebounce'
+import { useToast } from '../components/app'
+
+const PROGRAM_LABELS = {
+  all: { label: 'Semua Program', color: 'gray' },
+  fullday: { label: 'Full Day School', color: 'emerald' },
+  boarding: { label: 'Pesantren (Boarding)', color: 'blue' },
+  regular: { label: 'Reguler', color: 'purple' },
+}
+
+export default function TahfizhTargetSettingPage() {
+  const navigate = useNavigate()
+  const toast = useToast()
+
+  // State List & Filter
+  const [targets, setTargets] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [options, setOptions] = useState({ units: [], levels: [], grades: [], program_types: [] })
+  
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 350)
+  const [selectedUnit, setSelectedUnit] = useState('all')
+  const [selectedLevel, setSelectedLevel] = useState('all')
+  const [selectedGrade, setSelectedGrade] = useState('all')
+  const [selectedProgram, setSelectedProgram] = useState('all')
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalRecords, setTotalRecords] = useState(0)
+
+  // Modal Form State
+  const [showFormModal, setShowFormModal] = useState(false)
+  const [editingTarget, setEditingTarget] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    target_name: '',
+    education_unit_id: '',
+    unit_level: '',
+    grade_level: 'ALL',
+    program_type: 'fullday',
+    target_juz: 'Juz 30',
+    target_surahs: 37,
+    target_ayats: 564,
+    minimum_kkm_ayats: 350,
+    description: '',
+    is_active: true,
+  })
+
+  // Delete Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [targetToDelete, setTargetToDelete] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Load Reference Options
+  useEffect(() => {
+    async function loadOptions() {
+      try {
+        const data = await tahfizhTargetService.getOptions()
+        if (data) setOptions(data)
+      } catch (err) {
+        console.error('Gagal memuat opsi target:', err)
+      }
+    }
+    loadOptions()
+  }, [])
+
+  // Load Data Targets
+  const fetchTargets = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = {
+        page: currentPage,
+        per_page: 10,
+        search: debouncedSearch || undefined,
+        education_unit_id: selectedUnit !== 'all' ? selectedUnit : undefined,
+        unit_level: selectedLevel !== 'all' ? selectedLevel : undefined,
+        grade_level: selectedGrade !== 'all' ? selectedGrade : undefined,
+        program_type: selectedProgram !== 'all' ? selectedProgram : undefined,
+      }
+      const res = await tahfizhTargetService.getTargets(params)
+      if (res?.success) {
+        setTargets(res.data || [])
+        setTotalPages(res.meta?.last_page || 1)
+        setTotalRecords(res.meta?.total || (res.data || []).length)
+      }
+    } catch (err) {
+      console.error('Error fetching targets:', err)
+      toast('Gagal memuat daftar target KPI Tahfizh', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }, [currentPage, debouncedSearch, selectedUnit, selectedLevel, selectedGrade, selectedProgram, toast])
+
+  useEffect(() => {
+    fetchTargets()
+  }, [fetchTargets])
+
+  // Open Form Modal (Add / Edit)
+  const handleOpenForm = (target = null) => {
+    if (target) {
+      setEditingTarget(target)
+      setFormData({
+        target_name: target.target_name || '',
+        education_unit_id: target.education_unit_id || '',
+        unit_level: target.unit_level || '',
+        grade_level: target.grade_level || 'ALL',
+        program_type: target.program_type || 'fullday',
+        target_juz: target.target_juz || '',
+        target_surahs: target.target_surahs || 37,
+        target_ayats: target.target_ayats || 564,
+        minimum_kkm_ayats: target.minimum_kkm_ayats || 0,
+        description: target.description || '',
+        is_active: target.is_active ?? true,
+      })
+    } else {
+      setEditingTarget(null)
+      setFormData({
+        target_name: '',
+        education_unit_id: '',
+        unit_level: selectedLevel !== 'all' ? selectedLevel : 'SDIT',
+        grade_level: 'ALL',
+        program_type: 'fullday',
+        target_juz: 'Juz 30',
+        target_surahs: 37,
+        target_ayats: 564,
+        minimum_kkm_ayats: 350,
+        description: '',
+        is_active: true,
+      })
+    }
+    setShowFormModal(true)
+  }
+
+  // Handle Form Submit
+  const handleSubmitForm = async (e) => {
+    e.preventDefault()
+    if (!formData.target_name.trim()) {
+      toast('Nama target wajib diisi', 'warning')
+      return
+    }
+    if (!formData.target_ayats || Number(formData.target_ayats) <= 0) {
+      toast('Jumlah target ayat harus lebih besar dari 0', 'warning')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const payload = {
+        ...formData,
+        target_surahs: Number(formData.target_surahs),
+        target_ayats: Number(formData.target_ayats),
+        minimum_kkm_ayats: Number(formData.minimum_kkm_ayats || 0),
+        education_unit_id: formData.education_unit_id || null,
+      }
+
+      if (editingTarget) {
+        await tahfizhTargetService.updateTarget(editingTarget.id, payload)
+        toast('Target KPI Tahfizh berhasil diperbarui', 'success')
+      } else {
+        await tahfizhTargetService.createTarget(payload)
+        toast('Target KPI Tahfizh baru berhasil ditambahkan', 'success')
+      }
+      setShowFormModal(false)
+      fetchTargets()
+    } catch (err) {
+      console.error(err)
+      toast(err.response?.data?.message || 'Gagal menyimpan target', 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Handle Delete
+  const handleDeleteTarget = async () => {
+    if (!targetToDelete) return
+    setIsDeleting(true)
+    try {
+      await tahfizhTargetService.deleteTarget(targetToDelete.id)
+      toast('Target KPI berhasil dihapus', 'success')
+      setShowDeleteModal(false)
+      setTargetToDelete(null)
+      fetchTargets()
+    } catch (err) {
+      console.error(err)
+      toast('Gagal menghapus target', 'error')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6 pb-12">
+      {/* 1. Breadcrumbs */}
+      <AppBreadcrumb
+        items={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: 'Setoran Tahfizh', href: '/dashboard/tahfizh' },
+          { label: 'Pengaturan Target KPI', href: '/dashboard/tahfizh/pengaturan-target' },
+        ]}
+      />
+
+      {/* 2. Hero Header Card (TailGrids Standard) */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-5 sm:p-6 shadow-md shadow-emerald-500/10 dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-emerald-500/20 blur-3xl" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-600/20 border border-emerald-300/40">
+              <Target className="size-7" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">
+                  <Sparkles className="size-3" />
+                  Konfigurasi Kurikulum
+                </span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  Total {totalRecords} Target
+                </span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
+                Pengaturan Target KPI Tahfizh
+              </h1>
+              <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mt-0.5">
+                Standar target capaian hafalan berdasarkan tingkatan jenjang unit, kelas rombel, dan tipe program santri.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <button
+              onClick={() => navigate('/dashboard/tahfizh')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 bg-white/80 hover:bg-white border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:border-slate-700 transition shadow-sm"
+            >
+              <ArrowLeft className="size-3.5" />
+              <span>Kembali ke Tahfizh</span>
+            </button>
+            <button
+              onClick={() => handleOpenForm()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 shadow-md shadow-emerald-700/20 transition"
+            >
+              <Plus className="size-4" />
+              <span>Tambah Target Baru</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Modern Emerald Datatable Container */}
+      <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433]">
+        {/* Baris 1: Toolbar Header */}
+        <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-b border-emerald-200/90 p-4 sm:p-5 dark:border-emerald-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <BookOpen className="size-5 text-emerald-600 dark:text-emerald-400" />
+              Daftar Standar Target Hafalan
+            </h2>
+            <p className="text-xs text-slate-500 font-medium dark:text-slate-400 mt-0.5">
+              Target ini otomatis digunakan untuk kalkulasi sisa ayat dan persentase di halaman Setoran & Portal.
+            </p>
+          </div>
+
+          <button
+            onClick={() => fetchTargets()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-100/70 hover:bg-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 transition"
+          >
+            <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Segarkan</span>
+          </button>
+        </div>
+
+        {/* Baris 2 & 3: Filter & Search Bar */}
+        <div className="bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-emerald-50/50 border-b border-emerald-200/80 p-4 dark:border-emerald-800/60 dark:bg-slate-900/40 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari target berdasarkan nama, target juz, atau deskripsi kurikulum..."
+              className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-emerald-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {/* Filter Jenjang Unit */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                Jenjang Pendidikan
+              </label>
+              <select
+                value={selectedLevel}
+                onChange={(e) => { setSelectedLevel(e.target.value); setCurrentPage(1); }}
+                className="w-full text-xs rounded-xl border border-emerald-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              >
+                <option value="all">Semua Jenjang</option>
+                {options.levels?.map((lvl) => (
+                  <option key={lvl} value={lvl}>{lvl}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Tingkat Kelas */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                Tingkat Kelas
+              </label>
+              <select
+                value={selectedGrade}
+                onChange={(e) => { setSelectedGrade(e.target.value); setCurrentPage(1); }}
+                className="w-full text-xs rounded-xl border border-emerald-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              >
+                <option value="all">Semua Kelas</option>
+                {options.grades?.map((gr) => (
+                  <option key={gr} value={gr}>{gr === 'ALL' ? 'Semua Kelas (ALL)' : `Kelas ${gr}`}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Program */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                Program Sekolah
+              </label>
+              <select
+                value={selectedProgram}
+                onChange={(e) => { setSelectedProgram(e.target.value); setCurrentPage(1); }}
+                className="w-full text-xs rounded-xl border border-emerald-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              >
+                <option value="all">Semua Program</option>
+                <option value="fullday">Full Day School</option>
+                <option value="boarding">Pesantren (Boarding)</option>
+                <option value="regular">Reguler</option>
+              </select>
+            </div>
+
+            {/* Filter Unit Spesifik */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                Unit Spesifik
+              </label>
+              <select
+                value={selectedUnit}
+                onChange={(e) => { setSelectedUnit(e.target.value); setCurrentPage(1); }}
+                className="w-full text-xs rounded-xl border border-emerald-200 bg-white px-2.5 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              >
+                <option value="all">Semua Unit (Global & Spesifik)</option>
+                {options.units?.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabel Data */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 border-b-2 border-emerald-200/90 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90">
+                <th className="py-3 px-4 font-black text-emerald-950 dark:text-emerald-200 uppercase tracking-wider text-[11px]">
+                  Target & Lingkup
+                </th>
+                <th className="py-3 px-4 font-black text-emerald-950 dark:text-emerald-200 uppercase tracking-wider text-[11px]">
+                  Jenjang & Kelas
+                </th>
+                <th className="py-3 px-4 font-black text-emerald-950 dark:text-emerald-200 uppercase tracking-wider text-[11px]">
+                  Program
+                </th>
+                <th className="py-3 px-4 font-black text-emerald-950 dark:text-emerald-200 uppercase tracking-wider text-[11px] text-right">
+                  Target Ayat
+                </th>
+                <th className="py-3 px-4 font-black text-emerald-950 dark:text-emerald-200 uppercase tracking-wider text-[11px] text-right">
+                  Target Surah
+                </th>
+                <th className="py-3 px-4 font-black text-emerald-950 dark:text-emerald-200 uppercase tracking-wider text-[11px] text-center">
+                  Status
+                </th>
+                <th className="py-3 px-4 font-black text-emerald-950 dark:text-emerald-200 uppercase tracking-wider text-[11px] text-center">
+                  Aksi
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-emerald-100/80 dark:divide-emerald-900/40">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-500 font-medium">
+                    <div className="inline-flex items-center gap-2">
+                      <RefreshCw className="size-4 animate-spin text-emerald-600" />
+                      <span>Memuat data target KPI Tahfizh...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : targets.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Target className="size-8 text-slate-300 dark:text-slate-600" />
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                        Tidak ada target KPI yang cocok dengan filter.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                targets.map((tgt) => (
+                  <tr key={tgt.id} className="hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition">
+                    <td className="py-3.5 px-4 font-medium">
+                      <div className="flex items-start gap-2.5">
+                        <div className="size-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 font-black text-xs dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <Target className="size-4" />
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm">
+                            {tgt.target_name}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                              {tgt.target_juz || 'Semua Juz'}
+                            </span>
+                            {tgt.education_unit && (
+                              <span>• Unit: {tgt.education_unit.name}</span>
+                            )}
+                          </div>
+                          {tgt.description && (
+                            <p className="text-[10px] text-slate-400 mt-1 line-clamp-1 italic">
+                              "{tgt.description}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          {tgt.unit_level || 'Semua Jenjang'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          {tgt.grade_level === 'ALL' || !tgt.grade_level ? 'Semua Kelas' : `Kelas ${tgt.grade_level}`}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800">
+                        {PROGRAM_LABELS[tgt.program_type]?.label || tgt.program_type}
+                      </span>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="font-black text-emerald-900 dark:text-emerald-300 text-xs sm:text-sm">
+                        {Number(tgt.target_ayats || 0).toLocaleString('id-ID')}
+                        <span className="text-[10px] font-bold text-emerald-600 ml-1">Ayat</span>
+                      </div>
+                      {tgt.minimum_kkm_ayats > 0 && (
+                        <div className="text-[10px] text-slate-400">
+                          KKM: {tgt.minimum_kkm_ayats}
+                        </div>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+                        {tgt.target_surahs}
+                        <span className="text-[10px] font-medium text-slate-500 ml-1">Surah</span>
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center">
+                      {tgt.is_active ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          <CheckCircle2 className="size-3" />
+                          Aktif
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                          Non-Aktif
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="inline-flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenForm(tgt)}
+                          title="Ubah Target"
+                          className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/50 transition border border-transparent hover:border-amber-200"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          onClick={() => { setTargetToDelete(tgt); setShowDeleteModal(true); }}
+                          title="Hapus Target"
+                          className="p-1.5 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition border border-transparent hover:border-rose-200"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer Paginasi */}
+        <div className="border-t border-emerald-200/90 p-4 dark:border-emerald-800/60 bg-emerald-50/20 dark:bg-slate-900/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-xs text-slate-500 font-medium">
+            Menampilkan data target kurikulum tahfizh terkonfigurasi.
+          </div>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              sideLayout="full"
+              variant="compact"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* 4. MODAL TAMBAH / UBAH TARGET (AppModal) */}
+      <AppModal
+        isOpen={showFormModal}
+        onClose={() => !isSubmitting && setShowFormModal(false)}
+        size="lg"
+      >
+        <div className="p-6 space-y-5">
+          <div className="flex items-center justify-between border-b border-emerald-200/80 pb-3 dark:border-emerald-800/60">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                <Target className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                  {editingTarget ? 'Ubah Target KPI Tahfizh' : 'Tambah Target KPI Tahfizh Baru'}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium dark:text-slate-400">
+                  Konfigurasikan batas capaian ayat & surah untuk kurikulum jenjang.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowFormModal(false)}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmitForm} className="space-y-4 text-xs">
+            {/* Nama Target */}
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Nama Target / Kurikulum *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.target_name}
+                onChange={(e) => setFormData({ ...formData, target_name: e.target.value })}
+                placeholder="Contoh: Target Tahfizh SDIT Kelas 1 (Juz 30 Penuh)"
+                className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+            </div>
+
+            {/* Jenjang & Kelas & Program (3 Kolom) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Jenjang Pendidikan
+                </label>
+                <select
+                  value={formData.unit_level}
+                  onChange={(e) => setFormData({ ...formData, unit_level: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">Semua Jenjang</option>
+                  {options.levels?.map((lvl) => (
+                    <option key={lvl} value={lvl}>{lvl}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Tingkat Kelas
+                </label>
+                <select
+                  value={formData.grade_level}
+                  onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="ALL">Semua Kelas (ALL)</option>
+                  {options.grades?.filter(g => g !== 'ALL').map((gr) => (
+                    <option key={gr} value={gr}>Kelas {gr}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Tipe Program *
+                </label>
+                <select
+                  value={formData.program_type}
+                  onChange={(e) => setFormData({ ...formData, program_type: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="fullday">Full Day School</option>
+                  <option value="boarding">Pesantren (Boarding)</option>
+                  <option value="regular">Reguler</option>
+                  <option value="all">Semua Program</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Target Juz & Target Ayat & Target Surah */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Target Cakupan Juz
+                </label>
+                <input
+                  type="text"
+                  value={formData.target_juz}
+                  onChange={(e) => setFormData({ ...formData, target_juz: e.target.value })}
+                  placeholder="Contoh: Juz 30, Juz 29-30"
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Target Jumlah Ayat *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  max={6236}
+                  value={formData.target_ayats}
+                  onChange={(e) => setFormData({ ...formData, target_ayats: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Target Jumlah Surah *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  max={114}
+                  value={formData.target_surahs}
+                  onChange={(e) => setFormData({ ...formData, target_surahs: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white font-bold"
+                />
+              </div>
+            </div>
+
+            {/* Minimum KKM & Unit Spesifik */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Minimal KKM Kelulusan (Ayat)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={formData.minimum_kkm_ayats}
+                  onChange={(e) => setFormData({ ...formData, minimum_kkm_ayats: e.target.value })}
+                  placeholder="Opsional, misal 350 ayat"
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Unit Pendidikan Spesifik (Opsional)
+                </label>
+                <select
+                  value={formData.education_unit_id}
+                  onChange={(e) => setFormData({ ...formData, education_unit_id: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="">Berlaku Global untuk Jenjang Terkait</option>
+                  {options.units?.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.level})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Deskripsi */}
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Deskripsi / Keterangan Kurikulum
+              </label>
+              <textarea
+                rows={2}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Penjelasan standar kompetensi hafalan..."
+                className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+            </div>
+
+            {/* Tombol Aksi */}
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowFormModal(false)}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-700/20 transition disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-3.5" />
+                    <span>Simpan Pengaturan Target</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </AppModal>
+
+      {/* 5. MODAL HAPUS HARMONIS (TailGrids Standard) */}
+      <AnimatePresence>
+        {showDeleteModal && targetToDelete && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl shadow-rose-950/20 dark:bg-[#1B2433] border border-rose-200 dark:border-rose-900/50"
+            >
+              {/* Garis Aksen Rose */}
+              <div className="h-1.5 bg-gradient-to-r from-rose-500 via-rose-600 to-red-700" />
+
+              <div className="p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="size-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center dark:bg-rose-950/50 dark:text-rose-400">
+                    <Trash2 className="size-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full dark:bg-rose-950 dark:text-rose-300">
+                      Konfirmasi Hapus Target
+                    </span>
+                    <h4 className="text-base font-extrabold text-slate-900 dark:text-white mt-0.5">
+                      Hapus Target KPI?
+                    </h4>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-rose-50/60 p-4 border border-rose-200 text-xs text-rose-950 dark:bg-rose-950/20 dark:border-rose-900/40 dark:text-rose-200">
+                  <p className="font-bold">{targetToDelete.target_name}</p>
+                  <p className="mt-1 text-[11px] text-rose-700 dark:text-rose-300">
+                    Target: {targetToDelete.target_ayats} Ayat ({targetToDelete.target_juz})
+                  </p>
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Tindakan ini akan menghapus target KPI dari sistem. Santri di kelas terkait akan menggunakan target fallback default Al-Qur'an.
+                </p>
+
+                <div className="flex items-center justify-end gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setShowDeleteModal(false); setTargetToDelete(null); }}
+                    disabled={isDeleting}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteTarget}
+                    disabled={isDeleting}
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-700/20 transition disabled:opacity-50"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <RefreshCw className="size-3.5 animate-spin" />
+                        <span>Menghapus...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="size-3.5" />
+                        <span>Hapus Target</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}

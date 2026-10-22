@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
@@ -9,6 +10,11 @@ import {
   Upload,
   BookOpen,
   Building2,
+  School,
+  GraduationCap,
+  Bookmark,
+  UserCheck,
+  Target,
   AlertTriangle,
   AlertCircle,
   Search,
@@ -28,25 +34,28 @@ import {
   FileSpreadsheet,
   ShieldCheck,
   Layers,
+  Coffee,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { cn } from '../lib/utils'
 import { useAuthStore } from '../stores/authStore'
-import { isTeacherRole, isGlobalAccessManager, hasAnyRole, ROLES } from '../auth/portalResolver'
+import { hasAnyRole, getUserRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
 import { scheduleService } from '../services/scheduleService'
 import { educationUnitService } from '../services/educationUnitService'
 import { tahunAjaranService } from '../services/tahunAjaranService'
-import { printCleanTable, downloadPdfTable } from '../utils/printHelper'
+import { printCleanTable, downloadPdfTable, printMatrixSchedule } from '../utils/printHelper'
 import { parseSpreadsheetFile, downloadSpreadsheetTemplate } from '../utils/spreadsheetParser'
 import {
   ActionDropdown,
   AppBadge,
+  useToast,
   AppButton,
   AppDrawer,
   AppEmptyState,
   AppErrorState,
   AppSearch,
   AppSkeleton,
+  AppTabs,
   MobileDataCard,
   PersonIdentityCell,
 } from '../components/app'
@@ -231,64 +240,6 @@ function HarmonizedDeleteModal({ isOpen, onClose, onConfirm, item, isSubmitting 
   )
 }
 
-function ToastStack({ toasts, onDismiss }) {
-  return (
-    <aside
-      aria-label="Notifikasi sistem"
-      className="pointer-events-none fixed bottom-5 right-5 z-[80] flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0"
-    >
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div
-            key={toast.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border p-4 shadow-xl backdrop-blur-md ${
-              toast.type === 'error'
-                ? 'border-rose-200 bg-white/95 text-rose-900 dark:border-rose-800/70 dark:bg-[#1C2637]/95 dark:text-rose-200'
-                : toast.type === 'warning'
-                ? 'border-amber-200 bg-white/95 text-amber-900 dark:border-amber-800/70 dark:bg-[#1C2637]/95 dark:text-amber-200'
-                : 'border-emerald-200 bg-white/95 text-emerald-900 dark:border-emerald-800/70 dark:bg-[#1C2637]/95 dark:text-emerald-200'
-            }`}
-          >
-            <div
-              className={`flex size-8 shrink-0 items-center justify-center rounded-xl ${
-                toast.type === 'error'
-                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : toast.type === 'warning'
-                  ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
-                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
-              }`}
-            >
-              {toast.type === 'error' ? (
-                <AlertTriangle className="size-4" strokeWidth={2.2} />
-              ) : toast.type === 'warning' ? (
-                <AlertCircle className="size-4" strokeWidth={2.2} />
-              ) : (
-                <CheckCircle2 className="size-4" strokeWidth={2.2} />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{toast.title}</p>
-              {toast.message && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">{toast.message}</p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => onDismiss?.(toast.id)}
-              className="size-5 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
-            >
-              <X className="size-3.5" />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </aside>
-  )
-}
 
 const DAYS_MAP = [
   { id: 1, name: 'Senin' },
@@ -305,6 +256,8 @@ const emptyForm = {
   kelas_id: '',
   employee_id: '',
   subject_id: '',
+  activity_type: 'kbm', // 'kbm' | 'routine' | 'break'
+  activity_name: '',
   academic_year_id: '',
   semester_id: '',
   day_of_week: 1,
@@ -327,6 +280,13 @@ const pickError = (error, fallback) => {
 const formatTime = (value) => value?.slice(0, 5) || '--:--'
 const subjectName = (item) => item?.nama_mapel || item?.name || 'Mata Pelajaran'
 
+const getActivityTitle = (item) => {
+  if (item?.activity_type && item?.activity_type !== 'kbm') {
+    return item?.activity_name || 'Kegiatan Sekolah'
+  }
+  return subjectName(item?.subject)
+}
+
 export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = false, hidePageHeader = false }) {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
@@ -341,13 +301,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     return list.map((r) => (typeof r === 'string' ? r : r?.name || r?.role_name || r?.nama || ''))
   }, [authUser])
 
-  const isGuru = useMemo(() => isTeacherRole(userRoles), [userRoles])
-  const isTu = useMemo(() => hasAnyRole(userRoles, ROLES.TATA_USAHA), [userRoles])
-  const canManage = useMemo(() =>
-    !isGuru && (
-      isGlobalAccessManager(userRoles) ||
-      hasAnyRole(userRoles, [...ROLES.KEPALA_SEKOLAH, ...ROLES.DIVISI, ...ROLES.WAKA, ...ROLES.TATA_USAHA])
-    ), [isGuru, userRoles])
+  const authLevel = useMemo(() => getUserRoleLevel(authUser), [authUser])
+  const isGuru = useMemo(() => {
+    if (authLevel === ROLE_LEVELS.GURU) return true
+    const hasGuru = userRoles.some((r) => /guru|pendidik|pengajar|walas|wali[\s_]*kelas/i.test(r))
+    const hasAdminOrKepsek = userRoles.some((r) => /admin|super|kepala[\s_]*sekolah|kepsek|waka|tata[\s_]*usaha|tu|operator|divisi|yayasan/i.test(r))
+    return hasGuru && !hasAdminOrKepsek
+  }, [authLevel, userRoles])
+  const isTu = useMemo(() => authLevel === ROLE_LEVELS.OPERATOR || authLevel === ROLE_LEVELS.TATA_USAHA || userRoles.some(r => /tata[\s_]*usaha|tu|staf[\s_]*tu|admin[\s_]*tu/i.test(r)), [authLevel, userRoles])
+  const canManage = useMemo(() => !isGuru && (authLevel <= ROLE_LEVELS.KEPALA_SEKOLAH || isTu), [isGuru, authLevel, isTu]) // Level <= 4 & TU (Level 3)
+
+  // Guru dilarang mengakses halaman Master Jadwal Pelajaran (dialihkan ke Portal Guru)
+  if (isGuru && !embedded) {
+    return <Navigate to="/portal-guru/workspace?tab=jadwal" replace />
+  }
 
   // Resolusi unit_id guru / TU dari profil user
   const userUnitId = useMemo(() => {
@@ -396,32 +363,31 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
   // Modals & Drawers
   const [modal, setModal] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [deleteItem, setDeleteItem] = useState(null)
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState(null)
   const [importPreviewData, setImportPreviewData] = useState([])
   const [isImporting, setIsImporting] = useState(false)
   const [showExportModal, setShowExportModal] = useState(false)
-  const [exportFormat, setExportFormat] = useState('xlsx')
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [printFormatMode, setPrintFormatMode] = useState('matrix') // 'matrix' (Matriks Mingguan A4 Landscape) | 'table' (Rekap Log Baris)
   const [printTeacherFilter, setPrintTeacherFilter] = useState('')
+  const [printKelasFilter, setPrintKelasFilter] = useState('')
+  const [isGeneratingMatrix, setIsGeneratingMatrix] = useState(false)
   const [detailDrawerItem, setDetailDrawerItem] = useState(null)
-  const [editing, setEditing] = useState(null)
-  const [deleteItem, setDeleteItem] = useState(null)
-  const [toasts, setToasts] = useState([])
-
-  const pushToast = (title, message, type = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, title, message, type }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 4500)
-  }
+  // Global Toast
+  const { pushToast } = useToast()
 
   // Form State & Validation
   const [form, setForm] = useState(emptyForm)
   const [formErrors, setFormErrors] = useState({})
   const [conflictWarning, setConflictWarning] = useState('')
   const [isDirty, setIsDirty] = useState(false)
+
+  // Availability State (Rincian Hari Kosong & Rekomendasi Jam Bebas Bentrok)
+  const [availabilityData, setAvailabilityData] = useState(null)
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
 
   // Live debounced conflict check saat modal dibuka dan form diubah
   useEffect(() => {
@@ -480,6 +446,53 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     editing?.id,
   ])
 
+  // Live fetch availability data saat kelas / guru / tahun ajaran berubah
+  useEffect(() => {
+    if (!modal) {
+      setAvailabilityData(null)
+      return
+    }
+
+    const { academic_year_id, semester_id, employee_id, kelas_id, day_of_week } = form
+    let isCancelled = false
+
+    const timer = setTimeout(async () => {
+      try {
+        setAvailabilityLoading(true)
+        const res = await scheduleService.getAvailability({
+          academic_year_id: academic_year_id || undefined,
+          semester_id: semester_id || undefined,
+          employee_id: employee_id || undefined,
+          kelas_id: kelas_id || undefined,
+          day_of_week: day_of_week ? Number(day_of_week) : undefined,
+          ignore_id: editing?.id || undefined,
+        })
+        if (!isCancelled) {
+          setAvailabilityData(res)
+        }
+      } catch {
+        // Abaikan error jaringan availability
+      } finally {
+        if (!isCancelled) {
+          setAvailabilityLoading(false)
+        }
+      }
+    }, 200)
+
+    return () => {
+      isCancelled = true
+      clearTimeout(timer)
+    }
+  }, [
+    modal,
+    form.academic_year_id,
+    form.semester_id,
+    form.employee_id,
+    form.kelas_id,
+    form.day_of_week,
+    editing?.id,
+  ])
+
   // Fetch Options
   const { data: options = {}, isLoading: optionsLoading } = useQuery({
     queryKey: ['schedule-options'],
@@ -534,6 +547,16 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     })
     return Array.from(map.values())
   }, [unitsList, options.kelas])
+
+  // Active unit object for print modal, branding, and academic configuration
+  const activeUnitObj = useMemo(() => {
+    const targetId = (isGuru || isTu) && userUnitId ? userUnitId : unitFilter
+    return (
+      unitOptions.find((u) => String(u.id) === String(targetId)) ||
+      unitOptions[0] ||
+      null
+    )
+  }, [unitOptions, isGuru, isTu, userUnitId, unitFilter])
 
   // Effective Day filter: in weekly view mode, use selectedWeeklyDay; in table view mode, use dayFilter
   const effectiveDayFilter = viewMode === 'weekly' ? selectedWeeklyDay : dayFilter
@@ -617,11 +640,11 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
   }, [options.kelas, form.unit_pendidikan_id, form.academic_year_id, form.semester_id])
 
   const filteredGuru = useMemo(() => {
-    const list = options.guru || []
+    const list = options.all_guru || options.guru || []
     if (!form.unit_pendidikan_id) return list
     const filtered = list.filter((g) => g.unit_id === form.unit_pendidikan_id)
     return filtered.length > 0 ? filtered : list
-  }, [options.guru, form.unit_pendidikan_id])
+  }, [options.all_guru, options.guru, form.unit_pendidikan_id])
 
   const filteredGuruInPicker = useMemo(() => {
     const list = filteredGuru
@@ -641,6 +664,35 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     const filtered = list.filter((m) => !m.unit_pendidikan_id || m.unit_pendidikan_id === form.unit_pendidikan_id)
     return filtered.length > 0 ? filtered : list
   }, [options.mata_pelajaran, form.unit_pendidikan_id])
+
+  // ── Opsi Guru & Mata Pelajaran Terikat (Cascading Turunan & Hanya Guru dengan Jadwal Nyata) ──
+  const filterSubjectOptions = useMemo(() => {
+    let list = options.mata_pelajaran || []
+    if (unitFilter) {
+      list = list.filter((m) => !m.unit_pendidikan_id || m.unit_pendidikan_id === unitFilter)
+    }
+    if (teacherFilter) {
+      const direct = list.filter((m) => Array.isArray(m.guru_ids) && m.guru_ids.includes(teacherFilter))
+      if (direct.length > 0) return direct
+    }
+    return list
+  }, [options.mata_pelajaran, unitFilter, teacherFilter])
+
+  const filterTeacherOptions = useMemo(() => {
+    // HANYA guru yang benar-benar memiliki jadwal pelajaran aktif di database (Zero Non-Teaching / Kosong)
+    let list = (options.guru || []).filter((g) => {
+      if (g.has_schedule !== undefined) return Boolean(g.has_schedule)
+      return true
+    })
+    if (unitFilter) {
+      list = list.filter((g) => !unitFilter || String(g.unit_id) === String(unitFilter))
+    }
+    if (subjectFilter) {
+      const direct = list.filter((g) => Array.isArray(g.subject_ids) && g.subject_ids.includes(subjectFilter))
+      if (direct.length > 0) return direct
+    }
+    return list
+  }, [options.guru, unitFilter, subjectFilter])
 
   // Save Mutation
   const saveMutation = useMutation({
@@ -717,6 +769,8 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       kelas_id: item.kelas_id || item.school_class_id || '',
       employee_id: item.employee_id || item.teacher_id || '',
       subject_id: item.subject_id || '',
+      activity_type: item.activity_type || 'kbm',
+      activity_name: item.activity_name || '',
       academic_year_id: item.academic_year_id || '',
       semester_id: item.semester_id || '',
       day_of_week: item.day_of_week || 1,
@@ -800,9 +854,19 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     if (!form.academic_year_id) errors.academic_year_id = 'Tahun Ajaran wajib dipilih.'
     if (!form.semester_id) errors.semester_id = 'Semester wajib dipilih.'
     if (!form.kelas_id) errors.kelas_id = 'Kelas / Rombel wajib dipilih.'
-    if (!form.employee_id) errors.employee_id = 'Guru Pengampu wajib dipilih.'
-    if (!form.subject_id) errors.subject_id = 'Mata Pelajaran wajib dipilih.'
-    if (!form.day_of_week) errors.day_of_week = 'Hari Mengajar wajib dipilih.'
+
+    const isKbm = (form.activity_type || 'kbm') === 'kbm'
+
+    if (isKbm) {
+      if (!form.employee_id) errors.employee_id = 'Guru Pengampu wajib dipilih.'
+      if (!form.subject_id) errors.subject_id = 'Mata Pelajaran wajib dipilih.'
+    } else {
+      if (!form.activity_name?.trim()) {
+        errors.activity_name = 'Nama kegiatan sekolah wajib diisi (contoh: Upacara Bendera, Dzikir Pagi, Waktu Istirahat, ISHOMA, dll.).'
+      }
+    }
+
+    if (!form.day_of_week) errors.day_of_week = 'Hari wajib dipilih.'
     if (!form.time_start) errors.time_start = 'Jam mulai wajib diisi.'
     if (!form.time_end) errors.time_end = 'Jam selesai wajib diisi.'
 
@@ -820,10 +884,13 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
       return
     }
 
+    const isKbm = (form.activity_type || 'kbm') === 'kbm'
     const payload = {
       kelas_id: form.kelas_id,
-      employee_id: form.employee_id,
-      subject_id: form.subject_id,
+      employee_id: isKbm ? form.employee_id : (form.employee_id || null),
+      subject_id: isKbm ? form.subject_id : null,
+      activity_type: isKbm ? 'kbm' : 'activity',
+      activity_name: !isKbm ? (form.activity_name?.trim() || null) : null,
       academic_year_id: form.academic_year_id,
       semester_id: form.semester_id,
       day_of_week: Number(form.day_of_week),
@@ -1013,6 +1080,32 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
     }
   }
 
+  // Matrix Print Execution Handler (Resmi A4 Landscape Full Day & Boarding)
+  const handleExecuteMatrixPrint = async () => {
+    try {
+      setIsGeneratingMatrix(true)
+      const targetKelasId = printKelasFilter || (classFilter && classFilter !== 'all' ? classFilter : '')
+      const targetUnitId = (isGuru || isTu) && userUnitId ? userUnitId : (unitFilter && unitFilter !== 'all' ? unitFilter : (activeUnitObj?.id ? String(activeUnitObj.id) : ''))
+      const matrixData = await scheduleService.getMatrix({
+        kelas_id: targetKelasId,
+        unit_id: targetUnitId,
+      })
+
+      if (!matrixData || !matrixData.kop) {
+        pushToast('Peringatan', 'Data matriks jadwal tidak ditemukan.', 'warning')
+        return
+      }
+
+      setIsPrintModalOpen(false)
+      printMatrixSchedule(matrixData)
+      pushToast('Siap Cetak', 'Dokumen Matriks Jadwal Pelajaran resmi telah dimuat ke printer.', 'success')
+    } catch (err) {
+      pushToast('Error', 'Gagal memproses data matriks jadwal: ' + (err?.message || 'Error server'), 'error')
+    } finally {
+      setIsGeneratingMatrix(false)
+    }
+  }
+
   // Print Execution Handler
   const handleExecutePrint = (mode = 'clean') => {
     setIsPrintModalOpen(false)
@@ -1066,20 +1159,20 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
   const pageActions = (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
-      {/* 1. Cetak / Print (Vivid Indigo Squircle + Floating Tooltip) — tersedia untuk semua role */}
+      {/* Cetak Jadwal Pelajaran (Vivid Indigo Squircle + Floating Tooltip) — Opsi Matriks / Rekap dipilih di modal */}
       <div className="group relative inline-flex">
         <button
           type="button"
-          title="Cetak & Download Data Jadwal"
-          aria-label="Cetak & Download Data Jadwal"
+          title="Cetak Jadwal Pelajaran"
+          aria-label="Cetak Jadwal Pelajaran"
           onClick={() => setIsPrintModalOpen(true)}
-          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+          className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-700 text-white border border-indigo-300/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer shadow-xs"
         >
           <Printer className="size-5 text-white" strokeWidth={2.2} />
         </button>
         <div className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ease-out z-50 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl dark:bg-slate-100 dark:text-slate-900">
           <div className="absolute bottom-full left-1/2 -mb-1 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-slate-100" />
-          Cetak Data
+          Cetak Jadwal
         </div>
       </div>
 
@@ -1185,14 +1278,14 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         id="schedule-print-title"
                         className="modal-title text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2"
                       >
-                        <span>Opsi Cetak & Unduh Jadwal</span>
+                        <span>Cetak Dokumen Resmi Jadwal</span>
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#0E5C44] border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800/60">
                           <Sparkles className="size-3" />
-                          Cetak & PDF
+                          A4 Landscape & Portrait
                         </span>
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Pilih cakupan pengajar dan format cetak resmi jadwal pelajaran
+                        Pilih format dokumen cetak resmi (Matriks Mingguan atau Rekap Log)
                       </p>
                     </div>
                   </div>
@@ -1206,66 +1299,168 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   </button>
                 </div>
 
+                {/* Tab Pemilih Format Dokumen */}
+                <div className="px-6 pt-4 pb-0 bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800">
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/60 dark:bg-slate-800/60 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setPrintFormatMode('matrix')}
+                      className={cn(
+                        "flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                        printFormatMode === 'matrix'
+                          ? "bg-white text-emerald-800 shadow-xs dark:bg-slate-700 dark:text-emerald-300 font-extrabold"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                      )}
+                    >
+                      <LayoutGrid className="size-3.5" />
+                      <span>Matriks Mingguan (Resmi)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPrintFormatMode('table')}
+                      className={cn(
+                        "flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                        printFormatMode === 'table'
+                          ? "bg-white text-indigo-800 shadow-xs dark:bg-slate-700 dark:text-indigo-300 font-extrabold"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                      )}
+                    >
+                      <TableIcon className="size-3.5" />
+                      <span>Rekap Tabel Baris</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Body */}
                 <div className="modal-body min-h-0 flex-1 overflow-y-auto p-6 space-y-4">
-                  {/* Teacher Scope Filter */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Filter Guru Pengampu (Opsional)
-                    </label>
-                    <select
-                      value={printTeacherFilter}
-                      onChange={(e) => setPrintTeacherFilter(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20"
-                    >
-                      <option value="">Semua Guru (Seluruh Jadwal Terfilter)</option>
-                      {(options.guru || []).map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.nama_lengkap || g.nama} {g.niy ? `(NIY ${g.niy})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[11px] text-slate-400">
-                      {printTeacherFilter
-                        ? 'Mencetak jadwal khusus untuk guru terpilih.'
-                        : 'Mencetak seluruh baris jadwal yang aktif pada filter saat ini.'}
-                    </p>
-                  </div>
-
-                  {/* Action Cards */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
-                    <button
-                      type="button"
-                      onClick={() => handleExecutePrint('clean')}
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 hover:bg-emerald-100/70 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-left transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="size-9 rounded-xl bg-gradient-to-br from-[#0E5C44] to-[#147B5B] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-                          <Printer className="size-4.5" strokeWidth={2.25} />
+                  {printFormatMode === 'matrix' ? (
+                    /* ── FORMAT 1: MATRIKS MINGGUAN RESMI (A4 LANDSCAPE) ── */
+                    <div className="space-y-4">
+                      {/* Pilihan Rombel / Kelas */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                            Pilih Rombel / Kelas Target
+                          </label>
+                          <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                            {activeUnitObj?.program_type === 'boarding' ? 'Boarding School' : 'Full Day School'}
+                          </span>
                         </div>
-                        <div>
-                          <h5 className="text-xs font-black text-slate-900 dark:text-white">Cetak Langsung (Print Clean)</h5>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Tampilan cetak browser resmi tanpa artefak sidebar/navigasi</p>
+                        <select
+                          value={printKelasFilter}
+                          onChange={(e) => setPrintKelasFilter(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20"
+                        >
+                          <option value="">Kelas Aktif / Paling Atas di Unit</option>
+                          {(options.kelas || []).map((k) => (
+                            <option key={k.id} value={k.id}>
+                              {k.nama_kelas || k.kode_kelas || 'Kelas'} {k.jenjang ? `(${k.jenjang})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          Mencetak tabel jadwal matriks mingguan (Senin s/d Sabtu) dengan Kop Surat Resmi Lembaga, identitas wali kelas, kepala sekolah, serta pembedaan otomatis Full Day vs Boarding School.
+                        </p>
+                      </div>
+
+                      {/* Callout Info Zero Hardcode */}
+                      <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-3.5 dark:border-emerald-800/60 dark:bg-emerald-950/40">
+                        <div className="flex items-start gap-2.5">
+                          <ShieldCheck className="size-4.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <div className="text-[11px] text-emerald-950 dark:text-emerald-200 leading-snug">
+                            <strong>Data Asli Database (Zero Hardcode):</strong> Slot waktu, mapel, guru, dan pengesahan diturunkan 100% dari database nyata unit. Slot kosong tampil bersih tanpa data karangan.
+                          </div>
                         </div>
                       </div>
-                    </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleExecutePrint('pdf')}
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-rose-200/80 bg-rose-50/70 hover:bg-rose-100/70 dark:border-rose-900/40 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-left transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="size-9 rounded-xl bg-gradient-to-br from-rose-600 to-rose-700 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-                          <Download className="size-4.5" strokeWidth={2.25} />
-                        </div>
-                        <div>
-                          <h5 className="text-xs font-black text-slate-900 dark:text-white">Unduh Berkas PDF (.pdf)</h5>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">Unduh dokumen jadwal pelajaran siap arsip dalam format PDF</p>
-                        </div>
+                      {/* Tombol Cetak Matriks */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                          type="button"
+                          disabled={isGeneratingMatrix}
+                          onClick={handleExecuteMatrixPrint}
+                          className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-left transition-all duration-200 cursor-pointer shadow-md shadow-emerald-950/15 group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="size-9 rounded-xl bg-white/20 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                              <Printer className="size-4.5" strokeWidth={2.25} />
+                            </div>
+                            <div>
+                              <h5 className="text-xs font-black text-white">
+                                {isGeneratingMatrix ? 'Memuat Data Matriks...' : 'Cetak Matriks Jadwal Resmi (A4 Landscape)'}
+                              </h5>
+                              <p className="text-[11px] text-emerald-100">
+                                Kop Surat Lembaga • Format Matriks Mingguan • Tanda Tangan Resmi
+                              </p>
+                            </div>
+                          </div>
+                        </button>
                       </div>
-                    </button>
-                  </div>
+                    </div>
+                  ) : (
+                    /* ── FORMAT 2: REKAP TABEL BARIS (A4 PORTRAIT) ── */
+                    <div className="space-y-4">
+                      {/* Teacher Scope Filter */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Filter Guru Pengampu (Opsional)
+                        </label>
+                        <select
+                          value={printTeacherFilter}
+                          onChange={(e) => setPrintTeacherFilter(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:border-[#0E5C44] focus:ring-2 focus:ring-[#0E5C44]/20"
+                        >
+                          <option value="">Semua Guru (Seluruh Jadwal Terfilter)</option>
+                          {filterTeacherOptions.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.nama_lengkap || g.nama} {g.niy ? `(NIY ${g.niy})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-slate-400">
+                          {printTeacherFilter
+                            ? 'Mencetak jadwal khusus untuk guru terpilih.'
+                            : 'Mencetak seluruh baris jadwal yang aktif pada filter saat ini.'}
+                        </p>
+                      </div>
+
+                      {/* Action Cards */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                        <button
+                          type="button"
+                          onClick={() => handleExecutePrint('clean')}
+                          className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 hover:bg-emerald-100/70 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-left transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="size-9 rounded-xl bg-gradient-to-br from-[#0E5C44] to-[#147B5B] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                              <Printer className="size-4.5" strokeWidth={2.25} />
+                            </div>
+                            <div>
+                              <h5 className="text-xs font-black text-slate-900 dark:text-white">Cetak Rekap Tabel (Print Clean)</h5>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">Tampilan cetak browser resmi tanpa artefak sidebar/navigasi</p>
+                            </div>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleExecutePrint('pdf')}
+                          className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-rose-200/80 bg-rose-50/70 hover:bg-rose-100/70 dark:border-rose-900/40 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-left transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="size-9 rounded-xl bg-gradient-to-br from-rose-600 to-rose-700 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                              <Download className="size-4.5" strokeWidth={2.25} />
+                            </div>
+                            <div>
+                              <h5 className="text-xs font-black text-slate-900 dark:text-white">Unduh Berkas PDF (.pdf)</h5>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">Unduh dokumen jadwal pelajaran siap arsip dalam format PDF</p>
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Footer */}
@@ -1275,7 +1470,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     onClick={() => setIsPrintModalOpen(false)}
                     className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-br from-rose-500 via-rose-600 to-red-700 text-white px-4 py-2.5 text-xs font-extrabold border border-rose-300/40 transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer"
                   >
-                    Batal
+                    Tutup
                   </button>
                 </div>
               </div>
@@ -1785,54 +1980,26 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               </div>
 
               {/* ── TAB DAFTAR TABEL & MATRIKS MINGGUAN (POSISI DI CONTAINER DATATABLE) ── */}
-              <div className="inline-flex items-center rounded-xl bg-slate-100/90 p-1 dark:bg-slate-800/80 border border-emerald-200/60 dark:border-emerald-800/50">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('table')}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition-all duration-200 cursor-pointer',
-                    viewMode === 'table'
-                      ? 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-700/25'
-                      : 'text-slate-600 hover:text-emerald-800 dark:text-slate-300 dark:hover:text-emerald-300'
-                  )}
-                >
-                  <TableIcon className="size-3.5" />
-                  <span>Daftar Tabel</span>
-                  <span
-                    className={cn(
-                      'rounded-full px-1.5 py-0.2 text-[10px] font-black',
-                      viewMode === 'table'
-                        ? 'bg-white/20 text-white'
-                        : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                    )}
-                  >
-                    {Number(meta.total ?? 0).toLocaleString('id-ID')}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('weekly')}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-black transition-all duration-200 cursor-pointer',
-                    viewMode === 'weekly'
-                      ? 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-sm shadow-emerald-700/25'
-                      : 'text-slate-600 hover:text-emerald-800 dark:text-slate-300 dark:hover:text-emerald-300'
-                  )}
-                >
-                  <LayoutGrid className="size-3.5" />
-                  <span>Matriks Mingguan</span>
-                  <span
-                    className={cn(
-                      'rounded-full px-1.5 py-0.2 text-[10px] font-black',
-                      viewMode === 'weekly'
-                        ? 'bg-white/20 text-white'
-                        : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                    )}
-                  >
-                    7 Hari
-                  </span>
-                </button>
-              </div>
+              {/* ── TAB DAFTAR TABEL & MATRIKS MINGGUAN (STANDAR CANONICAL PILL SEGMENTED) ── */}
+              <AppTabs
+                tabs={[
+                  {
+                    id: 'table',
+                    label: 'Daftar Tabel',
+                    icon: TableIcon,
+                    badge: Number(meta.total ?? 0).toLocaleString('id-ID'),
+                  },
+                  {
+                    id: 'weekly',
+                    label: 'Matriks Mingguan',
+                    icon: LayoutGrid,
+                    badge: '7 Hari',
+                  },
+                ]}
+                activeTab={viewMode}
+                onChange={setViewMode}
+                ariaLabel="Mode Tampilan Jadwal"
+              />
             </div>
 
             {/* Kanan: 4 Vivid Gradient Squircle Action Buttons */}
@@ -1912,21 +2079,54 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 aria-label="Filter Guru"
                 value={teacherFilter}
                 onChange={(e) => {
-                  setTeacherFilter(e.target.value)
+                  const newTeacherId = e.target.value
+                  setTeacherFilter(newTeacherId)
+                  if (newTeacherId && subjectFilter) {
+                    const targetSubj = (options.mata_pelajaran || []).find((m) => String(m.id) === String(subjectFilter))
+                    if (targetSubj && Array.isArray(targetSubj.guru_ids) && targetSubj.guru_ids.length > 0 && !targetSubj.guru_ids.includes(newTeacherId)) {
+                      setSubjectFilter('')
+                    }
+                  }
                   setPage(1)
                 }}
                 className="w-full sm:w-auto min-w-[140px]"
               >
-                <option value="">Semua Guru</option>
-                {(options.guru || [])
-                  .filter((g) => !unitFilter || g.unit_id === unitFilter)
-                  .map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nama_lengkap}
-                    </option>
-                  ))}
+                <option value="">
+                  {subjectFilter ? 'Semua Guru Mapel Ini' : 'Semua Guru'}
+                </option>
+                {filterTeacherOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nama_lengkap}
+                  </option>
+                ))}
               </MasterFilterSelect>
             )}
+
+            <MasterFilterSelect
+              aria-label="Filter Mata Pelajaran"
+              value={subjectFilter}
+              onChange={(e) => {
+                const newSubjectId = e.target.value
+                setSubjectFilter(newSubjectId)
+                if (newSubjectId && teacherFilter) {
+                  const targetGuru = (options.guru || []).find((g) => String(g.id) === String(teacherFilter))
+                  if (targetGuru && Array.isArray(targetGuru.subject_ids) && targetGuru.subject_ids.length > 0 && !targetGuru.subject_ids.includes(newSubjectId)) {
+                    setTeacherFilter('')
+                  }
+                }
+                setPage(1)
+              }}
+              className="w-full sm:w-auto min-w-[150px]"
+            >
+              <option value="">
+                {teacherFilter ? 'Semua Mapel Guru Ini' : 'Semua Mata Pelajaran'}
+              </option>
+              {filterSubjectOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nama_mapel || item.nama || item.name}
+                </option>
+              ))}
+            </MasterFilterSelect>
 
             <MasterFilterSelect
               aria-label="Filter Status"
@@ -2010,21 +2210,17 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               compact
             />
           </div>
-        ) : items.length === 0 ? (
-          <div className="p-8 print:hidden">
-            <AppEmptyState
-              title="Belum Ada Jadwal Pelajaran"
-              description="Tidak ada jadwal yang sesuai dengan filter. Tambahkan jadwal baru atau sesuaikan kata kunci pencarian."
-              actionLabel={activeFilterCount > 0 || search ? 'Reset Filter' : 'Tambah Jadwal'}
-              onAction={activeFilterCount > 0 || search ? resetFilters : openAdd}
-            />
-          </div>
         ) : viewMode === 'weekly' ? (
           /* WEEKLY MATRIX GRID VIEW */
           <div className="p-5 space-y-5">
             {/* Canonical Days Tab Strip */}
-            <div className="relative rounded-2xl border-2 border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/30 dark:bg-slate-900/60 p-1.5 shadow-2xs">
-              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {/* Canonical Days Tab Strip */}
+            <div
+              role="tablist"
+              aria-label="Filter Hari Jadwal"
+              className="inline-flex w-full items-center gap-1.5 rounded-2xl bg-slate-100/90 dark:bg-slate-800/90 border border-emerald-200/80 dark:border-emerald-800/60 p-1.5 shadow-2xs overflow-x-auto no-scrollbar"
+            >
+              <div className="flex w-full gap-1.5 overflow-x-auto no-scrollbar">
                 {DAYS_MAP.map((day) => {
                   const dayCount =
                     stats?.per_hari?.[day.id] ??
@@ -2036,16 +2232,18 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                     <button
                       key={day.id}
                       type="button"
+                      role="tab"
+                      aria-selected={isDayActive}
                       onClick={() => {
                         setSelectedWeeklyDay(day.id)
                         setDayFilter(String(day.id))
                         setPage(1)
                       }}
                       className={cn(
-                        'flex h-10 shrink-0 items-center gap-2 rounded-xl px-4 text-xs font-black transition-all duration-200 cursor-pointer',
+                        'flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 shrink-0',
                         isDayActive
-                          ? 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-700/25'
-                          : 'bg-white text-slate-700 hover:bg-emerald-50/60 hover:text-emerald-900 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/70'
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 border border-emerald-400/40 scale-[1.01]'
+                          : 'border border-transparent text-slate-600 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300 hover:bg-white/80 dark:hover:bg-slate-700/60 font-bold'
                       )}
                     >
                       <Calendar className="size-3.5" />
@@ -2055,7 +2253,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                           'rounded-full px-2 py-0.5 text-[10px] font-black',
                           isDayActive
                             ? 'bg-white/20 text-white'
-                            : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                            : 'bg-emerald-100/90 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
                         )}
                       >
                         {dayCount}
@@ -2093,9 +2291,17 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                       </div>
                     </div>
 
-                    <h4 className="mt-2 text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-400">
-                      {subjectName(item.subject)}
-                    </h4>
+                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                      {item.activity_type && item.activity_type !== 'kbm' && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          <Sparkles className="size-2.5 text-blue-600 dark:text-blue-400" />
+                          Kegiatan Non-KBM
+                        </span>
+                      )}
+                      <h4 className="text-sm font-extrabold text-slate-900 group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-400">
+                        {getActivityTitle(item)}
+                      </h4>
+                    </div>
 
                     <div className="mt-2 space-y-1 text-xs text-slate-600 dark:text-slate-300">
                       <p className="flex items-center gap-1.5 font-medium">
@@ -2112,7 +2318,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                       </p>
                       <p className="flex items-center gap-1.5 font-medium">
                         <Users className="h-3.5 w-3.5 shrink-0 text-emerald-600/70 dark:text-emerald-400/70" />
-                        <span>{item.employee?.nama_lengkap || item.teacher?.name || 'Guru'}</span>
+                        <span>{item.employee?.nama_lengkap || item.teacher?.name || (item.activity_type && item.activity_type !== 'kbm' ? 'Umum / Mandiri' : 'Guru Pengampu')}</span>
                       </p>
                     </div>
 
@@ -2133,6 +2339,15 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               </div>
             )}
           </div>
+        ) : items.length === 0 ? (
+          <div className="p-8 print:hidden">
+            <AppEmptyState
+              title="Belum Ada Jadwal Pelajaran"
+              description="Tidak ada jadwal yang sesuai dengan filter. Tambahkan jadwal baru atau sesuaikan kata kunci pencarian."
+              actionLabel={activeFilterCount > 0 || search ? 'Reset Filter' : 'Tambah Jadwal'}
+              onAction={activeFilterCount > 0 || search ? resetFilters : openAdd}
+            />
+          </div>
         ) : (
           /* TABLE & MOBILE DATA CARDS VIEW */
           <>
@@ -2142,9 +2357,9 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 <thead className="border-b-2 border-emerald-200/90 bg-gradient-to-r from-emerald-100/90 via-teal-50/70 to-emerald-100/90 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-950 dark:border-emerald-800/60 dark:from-emerald-950/90 dark:via-teal-950/70 dark:to-emerald-950/90 dark:text-emerald-200">
                   <tr>
                     <th className="w-[14%] p-4">Hari & Jam</th>
-                    <th className="w-[22%] p-4">Mata Pelajaran</th>
+                    <th className="w-[22%] p-4">Mata Pelajaran / Kegiatan</th>
                     <th className="w-[18%] p-4">Kelas & Unit</th>
-                    <th className="w-[20%] p-4">Guru Pengampu</th>
+                    <th className="w-[20%] p-4">Guru Pengampu / Pembina</th>
                     <th className="hidden w-[14%] p-4 lg:table-cell">Periode Akademik</th>
                     <th className="w-[10%] p-4 sm:table-cell">Status</th>
                     <th className="w-[12%] p-4 text-center">Aksi</th>
@@ -2163,11 +2378,21 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                         </div>
                       </td>
                       <td className="p-4">
-                        <div className="truncate font-bold text-slate-900 dark:text-white">
-                          {subjectName(item.subject)}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.activity_type && item.activity_type !== 'kbm' && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              <Sparkles className="size-2.5 text-blue-600 dark:text-blue-400" />
+                              Kegiatan Non-KBM
+                            </span>
+                          )}
+                          <span className="truncate font-bold text-slate-900 dark:text-white">
+                            {getActivityTitle(item)}
+                          </span>
                         </div>
                         <div className="font-mono text-xs text-slate-400">
-                          {item.subject?.kode_mapel || item.subject?.code || '-'}
+                          {item.activity_type && item.activity_type !== 'kbm'
+                            ? 'Agenda Sekolah'
+                            : (item.subject?.kode_mapel || item.subject?.code || '-')}
                         </div>
                       </td>
                       <td className="p-4">
@@ -2185,9 +2410,9 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                             item.employee?.avatar_url ||
                             item.employee?.foto
                           }
-                          name={item.employee?.nama_lengkap || item.teacher?.name || '-'}
+                          name={item.employee?.nama_lengkap || item.teacher?.name || (item.activity_type && item.activity_type !== 'kbm' ? 'Umum / Mandiri' : '-')}
                           subtitle={
-                            item.employee?.niy ? `NIY ${item.employee.niy}` : 'Guru pengampu'
+                            item.employee?.niy ? `NIY ${item.employee.niy}` : (item.activity_type && item.activity_type !== 'kbm' ? 'Pembina / Pendamping' : 'Guru pengampu')
                           }
                         />
                       </td>
@@ -2230,7 +2455,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               {items.map((item) => (
                 <MobileDataCard
                   key={item.id}
-                  title={subjectName(item.subject)}
+                  title={getActivityTitle(item)}
                   subtitle={`${item.nama_hari || DAYS_MAP.find((d) => d.id === item.day_of_week)?.name} (${formatTime(item.time_start)}–${formatTime(item.time_end)})`}
                   avatarSrc={
                     item.employee?.photo_url ||
@@ -2336,9 +2561,17 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
               <div className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">
                 {formatTime(detailDrawerItem.time_start)} – {formatTime(detailDrawerItem.time_end)} WIB
               </div>
-              <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                {subjectName(detailDrawerItem.subject)}
-              </p>
+              <div className="mt-1 flex items-center gap-2 flex-wrap">
+                {detailDrawerItem.activity_type && detailDrawerItem.activity_type !== 'kbm' && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    <Sparkles className="size-2.5 text-blue-600 dark:text-blue-400" />
+                    Kegiatan Non-KBM
+                  </span>
+                )}
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  {getActivityTitle(detailDrawerItem)}
+                </span>
+              </div>
             </div>
 
             {/* Information Grid */}
@@ -2414,26 +2647,31 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         )}
       </AppDrawer>
 
-      {/* FORM MODAL (TAMBAH / EDIT) */}
+      {/* FORM MODAL (TAMBAH / EDIT) - HERO UI STYLE 2-COLUMN */}
       <MasterFormModal
         isOpen={modal}
         onClose={() => setModal(false)}
         icon={CalendarDays}
         title={editing ? 'Edit Jadwal Pelajaran' : 'Tambah Jadwal Pelajaran'}
-        description="Lengkapi informasi akademik, penugasan guru, dan alokasi waktu mengajar."
-        maxWidth="max-w-2xl"
+        description="Lengkapi informasi akademik, rincian hari kosong, dan alokasi jam bebas bentrok."
+        maxWidth="max-w-5xl"
         footer={
           <div className="flex items-center justify-between w-full">
             <div className="text-left">
               {liveConflicts.length > 0 ? (
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
                   <AlertTriangle className="size-4 shrink-0" />
-                  <span>Jadwal bentrok dengan jadwal lain ({liveConflicts.length})</span>
+                  <span>Jadwal bentrok ({liveConflicts.length})</span>
                 </span>
               ) : liveConflictChecking ? (
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                   <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
-                  <span>Mengecek bentrok...</span>
+                  <span>Mengecek ketersediaan jam...</span>
+                </span>
+              ) : form.time_start && form.time_end ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <span>Jam Bebas Bentrok Terpilih</span>
                 </span>
               ) : null}
             </div>
@@ -2450,17 +2688,19 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                 form="schedule-form"
                 disabled={saveMutation.isPending || liveConflicts.length > 0}
                 className={cn(
-                  'h-11 rounded-xl px-5 text-xs font-bold text-white active:scale-95 disabled:opacity-50 transition-all',
+                  'h-11 rounded-xl px-5 text-xs font-bold text-white active:scale-95 disabled:opacity-50 transition-all shadow-md',
                   liveConflicts.length > 0
-                    ? 'bg-rose-600 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 cursor-pointer'
+                    ? 'bg-rose-600 cursor-not-allowed shadow-rose-600/20'
+                    : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 cursor-pointer shadow-emerald-600/25'
                 )}
               >
                 {saveMutation.isPending
                   ? 'Menyimpan...'
                   : liveConflicts.length > 0
                     ? 'Bentrok Terdeteksi'
-                    : 'Simpan Jadwal'}
+                    : editing
+                      ? 'Simpan Perubahan'
+                      : 'Simpan Jadwal'}
               </button>
             </div>
           </div>
@@ -2469,8 +2709,44 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         <form
           id="schedule-form"
           onSubmit={submit}
-          className="space-y-6 p-6 text-xs font-semibold text-slate-700 dark:text-slate-200"
+          className="space-y-5 p-4 sm:p-6 text-xs font-semibold text-slate-700 dark:text-slate-200"
         >
+          {/* HERO UI HEADER BANNER */}
+          <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-600/15 p-4 sm:p-5 shadow-sm dark:border-emerald-600/40 dark:bg-gradient-to-r dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-slate-900">
+            <div className="absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/20 blur-2xl pointer-events-none" />
+            <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-500/25">
+                  <CalendarDays className="h-5 w-5" />
+                </span>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    Penjadwalan Kegiatan Akademik dan Mata Pelajaran
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">
+                    {editing
+                      ? 'Perbarui alokasi sesi, rombel kelas, guru pengampu, serta jam KBM.'
+                      : 'Atur alokasi waktu mengajar, rombel kelas, serta guru pengampu bebas bentrok.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Chips Ringkasan */}
+              <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-center">
+                {form.kelas_id && (
+                  <span className="rounded-xl border border-emerald-300 bg-white/90 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-300 shadow-xs">
+                    {filteredKelas.find((k) => String(k.id) === String(form.kelas_id))?.nama_kelas || 'Kelas Terpilih'}
+                  </span>
+                )}
+                {form.employee_id && (
+                  <span className="rounded-xl border border-teal-300 bg-white/90 px-2.5 py-1 text-[11px] font-bold text-teal-800 dark:border-teal-800 dark:bg-slate-900 dark:text-teal-300 shadow-xs">
+                    {filteredGuru.find((g) => String(g.id) === String(form.employee_id))?.nama_lengkap || 'Guru Terpilih'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Conflict Warning Banner */}
           {liveConflicts.length > 0 ? (
             <div className="flex flex-col gap-2 rounded-2xl border-2 border-rose-300 bg-rose-50/95 p-4 text-rose-900 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200 shadow-sm animate-fadeIn">
@@ -2497,9 +2773,9 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
             </div>
           ) : null}
 
-          {/* GRUP 1: INFORMASI AKADEMIK */}
-          <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-            <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+          {/* GRUP 1: INFORMASI & PERIODE AKADEMIK */}
+          <div className="space-y-4 rounded-2xl border-2 border-emerald-500/20 bg-white p-4.5 sm:p-5 dark:border-emerald-700/30 dark:bg-[#1B2433] shadow-xs">
+            <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
               <Building2 className="h-4 w-4" />
               <span>1. Informasi & Periode Akademik</span>
             </h4>
@@ -2507,14 +2783,15 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {/* Unit Pendidikan */}
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Unit Pendidikan
+                <label className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                  <School className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Unit Pendidikan</span>
                 </label>
                 <select
                   disabled={Boolean((isGuru || isTu) && userUnitId)}
                   value={form.unit_pendidikan_id}
                   onChange={(e) => handleFormChange('unit_pendidikan_id', e.target.value)}
-                  className={`h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
+                  className={`h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
                     (isGuru || isTu) && userUnitId ? 'opacity-75 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''
                   }`}
                 >
@@ -2531,14 +2808,15 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
               {/* Tahun Ajaran */}
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Tahun Ajaran *
+                <label className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                  <Calendar className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Tahun Ajaran *</span>
                 </label>
                 <select
                   required
                   value={form.academic_year_id}
                   onChange={(e) => handleFormChange('academic_year_id', e.target.value)}
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
+                  className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
                     formErrors.academic_year_id ? 'border-rose-500' : 'border-slate-200'
                   }`}
                 >
@@ -2550,7 +2828,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   ))}
                 </select>
                 {formErrors.academic_year_id && (
-                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                  <p className="mt-1.5 text-[11px] font-medium text-rose-500">
                     {formErrors.academic_year_id}
                   </p>
                 )}
@@ -2558,15 +2836,16 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
 
               {/* Semester */}
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Semester *
+                <label className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                  <Bookmark className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Semester *</span>
                 </label>
                 <select
                   required
                   value={form.semester_id}
                   onChange={(e) => handleFormChange('semester_id', e.target.value)}
                   disabled={!form.academic_year_id}
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 outline-none focus:border-emerald-700 disabled:opacity-50 dark:border-slate-700 dark:bg-[#111827] ${
+                  className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 disabled:opacity-50 dark:border-slate-700 dark:bg-[#111827] ${
                     formErrors.semester_id ? 'border-rose-500' : 'border-slate-200'
                   }`}
                 >
@@ -2580,7 +2859,7 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   ))}
                 </select>
                 {formErrors.semester_id && (
-                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                  <p className="mt-1.5 text-[11px] font-medium text-rose-500">
                     {formErrors.semester_id}
                   </p>
                 )}
@@ -2588,24 +2867,59 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
             </div>
           </div>
 
-          {/* GRUP 2: PENUGASAN PEMBELAJARAN */}
-          <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-            <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
-              <BookOpen className="h-4 w-4" />
-              <span>2. Penugasan Pembelajaran</span>
-            </h4>
+          {/* GRUP 2: JENIS JADWAL & ALOKASI AKTIVITAS */}
+          <div className="space-y-4 rounded-2xl border-2 border-emerald-500/20 bg-white p-4.5 sm:p-5 dark:border-emerald-700/30 dark:bg-[#1B2433] shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+                <BookOpen className="h-4 w-4" />
+                <span>2. Jenis Jadwal & Penugasan</span>
+              </h4>
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                Pilih jenis KBM mata pelajaran atau kegiatan/aktivitas non-KBM
+              </span>
+            </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Selector Jenis Jadwal (2 Kategori Murni: KBM vs Kegiatan Non-KBM) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleFormChange('activity_type', 'kbm')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                  (form.activity_type || 'kbm') === 'kbm'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <BookOpen className="h-4 w-4 shrink-0" />
+                <span>KBM Mata Pelajaran</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFormChange('activity_type', 'activity')}
+                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                  form.activity_type !== 'kbm'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Sparkles className="h-4 w-4 shrink-0" />
+                <span>Kegiatan Non-KBM (Aktivitas Sekolah)</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-1">
               {/* Kelas / Rombel */}
               <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Kelas / Rombel *
+                <label className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                  <GraduationCap className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Kelas / Rombel Target *</span>
                 </label>
                 <select
                   required
                   value={form.kelas_id}
                   onChange={(e) => handleFormChange('kelas_id', e.target.value)}
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
+                  className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
                     formErrors.kelas_id ? 'border-rose-500' : 'border-slate-200'
                   }`}
                 >
@@ -2624,169 +2938,471 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
                   ))}
                 </select>
                 {formErrors.kelas_id && (
-                  <p className="mt-1 text-[11px] font-medium text-rose-500">
+                  <p className="mt-1.5 text-[11px] font-medium text-rose-500">
                     {formErrors.kelas_id}
                   </p>
                 )}
               </div>
 
-              {/* Guru Pengampu */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                    Guru Pengampu *
+              {/* JIKA KEGIATAN NON-KBM: INPUT MANUAL BEBAS NAMA KEGIATAN */}
+              {form.activity_type !== 'kbm' ? (
+                <div>
+                  <label className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                    <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>Nama Kegiatan Sekolah * (Input Bebas)</span>
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setGuruPickerOpen(true)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0E5C44] hover:text-emerald-700 dark:text-[#3FBF75] hover:underline"
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    Cari & Pilih Guru
-                  </button>
+                  <input
+                    type="text"
+                    required
+                    value={form.activity_name || ''}
+                    onChange={(e) => handleFormChange('activity_name', e.target.value)}
+                    placeholder="Contoh: Upacara, Dzikir Pagi, Waktu Istirahat, ISHOMA, Senam, dll."
+                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-blue-600 dark:border-slate-700 dark:bg-[#111827] ${
+                      formErrors.activity_name ? 'border-rose-500' : 'border-slate-200'
+                    }`}
+                  />
+                  {formErrors.activity_name && (
+                    <p className="mt-1.5 text-[11px] font-medium text-rose-500">
+                      {formErrors.activity_name}
+                    </p>
+                  )}
+                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                    Nama kegiatan bebas diisi (contoh: Upacara Bendera, Dzikir Pagi, Waktu Istirahat, ISHOMA, Senam Pagi, dll.).
+                  </p>
                 </div>
-                <select
-                  required
-                  value={form.employee_id}
-                  onChange={(e) => handleFormChange('employee_id', e.target.value)}
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                    formErrors.employee_id ? 'border-rose-500' : 'border-slate-200'
-                  }`}
-                >
-                  <option value="">
-                    {filteredGuru.length === 0
-                      ? 'Tidak ada guru sesuai unit'
-                      : 'Pilih Guru Pengampu'}
-                  </option>
-                  {filteredGuru.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nama_lengkap} {item.niy ? `(NIY ${item.niy})` : ''}
+              ) : (
+                /* Guru Pengampu untuk KBM */
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                      <UserCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Guru Pengampu *</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setGuruPickerOpen(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0E5C44] hover:text-emerald-700 dark:text-[#3FBF75] bg-emerald-50 hover:bg-emerald-100/90 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200/80 dark:border-emerald-800/60 transition-all cursor-pointer"
+                    >
+                      <Search className="h-3 w-3" />
+                      <span>Cari & Pilih Guru</span>
+                    </button>
+                  </div>
+                  <select
+                    required
+                    value={form.employee_id}
+                    onChange={(e) => handleFormChange('employee_id', e.target.value)}
+                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
+                      formErrors.employee_id ? 'border-rose-500' : 'border-slate-200'
+                    }`}
+                  >
+                    <option value="">
+                      {filteredGuru.length === 0
+                        ? 'Tidak ada guru sesuai unit'
+                        : 'Pilih Guru Pengampu'}
                     </option>
-                  ))}
-                </select>
-                {formErrors.employee_id && (
-                  <p className="mt-1 text-[11px] font-medium text-rose-500">
-                    {formErrors.employee_id}
-                  </p>
-                )}
-              </div>
+                    {filteredGuru.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nama_lengkap} {item.niy ? `(NIY ${item.niy})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.employee_id && (
+                    <p className="mt-1.5 text-[11px] font-medium text-rose-500">
+                      {formErrors.employee_id}
+                    </p>
+                  )}
+                </div>
+              )}
 
-              {/* Mata Pelajaran */}
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Mata Pelajaran *
-                </label>
-                <select
-                  required
-                  value={form.subject_id}
-                  onChange={(e) => handleFormChange('subject_id', e.target.value)}
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                    formErrors.subject_id ? 'border-rose-500' : 'border-slate-200'
-                  }`}
-                >
-                  <option value="">
-                    {filteredSubjects.length === 0
-                      ? 'Tidak ada mapel sesuai unit'
-                      : 'Pilih Mata Pelajaran'}
-                  </option>
-                  {filteredSubjects.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {subjectName(item)} {item.kode_mapel || item.code ? `(${item.kode_mapel || item.code})` : ''}
+              {/* JIKA KBM: MATA PELAJARAN (WAJIB) */}
+              {(!form.activity_type || form.activity_type === 'kbm') && (
+                <div className="sm:col-span-2">
+                  <label className="mb-2 flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                    <BookOpen className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Mata Pelajaran *</span>
+                  </label>
+                  <select
+                    required
+                    value={form.subject_id}
+                    onChange={(e) => handleFormChange('subject_id', e.target.value)}
+                    className={`h-11 w-full rounded-xl border bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
+                      formErrors.subject_id ? 'border-rose-500' : 'border-slate-200'
+                    }`}
+                  >
+                    <option value="">
+                      {filteredSubjects.length === 0
+                        ? 'Tidak ada mapel sesuai unit'
+                        : 'Pilih Mata Pelajaran'}
                     </option>
-                  ))}
-                </select>
-                {formErrors.subject_id && (
-                  <p className="mt-1 text-[11px] font-medium text-rose-500">
-                    {formErrors.subject_id}
-                  </p>
-                )}
-              </div>
+                    {filteredSubjects.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {subjectName(item)} {item.kode_mapel || item.code ? `(${item.kode_mapel || item.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.subject_id && (
+                    <p className="mt-1.5 text-[11px] font-medium text-rose-500">
+                      {formErrors.subject_id}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* JIKA KEGIATAN NON-KBM: GURU PEMBINA / PENDAMPING / PENGAWAS (OPSIONAL) */}
+              {form.activity_type !== 'kbm' && (
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-100">
+                      <UserCheck className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
+                      <span>Guru Pembina / Pendamping / Pengawas Piket (Opsional)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setGuruPickerOpen(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 hover:text-slate-900 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                    >
+                      <Search className="h-3 w-3" />
+                      <span>Cari Guru</span>
+                    </button>
+                  </div>
+                  <select
+                    value={form.employee_id || ''}
+                    onChange={(e) => handleFormChange('employee_id', e.target.value)}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white px-3.5 font-medium outline-none focus:border-slate-600 dark:border-slate-700 dark:bg-[#111827]"
+                  >
+                    <option value="">-- Tanpa Guru Khusus (Umum / Mandiri) --</option>
+                    {filteredGuru.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nama_lengkap} {item.niy ? `(NIY ${item.niy})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* GRUP 3: WAKTU DAN TEMPAT */}
-          <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40">
-            <h4 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
-              <Clock className="h-4 w-4" />
-              <span>3. Waktu & Jadwal Mengajar</span>
-            </h4>
+          {/* GRUP 3: WAKTU, RINCIAN HARI KOSONG & REKOMENDASI JAM BEBAS BENTROK (2 KOLOM HERO UI) */}
+          <div className="space-y-4 rounded-2xl border-2 border-emerald-500/25 bg-emerald-50/20 p-4.5 sm:p-5 dark:border-emerald-700/40 dark:bg-emerald-950/15 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
+              <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#0E5C44] dark:text-[#3FBF75]">
+                <Clock3 className="h-4 w-4" />
+                <span>3. Waktu, Rincian Hari Kosong & Rekomendasi Jam</span>
+              </h4>
+              <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                {availabilityLoading ? 'Memeriksa ketersediaan jadwal...' : 'Sinkron dengan jadwal kelas & guru'}
+              </span>
+            </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {/* Hari Mengajar */}
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Hari Mengajar *
-                </label>
-                <select
-                  required
-                  value={form.day_of_week}
-                  onChange={(e) => handleFormChange('day_of_week', e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827]"
-                >
-                  {DAYS_MAP.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+            {/* 2 KOLOM CONTAINER */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+              {/* ── KOLOM 1 (KIRI): RINCIAN HARI & INPUT MANUAL ── */}
+              <div className="space-y-4">
+                {/* Pemilihan Hari & Ketersediaan Slot */}
+                <div className="rounded-xl border border-emerald-500/20 bg-white/95 p-4 dark:bg-slate-900/90 shadow-xs">
+                  {/* Target Konteks KBM Realtime */}
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-2.5 sm:p-3 border border-emerald-200/90 dark:border-emerald-800/60">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-xs">
+                        <Target className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-900 dark:text-emerald-300 block">
+                          Target Penjadwalan
+                        </span>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate block">
+                          {form.kelas_id
+                            ? filteredKelas.find((k) => String(k.id) === String(form.kelas_id))?.nama_kelas
+                            : 'Pilih Kelas'}{' '}
+                          •{' '}
+                          {form.employee_id
+                            ? filteredGuru.find((g) => String(g.id) === String(form.employee_id))?.nama_lengkap
+                            : 'Pilih Guru'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-300/60 dark:border-emerald-800/60">
+                      Sinkronisasi Aktif
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <CalendarDays className="h-4 w-4 text-emerald-600" />
+                      <span>Rincian Hari KBM & Slot (Pilih Hari)</span>
+                    </label>
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                      Klik hari untuk memilih
+                    </span>
+                  </div>
+
+                  {/* Grid Hari: Senin s/d Sabtu (dan Minggu jika ada) */}
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {DAYS_MAP.map((d) => {
+                      const isSelected = Number(form.day_of_week) === d.id
+                      const dayStat = availabilityData?.days?.find((item) => item.day_of_week === d.id)
+                      const isEmpty = dayStat ? dayStat.is_empty : false
+                      const count = dayStat ? dayStat.total_schedules : 0
+                      const status = dayStat?.status || (count === 0 ? 'empty' : count <= 3 ? 'partial' : 'busy')
+
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => handleFormChange('day_of_week', d.id)}
+                          className={cn(
+                            'flex flex-col p-3 rounded-xl text-left border transition-all cursor-pointer relative overflow-hidden',
+                            isSelected
+                              ? 'border-emerald-600 bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-500/50'
+                              : isEmpty
+                                ? 'border-emerald-300 bg-emerald-50/80 hover:bg-emerald-100/80 dark:border-emerald-800/80 dark:bg-emerald-950/40 text-slate-800 dark:text-slate-200'
+                                : status === 'partial'
+                                  ? 'border-teal-200 bg-white hover:bg-teal-50/50 dark:border-slate-700 dark:bg-slate-900 text-slate-800 dark:text-slate-200'
+                                  : 'border-slate-200 bg-white/70 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300'
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className={cn('text-xs font-black', isSelected ? 'text-white' : 'text-slate-900 dark:text-white')}>
+                              {d.name}
+                            </span>
+                            {isEmpty && (
+                              <span
+                                className={cn(
+                                  'text-[8px] font-extrabold px-1.5 py-0.5 rounded-full',
+                                  isSelected ? 'bg-white/20 text-white' : 'bg-emerald-600 text-white'
+                                )}
+                              >
+                                Kosong
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-2">
+                            <span
+                              className={cn(
+                                'block text-[10px] font-bold',
+                                isSelected
+                                  ? 'text-emerald-100'
+                                  : isEmpty
+                                    ? 'text-emerald-700 dark:text-emerald-400'
+                                    : 'text-slate-500 dark:text-slate-400'
+                              )}
+                            >
+                              {isEmpty ? '✨ 100% Bebas' : `${count} Sesi Terisi`}
+                            </span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Notice Rincian Hari Kosong */}
+                  {availabilityData?.days && (
+                    <div className="mt-3 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300 bg-emerald-50/70 dark:bg-slate-900/80 p-2.5 sm:p-3 rounded-xl border border-emerald-500/25 leading-relaxed">
+                      <Sparkles className="size-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Rekomendasi Hari:</strong>{' '}
+                        {availabilityData.days.filter((d) => d.is_empty).length > 0 ? (
+                          <>
+                            Hari{' '}
+                            <strong className="text-emerald-700 dark:text-emerald-400">
+                              {availabilityData.days.filter((d) => d.is_empty).map((d) => d.day_name).join(', ')}
+                            </strong>{' '}
+                            masih kosong sepenuhnya untuk kelas dan guru ini.
+                          </>
+                        ) : (
+                          'Semua hari sudah memiliki sesi, silakan gunakan slot jam kosong yang direkomendasikan di panel kanan.'
+                        )}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Manual Jam Mulai & Selesai & Pola Minggu */}
+                <div className="rounded-xl border border-emerald-500/20 bg-white/95 p-4 dark:bg-slate-900/90 shadow-xs space-y-3.5">
+                  <div className="grid grid-cols-2 gap-3.5">
+                    {/* Jam Mulai */}
+                    <div>
+                      <label className="mb-1.5 flex items-center gap-1 text-xs font-bold text-slate-800 dark:text-slate-100">
+                        <Clock className="size-3 text-emerald-600" />
+                        <span>Jam Mulai *</span>
+                      </label>
+                      <input
+                        required
+                        type="time"
+                        value={form.time_start}
+                        onChange={(e) => handleFormChange('time_start', e.target.value)}
+                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
+                          formErrors.time_start ? 'border-rose-500' : 'border-slate-200'
+                        }`}
+                      />
+                      {formErrors.time_start && (
+                        <p className="mt-1 text-[11px] font-medium text-rose-500">
+                          {formErrors.time_start}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Jam Selesai */}
+                    <div>
+                      <label className="mb-1.5 flex items-center gap-1 text-xs font-bold text-slate-800 dark:text-slate-100">
+                        <Clock className="size-3 text-emerald-600" />
+                        <span>Jam Selesai *</span>
+                      </label>
+                      <input
+                        required
+                        type="time"
+                        value={form.time_end}
+                        onChange={(e) => handleFormChange('time_end', e.target.value)}
+                        className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
+                          formErrors.time_end ? 'border-rose-500' : 'border-slate-200'
+                        }`}
+                      />
+                      {formErrors.time_end && (
+                        <p className="mt-1 text-[11px] font-medium text-rose-500">
+                          {formErrors.time_end}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pola Minggu */}
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-1 text-xs font-bold text-slate-800 dark:text-slate-100">
+                      <Layers className="size-3 text-emerald-600" />
+                      <span>Pola Minggu</span>
+                    </label>
+                    <select
+                      value={form.week_type}
+                      onChange={(e) => handleFormChange('week_type', e.target.value)}
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827]"
+                    >
+                      <option value="all">Setiap Minggu</option>
+                      <option value="odd">Minggu Ganjil</option>
+                      <option value="even">Minggu Genap</option>
+                    </select>
+                  </div>
+
+                  {/* Live Status Jam Terpilih */}
+                  {form.time_start && form.time_end && liveConflicts.length === 0 ? (
+                    <div className="flex items-center gap-1.5 p-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-[11px] font-bold">
+                      <CheckCircle2 className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>✓ Jam {form.time_start} - {form.time_end} Aman & Bebas Bentrok</span>
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
-              {/* Pola Minggu */}
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Pola Minggu
-                </label>
-                <select
-                  value={form.week_type}
-                  onChange={(e) => handleFormChange('week_type', e.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827]"
-                >
-                  <option value="all">Setiap Minggu</option>
-                  <option value="odd">Minggu Ganjil</option>
-                  <option value="even">Minggu Genap</option>
-                </select>
-              </div>
+              {/* ── KOLOM 2 (KANAN): REKOMENDASI JAM KOSONG (BEBAS BENTROK) ── */}
+              <div className="rounded-xl border border-emerald-500/25 bg-white/95 p-4 dark:bg-slate-900/90 shadow-xs space-y-4 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div>
+                      <h5 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Clock className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>Rekomendasi Jam Kosong (Hari {DAYS_MAP.find((d) => d.id === Number(form.day_of_week))?.name || 'Terpilih'})</span>
+                      </h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Klik salah satu jam kosong di bawah untuk langsung mengisinya otomatis tanpa risiko bentrok.
+                      </p>
+                    </div>
 
-              {/* Jam Mulai */}
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Jam Mulai *
-                </label>
-                <input
-                  required
-                  type="time"
-                  value={form.time_start}
-                  onChange={(e) => handleFormChange('time_start', e.target.value)}
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                    formErrors.time_start ? 'border-rose-500' : 'border-slate-200'
-                  }`}
-                />
-                {formErrors.time_start && (
-                  <p className="mt-1 text-[11px] font-medium text-rose-500">
-                    {formErrors.time_start}
-                  </p>
-                )}
-              </div>
+                    {availabilityLoading && (
+                      <span className="text-[10px] font-bold text-emerald-600 animate-pulse shrink-0">
+                        Memperbarui...
+                      </span>
+                    )}
+                  </div>
 
-              {/* Jam Selesai */}
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-800 dark:text-slate-100">
-                  Jam Selesai *
-                </label>
-                <input
-                  required
-                  type="time"
-                  value={form.time_end}
-                  onChange={(e) => handleFormChange('time_end', e.target.value)}
-                  className={`h-11 w-full rounded-xl border bg-white px-3.5 font-mono outline-none focus:border-emerald-700 dark:border-slate-700 dark:bg-[#111827] ${
-                    formErrors.time_end ? 'border-rose-500' : 'border-slate-200'
-                  }`}
-                />
-                {formErrors.time_end && (
-                  <p className="mt-1 text-[11px] font-medium text-rose-500">
-                    {formErrors.time_end}
-                  </p>
-                )}
+                  {/* Chips Rekomendasi Jam Kosong */}
+                  {(() => {
+                    const currentDayDetail = availabilityData?.days?.find((d) => d.day_of_week === Number(form.day_of_week))
+                    const freeSlots = currentDayDetail?.free_slots || [
+                      { time_start: '07:30', time_end: '08:15', label: '07:30 - 08:15 (Sesi 1 • 45m)' },
+                      { time_start: '08:15', time_end: '09:00', label: '08:15 - 09:00 (Sesi 2 • 45m)' },
+                      { time_start: '07:30', time_end: '09:00', label: '07:30 - 09:00 (Blok Pagi • 90m)' },
+                      { time_start: '09:15', time_end: '10:00', label: '09:15 - 10:00 (Sesi 3 • 45m)' },
+                      { time_start: '10:00', time_end: '10:45', label: '10:00 - 10:45 (Sesi 4 • 45m)' },
+                      { time_start: '09:15', time_end: '10:45', label: '09:15 - 10:45 (Blok Duha • 90m)' },
+                      { time_start: '10:45', time_end: '11:30', label: '10:45 - 11:30 (Sesi 5 • 45m)' },
+                      { time_start: '13:00', time_end: '13:45', label: '13:00 - 13:45 (Sesi 6 • 45m)' },
+                      { time_start: '13:00', time_end: '14:30', label: '13:00 - 14:30 (Blok Siang • 90m)' },
+                      { time_start: '14:30', time_end: '15:15', label: '14:30 - 15:15 (Sesi 8 • 45m)' },
+                    ]
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-3">
+                        {freeSlots.map((slot, sIdx) => {
+                          const isCurrentFilled = form.time_start === slot.time_start && form.time_end === slot.time_end
+                          return (
+                            <button
+                              key={sIdx}
+                              type="button"
+                              onClick={() => {
+                                handleFormChange('time_start', slot.time_start)
+                                handleFormChange('time_end', slot.time_end)
+                              }}
+                              className={cn(
+                                'flex items-center justify-between p-3 rounded-xl text-xs font-bold transition-all cursor-pointer border text-left',
+                                isCurrentFilled
+                                  ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-emerald-600 shadow-md ring-2 ring-emerald-500/50'
+                                  : 'bg-emerald-50/70 hover:bg-emerald-100 text-emerald-950 border-emerald-200/90 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60'
+                              )}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {isCurrentFilled ? (
+                                  <CheckCircle2 className="size-4 text-white shrink-0" />
+                                ) : (
+                                  <Clock className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                )}
+                                <span className="truncate">{slot.label || `${slot.time_start} - ${slot.time_end}`}</span>
+                              </div>
+                              {isCurrentFilled && (
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-white/20 text-white shrink-0 ml-1.5">
+                                  ✓ Terpilih
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                {/* Rincian Sesi Terisi (Occupied Slots) pada hari tersebut jika ada */}
+                {(() => {
+                  const currentDayDetail = availabilityData?.days?.find((d) => d.day_of_week === Number(form.day_of_week))
+                  const occupied = currentDayDetail?.occupied_slots || []
+                  if (occupied.length === 0) {
+                    return (
+                      <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-xs font-medium flex items-center gap-2">
+                        <Sparkles className="size-4 text-emerald-600 shrink-0" />
+                        <span>Hari ini 100% kosong (bebas sesi). Seluruh rentang jam KBM siap digunakan.</span>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        Jadwal Terisi pada Hari Ini ({occupied.length}):
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {occupied.map((occ, oIdx) => (
+                          <span
+                            key={oIdx}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/40 dark:border-rose-900/60 dark:text-rose-300 text-[11px] font-medium"
+                          >
+                            <span className="font-mono font-bold text-[10px]">{occ.time_start} - {occ.time_end}</span>
+                            <span>: {occ.subject_name}</span>
+                            <span className="text-[10px] opacity-75">({occ.conflict_reason || occ.kelas_name})</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -2907,7 +3523,6 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
           </div>
         </div>
       )}
-      {/* Toast Notification Stack */}
       <HarmonizedDeleteModal
         isOpen={Boolean(deleteItem)}
         onClose={() => setDeleteItem(null)}
@@ -2915,7 +3530,6 @@ export default function MasterSchedulePage({ embedded = false, hideBreadcrumb = 
         item={deleteItem}
         isSubmitting={deleteMutation.isPending}
       />
-      <ToastStack toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))} />
     </MasterDataPage>
   )
 }

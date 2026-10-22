@@ -30,6 +30,15 @@ import {
   Target,
   FileSpreadsheet,
   FileQuestion,
+  Award,
+  BookOpenCheck,
+  ClipboardList,
+  FileCheck2,
+  HeartHandshake,
+  Megaphone,
+  MessageCircle,
+  Receipt,
+  UserRound,
 } from 'lucide-react'
 import { navigationService } from '../services/navigationService'
 import { useAuthStore } from '../stores/authStore'
@@ -65,17 +74,30 @@ const ICON_MAP = {
   Target,
   FileSpreadsheet,
   FileQuestion,
+  Award,
+  BookOpenCheck,
+  ClipboardList,
+  FileCheck2,
+  HeartHandshake,
+  Megaphone,
+  MessageCircle,
+  Receipt,
+  UserRound,
 }
 
 /**
- * Helper untuk me-resolve komponen Lucide Icon berdasarkan string icon name dari database.
- * Jika nama icon tidak ditemukan, fallback ke Layers.
+ * Helper untuk me-resolve komponen Lucide Icon berdasarkan string icon name dari database
+ * atau komponen Icon langsung. Jika nama icon tidak ditemukan, fallback ke Layers.
  *
- * @param {string} iconName
+ * @param {string|import('react').ComponentType} iconName
  * @returns {import('react').ComponentType}
  */
 export function resolveSidebarIcon(iconName) {
   if (!iconName) return Layers
+  // Jika sudah merupakan komponen React (function atau object forwardRef dari lucide-react)
+  if (typeof iconName === 'function' || (typeof iconName === 'object' && iconName !== null)) {
+    return iconName
+  }
   return ICON_MAP[iconName] || Layers
 }
 
