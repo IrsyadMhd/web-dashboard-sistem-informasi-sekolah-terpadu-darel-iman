@@ -88,6 +88,26 @@ export const DEFAULT_MOBILE_API_CONFIG = {
     force_update: false,
     update_url: 'https://play.google.com/store/apps/details?id=id.sch.dareliman.sims.mobile',
   },
+  onboarding: {
+    enabled: true,
+    slides: [
+      {
+        title: 'Sistem Sekolah Terpadu',
+        desc: 'Akses informasi akademik, jadwal pembelajaran, dan pengumuman sekolah dalam satu genggaman.',
+        image_url: null,
+      },
+      {
+        title: "Mutaba'ah & Tahfizh Mandiri",
+        desc: "Pantau amalan yaumiyyah, hafalan Al-Qur'an, dan capaian adab ananda secara transparan.",
+        image_url: null,
+      },
+      {
+        title: 'Presensi & Layanan Digital',
+        desc: 'Notifikasi kehadiran kelas & gerbang otomatis terhubung langsung ke gawai orang tua.',
+        image_url: null,
+      },
+    ],
+  },
 }
 
 const mergeConfig = (value = {}) => ({
@@ -100,6 +120,7 @@ const mergeConfig = (value = {}) => ({
   role_home_layouts: { ...DEFAULT_MOBILE_API_CONFIG.role_home_layouts, ...(value.role_home_layouts || {}) },
   features: { ...DEFAULT_MOBILE_API_CONFIG.features, ...(value.features || {}) },
   system: { ...DEFAULT_MOBILE_API_CONFIG.system, ...(value.system || {}) },
+  onboarding: { ...DEFAULT_MOBILE_API_CONFIG.onboarding, ...(value.onboarding || {}) },
 })
 
 export const mobileApiConfigService = {
@@ -122,6 +143,7 @@ export const mobileApiConfigService = {
       role_home_layouts: config.role_home_layouts,
       features: config.features,
       system: config.system,
+      onboarding: config.onboarding,
     }
     return mergeConfig((await api.put('/admin/mobile-config', payload)).data?.data)
   },

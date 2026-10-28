@@ -441,6 +441,36 @@ export default function MutabaahWorkspace({
     }
   }
 
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+
+  const handleExportWeeklyPdf = async () => {
+    const sId = studentId || student?.id || data?.student_id || effectiveRecap?.student_id
+    if (!sId) {
+      alert('ID santri/siswa tidak ditemukan untuk cetak laporan.')
+      return
+    }
+    setDownloadingPdf(true)
+    try {
+      const response = await api.get(`/parent/mutabaah/${sId}/weekly-pdf`, {
+        params: { date: selectedDate },
+        responseType: 'blob',
+      })
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `mutabaah-pekanan-${selectedDate}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal mengunduh dokumen PDF mutabaah pekanan.')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
   const openDailyForDate = (dateStr) => {
     handleDateChange(dateStr)
     setRecapPeriod('daily')
@@ -578,6 +608,22 @@ export default function MutabaahWorkspace({
                 )}
               </HeroButton>
             )}
+            <HeroButton
+              size="md"
+              isDisabled={downloadingPdf}
+              onPress={handleExportWeeklyPdf}
+              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-xs sm:text-sm font-black text-white shadow-md shadow-emerald-600/20 hover:scale-[1.02] transition-all cursor-pointer"
+            >
+              {downloadingPdf ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Menyiapkan PDF...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" /> Unduh PDF Pekanan
+                </>
+              )}
+            </HeroButton>
           </div>
         </div>
 

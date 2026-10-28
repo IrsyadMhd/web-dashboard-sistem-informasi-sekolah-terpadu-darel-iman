@@ -45,7 +45,7 @@ import { useDebounce } from '../hooks/useDebounce'
 import { lmsPresensiService } from '../services/lmsPresensiService'
 import api from '../services/api'
 import { useAuthStore } from '../stores/authStore'
-import { getUserRoleLevel, hasRoleLevel, ROLE_LEVELS } from '../auth/portalResolver'
+import { getUserRoleLevel, hasRoleLevel, hasAnyRole, ROLE_LEVELS } from '../auth/portalResolver'
 import { AttendanceCapturePanel, AttendanceMethodSelector } from '../components/attendance/AttendanceCapturePanels'
 import { WorkflowStepBar } from '../components/common/WorkflowStepBar'
 import { SquircleActionButton, PrintOptionModal } from '../components/master-data'
@@ -190,7 +190,12 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
     .filter(Boolean)
   const userRole = String(currentUser?.role || currentUser?.user_type || roleNames[0] || '').toLowerCase()
 
-  const isOverrideUser = hasRoleLevel(currentUser, ROLE_LEVELS.PIMPINAN_YAYASAN) // Level <= 5 (Super Admin, Admin, TU, Kepsek, Yayasan)
+  const isOverrideUser = hasRoleLevel(currentUser, ROLE_LEVELS.KEPALA_SEKOLAH) || // Level <= 4 (Super Admin, Admin, Yayasan, TU/Operator, Kepsek, Divisi)
+    hasAnyRole(currentUser?.roles || currentUser?.role, [
+      'Super Admin', 'super_admin', 'Admin', 'admin', 'Pengurus Yayasan', 'Yayasan',
+      'Tata Usaha', 'TU', 'tata_usaha', 'Operator', 'operator',
+      'Kepala Sekolah', 'kepala_sekolah', 'Divisi Pendidikan', 'divisi_pendidikan'
+    ])
 
   const activeLogin = Boolean(activeScheduleId)
   const [date, setDate] = useState(activeDate || today)
@@ -488,7 +493,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
     captureStarted
   )
   const isSessionFinished = sessionFinal || Boolean(session?.session_closed_at && session?.teaching_session_status === 'completed')
-  const isTeacherReadyOrActive = isTeacherCheckedIn || isSessionFinished
+  const isTeacherReadyOrActive = isTeacherCheckedIn || isSessionFinished || isOverrideUser
 
   // Live Timer Stopwatch KBM
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -895,6 +900,10 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
                     <span className="size-2 rounded-full bg-white" />
                     Sedang Mengajar (Aktif)
                   </span>
+                ) : isOverrideUser ? (
+                  <Badge color="cyan" size="sm">
+                    Akses Pengawas / TU (Override)
+                  </Badge>
                 ) : !isScheduleTimeActive ? (
                   <Badge color="gray" size="sm">
                     Di Luar Jam KBM (Presensi Nonaktif)
@@ -946,7 +955,7 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
             )}
 
             {/* Tombol Check-In / Tutup Sesi */}
-            {!isTeacherReadyOrActive ? (
+            {!isTeacherCheckedIn && !isSessionFinished ? (
               <button
                 type="button"
                 onClick={handleTeacherCheckIn}
@@ -956,16 +965,22 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
                     ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white shadow-emerald-600/30 border-emerald-400/40 hover:scale-[1.02] active:scale-95 cursor-pointer'
                     : 'bg-slate-200 text-slate-500 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 cursor-not-allowed opacity-75 shadow-none'
                 }`}
-                title={!isScheduleTimeActive ? 'Tombol presensi hanya aktif pada jam pelajaran KBM berlangsung' : 'Mulai jam mengajar'}
+                title={isOverrideUser ? 'Buka sesi KBM secara administratif' : !isScheduleTimeActive ? 'Tombol presensi hanya aktif pada jam pelajaran KBM berlangsung' : 'Mulai jam mengajar'}
               >
                 {captureBusy ? (
                   <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 ) : (
                   <UserCheck className="size-5" />
                 )}
-                <span>{!isScheduleTimeActive ? 'Presensi Tidak Aktif (Di Luar Jam KBM)' : 'Check-In Mulai Mengajar'}</span>
+                <span>
+                  {isOverrideUser
+                    ? 'Check-In Sesi KBM'
+                    : !isScheduleTimeActive
+                    ? 'Presensi Tidak Aktif (Di Luar Jam KBM)'
+                    : 'Check-In Mulai Mengajar'}
+                </span>
               </button>
-            ) : !isSessionFinished ? (
+            ) : isTeacherCheckedIn && !isSessionFinished ? (
               <button
                 type="button"
                 onClick={handleTeacherCloseTeaching}
@@ -1064,7 +1079,11 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
                 <span>{selected.time_start?.slice(0, 5)}–{selected.time_end?.slice(0, 5)} WIB</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {step04Blocked ? (
+                {isOverrideUser ? (
+                  <Badge color="cyan" size="sm">
+                    Akses Pengawas / TU (Override)
+                  </Badge>
+                ) : step04Blocked ? (
                   <Badge color="warning" size="sm">
                     Status: {teachingSessionStatus || 'Belum Aktif'}
                   </Badge>
@@ -1230,6 +1249,21 @@ function TeacherWorkspace({ activeScheduleId = '', activeDate = '', requestedSes
         </div>
       ) : (
         <>
+          {/* Banner Informasi Mode Administrasi Override (TU / Kepsek / Admin) */}
+          {isOverrideUser && !isTeacherCheckedIn && !sessionFinal && (
+            <div className="flex items-center gap-3 rounded-2xl bg-cyan-50/90 p-4 text-xs font-semibold text-cyan-900 border border-cyan-200/90 dark:bg-cyan-950/40 dark:text-cyan-200 dark:border-cyan-800/60 shadow-xs">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700 dark:bg-cyan-900/60 dark:text-cyan-300">
+                <ShieldCheck className="size-5" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-black text-cyan-950 dark:text-cyan-100">Mode Administrasi Akademik & Pengawas (Override)</p>
+                <p className="text-[11px] text-cyan-800/90 dark:text-cyan-300/90 leading-relaxed">
+                  Anda memiliki akses manajerial untuk melihat daftar murid, mencatat kehadiran santri/siswa, atau mencetak lembar presensi KBM tanpa dibatasi jam pelajaran.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Section 3.1: Metode Presensi Siswa */}
           <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-300 bg-white p-6 sm:p-7 shadow-md shadow-emerald-500/10 dark:border-emerald-700/80 dark:bg-[#1B2433] space-y-5">
             <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />

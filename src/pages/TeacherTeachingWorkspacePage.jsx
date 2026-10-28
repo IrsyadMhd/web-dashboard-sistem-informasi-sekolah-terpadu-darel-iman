@@ -1546,8 +1546,9 @@ export default function TeacherTeachingWorkspacePage() {
     const notes = studentNotes.filter((note) => note.student_id === student.id)
     setDetailData({
       rawStudent: student,
+      studentNotes: notes,
       title: student.nama_lengkap || student.full_name || 'Data Siswa',
-      category: `Data Siswa · ${selectedClassName}`,
+      category: `Buku Penghubung & Catatan Perkembangan Siswa`,
       items: [
         { label: 'NIS/NISN', value: student.nis || student.nisn || '-' },
         { label: 'Rombel', value: student.kelas?.nama_kelas || student.kelas?.name || selectedClassName },
@@ -4794,7 +4795,7 @@ export default function TeacherTeachingWorkspacePage() {
   const previousTahfizhLog = selectedStudentTahfizhLogs[0] || null
 
   const getQuranJuz = (surahNumber, ayahNumber) => {
-    const juzStarts = [[1, 1], [2, 142], [2, 253], [3, 93], [4, 24], [4, 148], [5, 82], [6, 111], [7, 88], [8, 41], [9, 93], [11, 6], [12, 53], [15, 1], [17, 1], [18, 75], [21, 1], [23, 1], [25, 21], [27, 56], [29, 46], [33, 31], [36, 28], [39, 32], [41, 47], [46, 1], [51, 31], [58, 1], [67, 1], [78, 1]]
+    const juzStarts = [[1, 1], [2, 142], [2, 253], [3, 93], [4, 24], [4, 148], [5, 83], [6, 111], [7, 88], [8, 41], [9, 93], [11, 6], [12, 53], [15, 1], [17, 1], [18, 75], [21, 1], [23, 1], [25, 21], [27, 56], [29, 46], [33, 31], [36, 28], [39, 32], [41, 47], [46, 1], [51, 31], [58, 1], [67, 1], [78, 1]]
     let juz = 1
     juzStarts.forEach(([surah, ayah], index) => {
       if (Number(surahNumber) > surah || (Number(surahNumber) === surah && Number(ayahNumber) >= ayah)) juz = index + 1
@@ -8247,7 +8248,109 @@ export default function TeacherTeachingWorkspacePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {catatanStudents.map((student, index) => { const notes = studentNotes.filter((note) => note.student_id === student.id); const latest = notes[0]; return <tr key={student.id} className="h-[76px] hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10"><td className="p-3 text-center font-mono text-slate-400">{index + 1}</td><td className="overflow-hidden p-3"><p className="truncate font-bold text-slate-900 dark:text-white" title={student.nama_lengkap || student.full_name}>{student.nama_lengkap || student.full_name}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{student.nis || student.nisn || 'NIS belum tersedia'}</p></td><td className="overflow-hidden p-3"><span className="block truncate rounded-full bg-emerald-50 px-2.5 py-1 text-center text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title={student.kelas?.nama_kelas || student.kelas?.name || selectedClassName}>{student.kelas?.nama_kelas || student.kelas?.name || selectedClassName}</span></td><td className="overflow-hidden p-3">{latest ? <><p className="truncate font-semibold text-slate-700 dark:text-slate-200" title={latest.title}>{latest.title}</p><p className="mt-0.5 truncate text-[10px] text-slate-500">{latest.category} · {latest.date}</p></> : <span className="text-slate-400">Belum ada catatan</span>}</td><td className="p-3 text-center"><span className="font-black text-[#0E5C44]">{notes.length}</span></td><td className="whitespace-nowrap p-3 text-right"><div className="inline-flex items-center justify-end gap-1.5"><button type="button" onClick={() => openStudentDetail(student)} className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-2.5 text-[10px] font-bold text-sky-700 transition hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300"><Eye className="h-3.5 w-3.5 shrink-0" /> Lihat</button><button type="button" onClick={() => handlePrintWeeklyEvaluation(student)} title="Cetak Lembar Evaluasi Mingguan Santri" className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-2.5 text-[10px] font-bold text-orange-700 hover:bg-orange-100 transition dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300"><Printer className="h-3.5 w-3.5 shrink-0" /> Evaluasi</button><button type="button" onClick={() => openCatatanForm(null, student)} className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#0E5C44] px-2.5 text-[10px] font-bold text-white hover:bg-emerald-800 transition"><Plus className="h-3.5 w-3.5 shrink-0" /> Catatan</button>{latest?.teacher_id === teacherProfile?.id && <><button type="button" onClick={() => openCatatanForm(latest)} title="Edit catatan terakhir" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300"><Edit3 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => confirmDeleteModal('catatan', latest.id, latest.title)} title="Hapus catatan terakhir" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button></>}</div></td></tr> })}
+                    {catatanStudents.map((student, index) => {
+                      const notes = studentNotes.filter((note) => note.student_id === student.id);
+                      const latest = notes[0];
+                      const isSigned = latest?.signature_status === 'signed' || Boolean(latest?.signed_by_user_id && latest?.signed_at);
+                      const isStale = latest?.signature_status === 'signed_updated';
+                      return (
+                        <tr key={student.id} className="h-[76px] hover:bg-emerald-50/40 dark:hover:bg-emerald-950/10">
+                          <td className="p-3 text-center font-mono text-slate-400">{index + 1}</td>
+                          <td className="overflow-hidden p-3">
+                            <p className="truncate font-bold text-slate-900 dark:text-white" title={student.nama_lengkap || student.full_name}>
+                              {student.nama_lengkap || student.full_name}
+                            </p>
+                            <p className="mt-0.5 truncate text-[10px] text-slate-500">
+                              {student.nis || student.nisn || 'NIS belum tersedia'}
+                            </p>
+                          </td>
+                          <td className="overflow-hidden p-3">
+                            <span className="block truncate rounded-full bg-emerald-50 px-2.5 py-1 text-center text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title={student.kelas?.nama_kelas || student.kelas?.name || selectedClassName}>
+                              {student.kelas?.nama_kelas || student.kelas?.name || selectedClassName}
+                            </span>
+                          </td>
+                          <td className="overflow-hidden p-3">
+                            {latest ? (
+                              <>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="truncate font-semibold text-slate-700 dark:text-slate-200" title={latest.title}>
+                                    {latest.title}
+                                  </p>
+                                  {isSigned && !isStale ? (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                      <CheckCircle2 className="w-2.5 h-2.5" /> Ditandatangani
+                                    </span>
+                                  ) : isStale ? (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300">
+                                      <AlertTriangle className="w-2.5 h-2.5" /> Revisi
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-700 dark:text-slate-300">
+                                      <Clock className="w-2.5 h-2.5" /> Menunggu
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-0.5 truncate text-[10px] text-slate-500">
+                                  {latest.category} · {latest.date}
+                                  {latest.follow_up ? ` · Respon: "${latest.follow_up}"` : ''}
+                                </p>
+                              </>
+                            ) : (
+                              <span className="text-slate-400">Belum ada catatan</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="font-black text-[#0E5C44]">{notes.length}</span>
+                          </td>
+                          <td className="whitespace-nowrap p-3 text-right">
+                            <div className="inline-flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openStudentDetail(student)}
+                                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-2.5 text-[10px] font-bold text-sky-700 transition hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300"
+                              >
+                                <Eye className="h-3.5 w-3.5 shrink-0" /> Lihat ({notes.length})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePrintWeeklyEvaluation(student)}
+                                title="Cetak Lembar Evaluasi Mingguan Santri"
+                                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-2.5 text-[10px] font-bold text-orange-700 hover:bg-orange-100 transition dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300"
+                              >
+                                <Printer className="h-3.5 w-3.5 shrink-0" /> Evaluasi
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openCatatanForm(null, student)}
+                                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[#0E5C44] px-2.5 text-[10px] font-bold text-white hover:bg-emerald-800 transition"
+                              >
+                                <Plus className="h-3.5 w-3.5 shrink-0" /> Catatan
+                              </button>
+                              {latest?.teacher_id === teacherProfile?.id && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => openCatatanForm(latest)}
+                                    title="Edit catatan terakhir"
+                                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-300"
+                                  >
+                                    <Edit3 className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => confirmDeleteModal('catatan', latest.id, latest.title)}
+                                    title="Hapus catatan terakhir"
+                                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 {!loading && catatanStudents.length === 0 && <div className="py-12 text-center"><Users className="mx-auto h-9 w-9 text-slate-300" /><p className="mt-2 text-xs font-semibold text-slate-500">Tidak ada siswa pada rombel atau filter ini.</p></div>}
@@ -12641,6 +12744,223 @@ export default function TeacherTeachingWorkspacePage() {
                       type="button"
                       onClick={() => setShowDetailModal(false)}
                       className="px-4 py-2 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        if (detailData.rawStudent) {
+          const student = detailData.rawStudent
+          const notes = detailData.studentNotes || studentNotes.filter((n) => n.student_id === student.id)
+          const signedCount = notes.filter((n) => n.signature_status === 'signed' || (n.signed_by_user_id && n.signed_at)).length
+          const waitingCount = notes.length - signedCount
+
+          return (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-5" role="dialog" aria-modal="true">
+              <div className="bg-white dark:bg-[#1B2433] w-full max-w-3xl max-h-[90vh] flex flex-col rounded-[22px] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative animate-in fade-in zoom-in duration-200">
+                {/* Header */}
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-200 p-4 sm:p-5 dark:border-slate-700 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-bold shadow-md">
+                      {(student.nama_lengkap || student.full_name || 'S').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                          Buku Penghubung Santri
+                        </span>
+                        <span className="rounded-full bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                          {student.kelas?.nama_kelas || student.kelas?.name || selectedClassName}
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
+                        {student.nama_lengkap || student.full_name}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        NIS/NISN: {student.nis || student.nisn || '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowDetailModal(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* KPI mini stats */}
+                <div className="grid grid-cols-3 gap-2 px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 text-center text-xs">
+                  <div className="rounded-xl bg-white p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800">
+                    <span className="text-[10px] text-slate-500 block font-medium">Total Catatan</span>
+                    <strong className="text-sm font-black text-slate-800 dark:text-white">{notes.length}</strong>
+                  </div>
+                  <div className="rounded-xl bg-emerald-50 p-2 border border-emerald-200 dark:border-emerald-800 dark:bg-emerald-950/40">
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-300 block font-medium">Ditandatangani Wali</span>
+                    <strong className="text-sm font-black text-emerald-700 dark:text-emerald-300">{signedCount}</strong>
+                  </div>
+                  <div className="rounded-xl bg-amber-50 p-2 border border-amber-200 dark:border-amber-800 dark:bg-amber-950/40">
+                    <span className="text-[10px] text-amber-700 dark:text-amber-300 block font-medium">Menunggu Respon</span>
+                    <strong className="text-sm font-black text-amber-700 dark:text-amber-300">{waitingCount}</strong>
+                  </div>
+                </div>
+
+                {/* List of notes */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+                  {notes.length === 0 ? (
+                    <div className="py-12 text-center text-slate-400">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs font-semibold">Belum ada catatan untuk santri ini.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowDetailModal(false)
+                          openCatatanForm(null, student)
+                        }}
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Tulis Catatan Pertama
+                      </button>
+                    </div>
+                  ) : (
+                    notes.map((note) => {
+                      const isSigned = note.signature_status === 'signed' || Boolean(note.signed_by_user_id && note.signed_at)
+                      const isStale = note.signature_status === 'signed_updated'
+                      const isAuthor = note.teacher_id === teacherProfile?.id
+
+                      return (
+                        <div
+                          key={note.id}
+                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-800/80 space-y-2.5"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/70 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                {note.category || 'Akademik'}
+                              </span>
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${
+                                note.priority === 'urgent'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950 dark:text-rose-300'
+                                  : note.priority === 'high'
+                                  ? 'bg-orange-100 text-orange-800 border border-orange-200 dark:bg-orange-950 dark:text-orange-300'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-700 dark:text-slate-300'
+                              }`}>
+                                {note.priority || 'medium'}
+                              </span>
+                              <span className="text-[11px] text-slate-400 font-medium">
+                                · {note.date || note.created_at?.slice(0, 10)}
+                              </span>
+                            </div>
+
+                            {/* Status Tanda Tangan */}
+                            <div className="flex items-center gap-1">
+                              {isSigned && !isStale ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Ditandatangani
+                                </span>
+                              ) : isStale ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Perlu Tanda Tangan Ulang
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 border border-slate-200 dark:bg-slate-700 dark:text-slate-300">
+                                  <Clock className="w-3 h-3 text-slate-500" /> Menunggu Respon
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                              {note.title}
+                            </h4>
+                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                              {note.content}
+                            </p>
+                          </div>
+
+                          {/* Tanggapan Orang Tua */}
+                          {note.follow_up && (
+                            <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-3 text-xs text-teal-900 dark:border-teal-800 dark:bg-teal-950/40 dark:text-teal-200 space-y-1">
+                              <div className="flex items-center gap-1.5 font-bold text-[11px] text-teal-800 dark:text-teal-300">
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Tanggapan &amp; Tindak Lanjut Orang Tua:</span>
+                              </div>
+                              <p className="italic pl-5">"{note.follow_up}"</p>
+                              {note.signed_at && (
+                                <p className="text-[10px] text-teal-700/80 dark:text-teal-400/80 pl-5 pt-0.5">
+                                  Ditandatangani pada: {new Date(note.signed_at).toLocaleString('id-ID')}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Tombol Aksi per Catatan */}
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-700">
+                            <span className="text-[10px] text-slate-400">
+                              Pengajar: {note.teacher?.full_name || note.teacher?.name || 'Guru'}
+                            </span>
+                            {isAuthor && (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowDetailModal(false)
+                                    openCatatanForm(note)
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 text-[10px] font-bold border border-amber-200 dark:bg-amber-950/50 dark:text-amber-300"
+                                >
+                                  <Edit3 className="w-3 h-3" /> Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowDetailModal(false)
+                                    confirmDeleteModal('catatan', note.id, note.title)
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-[10px] font-bold border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300"
+                                >
+                                  <Trash2 className="w-3 h-3" /> Hapus
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 p-4 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40">
+                  <button
+                    type="button"
+                    onClick={() => handlePrintWeeklyEvaluation(student)}
+                    className="px-3.5 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Cetak Evaluasi Pekanan
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDetailModal(false)
+                        openCatatanForm(null, student)
+                      }}
+                      className="px-3.5 py-2 bg-[#0E5C44] hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Tambah Catatan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailModal(false)}
+                      className="px-3.5 py-2 border rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 cursor-pointer"
                     >
                       Tutup
                     </button>

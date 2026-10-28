@@ -756,7 +756,9 @@ export default function UnifiedPortalPage() {
                     <span>Kehadiran</span>
                   </div>
                   <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
-                    {dashboard?.attendance_summary?.percentage || '98%'}
+                    {dashboard?.kpi?.attendance_rate !== undefined
+                      ? `${dashboard.kpi.attendance_rate}%`
+                      : (dashboard?.attendance_summary?.percentage || dashboard?.attendance_today?.status_label || '-')}
                   </p>
                   <p className="text-[10px] font-bold text-emerald-600">Presensi Bulan Ini</p>
                 </div>
@@ -767,7 +769,7 @@ export default function UnifiedPortalPage() {
                     <span>Tahfizh</span>
                   </div>
                   <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
-                    {dashboard?.tahfizh_summary?.total_juz || '2.5'} <span className="text-xs font-semibold">Juz</span>
+                    {dashboard?.tahfizh_summary?.total_juz ?? dashboard?.tahfizh_summary?.juz_count ?? (dashboard?.kpi?.total_tahfizh_ayat ? (dashboard.kpi.total_tahfizh_ayat / 200).toFixed(1) : '0')} <span className="text-xs font-semibold">Juz</span>
                   </p>
                   <p className="text-[10px] font-bold text-sky-600">Capaian Hafalan</p>
                 </div>
@@ -778,7 +780,7 @@ export default function UnifiedPortalPage() {
                     <span>Rata-Rata Nilai</span>
                   </div>
                   <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
-                    {dashboard?.academic_summary?.gpa || '87.4'}
+                    {dashboard?.academic_summary?.gpa ?? dashboard?.gpa ?? (Array.isArray(dashboard?.latest_grades) && dashboard.latest_grades.length > 0 ? (dashboard.latest_grades.reduce((acc, g) => acc + Number(g.final_score || g.score || 0), 0) / dashboard.latest_grades.length).toFixed(1) : '-')}
                   </p>
                   <p className="text-[10px] font-bold text-amber-600">Rapor Semester</p>
                 </div>
@@ -789,7 +791,7 @@ export default function UnifiedPortalPage() {
                     <span>Tugas LMS</span>
                   </div>
                   <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
-                    {dashboard?.assignment_summary?.pending ?? 1} <span className="text-xs font-semibold">Pending</span>
+                    {dashboard?.kpi?.active_assignments_count ?? dashboard?.assignment_summary?.pending ?? 0} <span className="text-xs font-semibold">Pending</span>
                   </p>
                   <p className="text-[10px] font-bold text-rose-600">Perlu Dikerjakan</p>
                 </div>
@@ -800,7 +802,7 @@ export default function UnifiedPortalPage() {
                     <span>Mutabaah</span>
                   </div>
                   <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
-                    {dashboard?.mutabaah_summary?.score ?? 92}%
+                    {dashboard?.mutabaah_summary?.score !== undefined ? `${dashboard.mutabaah_summary.score}%` : (dashboard?.kpi?.mutabaah_status ? 'Aktif' : '-')}
                   </p>
                   <p className="text-[10px] font-bold text-purple-600">Kepatuhan Ibadah</p>
                 </div>

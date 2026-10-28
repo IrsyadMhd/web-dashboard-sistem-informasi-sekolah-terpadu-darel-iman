@@ -717,13 +717,16 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 350)
 
-  const [filters, setFilters] = useState({
-    mata_pelajaran_id: '',
-    kisi_kisi_id: '',
-    kelas_id: '',
-    tipe_soal: '',
-    tingkat_kesulitan: '',
-    status: '',
+  const [filters, setFilters] = useState(() => {
+    const urlKisiId = searchParams.get('kisi_id') || sessionStorage.getItem('bankSoal_prefill_kisi_id') || ''
+    return {
+      mata_pelajaran_id: '',
+      kisi_kisi_id: urlKisiId,
+      kelas_id: '',
+      tipe_soal: '',
+      tingkat_kesulitan: '',
+      status: '',
+    }
   })
 
   // Print & Import State
@@ -806,8 +809,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
           kisi_kisi_id: kisiId !== 'unassigned' ? kisiId : '',
           judul_kisi: kisiMeta.judul_kisi || item.kisi_kisi?.judul_kisi || (kisiId === 'unassigned' ? 'Soal Mandiri (Tanpa Kisi-kisi)' : `Kisi-kisi #${kisiId}`),
           mata_pelajaran_id: item.mata_pelajaran_id || kisiMeta.mata_pelajaran_id || '',
-          mapel_name: getMapelName(item) || kisiMeta.mata_pelajaran || 'Mata Pelajaran Umum',
-          kelas: kisiMeta.kelas || item.kisi_kisi?.kelas || '',
+          mapel_name: getMapelName(item) || kisiMeta.subject_name || kisiMeta.mata_pelajaran || 'Mata Pelajaran Umum',
+          kelas: kisiMeta.kelas_name || kisiMeta.kelas || item.kisi_kisi?.kelas || '',
           jenis_ujian: kisiMeta.jenis_ujian || item.kisi_kisi?.jenis_ujian || '',
           target_jumlah_soal: Number(kisiMeta.jumlah_soal) || null,
           total_poin: 0,
@@ -819,9 +822,28 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
       grp.total_poin += Number(item.poin || 0)
     })
 
-    // If no search filter is active and not filtering specific single kisi-kisi,
-    // include available empty kisi-kisi from options so teacher can directly add questions to them
-    if (!debouncedSearch && (!filters.kisi_kisi_id || filters.kisi_kisi_id === 'Semua')) {
+    // If filtering a specific single kisi-kisi, ensure that kisi-kisi is included even if it currently has 0 questions
+    if (filters.kisi_kisi_id && filters.kisi_kisi_id !== 'Semua') {
+      const targetKisiId = String(filters.kisi_kisi_id)
+      if (!map.has(targetKisiId)) {
+        const k = (options.kisi_kisi || []).find((x) => String(x.id) === targetKisiId)
+        if (k) {
+          map.set(targetKisiId, {
+            kisi_kisi_id: targetKisiId,
+            judul_kisi: k.judul_kisi || `Kisi-kisi #${targetKisiId}`,
+            mata_pelajaran_id: k.mata_pelajaran_id || '',
+            mapel_name: k.subject_name || k.mata_pelajaran || 'Mata Pelajaran Umum',
+            kelas: k.kelas_name || k.kelas || '',
+            jenis_ujian: k.jenis_ujian || '',
+            target_jumlah_soal: Number(k.jumlah_soal) || null,
+            total_poin: 0,
+            items: [],
+          })
+        }
+      }
+    } else if (!debouncedSearch) {
+      // If no search filter is active and viewing all kisi-kisi,
+      // include available empty kisi-kisi from options so teacher can directly add questions to them
       (options.kisi_kisi || []).forEach((k) => {
         const kId = String(k.id)
         if (!map.has(kId)) {
@@ -832,8 +854,8 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
             kisi_kisi_id: kId,
             judul_kisi: k.judul_kisi || `Kisi-kisi #${kId}`,
             mata_pelajaran_id: k.mata_pelajaran_id || '',
-            mapel_name: k.mata_pelajaran || 'Mata Pelajaran Umum',
-            kelas: k.kelas || '',
+            mapel_name: k.subject_name || k.mata_pelajaran || 'Mata Pelajaran Umum',
+            kelas: k.kelas_name || k.kelas || '',
             jenis_ujian: k.jenis_ujian || '',
             target_jumlah_soal: Number(k.jumlah_soal) || null,
             total_poin: 0,
@@ -898,13 +920,16 @@ export default function LmsBankSoalPage({ embedded = false, hideBreadcrumb = fal
         kisi_kisi_id: targetKisiId,
       }))
 
-      handleOpenModal(null, {
-        kisi_kisi_id: targetKisiId,
-        mata_pelajaran_id: targetMapelId,
-      })
+      const shouldOpenModal = Boolean(sessionKisiId || searchParams.get('action') === 'create')
+      if (shouldOpenModal) {
+        handleOpenModal(null, {
+          kisi_kisi_id: targetKisiId,
+          mata_pelajaran_id: targetMapelId,
+        })
 
-      if (targetJudul) {
-        notify('Prefill Kisi-kisi', `Tambah butir soal untuk: ${targetJudul}`, 'success')
+        if (targetJudul) {
+          notify('Prefill Kisi-kisi', `Tambah butir soal untuk: ${targetJudul}`, 'success')
+        }
       }
 
       sessionStorage.removeItem('bankSoal_prefill_kisi_id')

@@ -370,38 +370,46 @@ export default function TahfizhPage() {
   // Print Option Modal State
   const [showPrintModal, setShowPrintModal] = useState(false)
 
-  // Helper function to calculate Juz number from Surah Number
-  const getJuzFromSurah = (surahNum) => {
-    const s = Number(surahNum)
+  // Titik awal 30 Juz Al-Qur'an (Surah & Ayat Awal) - Standar Mushaf Kemenag RI
+  const JUZ_STARTS = [
+    [1, 1], [2, 142], [2, 253], [3, 93], [4, 24], [4, 148], [5, 83], [6, 111], [7, 88], [8, 41],
+    [9, 93], [11, 6], [12, 53], [15, 1], [17, 1], [18, 75], [21, 1], [23, 1], [25, 21], [27, 56],
+    [29, 46], [33, 31], [36, 28], [39, 32], [41, 47], [46, 1], [51, 31], [58, 1], [67, 1], [78, 1]
+  ]
+
+  // Dapatkan nomor Juz secara presisi dari nomor Surah dan Ayat
+  const getQuranJuz = (surahNumber, ayahNumber = 1) => {
+    if (!surahNumber) return 1
+    const s = Number(surahNumber)
+    const a = Number(ayahNumber || 1)
     if (s >= 78) return 30
-    if (s >= 67) return 29
-    if (s >= 58) return 28
-    if (s >= 51) return 27
-    if (s >= 46) return 26
-    if (s >= 41) return 25
-    if (s >= 39) return 24
-    if (s >= 36) return 23
-    if (s >= 33) return 22
-    if (s >= 29) return 21
-    if (s >= 27) return 20
-    if (s >= 25) return 19
-    if (s >= 23) return 18
-    if (s >= 21) return 17
-    if (s >= 18) return 16
-    if (s >= 17) return 15
-    if (s >= 15) return 14
-    if (s >= 12) return 13
-    if (s >= 11) return 12
-    if (s >= 9) return 11
-    if (s >= 8) return 10
-    if (s >= 7) return 9
-    if (s >= 6) return 8
-    if (s >= 5) return 7
-    if (s >= 4) return 6
-    if (s >= 3) return 4
-    if (s >= 2) return 2
+    for (let j = JUZ_STARTS.length - 1; j >= 0; j--) {
+      const [startSurah, startAyah] = JUZ_STARTS[j]
+      if (s > startSurah || (s === startSurah && a >= startAyah)) {
+        return j + 1
+      }
+    }
     return 1
   }
+
+  // Label rentang Juz untuk surah (misal Al-Baqarah: Juz 1–3)
+  const getJuzDisplayForSurah = (surahNum, totalAyat) => {
+    const jStart = getQuranJuz(surahNum, 1)
+    const jEnd = getQuranJuz(surahNum, totalAyat || 1)
+    return jStart === jEnd ? `${jStart}` : `${jStart}–${jEnd}`
+  }
+
+  // Cek apakah suatu Surah mencakup Juz tertentu
+  const isSurahInJuz = (surahNum, juzNum, totalAyat = 1) => {
+    const s = Number(surahNum)
+    const j = Number(juzNum)
+    if (!s || !j) return false
+    const juzStart = getQuranJuz(s, 1)
+    const juzEnd = getQuranJuz(s, totalAyat || 1)
+    return j >= juzStart && j <= juzEnd
+  }
+
+  const getJuzFromSurah = (surahNum, ayahNum = 1) => getQuranJuz(surahNum, ayahNum)
 
   // Master Qur'an Data & Modal State
   const [quranSurahs, setQuranSurahs] = useState([])
@@ -983,7 +991,12 @@ export default function TahfizhPage() {
     }
 
     const apiBase = import.meta.env.VITE_API_BASE_URL || ''
-    const backendOrigin = apiBase ? apiBase.replace(/\/api\/?$/, '') : ''
+    let backendOrigin = apiBase ? apiBase.replace(/\/api\/?$/, '') : ''
+    if (!backendOrigin && typeof window !== 'undefined') {
+      backendOrigin = window.location.port === '5173'
+        ? `${window.location.protocol}//${window.location.hostname}:8000`
+        : window.location.origin
+    }
     const fullUrl = typeof url === 'string' && url.startsWith('http')
       ? url
       : `${backendOrigin}${url && !url.startsWith('/') ? '/' : ''}${url || ''}`
@@ -1111,7 +1124,7 @@ export default function TahfizhPage() {
 
     if (selectedJuzFilter !== 'all') {
       const juzNum = Number(selectedJuzFilter)
-      list = list.filter((s) => getJuzFromSurah(s.nomor) === juzNum)
+      list = list.filter((s) => isSurahInJuz(s.nomor, juzNum, s.jumlah_ayat))
     }
 
     if (quranSearch) {
@@ -2639,7 +2652,7 @@ export default function TahfizhPage() {
                                 {s.nomor}
                               </span>
                               <span className="font-extrabold">{s.nama_latin}</span>
-                              <span className="text-[10px] text-slate-400">(Juz {getJuzFromSurah(s.nomor)})</span>
+                              <span className="text-[10px] text-slate-400">({getJuzDisplayForSurah(s.nomor, s.jumlah_ayat)})</span>
                             </div>
                             <div className="flex items-center gap-3">
                               <span className="text-[11px] text-slate-500 font-medium">({s.jumlah_ayat} Ayat)</span>
@@ -2672,7 +2685,7 @@ export default function TahfizhPage() {
                           <option value="">-- Pilih Surah Al-Qur'an --</option>
                           {filteredQuranSurahs.map((s) => (
                             <option key={s.nomor} value={s.nomor}>
-                              Surah {s.nomor}. {s.nama_latin} ({s.nama}) — {s.jumlah_ayat} Ayat (Juz {getJuzFromSurah(s.nomor)})
+                              Surah {s.nomor}. {s.nama_latin} ({s.nama}) — {s.jumlah_ayat} Ayat ({getJuzDisplayForSurah(s.nomor, s.jumlah_ayat)})
                             </option>
                           ))}
                         </select>
@@ -2690,7 +2703,7 @@ export default function TahfizhPage() {
                           <span>Detail Surah: Surah {modalSurah.nomor}. {modalSurah.nama_latin} ({modalSurah.jumlah_ayat} Ayat)</span>
                         </div>
                         <Badge color="emerald" size="sm">
-                          Juz {getJuzFromSurah(modalSurah.nomor)}
+                          Juz {getQuranJuz(modalSurah.nomor, modalAyahStart)}
                         </Badge>
                       </div>
 
@@ -3120,7 +3133,7 @@ export default function TahfizhPage() {
                       <span>Detail Hafalan Aktif: {currentStudentObj.last_surah_memorized || '-'}</span>
                       {currentStudentObj.last_surah_number ? (
                         <Badge color="emerald" size="sm">
-                          Juz {getJuzFromSurah(currentStudentObj.last_surah_number)}
+                          Juz {getQuranJuz(currentStudentObj.last_surah_number, currentStudentObj.last_ayah_start || currentStudentObj.last_ayah_end || 1)}
                         </Badge>
                       ) : null}
                     </div>

@@ -26,7 +26,12 @@ import {
   AlertTriangle,
   Trash2,
   XCircle,
+  Wrench,
+  ChevronRight,
+  Eye,
+  Menu,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import AppBreadcrumb from '../components/app/AppBreadcrumb'
 import AppTabs from '../components/app/AppTabs'
@@ -232,11 +237,13 @@ function ResetConfirmModal({ isOpen, onClose, onConfirm }) {
 export default function MobileApiConfigPage() {
   const pengaturan = usePengaturanStore((state) => state.pengaturan)
   const foundationName = resolveFoundationName(pengaturan)
+  const navigate = useNavigate()
   const [config, setConfig] = useState(DEFAULT_MOBILE_API_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState('identitas') // 'identitas' | 'tampilan' | 'dashboard' | 'fitur' | 'sistem'
+  const [activeTab, setActiveTab] = useState('identitas') // 'identitas' | 'tampilan' | 'dashboard' | 'fitur' | 'sistem' | 'onboarding'
   const [selectedRole, setSelectedRole] = useState('super_admin')
+  const [previewSlideIndex, setPreviewSlideIndex] = useState(0)
   const [uploadingAsset, setUploadingAsset] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -343,6 +350,32 @@ export default function MobileApiConfigPage() {
       system: { ...current.system, [key]: value },
     }))
 
+  const updateOnboarding = (key, value) =>
+    setConfig((current) => ({
+      ...current,
+      onboarding: { ...(current.onboarding || {}), [key]: value },
+    }))
+
+  const updateOnboardingSlide = (index, field, value) =>
+    setConfig((current) => {
+      const slides = [...(current.onboarding?.slides || [])]
+      if (slides[index]) {
+        slides[index] = {
+          ...slides[index],
+          [field]: value,
+          ...(field === 'description' ? { desc: value } : {}),
+          ...(field === 'desc' ? { description: value } : {}),
+        }
+      }
+      return {
+        ...current,
+        onboarding: {
+          ...(current.onboarding || {}),
+          slides,
+        },
+      }
+    })
+
   const updateSection = (type, value) =>
     setConfig((current) => ({
       ...current,
@@ -413,6 +446,7 @@ export default function MobileApiConfigPage() {
     { id: 'dashboard', label: '3. Beranda & Role', icon: LayoutDashboard },
     { id: 'fitur', label: '4. Fitur Mobile', icon: Sparkles },
     { id: 'sistem', label: '5. Sistem & Rilis', icon: Cpu },
+    { id: 'onboarding', label: '6. Layar Onboarding', icon: Sparkles },
   ]
 
   return (
@@ -444,6 +478,14 @@ export default function MobileApiConfigPage() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 self-start sm:self-auto flex-wrap">
+            <Button
+              type="button"
+              onClick={() => navigate('/dashboard/pengaturan/menu-navigasi')}
+              variant="ghost"
+              className="rounded-xl border border-emerald-300 bg-white/80 dark:border-emerald-700 dark:bg-slate-800"
+            >
+              <Menu className="h-4 w-4 mr-1.5 text-emerald-600" /> Kelola Item Menu Navigasi
+            </Button>
             <Button onClick={save} pending={saving} disabled={loading} variant="primary">
               <Save className="h-4 w-4" /> Publikasikan Perubahan
             </Button>
@@ -1226,133 +1268,462 @@ export default function MobileApiConfigPage() {
                 </div>
               </div>
             )}
+
+            {/* ========================================================
+                TAB 6: LAYAR ONBOARDING (WELCOME WALKTHROUGH)
+            ======================================================== */}
+            {activeTab === 'onboarding' && (
+              <div className="space-y-5">
+                {/* Master Switch & Policy Card */}
+                <div className="rounded-[18px] border border-emerald-500/30 bg-gradient-to-br from-emerald-50/60 via-teal-50/40 to-white p-5 shadow-xs dark:border-emerald-700/50 dark:bg-[#13221f]/60">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-700/20">
+                        <Sparkles className="h-6 w-6" />
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-black text-slate-900 dark:text-white">
+                            Layar Onboarding / Welcome Walkthrough
+                          </h2>
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            Khusus Fresh Install
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
+                          Halaman pengenalan 3 fitur utama yang hanya tampil 1 kali setelah pengguna menginstal aplikasi baru di Android.
+                        </p>
+                      </div>
+                    </div>
+
+                    <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-emerald-200 bg-white px-3.5 py-2 shadow-xs dark:border-emerald-800 dark:bg-slate-900">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(config.onboarding?.enabled ?? true)}
+                        onChange={(e) => updateOnboarding('enabled', e.target.checked)}
+                        className="h-5 w-5 accent-emerald-600 cursor-pointer"
+                      />
+                      <span className="text-xs font-black uppercase text-slate-800 dark:text-slate-200">
+                        {Boolean(config.onboarding?.enabled ?? true) ? 'Onboarding Aktif' : 'Onboarding Nonaktif'}
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Aesthetic Info Callout */}
+                  <div className="mt-4 rounded-xl border border-emerald-200/90 bg-white/90 p-3.5 shadow-xs dark:border-emerald-800/80 dark:bg-slate-900/90">
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                        <Info className="h-4 w-4" />
+                      </div>
+                      <div className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                        <p className="font-bold text-slate-800 dark:text-slate-100">
+                          Standar Desain & Warna Layar Onboarding:
+                        </p>
+                        <p className="mt-0.5">
+                          Sesuai permintaan sistem, layar onboarding mobile menggunakan tema warna <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">#18A165</span> dengan tingkat transparansi gradien (opacity) yang memperlihatkan ilustrasi gedung sekolah dan kubah masjid identik dengan halaman beranda orang tua & santri.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3 Slides Management Cards */}
+                <div className="space-y-4">
+                  {(config.onboarding?.slides || [
+                    { id: 1, title: 'Sistem Sekolah Terpadu', description: 'Akses seluruh informasi akademik, jadwal pelajaran, dan kegiatan harian siswa dalam satu aplikasi terintegrasi.', image_url: null },
+                    { id: 2, title: "Mutaba'ah & Tahfizh Mandiri", description: "Pantau setoran hafalan Al-Qur'an dan amalan yaumiyyah ananda secara berkala dan real-time bersama ustadz/ustadzah.", image_url: null },
+                    { id: 3, title: 'Presensi & Layanan Digital', description: 'Dapatkan notifikasi kedatangan gerbang sekolah, perizinan asrama, dan komunikasi cepat dengan pihak sekolah.', image_url: null },
+                  ]).map((slide, idx) => {
+                    const mediaType = `onboarding_${idx + 1}`
+                    const isUploading = uploadingAsset === mediaType
+                    const fallbackImages = [
+                      '/assets/images/school_illustration.jpg',
+                      '/assets/images/family_illustration.png',
+                      '/assets/images/supervisi_guru.jpg',
+                    ]
+                    const previewSrc = slide.image_url || fallbackImages[idx]
+
+                    return (
+                      <div
+                        key={slide.id || idx}
+                        className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-xs dark:border-slate-700 dark:bg-slate-800/70"
+                      >
+                        {/* Slide Top Banner */}
+                        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-5 py-3 dark:border-slate-700/60 dark:bg-slate-900/40">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-xs font-black text-white">
+                              {idx + 1}
+                            </span>
+                            <span className="text-sm font-black text-slate-800 dark:text-slate-100">
+                              Slide {idx + 1} Onboarding
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {slide.image_url ? (
+                              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                Gambar Kustom Aktif
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                Asset Bawaan Standar
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setPreviewSlideIndex(idx)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                            >
+                              <Eye className="h-3 w-3" /> Preview Mockup
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Slide Content */}
+                        <div className="p-5">
+                          <div className="grid gap-5 md:grid-cols-[180px_1fr]">
+                            {/* Left: Image Thumbnail & Upload Actions */}
+                            <div className="space-y-3">
+                              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border-2 border-emerald-500/30 bg-slate-100 shadow-xs dark:bg-slate-900">
+                                <img
+                                  src={previewSrc}
+                                  alt={`Preview Slide ${idx + 1}`}
+                                  className="h-full w-full object-cover"
+                                />
+                                {slide.image_url && (
+                                  <span className="absolute bottom-2 left-2 rounded-md bg-emerald-950/80 px-1.5 py-0.5 text-[9px] font-extrabold text-emerald-200 backdrop-blur-xs">
+                                    Kustom
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-col gap-1.5">
+                                <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 transition-all">
+                                  <UploadCloud className="h-4 w-4" />
+                                  {isUploading ? 'Mengunggah...' : 'Ubah Gambar'}
+                                  <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    className="hidden"
+                                    disabled={!!uploadingAsset}
+                                    onChange={(e) => handleUploadMedia(mediaType, e)}
+                                  />
+                                </label>
+
+                                {slide.image_url && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteMedia(mediaType, `Gambar Slide ${idx + 1}`)}
+                                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-400 dark:hover:bg-rose-950/30 transition-all"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" /> Reset ke Bawaan
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right: Slide Text Fields */}
+                            <div className="space-y-4">
+                              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                                Judul Fitur (Slide {idx + 1})
+                                <input
+                                  className={inputClass}
+                                  value={slide.title || ''}
+                                  onChange={(e) => updateOnboardingSlide(idx, 'title', e.target.value)}
+                                  placeholder="Contoh: Sistem Sekolah Terpadu"
+                                />
+                              </label>
+
+                              <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                                Deskripsi Ringkas Fitur
+                                <textarea
+                                  rows={3}
+                                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-xs leading-relaxed text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                  value={slide.description || slide.desc || ''}
+                                  onChange={(e) => updateOnboardingSlide(idx, 'description', e.target.value)}
+                                  placeholder="Jelaskan kemudahan dan manfaat fitur ini bagi pengguna baru..."
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Column: Live Mobile Mockup Preview */}
           <aside
             className="sticky top-6 h-fit rounded-[36px] border-[10px] border-slate-900 p-3.5 shadow-2xl transition-all"
-            style={previewBackground}
+            style={activeTab === 'onboarding' ? { backgroundColor: '#0B4D30' } : previewBackground}
           >
             {/* Top speaker notch */}
             <div className="mx-auto mb-2 h-3.5 w-24 rounded-full bg-slate-900/20" />
 
-            <div
-              className="mb-2 text-center text-[10px] font-black uppercase tracking-wider"
-              style={{ color: config.theme?.primary_color || '#0E5C44' }}
-            >
-              Preview Live ({roleLabels[selectedRole] || 'Mobile'})
-            </div>
+            {activeTab === 'onboarding' ? (
+              /* ONBOARDING LIVE PREVIEW MOCKUP */
+              <div className="relative overflow-hidden rounded-[26px] p-3 text-white" style={{ minHeight: 520 }}>
+                {/* Background image & #18A165 opacity overlay */}
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{
+                    backgroundImage: "url('/assets/images/parent_home_bg.jpg')",
+                    opacity: 0.95,
+                  }}
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(24, 161, 101, 0.40) 0%, rgba(24, 161, 101, 0.82) 45%, rgba(11, 77, 48, 0.96) 100%)',
+                  }}
+                />
 
-            {/* Simulated Mobile Card Header */}
-            <div
-              className="p-4 shadow-sm"
-              style={{
-                backgroundColor: config.theme?.surface_color || '#FFFFFF',
-                borderRadius: config.theme?.card_radius ?? 18,
-              }}
-            >
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-bold text-xs"
-                style={{ backgroundColor: config.theme?.primary_color || '#0E5C44' }}
-              >
-                SIM
-              </div>
-              <h3
-                className="mt-2 text-sm font-black"
-                style={{ color: config.theme?.text_color || '#0F172A' }}
-              >
-                {config.branding?.app_name || 'SIMSIT Mobile'}
-              </h3>
-              <p
-                className="text-[11px]"
-                style={{ color: config.theme?.muted_text_color || '#64748B' }}
-              >
-                {config.branding?.school_name || foundationName || 'Yayasan Pendidikan Islam'}
-              </p>
-              {config.theme?.welcome_text ? (
-                <p
-                  className="mt-2 rounded-lg bg-emerald-50/70 p-1.5 text-[10px] font-medium text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
-                >
-                  {config.theme.welcome_text}
-                </p>
-              ) : null}
-            </div>
-
-            {/* Status indicators */}
-            <div className="mt-2.5 flex items-center justify-between rounded-xl bg-slate-900/5 px-3 py-1.5 text-[10px] font-bold text-slate-700 dark:bg-white/10 dark:text-slate-300">
-              <span>Sistem v{config.system?.latest_app_version || '1.0.0'}</span>
-              <span>
-                {config.system?.maintenance_mode ? (
-                  <span className="text-amber-600 font-extrabold">MAINTENANCE</span>
-                ) : (
-                  <span className="text-emerald-600 font-extrabold">NORMAL</span>
-                )}
-              </span>
-            </div>
-
-            {/* Simulated Active Sections */}
-            <div className="mt-3 space-y-2">
-              {sortedSections
-                .filter((item) => item.enabled)
-                .map((item) => {
-                  const isAnnounce = item.type === 'announcements';
-                  return (
-                    <div
-                      key={item.type}
-                      className="p-2.5 shadow-xs"
-                      style={{
-                        background: isAnnounce
-                          ? `linear-gradient(to right, ${config.theme?.news_gradient_start || '#FFFFFF'}, ${config.theme?.news_gradient_end || '#E8F5E9'})`
-                          : (config.theme?.surface_color || '#FFFFFF'),
-                        color: config.theme?.text_color || '#0F172A',
-                        borderRadius: config.theme?.card_radius ?? 18,
-                        border: isAnnounce ? '1px solid rgba(16, 185, 129, 0.3)' : undefined,
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold">
-                          {sectionLabels[item.type] || item.type}
-                        </span>
-                        {isAnnounce && (
-                          <span className="text-[8px] font-extrabold text-teal-800 bg-white/80 px-1.5 py-0.5 rounded">
-                            Gradasi
-                          </span>
-                        )}
+                {/* Simulated Content Layer */}
+                <div className="relative z-10 flex flex-col justify-between" style={{ minHeight: 500 }}>
+                  {/* Mockup Header */}
+                  <div>
+                    <div className="flex items-center justify-between pb-2">
+                      <div className="flex items-center gap-1.5 rounded-full bg-white/20 px-2 py-1 text-[9px] font-bold backdrop-blur-xs border border-white/30">
+                        <img src="/logo.png" alt="logo" className="h-3.5 w-3.5 rounded" />
+                        <span>{config.branding?.app_name || 'SIMSIT'}</span>
                       </div>
+                      <span className="rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold border border-white/30 text-white">
+                        LEWATI »
+                      </span>
                     </div>
-                  );
-                })}
-            </div>
 
-            {/* Simulated Active Features Pill */}
-            <div className="mt-3 rounded-2xl bg-white/80 p-2.5 shadow-xs dark:bg-slate-800/80">
-              <span className="text-[9px] font-black uppercase text-slate-500">
-                Fitur Aktif ({Object.values(config.features || {}).filter(Boolean).length}/8)
-              </span>
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {Object.entries(config.features || {}).map(([key, enabled]) =>
-                  enabled ? (
-                    <span
-                      key={key}
-                      className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                    >
-                      {key.replace('_', ' ')}
-                    </span>
-                  ) : null
-                )}
+                    {/* Slide switcher pills in preview */}
+                    <div className="mt-2 flex justify-center gap-1.5">
+                      {[0, 1, 2].map((i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setPreviewSlideIndex(i)}
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold transition-all cursor-pointer ${
+                            previewSlideIndex === i
+                              ? 'bg-white text-emerald-900 shadow-xs'
+                              : 'bg-white/20 text-white/80 hover:bg-white/30'
+                          }`}
+                        >
+                          Slide {i + 1}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mockup Carousel Card */}
+                  {(() => {
+                    const currentSlide = config.onboarding?.slides?.[previewSlideIndex] || {
+                      title: 'Sistem Sekolah Terpadu',
+                      description: 'Akses seluruh informasi akademik dan kegiatan harian siswa.',
+                      image_url: null,
+                    }
+                    const fallbackMockups = [
+                      '/assets/images/school_illustration.jpg',
+                      '/assets/images/family_illustration.png',
+                      '/assets/images/supervisi_guru.jpg',
+                    ]
+                    const currentImg = currentSlide.image_url || fallbackMockups[previewSlideIndex]
+
+                    return (
+                      <div className="my-auto py-3 text-center">
+                        <div className="relative mx-auto aspect-[16/10] w-full overflow-hidden rounded-2xl border-2 border-white/40 bg-white shadow-xl">
+                          <img
+                            src={currentImg}
+                            alt={currentSlide.title}
+                            className="h-full w-full object-cover"
+                          />
+                          <span className="absolute top-2 right-2 rounded-lg bg-white/95 px-2 py-0.5 text-[9px] font-extrabold text-emerald-800 shadow-xs">
+                            Fitur {previewSlideIndex + 1}
+                          </span>
+                        </div>
+
+                        <div className="mt-3">
+                          <span className="inline-block rounded-full bg-white/20 px-2 py-0.5 text-[8px] font-extrabold tracking-wider border border-white/30">
+                            LANGKAH {previewSlideIndex + 1} DARI 3
+                          </span>
+                          <h4 className="mt-1.5 text-xs font-black text-white leading-tight">
+                            {currentSlide.title}
+                          </h4>
+                          <p className="mt-1 text-[10px] text-white/90 leading-relaxed px-1">
+                            {currentSlide.description || currentSlide.desc}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Mockup Bottom Controls */}
+                  <div>
+                    {/* Dots indicator */}
+                    <div className="mb-2.5 flex justify-center items-center gap-1.5">
+                      {[0, 1, 2].map((i) => (
+                        <span
+                          key={i}
+                          className={`h-1.5 rounded-full transition-all ${
+                            previewSlideIndex === i ? 'w-5 bg-white' : 'w-1.5 bg-white/40'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Bottom Action Button */}
+                    {previewSlideIndex < 2 ? (
+                      <div className="flex gap-2">
+                        {previewSlideIndex > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewSlideIndex((p) => Math.max(0, p - 1))}
+                            className="flex-1 rounded-xl bg-white/20 py-2 text-[10px] font-bold text-white border border-white/30 cursor-pointer"
+                          >
+                            Kembali
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => setPreviewSlideIndex((p) => Math.min(2, p + 1))}
+                          className="flex-1 rounded-xl bg-white py-2 text-[10px] font-extrabold text-emerald-900 shadow-md flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          Lanjut <ChevronRight className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewSlideIndex(0)}
+                        className="w-full rounded-xl bg-white py-2.5 text-[10px] font-black text-emerald-900 shadow-lg flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Sparkles className="h-3 w-3 text-emerald-600" /> Mulai Gunakan Aplikasi
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* REGULAR ROLE DASHBOARD MOCKUP */
+              <>
+                <div
+                  className="mb-2 text-center text-[10px] font-black uppercase tracking-wider"
+                  style={{ color: config.theme?.primary_color || '#0E5C44' }}
+                >
+                  Preview Live ({roleLabels[selectedRole] || 'Mobile'})
+                </div>
 
-            {/* Simulated Bottom Nav */}
-            <div
-              className="mt-4 flex justify-around rounded-2xl bg-white p-2 text-[9px] font-bold shadow-md dark:bg-slate-800"
-              style={{ color: config.theme?.primary_color || '#0E5C44' }}
-            >
-              <span>Beranda</span>
-              <span>Notif</span>
-              <span>QR</span>
-              <span>Profil</span>
-            </div>
+                {/* Simulated Mobile Card Header */}
+                <div
+                  className="p-4 shadow-sm"
+                  style={{
+                    backgroundColor: config.theme?.surface_color || '#FFFFFF',
+                    borderRadius: config.theme?.card_radius ?? 18,
+                  }}
+                >
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-xl text-white font-bold text-xs"
+                    style={{ backgroundColor: config.theme?.primary_color || '#0E5C44' }}
+                  >
+                    SIM
+                  </div>
+                  <h3
+                    className="mt-2 text-sm font-black"
+                    style={{ color: config.theme?.text_color || '#0F172A' }}
+                  >
+                    {config.branding?.app_name || 'SIMSIT Mobile'}
+                  </h3>
+                  <p
+                    className="text-[11px]"
+                    style={{ color: config.theme?.muted_text_color || '#64748B' }}
+                  >
+                    {config.branding?.school_name || foundationName || 'Yayasan Pendidikan Islam'}
+                  </p>
+                  {config.theme?.welcome_text ? (
+                    <p
+                      className="mt-2 rounded-lg bg-emerald-50/70 p-1.5 text-[10px] font-medium text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+                    >
+                      {config.theme.welcome_text}
+                    </p>
+                  ) : null}
+                </div>
+
+                {/* Status indicators */}
+                <div className="mt-2.5 flex items-center justify-between rounded-xl bg-slate-900/5 px-3 py-1.5 text-[10px] font-bold text-slate-700 dark:bg-white/10 dark:text-slate-300">
+                  <span>Sistem v{config.system?.latest_app_version || '1.0.0'}</span>
+                  <span>
+                    {config.system?.maintenance_mode ? (
+                      <span className="text-amber-600 font-extrabold">MAINTENANCE</span>
+                    ) : (
+                      <span className="text-emerald-600 font-extrabold">NORMAL</span>
+                    )}
+                  </span>
+                </div>
+
+                {/* Simulated Active Sections */}
+                <div className="mt-3 space-y-2">
+                  {sortedSections
+                    .filter((item) => item.enabled)
+                    .map((item) => {
+                      const isAnnounce = item.type === 'announcements';
+                      return (
+                        <div
+                          key={item.type}
+                          className="p-2.5 shadow-xs"
+                          style={{
+                            background: isAnnounce
+                              ? `linear-gradient(to right, ${config.theme?.news_gradient_start || '#FFFFFF'}, ${config.theme?.news_gradient_end || '#E8F5E9'})`
+                              : (config.theme?.surface_color || '#FFFFFF'),
+                            color: config.theme?.text_color || '#0F172A',
+                            borderRadius: config.theme?.card_radius ?? 18,
+                            border: isAnnounce ? '1px solid rgba(16, 185, 129, 0.3)' : undefined,
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold">
+                              {sectionLabels[item.type] || item.type}
+                            </span>
+                            {isAnnounce && (
+                              <span className="text-[8px] font-extrabold text-teal-800 bg-white/80 px-1.5 py-0.5 rounded">
+                                Gradasi
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Simulated Active Features Pill */}
+                <div className="mt-3 rounded-2xl bg-white/80 p-2.5 shadow-xs dark:bg-slate-800/80">
+                  <span className="text-[9px] font-black uppercase text-slate-500">
+                    Fitur Aktif ({Object.values(config.features || {}).filter(Boolean).length}/8)
+                  </span>
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {Object.entries(config.features || {}).map(([key, enabled]) =>
+                      enabled ? (
+                        <span
+                          key={key}
+                          className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                        >
+                          {key.replace('_', ' ')}
+                        </span>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+
+                {/* Simulated Bottom Nav */}
+                <div
+                  className="mt-4 flex justify-around rounded-2xl bg-white p-2 text-[9px] font-bold shadow-md dark:bg-slate-800"
+                  style={{ color: config.theme?.primary_color || '#0E5C44' }}
+                >
+                  <span>Beranda</span>
+                  <span>Notif</span>
+                  <span>QR</span>
+                  <span>Profil</span>
+                </div>
+              </>
+            )}
           </aside>
         </div>
 

@@ -1,8 +1,26 @@
 import axios from 'axios'
 import { clearAuthArtifacts, checkSessionValidity } from '../stores/authStore'
 
+export const resolveApiBaseUrl = () => {
+  const configured = import.meta.env.VITE_API_BASE_URL
+  if (configured && typeof configured === 'string' && configured.trim()) {
+    return configured.trim()
+  }
+
+  if (typeof window !== 'undefined' && window.location) {
+    // Pada mode Vite dev (:5173), hubungkan ke host yang sama di port backend :8000 (mendukung localhost dan IP LAN)
+    if (window.location.port === '5173') {
+      return `${window.location.protocol}//${window.location.hostname}:8000/api`
+    }
+    // Pada production satu domain (reverse proxy / Nginx)
+    return `${window.location.origin}/api`
+  }
+
+  return 'http://localhost:8000/api'
+}
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

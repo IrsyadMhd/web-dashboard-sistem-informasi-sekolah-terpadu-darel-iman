@@ -797,9 +797,12 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
       setFormData(prev => ({ ...prev, foto_url: resolved }))
       setModalError(null)
     } catch (err) {
-      console.error(err)
-      const localPreview = URL.createObjectURL(file)
-      setFormData(prev => ({ ...prev, foto_url: localPreview }))
+      console.warn('Upload endpoint error, fallback to Base64:', err)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setFormData(prev => ({ ...prev, foto_url: e.target.result }))
+      }
+      reader.readAsDataURL(file)
     } finally {
       setIsUploading(false)
     }

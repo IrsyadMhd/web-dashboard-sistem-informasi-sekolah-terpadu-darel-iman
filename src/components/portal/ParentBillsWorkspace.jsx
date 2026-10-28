@@ -288,6 +288,12 @@ export default function ParentBillsWorkspace({ bills = [], loading = false, stud
                       <Badge color="cyan" size="sm" className="font-bold">
                         {categoryName}
                       </Badge>
+                      {b.source === 'sipdei' && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                          SIPDEI
+                        </span>
+                      )}
                       <span className="text-[11px] text-slate-400">
                         Jatuh Tempo: {formatDate(b.due_date)}
                       </span>

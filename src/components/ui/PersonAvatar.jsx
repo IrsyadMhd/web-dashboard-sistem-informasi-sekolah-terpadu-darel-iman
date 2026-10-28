@@ -78,6 +78,10 @@ export function resolveAvatarUrl(src) {
   const trimmed = raw.trim()
   if (!trimmed) return null
 
+  if (trimmed.includes('data:image/')) {
+    const idx = trimmed.indexOf('data:image/')
+    return trimmed.slice(idx)
+  }
   if (trimmed.startsWith('data:')) return trimmed
 
   const envApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'

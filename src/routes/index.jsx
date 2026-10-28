@@ -16,6 +16,7 @@ const LoginPage = lazy(() => import('../pages/LoginPage'))
 const BeritaPublikPage = lazy(() => import('../pages/BeritaPublikPage'))
 const PengaturanPage = lazy(() => import('../pages/PengaturanPage'))
 const MobileApiConfigPage = lazy(() => import('../pages/MobileApiConfigPage'))
+const KelolaNavigasiMenuPage = lazy(() => import('../pages/KelolaNavigasiMenuPage'))
 const LaporanAbsensiPage = lazy(() => import('../pages/LaporanAbsensiPage'))
 const LaporanTahfizhPage = lazy(() => import('../pages/LaporanTahfizhPage'))
 const LaporanAkademikPage = lazy(() => import('../pages/LaporanAkademikPage'))
@@ -1907,6 +1908,18 @@ export const router = createBrowserRouter([
                 <BungkusLazy><MobileApiConfigPage /></BungkusLazy>
               </PermissionElement>
             ),
+          },
+          {
+            path: 'pengaturan/menu-navigasi',
+            element: (
+              <PermissionElement any={['sistem.pengaturan']} roles={['Super Admin', 'SuperAdmin', 'super_admin', 'superadmin', 'Admin', 'admin']}>
+                <BungkusLazy><KelolaNavigasiMenuPage /></BungkusLazy>
+              </PermissionElement>
+            ),
+          },
+          {
+            path: 'manajemen-menu',
+            element: <Navigate to="/dashboard/pengaturan/menu-navigasi" replace />,
           },
           {
             path: 'bantuan',
