@@ -52,7 +52,7 @@ const defaultForm = () => ({
   nik_ayah: '', nama_ayah: '', tempat_lahir_ayah: '', tgl_lahir_ayah: '', telfon_ayah: '', hp_ayah: '', pendidikan_terakhir_ayah: '', pekerjaan_ayah: '', instansi_pekerjaan_ayah: '', jabatan_pekerjaan_ayah: '', alamat_instansi_ayah: '', keahlian_ayah: '', penghasilan_ayah: '', alamat_ayah: '', nomor_wa_ayah: '', medsos_ayah: '',
   nik_ibu: '', nama_ibu: '', tempat_lahir_ibu: '', tgl_lahir_ibu: '', telfon_ibu: '', hp_ibu: '', pendidikan_terakhir_ibu: '', pekerjaan_ibu: '', instansi_pekerjaan_ibu: '', jabatan_pekerjaan_ibu: '', alamat_instansi_ibu: '', keahlian_ibu: '', penghasilan_ibu: '', alamat_ibu: '', nomor_wa_ibu: '', medsos_ibu: '',
   status_pernikahan_wali: '', tanggungan_anak_wali: '', nik_wali: '', nama_wali: '', tempat_lahir_wali: '', tgl_lahir_wali: '', telfon_wali: '', hp_wali: '', pendidikan_terakhir_wali: '', pekerjaan_wali: '', instansi_pekerjaan_wali: '', jabatan_pekerjaan_wali: '', alamat_instansi_wali: '', keahlian_wali: '', penghasilan_wali: '', alamat_wali: '', nomor_wa_wali: '', medsos_wali: '',
-  unit_id: '', unit_pendidikan: '', no_va: '', va_bsi_bank: 'Bank Syariah Indonesia (BSI)', nis_pembayaran: '', tahun_ajaran_masuk: '', kelas_id: '', keterangan_kelas: '', tahun_ajaran_berjalan: '', status_siswa: 'aktif', status_orang_tua: 'Umum', niy_ortu_jika_pegawai: '', wali_kelas: '', niy_wali_kelas: '',
+  unit_id: '', unit_pendidikan: '', no_va: '', va_bsi_bank: '', nis_pembayaran: '', tahun_ajaran_masuk: '', kelas_id: '', keterangan_kelas: '', tahun_ajaran_berjalan: '', status_siswa: 'aktif', status_orang_tua: 'Umum', niy_ortu_jika_pegawai: '', wali_kelas: '', niy_wali_kelas: '',
 })
 
 const toYesNo = (value) => {
@@ -389,7 +389,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
           jenis_pendaftaran: meta.jenis_pendaftaran || (meta.unit_asal_id ? 'pindahan_internal' : (meta.sekolah_asal ? 'pindahan_eksternal' : 'baru')),
           unit_asal_id: meta.unit_asal_id || '',
           no_va: meta.no_va || meta.nis_pembayaran || '',
-          va_bsi_bank: meta.va_bsi_bank || 'Bank Syariah Indonesia (BSI)',
+          va_bsi_bank: meta.va_bsi_bank || meta.bank_name || '',
           nis_pembayaran: meta.nis_pembayaran || meta.no_va || '',
           tahun_ajaran_masuk: meta.tahun_ajaran_masuk || '',
           kelas_id: initialData.kelas_id || meta.kelas_id || '',
@@ -442,10 +442,13 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
       const unitLabel = selectedUnitObj
         ? (typeof selectedUnitObj === 'string' ? selectedUnitObj : (selectedUnitObj.name || selectedUnitObj.nama || selectedUnitObj.code || value))
         : ''
+      const unitMeta = selectedUnitObj?.metadata || {}
+      const bankName = unitMeta.va_bank || unitMeta.bank_name || selectedUnitObj?.va_bank || ''
       setFormData(prev => ({
         ...prev,
         unit_id: value,
         unit_pendidikan: unitLabel,
+        va_bsi_bank: prev.va_bsi_bank || bankName,
         kelas_id: '',
         wali_kelas: '',
         niy_wali_kelas: '',
@@ -542,19 +545,26 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
     if (!cleanNis) {
       setStepError(
         'NIS Siswa Kosong',
-        'Mohon lengkapi NIS Siswa pada Langkah 1 terlebih dahulu untuk mengenerate No. Virtual Account (VA BSI).',
+        'Mohon lengkapi NIS Siswa pada Langkah 1 terlebih dahulu untuk mengenerate No. Virtual Account.',
         0
       )
       return
     }
 
-    const bsiPrefix = '9023'
-    const generatedVa = `${bsiPrefix}${cleanNis}`
+    const currentUnitObj = (activeUnits || []).find(u => {
+      const val = typeof u === 'string' ? u : (u.id ?? u.unit_id ?? u.value ?? u.code ?? '')
+      return String(val) === String(formData.unit_id)
+    })
+    const unitMeta = currentUnitObj?.metadata || {}
+    const vaPrefix = unitMeta.va_prefix || unitMeta.va_code || currentUnitObj?.va_prefix || '9023'
+    const bankName = unitMeta.va_bank || unitMeta.bank_name || currentUnitObj?.va_bank || formData.va_bsi_bank || 'Bank Syariah Indonesia (BSI)'
+
+    const generatedVa = `${vaPrefix}${cleanNis}`
     setFormData(prev => ({
       ...prev,
       no_va: generatedVa,
       nis_pembayaran: generatedVa,
-      va_bsi_bank: 'Bank Syariah Indonesia (BSI)',
+      va_bsi_bank: bankName,
     }))
     setModalError(null)
   }
@@ -611,6 +621,18 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
     }
     return []
   }, [studentStatusList])
+
+  const occupationOptionsAyah = useMemo(() => {
+    return occupationList.length > 0 ? occupationList : OCCUPATION_OPTIONS_AYAH
+  }, [occupationList])
+
+  const occupationOptionsIbu = useMemo(() => {
+    return occupationList.length > 0 ? occupationList : OCCUPATION_OPTIONS_IBU
+  }, [occupationList])
+
+  const occupationOptionsWali = useMemo(() => {
+    return occupationList.length > 0 ? occupationList : OCCUPATION_OPTIONS_WALI
+  }, [occupationList])
 
   useEffect(() => {
     if (isOpen && !initialData && formData.unit_id && !formData.nis) {
@@ -1394,7 +1416,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                       name="pekerjaan_ayah"
                       icon={Briefcase}
                       placeholder="-- Pilih Pekerjaan Ayah --"
-                      options={occupationList}
+                      options={occupationOptionsAyah}
                       {...getProps('pekerjaan_ayah')}
                     />
                     {isPnsOccupation(formData.pekerjaan_ayah) && (
@@ -1434,7 +1456,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                       name="pekerjaan_ibu"
                       icon={Briefcase}
                       placeholder="-- Pilih Pekerjaan Ibu --"
-                      options={occupationList}
+                      options={occupationOptionsIbu}
                       {...getProps('pekerjaan_ibu')}
                     />
                     {isPnsOccupation(formData.pekerjaan_ibu) && (
@@ -1483,7 +1505,7 @@ export default function StudentFormModal({ isOpen, onClose, initialData, onSubmi
                       name="pekerjaan_wali"
                       icon={Briefcase}
                       placeholder="-- Pilih Pekerjaan Wali --"
-                      options={occupationList}
+                      options={occupationOptionsWali}
                       {...getProps('pekerjaan_wali')}
                     />
                     {isPnsOccupation(formData.pekerjaan_wali) && (

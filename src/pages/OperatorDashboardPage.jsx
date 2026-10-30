@@ -262,10 +262,10 @@ export default function OperatorDashboardPage() {
                 </p>
                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
                   <span className="rounded-md bg-emerald-100/80 px-2 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 font-mono">
-                    {context.tahun_ajaran ? `TA ${context.tahun_ajaran.nama}` : 'TA 2026/2027'}
+                    {context.tahun_ajaran?.nama ? `TA ${context.tahun_ajaran.nama}` : 'TA Aktif'}
                   </span>
                   <span className="rounded-md bg-teal-100/80 px-2 py-0.5 text-[11px] font-bold text-teal-800 dark:bg-teal-900/60 dark:text-teal-300 font-mono">
-                    {context.semester ? `Semester ${context.semester.nama}` : 'Semester Ganjil'}
+                    {context.semester?.nama ? `Semester ${context.semester.nama}` : 'Semester Berjalan'}
                   </span>
                 </div>
               </div>

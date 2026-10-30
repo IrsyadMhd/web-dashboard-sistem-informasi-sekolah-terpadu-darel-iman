@@ -617,6 +617,7 @@ export default function TeacherTeachingWorkspacePage() {
   const [attendanceData, setAttendanceData] = useState({})
   const [attendanceTopic, setAttendanceTopic] = useState('Pembelajaran Tatap Muka')
   const [meetingNumber, setMeetingNumber] = useState(1)
+  const [attendanceMeetingNotes, setAttendanceMeetingNotes] = useState('')
   const [selectedMethod, setSelectedMethod] = useState('rollcall') // 'rollcall', 'qr', 'rfid', 'face'
   const [showAttendanceMethodModal, setShowAttendanceMethodModal] = useState(false)
   const [attendanceCenterTab, setAttendanceCenterTab] = useState('presensi')
@@ -2340,6 +2341,7 @@ export default function TeacherTeachingWorkspacePage() {
         date: new Date().toISOString().split('T')[0],
         meeting_number: Number(meetingNumber) || 1,
         topic: attendanceTopic || 'Pembelajaran Tematik & KBM',
+        meeting_notes: attendanceMeetingNotes?.trim() || null,
         method: selectedMethod || 'rollcall',
         students: Object.keys(attendanceData).map((stId) => ({
           student_id: stId,
@@ -6143,6 +6145,54 @@ export default function TeacherTeachingWorkspacePage() {
                         </span>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* TailGrids KBM Session & Journal Input Card */}
+                <div className="mb-4 rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-r from-emerald-50/60 via-teal-50/30 to-emerald-50/60 p-4 shadow-sm dark:border-emerald-600/35 dark:bg-slate-900/60">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/15 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm">
+                        <BookOpen className="h-3.5 w-3.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Informasi KBM & Jurnal Mengajar</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Pertemuan, topik bahasan, dan catatan hasil pembelajaran untuk laporan kehadiran guru & siswa</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-3">
+                    <div className="md:col-span-2">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Pertemuan Ke-</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="36"
+                        value={meetingNumber}
+                        onChange={(e) => setMeetingNumber(Number(e.target.value) || 1)}
+                        className="h-9 w-full rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-bold text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                    <div className="md:col-span-4">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Materi / Topik Bahasan</label>
+                      <input
+                        type="text"
+                        value={attendanceTopic}
+                        onChange={(e) => setAttendanceTopic(e.target.value)}
+                        placeholder="Contoh: Bab 3 - Operasi Aljabar"
+                        className="h-9 w-full rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
+                    <div className="md:col-span-6">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Catatan Jurnal KBM / Penutup Pelajaran</label>
+                      <input
+                        type="text"
+                        value={attendanceMeetingNotes}
+                        onChange={(e) => setAttendanceMeetingNotes(e.target.value)}
+                        placeholder="Ringkasan pemahaman siswa, evaluasi singkat, atau kendala..."
+                        className="h-9 w-full rounded-xl border border-emerald-500/30 bg-white px-3 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -10789,10 +10839,12 @@ export default function TeacherTeachingWorkspacePage() {
 
           {attendanceCenterTab === 'catatan' && (
             <div className="space-y-3 text-xs">
-              <label className="font-bold block text-slate-700 dark:text-slate-200">Catatan Khusus Presensi Pembelajaran</label>
+              <label className="font-bold block text-slate-700 dark:text-slate-200">Catatan Jurnal KBM & Hasil Pembelajaran</label>
               <textarea
                 rows={3}
-                placeholder="Tambahkan catatan khusus seperti izin kegiatan sekolah, dispensasi, dsb..."
+                value={attendanceMeetingNotes}
+                onChange={(e) => setAttendanceMeetingNotes(e.target.value)}
+                placeholder="Tuliskan ringkasan materi yang telah diajarkan, catatan khusus siswa, kendala, atau hasil capaian KBM..."
                 className="w-full p-3 border rounded-xl dark:bg-slate-900 border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-100"
               />
             </div>

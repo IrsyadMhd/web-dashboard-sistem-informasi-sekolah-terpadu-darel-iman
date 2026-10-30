@@ -31,6 +31,9 @@ import {
   Printer,
   FileText,
   Building2,
+  Calendar,
+  LogOut,
+  AlertTriangle,
 } from 'lucide-react'
 import { equranService } from '../services/equranService'
 import {
@@ -215,6 +218,33 @@ export default function MusyrifDashboardPage({ defaultTab }) {
     purpose_notes: '',
   })
 
+  const [availableUnits, setAvailableUnits] = useState([])
+  const [emergencyPermitForm, setEmergencyPermitForm] = useState({
+    student_id: '',
+    medical_complaint: '',
+    medical_destination: 'Klinik / RS Terdekat',
+    medical_escort_name: '',
+    guardian_phone: '',
+    estimated_hours: 6,
+  })
+
+  const [batchScheduleForm, setBatchScheduleForm] = useState({
+    unit_pendidikan_id: '',
+    rombel_id: '',
+    permit_type: 'pesiar_mingguan',
+    scheduled_departure_at: '',
+    scheduled_return_at: '',
+    destination: 'Rumah Orang Tua / Wali',
+    notes: '',
+  })
+
+  const [selectedPermitForReview, setSelectedPermitForReview] = useState(null)
+  const [reviewExtensionForm, setReviewExtensionForm] = useState({
+    action: 'approve',
+    new_scheduled_return_at: '',
+    admin_notes: '',
+  })
+
   const fetchDormitoryPermits = async () => {
     setLoadingPermits(true)
     try {
@@ -303,6 +333,119 @@ export default function MusyrifDashboardPage({ defaultTab }) {
       })
     }
   }
+
+  const handleEmergencyExit = async (e) => {
+    e.preventDefault()
+    if (!emergencyPermitForm.student_id || !emergencyPermitForm.medical_complaint) {
+      Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Pilih santri dan tuliskan keluhan medis/sakit.' })
+      return
+    }
+    try {
+      const res = await api.post('/musyrif/permits/emergency-exit', emergencyPermitForm)
+      Swal.fire({
+        icon: 'success',
+        title: 'Jalur Darurat Berhasil Diterbitkan!',
+        text: res.data?.message || 'Santri telah dicatat keluar untuk penanganan medis.',
+        timer: 2400,
+        showConfirmButton: false,
+      })
+      setQuickActionModal(null)
+      fetchDormitoryPermits()
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Memproses Jalur Darurat',
+        text: err.response?.data?.message || 'Terjadi kesalahan sistem.',
+      })
+    }
+  }
+
+  const handleBatchSchedule = async (e) => {
+    e.preventDefault()
+    if (!batchScheduleForm.unit_pendidikan_id || !batchScheduleForm.scheduled_departure_at || !batchScheduleForm.scheduled_return_at) {
+      Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Pilih unit pendidikan serta waktu keberangkatan dan batas kembali.' })
+      return
+    }
+    try {
+      const res = await api.post('/musyrif/permits/batch-schedule', {
+        ...batchScheduleForm,
+        scheduled_departure_at: new Date(batchScheduleForm.scheduled_departure_at).toISOString(),
+        scheduled_return_at: new Date(batchScheduleForm.scheduled_return_at).toISOString(),
+      })
+      Swal.fire({
+        icon: 'success',
+        title: 'Jadwal Kepulangan Massal Terbit!',
+        text: res.data?.message || 'Izin kepulangan serentak santri telah aktif di sistem.',
+        timer: 2500,
+        showConfirmButton: false,
+      })
+      setQuickActionModal(null)
+      fetchDormitoryPermits()
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Menjadwalkan',
+        text: err.response?.data?.message || 'Terjadi kesalahan sistem.',
+      })
+    }
+  }
+
+  const handleCheckoutGate = async (permit) => {
+    try {
+      const res = await api.post(`/musyrif/permits/${permit.id}/checkout`)
+      Swal.fire({
+        icon: 'success',
+        title: 'Check-Out Berhasil!',
+        text: res.data?.message || 'Santri tercatat telah keluar gerbang asrama.',
+        timer: 2000,
+        showConfirmButton: false,
+      })
+      fetchDormitoryPermits()
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Check-Out',
+        text: err.response?.data?.message || 'Terjadi kesalahan sistem.',
+      })
+    }
+  }
+
+  const handleReviewExtensionSubmit = async (e) => {
+    e.preventDefault()
+    if (!selectedPermitForReview) return
+    try {
+      const payload = {
+        action: reviewExtensionForm.action,
+        new_scheduled_return_at: reviewExtensionForm.action === 'approve' && reviewExtensionForm.new_scheduled_return_at
+          ? new Date(reviewExtensionForm.new_scheduled_return_at).toISOString()
+          : undefined,
+        admin_notes: reviewExtensionForm.admin_notes,
+      }
+      const res = await api.post(`/musyrif/permits/${selectedPermitForReview.id}/review-extension`, payload)
+      Swal.fire({
+        icon: 'success',
+        title: reviewExtensionForm.action === 'approve' ? 'Perpanjangan Disetujui' : 'Perpanjangan Ditolak',
+        text: res.data?.message || 'Status perpanjangan berhasil diperbarui.',
+        timer: 2200,
+        showConfirmButton: false,
+      })
+      setSelectedPermitForReview(null)
+      fetchDormitoryPermits()
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Memproses Review',
+        text: err.response?.data?.message || 'Terjadi kesalahan sistem.',
+      })
+    }
+  }
+
+  useEffect(() => {
+    api.get('/education-units').then(res => {
+      const list = res?.data?.data || res?.data || []
+      setAvailableUnits(Array.isArray(list) ? list : [])
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!setoranForm?.surah_number) {
@@ -1486,6 +1629,9 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                         >
                           <ShieldAlert className="w-3.5 h-3.5" /> 🚨 Fast-Track Darurat
                         </button>
+                        <MasterActionButton variant="import" icon={Calendar} onClick={() => setQuickActionModal('kepulangan_massal')}>
+                          Jadwalkan Kepulangan Massal
+                        </MasterActionButton>
                         <MasterActionButton variant="emerald" icon={Plus} onClick={() => setQuickActionModal('perizinan_baru')}>
                           Terbitkan Surat Izin Santri
                         </MasterActionButton>
@@ -1671,32 +1817,63 @@ export default function MusyrifDashboardPage({ defaultTab }) {
                                   </td>
 
                                   <td className="p-3 text-center">
-                                    {isCurrentlyOut ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setSelectedPermitForReturn(p)
-                                          const now = new Date()
-                                          const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-                                          setReturnForm({
-                                            actual_return_time: localIso,
-                                            return_condition: 'Sehat & Rapih',
-                                            notes: '',
-                                          })
-                                        }}
-                                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                                      >
-                                        <CheckCircle2 className="w-3.5 h-3.5" /> Absensi Kembali
-                                      </button>
-                                    ) : (
-                                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                                        isReturned
-                                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                                      }`}>
-                                        {p.status}
-                                      </span>
-                                    )}
+                                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                                      {/* 1. Tombol Check-out Gerbang jika santri masih di pondok */}
+                                      {(p.status === 'disetujui' && (p.presence_status === 'di_pondok' || !p.actual_departure_at)) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCheckoutGate(p)}
+                                          className="px-2.5 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] shadow-sm inline-flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                        >
+                                          <LogOut className="w-3 h-3" /> Tap Keluar
+                                        </button>
+                                      )}
+
+                                      {/* 2. Tombol Tinjau Perpanjangan jika ortu request perpanjangan */}
+                                      {p.extension_status === 'requested' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedPermitForReview(p)
+                                            setReviewExtensionForm({
+                                              action: 'approve',
+                                              new_scheduled_return_at: p.extension_requested_return_at ? new Date(p.extension_requested_return_at).toISOString().slice(0, 16) : '',
+                                              admin_notes: '',
+                                            })
+                                          }}
+                                          className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-sm inline-flex items-center gap-1 transition active:scale-95 cursor-pointer animate-pulse"
+                                        >
+                                          <Clock className="w-3 h-3" /> Tinjau Perpanjangan
+                                        </button>
+                                      )}
+
+                                      {/* 3. Tombol Absensi Kembali jika santri sedang di luar */}
+                                      {isCurrentlyOut && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedPermitForReturn(p)
+                                            const now = new Date()
+                                            const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+                                            setReturnForm({
+                                              actual_return_time: localIso,
+                                              return_condition: 'Sehat & Rapih',
+                                              notes: '',
+                                            })
+                                          }}
+                                          className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] shadow-sm inline-flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                                        >
+                                          <CheckCircle2 className="w-3 h-3" /> Absensi Kembali
+                                        </button>
+                                      )}
+
+                                      {/* 4. Status kembali jika sudah kembali */}
+                                      {isReturned && (
+                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                          Kembali di Pondok
+                                        </span>
+                                      )}
+                                    </div>
                                   </td>
                                 </tr>
                               )
@@ -2951,7 +3128,345 @@ export default function MusyrifDashboardPage({ defaultTab }) {
               </>
             )}
 
+            {/* 7. MODAL PERIZINAN DARURAT (SANTRI MENDADAK PULANG / SAKIT / RUJUKAN) */}
+            {quickActionModal === 'perizinan_darurat' && (
+              <>
+                <DialogHeader className="bg-gradient-to-r from-rose-900 via-rose-800 to-amber-950 text-white px-6 py-4 flex items-center justify-between shrink-0 rounded-t-3xl border-b border-rose-800/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-700/80 text-rose-200 flex items-center justify-center border border-rose-600/60 shadow-inner shrink-0">
+                      <AlertTriangle className="w-5 h-5 text-amber-300" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-extrabold text-white text-left">
+                        🚨 Fast-Track Perizinan Darurat / Santri Sakit
+                      </DialogTitle>
+                      <DialogDescription className="text-xs text-rose-200/90 mt-0.5 font-medium text-left">
+                        Penerbitan surat izin kepulangan mendadak untuk keperluan medis/keluarga mendesak
+                      </DialogDescription>
+                    </div>
+                  </div>
+                  <DialogClose onClick={() => setQuickActionModal(null)} />
+                </DialogHeader>
+
+                <DialogBody className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0 space-y-4 text-xs">
+                  <div>
+                    <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Pilih Santri *</label>
+                    <select
+                      value={emergencyPermitForm.student_id}
+                      onChange={(e) => {
+                        const sId = e.target.value
+                        const found = dbStudents.find(s => String(s.id) === String(sId))
+                        setEmergencyPermitForm({
+                          ...emergencyPermitForm,
+                          student_id: sId,
+                          guardian_phone: found?.phone || found?.parent_phone || emergencyPermitForm.guardian_phone || ''
+                        })
+                      }}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold focus:border-rose-600 focus:ring-2 focus:ring-rose-600/15 outline-none transition"
+                    >
+                      <option value="">-- Pilih Santri yang Membutuhkan Izin Darurat --</option>
+                      {dbStudents.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.nis || s.nisn || 'NIS -'}) - {s.room_name || s.dormitory_name || 'Kamar Boarding'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Keluhan / Alasan Darurat Medis / Keluarga *</label>
+                    <textarea
+                      rows={2}
+                      value={emergencyPermitForm.medical_complaint}
+                      onChange={(e) => setEmergencyPermitForm({ ...emergencyPermitForm, medical_complaint: e.target.value })}
+                      placeholder="Contoh: Demam tinggi 39°C memerlukan penanganan dokter / Orang tua sakit keras / Takziyah keluarga..."
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold focus:border-rose-600 focus:ring-2 focus:ring-rose-600/15 outline-none transition"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Tujuan Lokasi / Rujukan *</label>
+                      <input
+                        type="text"
+                        value={emergencyPermitForm.medical_destination}
+                        onChange={(e) => setEmergencyPermitForm({ ...emergencyPermitForm, medical_destination: e.target.value })}
+                        placeholder="Klinik / RS Terdekat / Rumah Santri"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Pendamping / Penjemput *</label>
+                      <input
+                        type="text"
+                        value={emergencyPermitForm.medical_escort_name}
+                        onChange={(e) => setEmergencyPermitForm({ ...emergencyPermitForm, medical_escort_name: e.target.value })}
+                        placeholder="Nama Musyrif / Orang Tua yang menjemput"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">No. WhatsApp Wali / Kontak Darurat</label>
+                      <input
+                        type="text"
+                        value={emergencyPermitForm.guardian_phone}
+                        onChange={(e) => setEmergencyPermitForm({ ...emergencyPermitForm, guardian_phone: e.target.value })}
+                        placeholder="0812xxxxxxxx"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Estimasi Durasi Kepulangan (Jam) *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="168"
+                        value={emergencyPermitForm.estimated_hours}
+                        onChange={(e) => setEmergencyPermitForm({ ...emergencyPermitForm, estimated_hours: Number(e.target.value) })}
+                        placeholder="6"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">Sistem akan menghitung otomatis jadwal kembali ananda berdasarkan estimasi jam ini</span>
+                    </div>
+                  </div>
+                </DialogBody>
+
+                <DialogFooter className="px-6 py-4 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 rounded-b-3xl shrink-0">
+                  <MasterActionButton variant="secondary" icon={X} onClick={() => setQuickActionModal(null)}>
+                    Batal
+                  </MasterActionButton>
+                  <MasterActionButton variant="danger" icon={Check} onClick={handleEmergencyExit}>
+                    Terbitkan Izin Darurat Sekarang
+                  </MasterActionButton>
+                </DialogFooter>
+              </>
+            )}
+
+            {/* 8. MODAL PENJADWALAN KEPULANGAN MASSAL (TATA USAHA & MUSYRIF) */}
+            {quickActionModal === 'kepulangan_massal' && (
+              <>
+                <DialogHeader className="bg-gradient-to-r from-emerald-900 via-teal-800 to-emerald-950 text-white px-6 py-4 flex items-center justify-between shrink-0 rounded-t-3xl border-b border-emerald-800/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-700/80 text-emerald-200 flex items-center justify-center border border-emerald-600/60 shadow-inner shrink-0">
+                      <Calendar className="w-5 h-5 text-teal-200" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-extrabold text-white text-left">
+                        📅 Penjadwalan Kepulangan Massal Santri
+                      </DialogTitle>
+                      <DialogDescription className="text-xs text-emerald-200/90 mt-0.5 font-medium text-left">
+                        Atur jadwal hari & jam kepulangan santri serta tenggat waktu kembali ke asrama (TU / Musyrif)
+                      </DialogDescription>
+                    </div>
+                  </div>
+                  <DialogClose onClick={() => setQuickActionModal(null)} />
+                </DialogHeader>
+
+                <DialogBody className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0 space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Unit Pendidikan Boarding</label>
+                      <select
+                        value={batchScheduleForm.unit_pendidikan_id}
+                        onChange={(e) => setBatchScheduleForm({ ...batchScheduleForm, unit_pendidikan_id: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 outline-none transition"
+                      >
+                        <option value="">-- Semua Unit Boarding / Seluruh Santri Aktif --</option>
+                        {availableUnits.map((u) => (
+                          <option key={u.id} value={u.id}>{u.nama_unit || u.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Jenis Kepulangan *</label>
+                      <select
+                        value={batchScheduleForm.permit_type}
+                        onChange={(e) => setBatchScheduleForm({ ...batchScheduleForm, permit_type: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                      >
+                        <option value="pesiar_mingguan">Pesiar Mingguan Terjadwal</option>
+                        <option value="libur_semester">Libur Akhir Semester</option>
+                        <option value="libur_ramadhan">Libur Ramadhan & Idul Fitri</option>
+                        <option value="pulang_bulanan">Kepulangan Bulanan Santri</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40">
+                    <div>
+                      <label className="font-semibold block mb-1 text-emerald-900 dark:text-emerald-300">
+                        Hari & Jam Mulai Pulang (Check-out) *
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={batchScheduleForm.scheduled_departure_at}
+                        onChange={(e) => setBatchScheduleForm({ ...batchScheduleForm, scheduled_departure_at: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold block mb-1 text-emerald-900 dark:text-emerald-300">
+                        Batas Hari & Jam Wajib Kembali ke Asrama *
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={batchScheduleForm.scheduled_return_at}
+                        onChange={(e) => setBatchScheduleForm({ ...batchScheduleForm, scheduled_return_at: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Tujuan Kepulangan Santri</label>
+                    <input
+                      type="text"
+                      value={batchScheduleForm.destination}
+                      onChange={(e) => setBatchScheduleForm({ ...batchScheduleForm, destination: e.target.value })}
+                      placeholder="Rumah Orang Tua / Wali Santri"
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Instruksi / Catatan Khusus untuk Orang Tua Santri</label>
+                    <textarea
+                      rows={2}
+                      value={batchScheduleForm.notes}
+                      onChange={(e) => setBatchScheduleForm({ ...batchScheduleForm, notes: e.target.value })}
+                      placeholder="Santri wajib diantar kembali tepat waktu sebelum pukul 17:00 WIB dan orang tua wajib melakukan absensi drop-off di gerbang asrama..."
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                    />
+                  </div>
+                </DialogBody>
+
+                <DialogFooter className="px-6 py-4 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 rounded-b-3xl shrink-0">
+                  <MasterActionButton variant="secondary" icon={X} onClick={() => setQuickActionModal(null)}>
+                    Batal
+                  </MasterActionButton>
+                  <MasterActionButton variant="emerald" icon={Check} onClick={handleBatchSchedule}>
+                    Terbitkan Jadwal Kepulangan Massal
+                  </MasterActionButton>
+                </DialogFooter>
+              </>
+            )}
+
           </Dialog>
+            </motion.div>
+          </Backdrop>
+        )}
+      </AnimatePresence>
+
+      {/* 9. MODAL REVIEW PERPANJANGAN JAM KEMBALI SANTRI */}
+      <AnimatePresence>
+        {selectedPermitForReview && (
+          <Backdrop isOpen={Boolean(selectedPermitForReview)} onOpenChange={() => setSelectedPermitForReview(null)} className="z-50 flex items-center justify-center p-3 sm:p-5">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl overflow-hidden dark:border-slate-800 dark:bg-[#1B2433]"
+            >
+              <Dialog className="flex flex-col h-full">
+                <DialogHeader className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-950 text-white px-6 py-4 flex items-center justify-between shrink-0 rounded-t-3xl border-b border-indigo-800/80">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-700/80 text-indigo-200 flex items-center justify-center border border-indigo-600/60 shadow-inner shrink-0">
+                      <Clock className="w-5 h-5 text-indigo-300" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-extrabold text-white text-left">
+                        Tinjau Permohonan Perpanjangan Izin
+                      </DialogTitle>
+                      <DialogDescription className="text-xs text-indigo-200/90 mt-0.5 font-medium text-left">
+                        Santri: {selectedPermitForReview.student_name} ({selectedPermitForReview.nis || '-'})
+                      </DialogDescription>
+                    </div>
+                  </div>
+                  <DialogClose onClick={() => setSelectedPermitForReview(null)} />
+                </DialogHeader>
+
+                <DialogBody className="p-5 space-y-4 text-xs">
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-medium">Jadwal Kembali Awal:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
+                        {selectedPermitForReview.scheduled_return_at ? new Date(selectedPermitForReview.scheduled_return_at).toLocaleString('id-ID') : '-'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-medium block mb-1">Alasan Diajukan Wali Santri:</span>
+                      <p className="font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 p-2.5 rounded-xl border border-rose-200/60 dark:border-rose-800/40">
+                        "{selectedPermitForReview.extension_reason || 'Tidak ada catatan perpanjangan'}"
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Keputusan Tinjauan *</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setReviewExtensionForm({ ...reviewExtensionForm, action: 'approve' })}
+                        className={`py-2 px-3 rounded-xl font-bold text-xs border transition flex items-center justify-center gap-1.5 ${
+                          reviewExtensionForm.action === 'approve'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <Check className="w-4 h-4" /> Setujui Perpanjangan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReviewExtensionForm({ ...reviewExtensionForm, action: 'reject' })}
+                        className={`py-2 px-3 rounded-xl font-bold text-xs border transition flex items-center justify-center gap-1.5 ${
+                          reviewExtensionForm.action === 'reject'
+                            ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <X className="w-4 h-4" /> Tolak Perpanjangan
+                      </button>
+                    </div>
+                  </div>
+
+                  {reviewExtensionForm.action === 'approve' && (
+                    <div>
+                      <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">
+                        Jadwal Baru Batas Kembali ke Asrama *
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={reviewExtensionForm.new_scheduled_return_at}
+                        onChange={(e) => setReviewExtensionForm({ ...reviewExtensionForm, new_scheduled_return_at: e.target.value })}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/15 outline-none transition"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Catatan Petugas (Musyrif / TU)</label>
+                    <textarea
+                      rows={2}
+                      value={reviewExtensionForm.admin_notes}
+                      onChange={(e) => setReviewExtensionForm({ ...reviewExtensionForm, admin_notes: e.target.value })}
+                      placeholder="Contoh: Disetujui perpanjangan hingga pukul 20:00 WIB / Ditolak karena persiapan halaqah subuh..."
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 dark:bg-slate-800 text-xs font-semibold outline-none transition"
+                    />
+                  </div>
+                </DialogBody>
+
+                <DialogFooter className="px-6 py-4 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 rounded-b-3xl shrink-0">
+                  <MasterActionButton variant="secondary" icon={X} onClick={() => setSelectedPermitForReview(null)}>
+                    Batal
+                  </MasterActionButton>
+                  <MasterActionButton variant="primary" icon={Check} onClick={handleReviewExtensionSubmit}>
+                    Simpan Keputusan
+                  </MasterActionButton>
+                </DialogFooter>
+              </Dialog>
             </motion.div>
           </Backdrop>
         )}

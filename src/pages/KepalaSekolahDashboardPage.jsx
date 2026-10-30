@@ -325,6 +325,8 @@ export default function KepalaSekolahDashboardPage() {
   const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('all')
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState('')
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [kbmSessionFilter, setKbmSessionFilter] = useState('all')
+  const [selectedKbmSession, setSelectedKbmSession] = useState(null)
 
   const handlePrintWeekly = (st) => {
     const sName = st?.nama || st?.name || st?.full_name || 'Shezakia Mufidah Alfirdausi'
@@ -590,6 +592,17 @@ export default function KepalaSekolahDashboardPage() {
   const announcementRaw = tables?.announcements || data?.announcements || data?.recent_announcements
   const announcementList = Array.isArray(announcementRaw) ? announcementRaw : DEFAULT_ANNOUNCEMENTS
 
+  const todaySessions = Array.isArray(data?.today_sessions)
+    ? data.today_sessions
+    : (Array.isArray(data?.teaching_sessions) ? data.teaching_sessions : (Array.isArray(data?.kbm?.sessions) ? data.kbm.sessions : []))
+  const filteredSessions = todaySessions.filter((sess) => {
+    if (kbmSessionFilter === 'all') return true
+    if (kbmSessionFilter === 'ongoing') return sess.is_ongoing
+    if (kbmSessionFilter === 'completed') return sess.status === 'completed'
+    if (kbmSessionFilter === 'scheduled') return sess.status === 'scheduled' && !sess.is_ongoing
+    return true
+  })
+
 
   return (
     <PageContainer maxW="7xl">
@@ -679,7 +692,7 @@ export default function KepalaSekolahDashboardPage() {
         </motion.div>
 
       {/* Profil Pengurus Yayasan (Ketua, Sekretaris, Bendahara) */}
-      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 space-y-4 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-br from-white via-amber-50/15 to-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 space-y-4 dark:border-emerald-600/35 dark:from-[#1B2433] dark:via-amber-950/10 dark:to-[#1B2433]">
         {/* Ambient Glow */}
         <div className="pointer-events-none absolute -top-12 -right-12 h-36 w-36 rounded-full bg-gradient-to-br from-emerald-500/10 to-teal-500/5 blur-2xl dark:from-emerald-500/15" />
 
@@ -870,7 +883,7 @@ export default function KepalaSekolahDashboardPage() {
       {/* 2-Column Grid: Pegawai & Guru Online Real-Time + Log Keaktifan Feed */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Kolom 1: Pegawai & Guru Online Real-Time (dengan TailGrids Avatar & HoverCard) */}
-        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 space-y-4 dark:border-emerald-600/35 dark:bg-[#1B2433]">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-br from-white via-emerald-50/20 to-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 space-y-4 dark:border-emerald-600/35 dark:from-[#1B2433] dark:via-emerald-950/20 dark:to-[#1B2433]">
           <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -937,7 +950,11 @@ export default function KepalaSekolahDashboardPage() {
                   return (
                     <HoverCard key={user.id || idx}>
                       <HoverCardTrigger asChild>
-                        <div className="group relative flex flex-col items-center text-center rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-xs transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-50/30 hover:shadow-md dark:border-slate-800 dark:bg-[#1B2433] dark:hover:border-emerald-600 dark:hover:bg-emerald-950/20 cursor-pointer">
+                        <div className={`group relative flex flex-col items-center text-center rounded-2xl border-2 p-3.5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
+                          isOnline
+                            ? 'border-emerald-300/80 bg-gradient-to-b from-emerald-50/70 via-teal-50/40 to-white hover:border-emerald-400 dark:border-emerald-700/60 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-slate-900 shadow-emerald-500/5'
+                            : 'border-slate-200/80 bg-gradient-to-b from-slate-50/70 to-white hover:border-slate-300 dark:border-slate-800 dark:from-slate-900/60 dark:to-slate-900'
+                        }`}>
                           {/* Quick Chat Shortcut Icon Button on Hover (Membuka Modal Chat) */}
                           <button
                             type="button"
@@ -946,16 +963,16 @@ export default function KepalaSekolahDashboardPage() {
                               e.stopPropagation()
                               setActiveChatUser(user)
                             }}
-                            className="absolute top-2.5 right-2.5 flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-emerald-100/90 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-600 transition-all opacity-0 group-hover:opacity-100 shadow-2xs z-10 cursor-pointer active:scale-90"
+                            className="absolute top-2.5 right-2.5 flex h-6.5 w-6.5 items-center justify-center rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all opacity-0 group-hover:opacity-100 shadow-xs z-10 cursor-pointer active:scale-90"
                           >
                             <MessageSquare className="h-3 w-3" />
                           </button>
 
                           {/* TailGrids Avatar with Live Online Badge */}
                           <div className="relative mb-2">
-                            <Avatar size="lg" className={`ring-2 ${isOnline ? 'ring-emerald-500/30' : 'ring-slate-300 dark:ring-slate-700'}`}>
+                            <Avatar size="lg" className={`ring-2 ${isOnline ? 'ring-emerald-500/40 shadow-sm shadow-emerald-500/20' : 'ring-slate-300 dark:ring-slate-700'}`}>
                               {photo && <AvatarImage src={photo} alt={userName} />}
-                              <AvatarFallback className={`${isOnline ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'} font-black text-xs`}>
+                              <AvatarFallback className={`${isOnline ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/20' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'} font-black text-xs`}>
                                 {getInitials(userName)}
                               </AvatarFallback>
                               <AvatarBadge status={isOnline ? 'online' : 'offline'} size="lg" ping={isOnline} live={isOnline} />
@@ -970,13 +987,13 @@ export default function KepalaSekolahDashboardPage() {
                           </p>
                           
                           {isOnline ? (
-                            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-[9px] font-extrabold text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 text-[9px] font-black text-emerald-800 dark:text-emerald-300 border border-emerald-300/70 dark:border-emerald-800/70 shadow-2xs">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               Online
                             </span>
                           ) : (
-                            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60">
-                              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 text-[9px] font-bold text-rose-600 dark:text-rose-400 border border-rose-200/70 dark:border-rose-900/50 shadow-2xs">
+                              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
                               {lastSeen}
                             </span>
                           )}
@@ -1077,12 +1094,12 @@ export default function KepalaSekolahDashboardPage() {
         </div>
 
         {/* Kolom 2: Log Keaktifan & Activity Feed Real-Time */}
-        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 space-y-4 dark:border-emerald-600/35 dark:bg-[#1B2433] flex flex-col justify-between h-full">
+        <div className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-br from-white via-teal-50/20 to-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 space-y-4 dark:border-emerald-600/35 dark:from-[#1B2433] dark:via-teal-950/20 dark:to-[#1B2433] flex flex-col justify-between h-full">
           <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
           
           <div className="flex items-center justify-between pb-1">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+              <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-sm shadow-teal-500/30">
                 <Radio className="h-4 w-4 animate-pulse" />
               </div>
               <div>
@@ -1106,34 +1123,43 @@ export default function KepalaSekolahDashboardPage() {
                 </p>
               </div>
             ) : (
-              onlineLogs.map((log, idx) => (
-                <div
-                  key={log.id || idx}
-                  className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3 transition-all hover:bg-slate-100/70 hover:border-slate-200/80 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-900/70"
-                >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold mt-0.5 shadow-2xs">
-                    {log.type === 'login' ? <UserCheck className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-black text-slate-900 dark:text-white truncate">
-                        {log.user || log.nama || log.username || 'Pengguna'}
-                      </p>
-                      <span className="shrink-0 text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded-md">
-                        {log.time || log.created_at || log.created_at_relative || 'Baru saja'}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-relaxed break-words">
-                      {log.role && (
-                        <span className="inline-block font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded text-[10px] mr-1.5 border border-emerald-200/60 dark:border-emerald-800/60">
-                          {log.role}
+              onlineLogs.map((log, idx) => {
+                const isLogin = log.type === 'login'
+                return (
+                  <div
+                    key={log.id || idx}
+                    className={`flex items-start gap-3 rounded-xl border-2 p-3 transition-all hover:-translate-y-0.5 hover:shadow-sm ${
+                      isLogin
+                        ? 'border-emerald-200/80 bg-gradient-to-r from-emerald-50/80 via-teal-50/40 to-white dark:border-emerald-800/60 dark:from-emerald-950/30 dark:to-slate-900'
+                        : 'border-sky-200/80 bg-gradient-to-r from-sky-50/80 via-blue-50/40 to-white dark:border-sky-800/60 dark:from-sky-950/30 dark:to-slate-900'
+                    }`}
+                  >
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white text-xs font-bold mt-0.5 shadow-xs ${
+                      isLogin ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30' : 'bg-gradient-to-br from-sky-500 to-blue-600 shadow-sky-500/30'
+                    }`}>
+                      {isLogin ? <UserCheck className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-black text-slate-900 dark:text-white truncate">
+                          {log.user || log.nama || log.username || 'Pengguna'}
+                        </p>
+                        <span className="shrink-0 text-[10px] font-bold text-slate-500 bg-white/80 dark:bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60">
+                          {log.time || log.created_at || log.created_at_relative || 'Baru saja'}
                         </span>
-                      )}
-                      {log.action || log.description || log.pesan || log.title}
-                    </p>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-relaxed break-words">
+                        {log.role && (
+                          <span className="inline-block font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-950/80 px-1.5 py-0.2 rounded text-[10px] mr-1.5 border border-emerald-300/60 dark:border-emerald-800/60">
+                            {log.role}
+                          </span>
+                        )}
+                        {log.action || log.description || log.pesan || log.title}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
 
@@ -1150,7 +1176,195 @@ export default function KepalaSekolahDashboardPage() {
         </div>
       </section>
 
+      {/* Supervisi KBM & Presensi Guru Real-Time (Pantauan Kepala Sekolah) */}
+      <section className="relative overflow-hidden rounded-[22px] border-2 border-emerald-500/25 bg-gradient-to-br from-white via-emerald-50/15 to-white p-5 sm:p-6 shadow-md shadow-emerald-500/5 space-y-4 dark:border-emerald-600/35 dark:from-[#1B2433] dark:via-emerald-950/20 dark:to-[#1B2433]">
+        <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl dark:bg-emerald-400/15" />
+        
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-emerald-500/15 dark:border-emerald-800/40">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-sm shadow-emerald-600/30">
+              <BookOpen className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Supervisi KBM & Presensi Guru Real-Time</h3>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Monitoring pelaksanaan KBM di kelas, kehadiran guru pengampu, topik materi ajar, serta jurnal penutupan kelas hari ini.
+              </p>
+            </div>
+          </div>
 
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-[11px] font-extrabold shrink-0">
+            <button
+              type="button"
+              onClick={() => setKbmSessionFilter('all')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${kbmSessionFilter === 'all' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}
+            >
+              Semua ({todaySessions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setKbmSessionFilter('ongoing')}
+              className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${kbmSessionFilter === 'ongoing' ? 'bg-sky-600 text-white shadow-xs font-black' : 'text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40'}`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
+              Berlangsung ({todaySessions.filter((s) => s.is_ongoing).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setKbmSessionFilter('completed')}
+              className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${kbmSessionFilter === 'completed' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'}`}
+            >
+              <CheckCircle2 className="h-3 w-3" />
+              Selesai ({todaySessions.filter((s) => s.status === 'completed').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setKbmSessionFilter('scheduled')}
+              className={`px-2.5 py-1 rounded-lg transition-all ${kbmSessionFilter === 'scheduled' ? 'bg-slate-600 text-white shadow-xs font-black' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}
+            >
+              Terjadwal ({todaySessions.filter((s) => s.status === 'scheduled' && !s.is_ongoing).length})
+            </button>
+          </div>
+        </div>
+
+        {/* Content Grid */}
+        {filteredSessions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center text-slate-400">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 mb-2">
+              <BookOpen className="h-6 w-6" />
+            </div>
+            <p className="text-xs font-extrabold text-slate-700 dark:text-slate-200">Tidak ada sesi KBM pada kategori ini</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Jadwal mengajar dan absensi guru akan otomatis tercatat ketika KBM dimulai.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {filteredSessions.map((sess, idx) => {
+              const isCompleted = sess.status === 'completed'
+              const isOngoing = sess.is_ongoing
+              const hasJournal = Boolean(sess.meeting_notes && sess.meeting_notes.trim())
+
+              return (
+                <div
+                  key={sess.id || idx}
+                  className={`group relative overflow-hidden rounded-2xl border p-4 transition-all duration-200 hover:shadow-md flex flex-col justify-between ${
+                    isCompleted
+                      ? 'border-emerald-500/30 bg-emerald-50/20 dark:border-emerald-600/30 dark:bg-emerald-950/10'
+                      : isOngoing
+                      ? 'border-sky-500/40 bg-sky-50/25 dark:border-sky-600/30 dark:bg-sky-950/15'
+                      : 'border-slate-200/90 bg-white dark:border-slate-800 dark:bg-[#151D2A]'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    {/* Top Row: Time & Status Badge */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-slate-600 dark:text-slate-300">
+                        <Clock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        {sess.start_time || sess.jam_mulai} - {sess.end_time || sess.jam_selesai}
+                      </span>
+
+                      {isCompleted ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200 dark:border-emerald-700">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Selesai & Hadir
+                        </span>
+                      ) : isOngoing ? (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300 dark:bg-sky-900/60 dark:text-sky-200 dark:border-sky-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" /> Sedang KBM
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400">
+                          Terjadwal
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Middle Info: Subject & Class */}
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white line-clamp-1 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                        {sess.subject_name || sess.mata_pelajaran || 'Mata Pelajaran'}
+                      </h4>
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+                          {sess.class_name || sess.kelas || 'Kelas'}
+                        </span>
+                        <span>•</span>
+                        <span>{sess.room || sess.ruangan || 'Ruang Kelas'}</span>
+                      </div>
+                    </div>
+
+                    {/* Teacher Identity */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-extrabold text-[10px]">
+                        {getInitials(sess.teacher_name || sess.guru || 'Guru')}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                          {sess.teacher_name || sess.guru || 'Guru Pengampu'}
+                        </p>
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
+                          {isCompleted ? 'Presensi Mengajar Terekam' : isOngoing ? 'Hadir di Kelas' : 'Belum Presensi'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Topic & Notes Summary */}
+                    {(sess.topic || sess.meeting_number || hasJournal) && (
+                      <div className="rounded-xl bg-slate-50/80 p-2.5 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 space-y-1 text-[11px]">
+                        {sess.meeting_number && (
+                          <span className="font-extrabold text-emerald-700 dark:text-emerald-400 block text-[10.5px]">
+                            Pertemuan Ke-{sess.meeting_number}
+                          </span>
+                        )}
+                        {sess.topic && (
+                          <p className="font-semibold text-slate-700 dark:text-slate-300 line-clamp-1">
+                            <span className="text-slate-400 font-normal">Materi: </span>{sess.topic}
+                          </p>
+                        )}
+                        {hasJournal && (
+                          <p className="text-[10.5px] text-slate-600 dark:text-slate-400 italic line-clamp-2 pt-1 border-t border-slate-200/50 dark:border-slate-800">
+                            "{sess.meeting_notes}"
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Footer: Detail Button */}
+                  <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                    {hasJournal ? (
+                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <FileText className="h-3 w-3" /> Jurnal Tersedia
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {isCompleted ? 'Selesai tanpa catatan' : 'Jurnal saat kelas ditutup'}
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedKbmSession(sess)}
+                      className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+                    >
+                      <span>Detail</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       {/* Primary Unit KPIs - Modern Style Cards */}
       <section className="space-y-3">
@@ -2119,6 +2333,143 @@ export default function KepalaSekolahDashboardPage() {
         onSuccess={fetchDashboard}
       />
 
+      {/* Dialog Modal Detail Supervisi KBM & Jurnal Pembelajaran Guru */}
+      <Dialog
+        isOpen={Boolean(selectedKbmSession)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedKbmSession(null)
+        }}
+        className="max-w-2xl w-full p-0 overflow-hidden border-2 border-emerald-500/30 bg-white dark:border-emerald-600/40 dark:bg-[#1B2433] rounded-[24px] shadow-2xl"
+      >
+        {/* Header Modal */}
+        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-white/20 text-white shadow-inner">
+              <BookOpen className="size-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-white">Detail Supervisi KBM & Jurnal Guru</h3>
+              <p className="text-[11px] text-emerald-100 font-medium">
+                {selectedKbmSession?.subject_name || selectedKbmSession?.mata_pelajaran || 'Mata Pelajaran'} • {selectedKbmSession?.class_name || selectedKbmSession?.kelas || 'Kelas'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedKbmSession(null)}
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/15 hover:bg-white/25 text-white transition-all cursor-pointer font-black text-xs"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* Identity & Status Card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Guru Pengampu</p>
+              <p className="text-xs font-black text-slate-800 dark:text-slate-100 mt-0.5">
+                {selectedKbmSession?.teacher_name || selectedKbmSession?.guru || '—'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jadwal & Ruangan</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">
+                {selectedKbmSession?.start_time || selectedKbmSession?.jam_mulai} - {selectedKbmSession?.end_time || selectedKbmSession?.jam_selesai} • {selectedKbmSession?.room || selectedKbmSession?.ruangan || 'Ruang Kelas'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status Sesi</p>
+              <div className="mt-1">
+                {selectedKbmSession?.status === 'completed' ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Selesai & Ditutup
+                  </span>
+                ) : selectedKbmSession?.is_ongoing ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-300 dark:bg-sky-950/60 dark:text-sky-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-500 animate-pulse" /> Sedang Berlangsung
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400">
+                    Terjadwal
+                  </span>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pertemuan & Materi</p>
+              <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 mt-0.5">
+                Pertemuan Ke-{selectedKbmSession?.meeting_number || '1'}
+              </p>
+            </div>
+          </div>
+
+          {/* Topik / Pokok Bahasan */}
+          <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Topik / Materi Pembelajaran</p>
+            <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100">
+              {selectedKbmSession?.topic || 'Topik materi KBM terpadu'}
+            </p>
+          </div>
+
+          {/* Catatan Jurnal KBM / Penutupan Kelas */}
+          <div className="p-4 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border-2 border-emerald-500/25 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <p className="text-[11px] font-black text-emerald-800 dark:text-emerald-300">
+                Catatan Jurnal Pembelajaran Guru
+              </p>
+            </div>
+            {selectedKbmSession?.meeting_notes && selectedKbmSession.meeting_notes.trim() ? (
+              <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed font-medium whitespace-pre-wrap bg-white/70 dark:bg-slate-900/60 p-3 rounded-xl border border-emerald-200/60 dark:border-emerald-800/60">
+                {selectedKbmSession.meeting_notes}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                Guru belum mengisi catatan jurnal / evaluasi penutupan sesi KBM ini.
+              </p>
+            )}
+          </div>
+
+          {/* Rekap Kehadiran Siswa di Kelas */}
+          {selectedKbmSession?.stats && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Rekap Presensi Siswa Sesi Ini</p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                  <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">Hadir</p>
+                  <p className="text-base font-black text-emerald-800 dark:text-emerald-200">{selectedKbmSession.stats.present_count ?? 0}</p>
+                </div>
+                <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800">
+                  <p className="text-[10px] font-bold text-sky-700 dark:text-sky-300">Sakit</p>
+                  <p className="text-base font-black text-sky-800 dark:text-sky-200">{selectedKbmSession.stats.sick_count ?? 0}</p>
+                </div>
+                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                  <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300">Izin</p>
+                  <p className="text-base font-black text-amber-800 dark:text-amber-200">{selectedKbmSession.stats.permit_count ?? 0}</p>
+                </div>
+                <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
+                  <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300">Alpa</p>
+                  <p className="text-base font-black text-rose-800 dark:text-rose-200">{selectedKbmSession.stats.absent_count ?? 0}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200/80 dark:border-slate-800 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setSelectedKbmSession(null)}
+            className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
+          >
+            Tutup
+          </button>
+        </div>
+      </Dialog>
+
       {/* TailGrids Dialog Modal Chat Direct Pegawai / Guru */}
       <Dialog
         isOpen={Boolean(activeChatUser)}
@@ -2146,7 +2497,7 @@ export default function KepalaSekolahDashboardPage() {
                 <h3 className="text-sm font-black truncate text-white leading-snug">
                   {activeChatUser?.nama || activeChatUser?.name || 'Pegawai'}
                 </h3>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${activeChatUser?.is_online ? 'bg-emerald-400/25 text-emerald-100 border border-emerald-300/40' : 'bg-white/15 text-white/80'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${activeChatUser?.is_online ? 'bg-emerald-400/25 text-emerald-100 border border-emerald-300/40' : 'bg-rose-500/30 text-rose-100 border border-rose-300/40'}`}>
                   {activeChatUser?.is_online ? 'Online' : 'Offline'}
                 </span>
               </div>

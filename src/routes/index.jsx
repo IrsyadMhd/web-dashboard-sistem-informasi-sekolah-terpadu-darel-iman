@@ -373,19 +373,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/auth',
-    element: (
-      <BungkusLazy>
-        <LoginPage />
-      </BungkusLazy>
-    ),
+    element: <Navigate to="/masuk" replace />,
   },
   {
     path: '/authentication',
-    element: (
-      <BungkusLazy>
-        <LoginPage />
-      </BungkusLazy>
-    ),
+    element: <Navigate to="/masuk" replace />,
   },
   {
     element: <RouteTerlindungi />,
@@ -641,7 +633,7 @@ export const router = createBrowserRouter([
             { path: 'pengajuan-izin/:id/edit', element: <Navigate to="/portal-siswa" replace /> },
           ] },
           { path: 'laporan', element: <BungkusLazy><AttendanceReportPage /></BungkusLazy> },
-          { path: 'rekap-data', element: <BungkusLazy><AttendanceReportPage /></BungkusLazy> },
+          { path: 'rekap-data', element: <Navigate to="/absensi/laporan" replace /> },
           // Fail closed for unknown attendance URLs. Rendering the generic
           // workspace here made a direct typo/forged child path appear valid.
           {
@@ -757,7 +749,7 @@ export const router = createBrowserRouter([
            { path: 'guru-bk', element: <PermissionElement any={['dashboard.guru-bk.view']}><BungkusLazy><GuruBkDashboardPage /></BungkusLazy></PermissionElement> },
            { path: 'operator', element: <PermissionElement any={['dashboard.operator.view']}><BungkusLazy><OperatorDashboardPage /></BungkusLazy></PermissionElement> },
             { path: 'musyrif', element: <PermissionElement any={['dashboard.guru-tahfizh.view']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek']}><BungkusLazy><MusyrifDashboardPage /></BungkusLazy></PermissionElement> },
-           { path: 'asrama/izin', element: <PermissionElement any={['dashboard.guru-tahfizh.view', 'dashboard.musyrif.view', 'dormitory.view', 'asrama.activity.view', 'dormitory.permission.approve']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek']}><BungkusLazy><MusyrifDashboardPage defaultTab="perizinan" /></BungkusLazy></PermissionElement> },
+           { path: 'asrama/izin', element: <PermissionElement any={['dashboard.guru-tahfizh.view', 'dashboard.musyrif.view', 'dormitory.view', 'asrama.activity.view', 'dormitory.permission.approve', 'dormitory.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Pengurus', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'kepsek']}><BungkusLazy><MusyrifDashboardPage defaultTab="perizinan" /></BungkusLazy></PermissionElement> },
           { path: 'chat-pegawai', element: <PermissionElement any={['chat.conversation.view', 'chat.manage']}><BungkusLazy><EmployeeChatPage /></BungkusLazy></PermissionElement> },
           { path: 'berita-informasi', element: <PermissionElement roles={[...ROLES.SUPER_ADMIN, ...ROLES.ADMIN, ...ROLES.YAYASAN, ...ROLES.DIVISI, ...ROLES.KEPALA_SEKOLAH, ...ROLES.WAKA, ...ROLES.TATA_USAHA]} deniedRoles={ROLES.GURU} any={['foundation.information.view', 'sekolah.informasi_sekolah', 'sistem.master_data']}><BungkusLazy><NewsManagementPage /></BungkusLazy></PermissionElement> },
           { path: 'akademik', element: <PermissionElement deniedRoles={ROLES.GURU} any={['academic.view', 'academic.manage']}><Navigate to="/dashboard/akademik/dashboard" replace /></PermissionElement> },
@@ -813,16 +805,7 @@ export const router = createBrowserRouter([
           { path: 'super-admin', element: <Navigate to="/dashboard" replace /> },
           {
             path: 'laporan-prestasi',
-            element: (
-              <PermissionElement
-                roles={[...ROLES.KEPALA_SEKOLAH, ...ROLES.YAYASAN, ...ROLES.WAKA_KESISWAAN, ...ROLES.SUPER_ADMIN, ...ROLES.ADMIN]}
-                any={['kesiswaan.rekap_prestasi', 'kesiswaan.prestasi_rekapitulasi', 'report.prestasi.view', 'report.view', 'foundation.report.view', 'dashboard.pemantauan.lihat']}
-              >
-                <BungkusLazy>
-                  <FoundationLaporanPrestasiPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/yayasan/laporan/prestasi" replace />,
           },
           {
             path: 'mutasi-siswa',
@@ -1318,13 +1301,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'modul-ajar',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsModulAjarPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/modul-ajar" replace />,
           },
           {
             path: 'lms/modul-ajar',
@@ -1384,11 +1361,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'master-capaian-pembelajaran',
-            element: (
-              <BungkusLazy>
-                <MasterCapaianPembelajaranPage />
-              </BungkusLazy>
-            ),
+            element: <Navigate to="/dashboard/lms/capaian-pembelajaran" replace />,
           },
           {
             path: 'lms/capaian-pembelajaran',
@@ -1400,11 +1373,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'master-tujuan-pembelajaran',
-            element: (
-              <BungkusLazy>
-                <MasterTujuanPembelajaranPage />
-              </BungkusLazy>
-            ),
+            element: <Navigate to="/dashboard/lms/tujuan-pembelajaran" replace />,
           },
           {
             path: 'lms/tujuan-pembelajaran',
@@ -1416,23 +1385,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'materi-pembelajaran',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsMateriPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/materi" replace />,
           },
           {
             path: 'lms/materi-pembelajaran',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsMateriPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/materi" replace />,
           },
           {
             path: 'lms/materi',
@@ -1446,23 +1403,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'media-pembelajaran',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsMediaPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/media" replace />,
           },
           {
             path: 'lms/media-pembelajaran',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsMediaPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/media" replace />,
           },
           {
             path: 'lms/media',
@@ -1476,23 +1421,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'referensi-pembelajaran',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsReferensiPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/referensi" replace />,
           },
           {
             path: 'lms/referensi-pembelajaran',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsReferensiPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/referensi" replace />,
           },
           {
             path: 'lms/referensi',
@@ -1506,23 +1439,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'aktivitas-belajar',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsAktivitasBelajarPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/aktivitas" replace />,
           },
           {
             path: 'lms/aktivitas-belajar',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsAktivitasBelajarPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/aktivitas" replace />,
           },
           {
             path: 'lms/aktivitas',
@@ -1536,23 +1457,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'diskusi-kelas',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsDiskusiPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/diskusi" replace />,
           },
           {
             path: 'lms/diskusi-kelas',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsDiskusiPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/diskusi" replace />,
           },
           {
             path: 'lms/diskusi',
@@ -1566,13 +1475,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'penugasan',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsPenugasanPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/penugasan" replace />,
           },
           {
             path: 'lms/penugasan',
@@ -1586,13 +1489,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'pengumpulan-tugas',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsPengumpulanTugasPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/pengumpulan-tugas" replace />,
           },
           {
             path: 'lms/pengumpulan-tugas',
@@ -1616,43 +1513,19 @@ export const router = createBrowserRouter([
           },
           {
             path: 'presensi-pembelajaran',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <AttendanceWorkspacePage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/absensi-pembelajaran" replace />,
           },
           {
             path: 'lms/presensi-pembelajaran',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <AttendanceWorkspacePage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/absensi-pembelajaran" replace />,
           },
           {
             path: 'absensi/*',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <AttendanceWorkspacePage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/absensi-pembelajaran" replace />,
           },
           {
             path: 'kisi-kisi-ujian',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsKisiKisiPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/kisi-kisi" replace />,
           },
           {
             path: 'lms/kisi-kisi',
@@ -1666,13 +1539,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'bank-soal',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsBankSoalPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/bank-soal" replace />,
           },
           {
             path: 'lms/bank-soal',
@@ -1686,23 +1553,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'ujian-online',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsUjianPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/ujian" replace />,
           },
           {
             path: 'lms/ujian-online',
-            element: (
-              <PermissionElement deniedRoles={[...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsUjianPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/ujian" replace />,
           },
           {
             path: 'lms/ujian',
@@ -1716,18 +1571,12 @@ export const router = createBrowserRouter([
           },
           {
             path: 'penilaian',
-            element: (
-              <PermissionElement any={['academic.view', 'academic.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', ...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsPenilaianPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/penilaian" replace />,
           },
           {
             path: 'lms/penilaian',
             element: (
-              <PermissionElement any={['academic.view', 'academic.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', ...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
+              <PermissionElement any={['academic.view', 'academic.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', ...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
                 <BungkusLazy>
                   <LmsPenilaianPage />
                 </BungkusLazy>
@@ -1736,18 +1585,12 @@ export const router = createBrowserRouter([
           },
           {
             path: 'lms/penilaian-rapor',
-            element: (
-              <PermissionElement any={['academic.view', 'academic.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', ...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
-                <BungkusLazy>
-                  <LmsRaporPage />
-                </BungkusLazy>
-              </PermissionElement>
-            ),
+            element: <Navigate to="/dashboard/lms/rapor" replace />,
           },
           {
             path: 'lms/rapor',
             element: (
-              <PermissionElement any={['academic.view', 'academic.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', 'Kepala Sekolah', 'kepala_sekolah', 'KepalaSekolah', 'Divisi Pendidikan', 'divisi_pendidikan', 'DivisiPendidikan', ...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
+              <PermissionElement any={['academic.view', 'academic.manage']} deniedRoles={['Yayasan', 'Ketua Yayasan', 'ketua_yayasan', 'sekretaris_yayasan', 'bendahara_yayasan', 'pengurus_yayasan', 'Pengurus Yayasan', ...ROLES.ORANG_TUA, ...ROLES.SISWA]}>
                 <BungkusLazy>
                   <LmsRaporPage />
                 </BungkusLazy>

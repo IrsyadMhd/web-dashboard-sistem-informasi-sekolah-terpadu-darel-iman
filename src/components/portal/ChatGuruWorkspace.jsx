@@ -519,7 +519,7 @@ export default function ChatGuruWorkspace({
     return (
       <span
         title="Status: Offline"
-        className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-slate-300 dark:bg-slate-600 ring-2 ring-white dark:ring-slate-900"
+        className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"
       />
     )
   }

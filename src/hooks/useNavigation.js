@@ -39,7 +39,12 @@ import {
   MessageCircle,
   Receipt,
   UserRound,
+  Tag,
+  ClipboardCheck,
+  Sliders,
+  Menu,
 } from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
 import { navigationService } from '../services/navigationService'
 import { useAuthStore } from '../stores/authStore'
 
@@ -83,6 +88,10 @@ const ICON_MAP = {
   MessageCircle,
   Receipt,
   UserRound,
+  Tag,
+  ClipboardCheck,
+  Sliders,
+  Menu,
 }
 
 /**
@@ -98,7 +107,17 @@ export function resolveSidebarIcon(iconName) {
   if (typeof iconName === 'function' || (typeof iconName === 'object' && iconName !== null)) {
     return iconName
   }
-  return ICON_MAP[iconName] || Layers
+  // Cek pada ICON_MAP terlebih dahulu
+  if (ICON_MAP[iconName]) {
+    return ICON_MAP[iconName]
+  }
+  // Fallback dinamis langsung ke bundle lucide-react (mendukung PascalCase & dash-case)
+  if (typeof iconName === 'string') {
+    if (LucideIcons[iconName]) return LucideIcons[iconName]
+    const sanitized = iconName.replace(/-/g, '')
+    if (LucideIcons[sanitized]) return LucideIcons[sanitized]
+  }
+  return Layers
 }
 
 /**

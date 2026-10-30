@@ -1,6 +1,8 @@
 import { usePengaturanStore } from '../stores/pengaturanStore'
 import { siteSettingService } from '../services/siteSettingService'
 
+export const DEFAULT_MAPBOX_TOKEN = ''
+
 let cachedTokenPromise = null
 
 /**
@@ -19,43 +21,45 @@ export async function getMapboxToken() {
     cachedTokenPromise = siteSettingService
       .get()
       .then((res) => {
-        const token = res?.mapbox_token || ''
+        const token = res?.mapbox_token || DEFAULT_MAPBOX_TOKEN
         if (token) {
           usePengaturanStore.getState().previewPengaturan({ mapbox_token: token })
         }
         return token
       })
       .catch((err) => {
-        console.warn('[MapboxHelper] Gagal mengambil token Mapbox dari database:', err)
-        return ''
+        console.warn('[MapboxHelper] Menggunakan default token Mapbox:', err)
+        return DEFAULT_MAPBOX_TOKEN
       })
       .finally(() => {
         cachedTokenPromise = null
       })
   }
 
-  return cachedTokenPromise
+  const result = await cachedTokenPromise
+  return result || DEFAULT_MAPBOX_TOKEN
 }
 
 /**
- * Generate Tile URL untuk Mapbox (dengan fallback ke OSM)
+ * Generate Tile URL untuk Mapbox Streets (Fallback ke OpenStreetMap jika token belum diset)
  */
 export function getMapTileConfig(mapboxToken, style = 'streets-v12') {
-  if (mapboxToken && mapboxToken.trim()) {
+  const token = (mapboxToken && mapboxToken.trim()) || DEFAULT_MAPBOX_TOKEN
+  if (token) {
     return {
-      url: `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/{z}/{x}/{y}?access_token=${mapboxToken.trim()}`,
+      url: `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/{z}/{x}/{y}?access_token=${token}`,
       attribution:
-        '&copy; <a href="https://www.mapbox.com/about/maps/" target="_blank">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        '&copy; <a href="https://www.mapbox.com/about/maps/" target="_blank">Mapbox</a> &copy; <a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a>',
       maxZoom: 20,
       tileSize: 512,
       zoomOffset: -1,
     }
   }
 
-  // Fallback ke OpenStreetMap publik
+  // Fallback jika belum ada Mapbox Token di database
   return {
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap contributors',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
     tileSize: 256,
     zoomOffset: 0,
@@ -68,13 +72,14 @@ export function getMapTileConfig(mapboxToken, style = 'streets-v12') {
  */
 export async function searchAddressGeocoding(query, mapboxToken) {
   if (!query || !query.trim()) return null
+  const token = (mapboxToken && mapboxToken.trim()) || DEFAULT_MAPBOX_TOKEN
 
   // 1. Prioritas: Mapbox Geocoding API
-  if (mapboxToken && mapboxToken.trim()) {
+  if (token) {
     try {
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
         query.trim()
-      )}.json?access_token=${mapboxToken.trim()}&country=id&types=address,poi,neighborhood,locality,district,place&language=id&limit=1`
+      )}.json?access_token=${token}&country=id&types=address,poi,neighborhood,locality,district,place&language=id&limit=1`
 
       const res = await fetch(url)
       const data = await res.json()
@@ -176,11 +181,12 @@ export async function searchAddressGeocoding(query, mapboxToken) {
  */
 export async function reverseGeocodeCoords(lat, lng, mapboxToken) {
   if (!lat || !lng) return null
+  const token = (mapboxToken && mapboxToken.trim()) || DEFAULT_MAPBOX_TOKEN
 
   // 1. Prioritas: Mapbox Reverse Geocoding API
-  if (mapboxToken && mapboxToken.trim()) {
+  if (token) {
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxToken.trim()}&language=id&limit=1`
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&language=id&limit=1`
       const res = await fetch(url)
       const data = await res.json()
 

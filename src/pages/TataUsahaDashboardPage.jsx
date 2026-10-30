@@ -177,12 +177,12 @@ export default function TataUsahaDashboardPage() {
 
   const formatNumber = (num) => (num !== undefined && num !== null ? Number(num).toLocaleString('id-ID') : '0')
 
-  const tahunAjaranLabel = context.tahun_ajaran
+  const tahunAjaranLabel = context.tahun_ajaran?.nama
     ? `Tahun Ajaran ${context.tahun_ajaran.nama}`
-    : 'Tahun Ajaran 2026/2027'
-  const semesterLabel = context.semester
+    : 'Tahun Ajaran Aktif'
+  const semesterLabel = context.semester?.nama
     ? `Semester ${context.semester.nama}`
-    : 'Semester Ganjil'
+    : 'Semester Berjalan'
 
   const chartHasData = (items = []) => items.some((item) => Number(item.value) > 0)
 
